@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-storage/storage"
 	cid "github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -108,19 +107,19 @@ type IWalletEventStruct struct {
 
 type IMarketClientStruct struct {
 	Internal struct {
-		IsUnsealed                 func(ctx context.Context, miner address.Address, pieceCid cid.Cid, sector storage.SectorRef, offset types.PaddedByteIndex, size abi.PaddedPieceSize) (bool, error)      `perm:"admin"`
-		ListMarketConnectionsState func(ctx context.Context) ([]gtypes.MarketConnectionState, error)                                                                                                       `perm:"admin"`
-		SectorsUnsealPiece         func(ctx context.Context, miner address.Address, pieceCid cid.Cid, sector storage.SectorRef, offset types.PaddedByteIndex, size abi.PaddedPieceSize, dest string) error `perm:"admin"`
+		IsUnsealed                 func(ctx context.Context, miner address.Address, pieceCid cid.Cid, sectorNumber abi.SectorNumber, offset types.PaddedByteIndex, size abi.PaddedPieceSize) (bool, error)      `perm:"admin"`
+		ListMarketConnectionsState func(ctx context.Context) ([]gtypes.MarketConnectionState, error)                                                                                                            `perm:"admin"`
+		SectorsUnsealPiece         func(ctx context.Context, miner address.Address, pieceCid cid.Cid, sectorNumber abi.SectorNumber, offset types.PaddedByteIndex, size abi.PaddedPieceSize, dest string) error `perm:"admin"`
 	}
 }
 
-func (s *IMarketClientStruct) IsUnsealed(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 storage.SectorRef, p4 types.PaddedByteIndex, p5 abi.PaddedPieceSize) (bool, error) {
+func (s *IMarketClientStruct) IsUnsealed(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 abi.SectorNumber, p4 types.PaddedByteIndex, p5 abi.PaddedPieceSize) (bool, error) {
 	return s.Internal.IsUnsealed(p0, p1, p2, p3, p4, p5)
 }
 func (s *IMarketClientStruct) ListMarketConnectionsState(p0 context.Context) ([]gtypes.MarketConnectionState, error) {
 	return s.Internal.ListMarketConnectionsState(p0)
 }
-func (s *IMarketClientStruct) SectorsUnsealPiece(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 storage.SectorRef, p4 types.PaddedByteIndex, p5 abi.PaddedPieceSize, p6 string) error {
+func (s *IMarketClientStruct) SectorsUnsealPiece(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 abi.SectorNumber, p4 types.PaddedByteIndex, p5 abi.PaddedPieceSize, p6 string) error {
 	return s.Internal.SectorsUnsealPiece(p0, p1, p2, p3, p4, p5, p6)
 }
 

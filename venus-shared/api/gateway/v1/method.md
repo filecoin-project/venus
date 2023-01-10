@@ -42,7 +42,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131840
+  "APIVersion": 0
 }
 ```
 
@@ -62,10 +62,10 @@ Inputs:
   },
   {
     "ID": {
-      "Miner": 1000,
-      "Number": 9
+      "Miner": 0,
+      "Number": 0
     },
-    "ProofType": 8
+    "ProofType": 0
   },
   10,
   1032
@@ -92,13 +92,13 @@ Response:
           "Addrs": [
             "f01234"
           ],
-          "ChannelId": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
-          "Ip": "string value",
-          "RequestCount": 123,
+          "ChannelId": "00000000-0000-0000-0000-000000000000",
+          "Ip": "",
+          "RequestCount": 0,
           "CreateTime": "0001-01-01T00:00:00Z"
         }
       ],
-      "ConnectionCount": 123
+      "ConnectionCount": 0
     }
   }
 ]
@@ -118,10 +118,10 @@ Inputs:
   },
   {
     "ID": {
-      "Miner": 1000,
-      "Number": 9
+      "Miner": 0,
+      "Number": 0
     },
-    "ProofType": 8
+    "ProofType": 0
   },
   10,
   1032,
@@ -150,7 +150,7 @@ Inputs:
 Response:
 ```json
 {
-  "Id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
+  "Id": "00000000-0000-0000-0000-000000000000",
   "Method": "string value",
   "Payload": "Ynl0ZSBhcnJheQ=="
 }
@@ -165,7 +165,7 @@ Inputs:
 ```json
 [
   {
-    "Id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
+    "Id": "00000000-0000-0000-0000-000000000000",
     "Payload": "Ynl0ZSBhcnJheQ==",
     "Error": "string value"
   }
@@ -187,14 +187,10 @@ Inputs:
   "f01234",
   [
     {
-      "SealProof": 8,
-      "SectorNumber": 9,
-      "SectorKey": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "SealedCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      }
+      "SealProof": 0,
+      "SectorNumber": 0,
+      "SectorKey": null,
+      "SealedCID": null
     }
   ],
   "Bw==",
@@ -207,8 +203,8 @@ Response:
 ```json
 [
   {
-    "PoStProof": 8,
-    "ProofBytes": "Ynl0ZSBhcnJheQ=="
+    "PoStProof": 0,
+    "ProofBytes": null
   }
 ]
 ```
@@ -247,13 +243,13 @@ Response:
       "Addrs": [
         "f01234"
       ],
-      "ChannelId": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
-      "Ip": "string value",
-      "RequestCount": 123,
+      "ChannelId": "00000000-0000-0000-0000-000000000000",
+      "Ip": "",
+      "RequestCount": 0,
       "CreateTime": "0001-01-01T00:00:00Z"
     }
   ],
-  "ConnectionCount": 123
+  "ConnectionCount": 0
 }
 ```
 
@@ -268,7 +264,7 @@ Inputs:
 ```json
 [
   {
-    "MinerAddress": "f01234"
+    "MinerAddress": "\u003cempty\u003e"
   }
 ]
 ```
@@ -276,7 +272,7 @@ Inputs:
 Response:
 ```json
 {
-  "Id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
+  "Id": "00000000-0000-0000-0000-000000000000",
   "Method": "string value",
   "Payload": "Ynl0ZSBhcnJheQ=="
 }
@@ -291,7 +287,7 @@ Inputs:
 ```json
 [
   {
-    "Id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
+    "Id": "00000000-0000-0000-0000-000000000000",
     "Payload": "Ynl0ZSBhcnJheQ==",
     "Error": "string value"
   }
@@ -314,20 +310,8 @@ Response:
 [
   {
     "Account": "string value",
-    "SupportAccounts": [
-      "string value"
-    ],
-    "ConnectStates": [
-      {
-        "Addrs": [
-          "f01234"
-        ],
-        "ChannelId": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
-        "Ip": "string value",
-        "RequestCount": 123,
-        "CreateTime": "0001-01-01T00:00:00Z"
-      }
-    ]
+    "SupportAccounts": null,
+    "ConnectStates": null
   }
 ]
 ```
@@ -348,20 +332,8 @@ Response:
 ```json
 {
   "Account": "string value",
-  "SupportAccounts": [
-    "string value"
-  ],
-  "ConnectStates": [
-    {
-      "Addrs": [
-        "f01234"
-      ],
-      "ChannelId": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
-      "Ip": "string value",
-      "RequestCount": 123,
-      "CreateTime": "0001-01-01T00:00:00Z"
-    }
-  ]
+  "SupportAccounts": null,
+  "ConnectStates": null
 }
 ```
 
@@ -434,10 +406,8 @@ Inputs:
 ```json
 [
   {
-    "SupportAccounts": [
-      "string value"
-    ],
-    "SignBytes": "Ynl0ZSBhcnJheQ=="
+    "SupportAccounts": null,
+    "SignBytes": null
   }
 ]
 ```
@@ -445,7 +415,7 @@ Inputs:
 Response:
 ```json
 {
-  "Id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
+  "Id": "00000000-0000-0000-0000-000000000000",
   "Method": "string value",
   "Payload": "Ynl0ZSBhcnJheQ=="
 }
@@ -477,7 +447,7 @@ Inputs:
 ```json
 [
   {
-    "Id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
+    "Id": "00000000-0000-0000-0000-000000000000",
     "Payload": "Ynl0ZSBhcnJheQ==",
     "Error": "string value"
   }

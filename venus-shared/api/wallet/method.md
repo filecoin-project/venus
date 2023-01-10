@@ -135,7 +135,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131840
+  "APIVersion": 0
 }
 ```
 
@@ -160,10 +160,10 @@ Inputs:
 Response:
 ```json
 {
-  "BindID": 42,
+  "BindID": 0,
   "Name": "string value",
   "Address": "string value",
-  "MetaTypes": 2,
+  "MetaTypes": 0,
   "Methods": [
     "string value"
   ]
@@ -189,10 +189,10 @@ Inputs:
 Response:
 ```json
 {
-  "BindID": 42,
+  "BindID": 0,
   "Name": "string value",
   "Address": "string value",
-  "MetaTypes": 2,
+  "MetaTypes": 0,
   "Methods": [
     "string value"
   ]
@@ -215,19 +215,9 @@ Inputs:
 Response:
 ```json
 {
-  "GroupID": 42,
+  "GroupID": 0,
   "Name": "string value",
-  "KeyBinds": [
-    {
-      "BindID": 42,
-      "Name": "string value",
-      "Address": "string value",
-      "MetaTypes": 2,
-      "Methods": [
-        "string value"
-      ]
-    }
-  ]
+  "KeyBinds": null
 }
 ```
 
@@ -247,10 +237,10 @@ Inputs:
 Response:
 ```json
 {
-  "BindID": 42,
+  "BindID": 0,
   "Name": "string value",
   "Address": "string value",
-  "MetaTypes": 2,
+  "MetaTypes": 0,
   "Methods": [
     "string value"
   ]
@@ -274,10 +264,10 @@ Response:
 ```json
 [
   {
-    "BindID": 42,
+    "BindID": 0,
     "Name": "string value",
     "Address": "string value",
-    "MetaTypes": 2,
+    "MetaTypes": 0,
     "Methods": [
       "string value"
     ]
@@ -301,7 +291,7 @@ Inputs:
 Response:
 ```json
 {
-  "MTId": 42,
+  "MTId": 0,
   "Name": "string value",
   "Methods": [
     "string value"
@@ -325,9 +315,9 @@ Inputs:
 Response:
 ```json
 {
-  "MTTId": 42,
+  "MTTId": 0,
   "Name": "string value",
-  "MetaTypes": 2
+  "MetaTypes": 0
 }
 ```
 
@@ -348,19 +338,9 @@ Response:
 ```json
 {
   "Token": "string value",
-  "GroupID": 42,
+  "GroupID": 0,
   "Name": "string value",
-  "KeyBinds": [
-    {
-      "BindID": 42,
-      "Name": "string value",
-      "Address": "string value",
-      "MetaTypes": 2,
-      "Methods": [
-        "string value"
-      ]
-    }
-  ]
+  "KeyBinds": null
 }
 ```
 
@@ -402,19 +382,9 @@ Response:
 ```json
 [
   {
-    "GroupID": 42,
+    "GroupID": 0,
     "Name": "string value",
-    "KeyBinds": [
-      {
-        "BindID": 42,
-        "Name": "string value",
-        "Address": "string value",
-        "MetaTypes": 2,
-        "Methods": [
-          "string value"
-        ]
-      }
-    ]
+    "KeyBinds": null
   }
 ]
 ```
@@ -437,10 +407,10 @@ Response:
 ```json
 [
   {
-    "BindID": 42,
+    "BindID": 0,
     "Name": "string value",
     "Address": "string value",
-    "MetaTypes": 2,
+    "MetaTypes": 0,
     "Methods": [
       "string value"
     ]
@@ -466,7 +436,7 @@ Response:
 ```json
 [
   {
-    "MTId": 42,
+    "MTId": 0,
     "Name": "string value",
     "Methods": [
       "string value"
@@ -493,9 +463,9 @@ Response:
 ```json
 [
   {
-    "MTTId": 42,
+    "MTTId": 0,
     "Name": "string value",
-    "MetaTypes": 2
+    "MetaTypes": 0
   }
 ]
 ```
@@ -673,10 +643,10 @@ Inputs:
 Response:
 ```json
 {
-  "BindID": 42,
+  "BindID": 0,
   "Name": "string value",
   "Address": "string value",
-  "MetaTypes": 2,
+  "MetaTypes": 0,
   "Methods": [
     "string value"
   ]
@@ -717,10 +687,10 @@ Inputs:
 Response:
 ```json
 {
-  "BindID": 42,
+  "BindID": 0,
   "Name": "string value",
   "Address": "string value",
-  "MetaTypes": 2,
+  "MetaTypes": 0,
   "Methods": [
     "string value"
   ]
@@ -805,14 +775,14 @@ Inputs:
   "message",
   {
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     },
     "Version": 42,
     "To": "f01234",
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
@@ -855,7 +825,7 @@ Response:
 ```json
 {
   "Type": "bls",
-  "PrivateKey": "Ynl0ZSBhcnJheQ=="
+  "PrivateKey": null
 }
 ```
 
@@ -883,7 +853,7 @@ Inputs:
 [
   {
     "Type": "bls",
-    "PrivateKey": "Ynl0ZSBhcnJheQ=="
+    "PrivateKey": null
   }
 ]
 ```

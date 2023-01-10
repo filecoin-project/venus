@@ -9,19 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/actors"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-fil-markets/filestore"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
-	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/venus/venus-shared/types/market"
 	auuid "github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -33,10 +20,25 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/filestore"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/api/chain"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/filecoin-project/venus/venus-shared/types/messager"
 	"github.com/filecoin-project/venus/venus-shared/types/wallet"
@@ -322,8 +324,8 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 			continue
 		}
 
-		if strings.Title(f.Name) == f.Name {
-			fmt.Println(f.Name)
+		caser := cases.Title(language.English)
+		if caser.String(f.Name) == f.Name {
 			ns.Field(i).Set(reflect.ValueOf(ExampleValue(method, f.Type, t)))
 		}
 	}

@@ -107,16 +107,14 @@ Inputs: `[]`
 Response:
 ```json
 {
-  "TransferID": 3,
+  "TransferID": 0,
   "Status": 1,
-  "BaseCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "IsInitiator": true,
-  "IsSender": true,
+  "BaseCID": null,
+  "IsInitiator": false,
+  "IsSender": false,
   "Voucher": "string value",
   "Message": "string value",
-  "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "OtherPeer": "",
   "Transferred": 42,
   "Stages": {
     "Stages": [
@@ -155,11 +153,9 @@ Inputs:
 Response:
 ```json
 {
-  "PayloadSize": 9,
-  "PieceSize": 1032,
-  "PieceCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  }
+  "PayloadSize": 0,
+  "PieceSize": 0,
+  "PieceCID": null
 }
 ```
 
@@ -181,8 +177,8 @@ Inputs:
 Response:
 ```json
 {
-  "PayloadSize": 9,
-  "PieceSize": 1032
+  "PayloadSize": 0,
+  "PieceSize": 0
 }
 ```
 
@@ -199,18 +195,13 @@ Inputs:
     "Root": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "DAGs": [
-      {
-        "DataSelector": "/ipld/a/b/c",
-        "ExportMerkleProof": true
-      }
-    ],
-    "FromLocalCAR": "string value",
-    "DealID": 5
+    "DAGs": null,
+    "FromLocalCAR": "",
+    "DealID": 0
   },
   {
     "Path": "string value",
-    "IsCAR": true
+    "IsCAR": false
   }
 ]
 ```
@@ -250,15 +241,13 @@ Response:
     "MinPrice": "0",
     "UnsealPrice": "0",
     "PricePerByte": "0",
-    "PaymentInterval": 42,
-    "PaymentIntervalIncrease": 42,
+    "PaymentInterval": 0,
+    "PaymentIntervalIncrease": 0,
     "Miner": "f01234",
     "MinerPeer": {
-      "Address": "f01234",
-      "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "PieceCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      }
+      "Address": "\u003cempty\u003e",
+      "ID": "",
+      "PieceCID": null
     }
   }
 ]
@@ -275,7 +264,7 @@ Inputs:
 [
   {
     "Path": "string value",
-    "IsCAR": true
+    "IsCAR": false
   },
   "string value"
 ]
@@ -301,83 +290,21 @@ Inputs:
 Response:
 ```json
 {
-  "ProposalCid": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "ProposalCid": null,
   "State": 42,
   "Message": "string value",
-  "DealStages": {
-    "Stages": [
-      {
-        "Name": "string value",
-        "Description": "string value",
-        "ExpectedDuration": "string value",
-        "CreatedTime": "0001-01-01T00:00:00Z",
-        "UpdatedTime": "0001-01-01T00:00:00Z",
-        "Logs": [
-          {
-            "Log": "string value",
-            "UpdatedTime": "0001-01-01T00:00:00Z"
-          }
-        ]
-      }
-    ]
-  },
+  "DealStages": null,
   "Provider": "f01234",
-  "DataRef": {
-    "TransferType": "string value",
-    "Root": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "PieceCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "PieceSize": 1024,
-    "RawBlockSize": 42
-  },
-  "PieceCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "DataRef": null,
+  "PieceCID": null,
   "Size": 42,
   "PricePerEpoch": "0",
   "Duration": 42,
-  "DealID": 5432,
+  "DealID": 0,
   "CreationTime": "0001-01-01T00:00:00Z",
   "Verified": true,
-  "TransferChannelID": {
-    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "ID": 3
-  },
-  "DataTransfer": {
-    "TransferID": 3,
-    "Status": 1,
-    "BaseCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "IsInitiator": true,
-    "IsSender": true,
-    "Voucher": "string value",
-    "Message": "string value",
-    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Transferred": 42,
-    "Stages": {
-      "Stages": [
-        {
-          "Name": "string value",
-          "Description": "string value",
-          "CreatedTime": "0001-01-01T00:00:00Z",
-          "UpdatedTime": "0001-01-01T00:00:00Z",
-          "Logs": [
-            {
-              "Log": "string value",
-              "UpdatedTime": "0001-01-01T00:00:00Z"
-            }
-          ]
-        }
-      ]
-    }
-  }
+  "TransferChannelID": null,
+  "DataTransfer": null
 }
 ```
 
@@ -407,83 +334,21 @@ Inputs: `[]`
 Response:
 ```json
 {
-  "ProposalCid": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "ProposalCid": null,
   "State": 42,
   "Message": "string value",
-  "DealStages": {
-    "Stages": [
-      {
-        "Name": "string value",
-        "Description": "string value",
-        "ExpectedDuration": "string value",
-        "CreatedTime": "0001-01-01T00:00:00Z",
-        "UpdatedTime": "0001-01-01T00:00:00Z",
-        "Logs": [
-          {
-            "Log": "string value",
-            "UpdatedTime": "0001-01-01T00:00:00Z"
-          }
-        ]
-      }
-    ]
-  },
+  "DealStages": null,
   "Provider": "f01234",
-  "DataRef": {
-    "TransferType": "string value",
-    "Root": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "PieceCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "PieceSize": 1024,
-    "RawBlockSize": 42
-  },
-  "PieceCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "DataRef": null,
+  "PieceCID": null,
   "Size": 42,
-  "PricePerEpoch": "0",
+  "PricePerEpoch": "\u003cnil\u003e",
   "Duration": 42,
-  "DealID": 5432,
+  "DealID": 0,
   "CreationTime": "0001-01-01T00:00:00Z",
   "Verified": true,
-  "TransferChannelID": {
-    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "ID": 3
-  },
-  "DataTransfer": {
-    "TransferID": 3,
-    "Status": 1,
-    "BaseCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "IsInitiator": true,
-    "IsSender": true,
-    "Voucher": "string value",
-    "Message": "string value",
-    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Transferred": 42,
-    "Stages": {
-      "Stages": [
-        {
-          "Name": "string value",
-          "Description": "string value",
-          "CreatedTime": "0001-01-01T00:00:00Z",
-          "UpdatedTime": "0001-01-01T00:00:00Z",
-          "Logs": [
-            {
-              "Log": "string value",
-              "UpdatedTime": "0001-01-01T00:00:00Z"
-            }
-          ]
-        }
-      ]
-    }
-  }
+  "TransferChannelID": null,
+  "DataTransfer": null
 }
 ```
 
@@ -498,55 +363,19 @@ Inputs: `[]`
 Response:
 ```json
 {
-  "PayloadCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "ID": 5,
-  "PieceCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "PricePerByte": "0",
-  "UnsealPrice": "0",
+  "PayloadCID": null,
+  "ID": 0,
+  "PieceCID": null,
+  "PricePerByte": "\u003cnil\u003e",
+  "UnsealPrice": "\u003cnil\u003e",
   "Status": 0,
   "Message": "string value",
   "Provider": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "BytesReceived": 42,
-  "BytesPaidFor": 42,
-  "TotalPaid": "0",
-  "TransferChannelID": {
-    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "ID": 3
-  },
-  "DataTransfer": {
-    "TransferID": 3,
-    "Status": 1,
-    "BaseCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "IsInitiator": true,
-    "IsSender": true,
-    "Voucher": "string value",
-    "Message": "string value",
-    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Transferred": 42,
-    "Stages": {
-      "Stages": [
-        {
-          "Name": "string value",
-          "Description": "string value",
-          "CreatedTime": "0001-01-01T00:00:00Z",
-          "UpdatedTime": "0001-01-01T00:00:00Z",
-          "Logs": [
-            {
-              "Log": "string value",
-              "UpdatedTime": "0001-01-01T00:00:00Z"
-            }
-          ]
-        }
-      ]
-    }
-  },
+  "BytesReceived": 0,
+  "BytesPaidFor": 0,
+  "TotalPaid": "\u003cnil\u003e",
+  "TransferChannelID": null,
+  "DataTransfer": null,
   "Event": 5
 }
 ```
@@ -579,7 +408,7 @@ Inputs:
 [
   {
     "Path": "string value",
-    "IsCAR": true
+    "IsCAR": false
   }
 ]
 ```
@@ -590,7 +419,7 @@ Response:
   "Root": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "ImportID": 1234
+  "ImportID": 0
 }
 ```
 
@@ -606,16 +435,14 @@ Response:
 ```json
 [
   {
-    "TransferID": 3,
+    "TransferID": 0,
     "Status": 1,
-    "BaseCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "IsInitiator": true,
-    "IsSender": true,
+    "BaseCID": null,
+    "IsInitiator": false,
+    "IsSender": false,
     "Voucher": "string value",
     "Message": "string value",
-    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "OtherPeer": "",
     "Transferred": 42,
     "Stages": {
       "Stages": [
@@ -649,83 +476,21 @@ Response:
 ```json
 [
   {
-    "ProposalCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
+    "ProposalCid": null,
     "State": 42,
     "Message": "string value",
-    "DealStages": {
-      "Stages": [
-        {
-          "Name": "string value",
-          "Description": "string value",
-          "ExpectedDuration": "string value",
-          "CreatedTime": "0001-01-01T00:00:00Z",
-          "UpdatedTime": "0001-01-01T00:00:00Z",
-          "Logs": [
-            {
-              "Log": "string value",
-              "UpdatedTime": "0001-01-01T00:00:00Z"
-            }
-          ]
-        }
-      ]
-    },
+    "DealStages": null,
     "Provider": "f01234",
-    "DataRef": {
-      "TransferType": "string value",
-      "Root": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "PieceCid": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "PieceSize": 1024,
-      "RawBlockSize": 42
-    },
-    "PieceCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
+    "DataRef": null,
+    "PieceCID": null,
     "Size": 42,
     "PricePerEpoch": "0",
     "Duration": 42,
-    "DealID": 5432,
+    "DealID": 0,
     "CreationTime": "0001-01-01T00:00:00Z",
     "Verified": true,
-    "TransferChannelID": {
-      "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "ID": 3
-    },
-    "DataTransfer": {
-      "TransferID": 3,
-      "Status": 1,
-      "BaseCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "IsInitiator": true,
-      "IsSender": true,
-      "Voucher": "string value",
-      "Message": "string value",
-      "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "Transferred": 42,
-      "Stages": {
-        "Stages": [
-          {
-            "Name": "string value",
-            "Description": "string value",
-            "CreatedTime": "0001-01-01T00:00:00Z",
-            "UpdatedTime": "0001-01-01T00:00:00Z",
-            "Logs": [
-              {
-                "Log": "string value",
-                "UpdatedTime": "0001-01-01T00:00:00Z"
-              }
-            ]
-          }
-        ]
-      }
-    }
+    "TransferChannelID": null,
+    "DataTransfer": null
   }
 ]
 ```
@@ -749,8 +514,8 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "Source": "string value",
-    "FilePath": "string value",
-    "CARPath": "string value"
+    "FilePath": "",
+    "CARPath": ""
   }
 ]
 ```
@@ -766,55 +531,19 @@ Response:
 ```json
 [
   {
-    "PayloadCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "ID": 5,
-    "PieceCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
+    "PayloadCID": null,
+    "ID": 0,
+    "PieceCID": null,
     "PricePerByte": "0",
     "UnsealPrice": "0",
     "Status": 0,
     "Message": "string value",
     "Provider": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "BytesReceived": 42,
-    "BytesPaidFor": 42,
+    "BytesReceived": 0,
+    "BytesPaidFor": 0,
     "TotalPaid": "0",
-    "TransferChannelID": {
-      "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "ID": 3
-    },
-    "DataTransfer": {
-      "TransferID": 3,
-      "Status": 1,
-      "BaseCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "IsInitiator": true,
-      "IsSender": true,
-      "Voucher": "string value",
-      "Message": "string value",
-      "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "Transferred": 42,
-      "Stages": {
-        "Stages": [
-          {
-            "Name": "string value",
-            "Description": "string value",
-            "CreatedTime": "0001-01-01T00:00:00Z",
-            "UpdatedTime": "0001-01-01T00:00:00Z",
-            "Logs": [
-              {
-                "Log": "string value",
-                "UpdatedTime": "0001-01-01T00:00:00Z"
-              }
-            ]
-          }
-        ]
-      }
-    },
+    "TransferChannelID": null,
+    "DataTransfer": null,
     "Event": 5
   }
 ]
@@ -850,18 +579,16 @@ Response:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "Size": 42,
-  "MinPrice": "0",
-  "UnsealPrice": "0",
-  "PricePerByte": "0",
-  "PaymentInterval": 42,
-  "PaymentIntervalIncrease": 42,
+  "MinPrice": "\u003cnil\u003e",
+  "UnsealPrice": "\u003cnil\u003e",
+  "PricePerByte": "\u003cnil\u003e",
+  "PaymentInterval": 0,
+  "PaymentIntervalIncrease": 0,
   "Miner": "f01234",
   "MinerPeer": {
-    "Address": "f01234",
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "PieceCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    }
+    "Address": "\u003cempty\u003e",
+    "ID": "",
+    "PieceCID": null
   }
 }
 ```
@@ -885,12 +612,12 @@ Response:
 {
   "Price": "0",
   "VerifiedPrice": "0",
-  "MinPieceSize": 1032,
-  "MaxPieceSize": 1032,
+  "MinPieceSize": 0,
+  "MaxPieceSize": 0,
   "Miner": "f01234",
   "Timestamp": 10101,
   "Expiry": 10101,
-  "SeqNo": 42
+  "SeqNo": 0
 }
 ```
 
@@ -942,22 +669,15 @@ Inputs:
     "Piece": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "DataSelector": "/ipld/a/b/c",
+    "DataSelector": null,
     "Size": 42,
     "Total": "0",
-    "UnsealPrice": "0",
-    "PaymentInterval": 42,
-    "PaymentIntervalIncrease": 42,
+    "UnsealPrice": "\u003cnil\u003e",
+    "PaymentInterval": 0,
+    "PaymentIntervalIncrease": 0,
     "Client": "f01234",
     "Miner": "f01234",
-    "MinerPeer": {
-      "Address": "f01234",
-      "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "PieceCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      }
-    },
-    "RemoteStore": "102334ec-35a3-4b36-be9f-02883844503a"
+    "MinerPeer": null
   }
 ]
 ```
@@ -965,7 +685,7 @@ Inputs:
 Response:
 ```json
 {
-  "DealID": 5
+  "DealID": 0
 }
 ```
 
@@ -1011,24 +731,22 @@ Inputs:
 [
   {
     "Data": {
-      "TransferType": "string value",
+      "TransferType": "",
       "Root": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
-      "PieceCid": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "PieceSize": 1024,
-      "RawBlockSize": 42
+      "PieceCid": null,
+      "PieceSize": 0,
+      "RawBlockSize": 0
     },
     "Wallet": "f01234",
     "Miner": "f01234",
     "EpochPrice": "0",
-    "MinBlocksDuration": 42,
+    "MinBlocksDuration": 0,
     "ProviderCollateral": "0",
-    "DealStartEpoch": 10101,
-    "FastRetrieval": true,
-    "VerifiedDeal": true
+    "DealStartEpoch": 0,
+    "FastRetrieval": false,
+    "VerifiedDeal": false
   }
 ]
 ```
@@ -1051,24 +769,22 @@ Inputs:
 [
   {
     "Data": {
-      "TransferType": "string value",
+      "TransferType": "",
       "Root": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
-      "PieceCid": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "PieceSize": 1024,
-      "RawBlockSize": 42
+      "PieceCid": null,
+      "PieceSize": 0,
+      "RawBlockSize": 0
     },
     "Wallet": "f01234",
     "Miner": "f01234",
     "EpochPrice": "0",
-    "MinBlocksDuration": 42,
+    "MinBlocksDuration": 0,
     "ProviderCollateral": "0",
-    "DealStartEpoch": 10101,
-    "FastRetrieval": true,
-    "VerifiedDeal": true
+    "DealStartEpoch": 0,
+    "FastRetrieval": false,
+    "VerifiedDeal": false
   }
 ]
 ```
@@ -1199,14 +915,14 @@ Response:
 ```json
 {
   "CID": {
-    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
   },
   "Version": 42,
   "To": "f01234",
   "From": "f01234",
   "Nonce": 42,
   "Value": "0",
-  "GasLimit": 9,
+  "GasLimit": 0,
   "GasFeeCap": "0",
   "GasPremium": "0",
   "Method": 1,
@@ -1224,14 +940,14 @@ Inputs:
 [
   {
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     },
     "Version": 42,
     "To": "f01234",
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
@@ -1239,8 +955,8 @@ Inputs:
   },
   {
     "MaxFee": "0",
-    "GasOverEstimation": 12.3,
-    "GasOverPremium": 12.3
+    "GasOverEstimation": 0,
+    "GasOverPremium": 0
   }
 ]
 ```
@@ -1275,17 +991,10 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 0
   },
-  "ReturnDec": {},
-  "TipSet": [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ],
+  "ReturnDec": null,
+  "TipSet": [],
   "Height": 10101
 }
 ```
@@ -1302,7 +1011,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131840
+  "APIVersion": 0
 }
 ```
 

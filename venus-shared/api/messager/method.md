@@ -139,16 +139,14 @@ Inputs:
 Response:
 ```json
 {
-  "id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
-  "version": 6,
-  "code": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "method": 1,
-  "gasOverEstimation": 12.3,
+  "id": "00000000-0000-0000-0000-000000000000",
+  "version": 0,
+  "code": null,
+  "method": 0,
+  "gasOverEstimation": 0,
   "maxFee": "0",
   "gasFeeCap": "0",
-  "gasOverPremium": 12.3,
+  "gasOverPremium": 0,
   "baseFee": "0",
   "createAt": "0001-01-01T00:00:00Z",
   "updateAt": "0001-01-01T00:00:00Z"
@@ -170,18 +168,18 @@ Inputs:
 Response:
 ```json
 {
-  "id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
+  "id": "00000000-0000-0000-0000-000000000000",
   "addr": "f01234",
   "nonce": 42,
   "weight": 9,
   "state": 1,
-  "selMsgNum": 42,
-  "gasOverEstimation": 12.3,
+  "selMsgNum": 0,
+  "gasOverEstimation": 0,
   "maxFee": "0",
   "gasFeeCap": "0",
-  "gasOverPremium": 12.3,
+  "gasOverPremium": 0,
   "baseFee": "0",
-  "isDeleted": 123,
+  "isDeleted": 0,
   "createAt": "0001-01-01T00:00:00Z",
   "updateAt": "0001-01-01T00:00:00Z"
 }
@@ -215,9 +213,9 @@ Response:
   "From": "f01234",
   "Nonce": 42,
   "Value": "0",
-  "GasLimit": 9,
-  "GasFeeCap": "0",
-  "GasPremium": "0",
+  "GasLimit": 0,
+  "GasFeeCap": "\u003cnil\u003e",
+  "GasPremium": "\u003cnil\u003e",
   "Method": 1,
   "Params": "Ynl0ZSBhcnJheQ==",
   "Signature": {
@@ -229,7 +227,7 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 0
   },
   "TipSetKey": [
     {
@@ -240,10 +238,10 @@ Response:
     }
   ],
   "Meta": {
-    "expireEpoch": 10101,
-    "gasOverEstimation": 12.3,
+    "expireEpoch": 0,
+    "gasOverEstimation": 0,
     "maxFee": "0",
-    "gasOverPremium": 12.3
+    "gasOverPremium": 0
   },
   "WalletName": "test",
   "State": 1,
@@ -282,9 +280,9 @@ Response:
   "From": "f01234",
   "Nonce": 42,
   "Value": "0",
-  "GasLimit": 9,
-  "GasFeeCap": "0",
-  "GasPremium": "0",
+  "GasLimit": 0,
+  "GasFeeCap": "\u003cnil\u003e",
+  "GasPremium": "\u003cnil\u003e",
   "Method": 1,
   "Params": "Ynl0ZSBhcnJheQ==",
   "Signature": {
@@ -296,7 +294,7 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 0
   },
   "TipSetKey": [
     {
@@ -307,10 +305,10 @@ Response:
     }
   ],
   "Meta": {
-    "expireEpoch": 10101,
-    "gasOverEstimation": 12.3,
+    "expireEpoch": 0,
+    "gasOverEstimation": 0,
     "maxFee": "0",
-    "gasOverPremium": 12.3
+    "gasOverPremium": 0
   },
   "WalletName": "test",
   "State": 1,
@@ -347,9 +345,9 @@ Response:
   "From": "f01234",
   "Nonce": 42,
   "Value": "0",
-  "GasLimit": 9,
-  "GasFeeCap": "0",
-  "GasPremium": "0",
+  "GasLimit": 0,
+  "GasFeeCap": "\u003cnil\u003e",
+  "GasPremium": "\u003cnil\u003e",
   "Method": 1,
   "Params": "Ynl0ZSBhcnJheQ==",
   "Signature": {
@@ -361,7 +359,7 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 0
   },
   "TipSetKey": [
     {
@@ -372,10 +370,10 @@ Response:
     }
   ],
   "Meta": {
-    "expireEpoch": 10101,
-    "gasOverEstimation": 12.3,
+    "expireEpoch": 0,
+    "gasOverEstimation": 0,
     "maxFee": "0",
-    "gasOverPremium": 12.3
+    "gasOverPremium": 0
   },
   "WalletName": "test",
   "State": 1,
@@ -414,9 +412,9 @@ Response:
   "From": "f01234",
   "Nonce": 42,
   "Value": "0",
-  "GasLimit": 9,
-  "GasFeeCap": "0",
-  "GasPremium": "0",
+  "GasLimit": 0,
+  "GasFeeCap": "\u003cnil\u003e",
+  "GasPremium": "\u003cnil\u003e",
   "Method": 1,
   "Params": "Ynl0ZSBhcnJheQ==",
   "Signature": {
@@ -428,7 +426,7 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 0
   },
   "TipSetKey": [
     {
@@ -439,10 +437,10 @@ Response:
     }
   ],
   "Meta": {
-    "expireEpoch": 10101,
-    "gasOverEstimation": 12.3,
+    "expireEpoch": 0,
+    "gasOverEstimation": 0,
     "maxFee": "0",
-    "gasOverPremium": 12.3
+    "gasOverPremium": 0
   },
   "WalletName": "test",
   "State": 1,
@@ -487,12 +485,12 @@ Inputs: `[]`
 Response:
 ```json
 {
-  "id": 42,
-  "selMsgNum": 42,
-  "gasOverEstimation": 12.3,
+  "id": 0,
+  "selMsgNum": 0,
+  "gasOverEstimation": 0,
   "maxFee": "0",
   "gasFeeCap": "0",
-  "gasOverPremium": 12.3,
+  "gasOverPremium": 0,
   "baseFee": "0"
 }
 ```
@@ -550,16 +548,14 @@ Response:
 ```json
 [
   {
-    "id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
-    "version": 6,
-    "code": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "method": 1,
-    "gasOverEstimation": 12.3,
+    "id": "00000000-0000-0000-0000-000000000000",
+    "version": 0,
+    "code": null,
+    "method": 0,
+    "gasOverEstimation": 0,
     "maxFee": "0",
     "gasFeeCap": "0",
-    "gasOverPremium": 12.3,
+    "gasOverPremium": 0,
     "baseFee": "0",
     "createAt": "0001-01-01T00:00:00Z",
     "updateAt": "0001-01-01T00:00:00Z"
@@ -578,18 +574,18 @@ Response:
 ```json
 [
   {
-    "id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
+    "id": "00000000-0000-0000-0000-000000000000",
     "addr": "f01234",
     "nonce": 42,
     "weight": 9,
     "state": 1,
-    "selMsgNum": 42,
-    "gasOverEstimation": 12.3,
+    "selMsgNum": 0,
+    "gasOverEstimation": 0,
     "maxFee": "0",
     "gasFeeCap": "0",
-    "gasOverPremium": 12.3,
+    "gasOverPremium": 0,
     "baseFee": "0",
-    "isDeleted": 123,
+    "isDeleted": 0,
     "createAt": "0001-01-01T00:00:00Z",
     "updateAt": "0001-01-01T00:00:00Z"
   }
@@ -625,9 +621,9 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
+    "GasLimit": 0,
+    "GasFeeCap": "\u003cnil\u003e",
+    "GasPremium": "\u003cnil\u003e",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "Signature": {
@@ -639,7 +635,7 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 0
     },
     "TipSetKey": [
       {
@@ -650,10 +646,10 @@ Response:
       }
     ],
     "Meta": {
-      "expireEpoch": 10101,
-      "gasOverEstimation": 12.3,
+      "expireEpoch": 0,
+      "gasOverEstimation": 0,
       "maxFee": "0",
-      "gasOverPremium": 12.3
+      "gasOverPremium": 0
     },
     "WalletName": "test",
     "State": 1,
@@ -687,9 +683,9 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
+    "GasLimit": 0,
+    "GasFeeCap": "\u003cnil\u003e",
+    "GasPremium": "\u003cnil\u003e",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "Signature": {
@@ -701,7 +697,7 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 0
     },
     "TipSetKey": [
       {
@@ -712,10 +708,10 @@ Response:
       }
     ],
     "Meta": {
-      "expireEpoch": 10101,
-      "gasOverEstimation": 12.3,
+      "expireEpoch": 0,
+      "gasOverEstimation": 0,
       "maxFee": "0",
-      "gasOverPremium": 12.3
+      "gasOverPremium": 0
     },
     "WalletName": "test",
     "State": 1,
@@ -749,9 +745,9 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
+    "GasLimit": 0,
+    "GasFeeCap": "\u003cnil\u003e",
+    "GasPremium": "\u003cnil\u003e",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "Signature": {
@@ -763,7 +759,7 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 0
     },
     "TipSetKey": [
       {
@@ -774,10 +770,10 @@ Response:
       }
     ],
     "Meta": {
-      "expireEpoch": 10101,
-      "gasOverEstimation": 12.3,
+      "expireEpoch": 0,
+      "gasOverEstimation": 0,
       "maxFee": "0",
-      "gasOverPremium": 12.3
+      "gasOverPremium": 0
     },
     "WalletName": "test",
     "State": 1,
@@ -816,9 +812,9 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
+    "GasLimit": 0,
+    "GasFeeCap": "\u003cnil\u003e",
+    "GasPremium": "\u003cnil\u003e",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "Signature": {
@@ -830,7 +826,7 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 0
     },
     "TipSetKey": [
       {
@@ -841,10 +837,10 @@ Response:
       }
     ],
     "Meta": {
-      "expireEpoch": 10101,
-      "gasOverEstimation": 12.3,
+      "expireEpoch": 0,
+      "gasOverEstimation": 0,
       "maxFee": "0",
-      "gasOverPremium": 12.3
+      "gasOverPremium": 0
     },
     "WalletName": "test",
     "State": 1,
@@ -887,9 +883,9 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
+    "GasLimit": 0,
+    "GasFeeCap": "\u003cnil\u003e",
+    "GasPremium": "\u003cnil\u003e",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "Signature": {
@@ -901,7 +897,7 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 0
     },
     "TipSetKey": [
       {
@@ -912,10 +908,10 @@ Response:
       }
     ],
     "Meta": {
-      "expireEpoch": 10101,
-      "gasOverEstimation": 12.3,
+      "expireEpoch": 0,
+      "gasOverEstimation": 0,
       "maxFee": "0",
-      "gasOverPremium": 12.3
+      "gasOverPremium": 0
     },
     "WalletName": "test",
     "State": 1,
@@ -986,7 +982,7 @@ Inputs: `[]`
 Response:
 ```json
 {
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "ID": "",
   "Addrs": [
     "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
   ]
@@ -1002,7 +998,7 @@ Inputs:
 ```json
 [
   {
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "ID": "",
     "Addrs": [
       "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
     ]
@@ -1027,7 +1023,7 @@ Inputs:
 Response:
 ```json
 {
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "ID": "",
   "Addrs": [
     "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
   ]
@@ -1045,7 +1041,7 @@ Response:
 ```json
 [
   {
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "ID": "",
     "Addrs": [
       "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
     ]
@@ -1063,24 +1059,24 @@ Inputs:
 [
   {
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     },
     "Version": 42,
     "To": "f01234",
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ=="
   },
   {
-    "expireEpoch": 10101,
-    "gasOverEstimation": 12.3,
+    "expireEpoch": 0,
+    "gasOverEstimation": 0,
     "maxFee": "0",
-    "gasOverPremium": 12.3
+    "gasOverPremium": 0
   }
 ]
 ```
@@ -1098,24 +1094,24 @@ Inputs:
   "string value",
   {
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     },
     "Version": 42,
     "To": "f01234",
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ=="
   },
   {
-    "expireEpoch": 10101,
-    "gasOverEstimation": 12.3,
+    "expireEpoch": 0,
+    "gasOverEstimation": 0,
     "maxFee": "0",
-    "gasOverPremium": 12.3
+    "gasOverPremium": 0
   }
 ]
 ```
@@ -1150,13 +1146,13 @@ Inputs:
 ```json
 [
   {
-    "ID": "string value",
+    "ID": "",
     "Auto": true,
     "MaxFee": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasPremium": "0",
     "GasFeecap": "0",
-    "GasOverPremium": 12.3
+    "GasOverPremium": 0
   }
 ]
 ```
@@ -1191,16 +1187,14 @@ Inputs:
 ```json
 [
   {
-    "id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
-    "version": 6,
-    "code": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "method": 1,
-    "gasOverEstimation": 12.3,
+    "id": "00000000-0000-0000-0000-000000000000",
+    "version": 0,
+    "code": null,
+    "method": 0,
+    "gasOverEstimation": 0,
     "maxFee": "0",
     "gasFeeCap": "0",
-    "gasOverPremium": 12.3,
+    "gasOverPremium": 0,
     "baseFee": "0",
     "createAt": "0001-01-01T00:00:00Z",
     "updateAt": "0001-01-01T00:00:00Z"
@@ -1245,12 +1239,12 @@ Inputs:
     "From": "f01234",
     "Val": "0",
     "Account": "string value",
-    "GasPremium": "0",
-    "GasFeeCap": "0",
-    "GasLimit": 10000,
+    "GasPremium": null,
+    "GasFeeCap": null,
+    "GasLimit": null,
     "Method": 1,
     "Params": "string value",
-    "ParamsType": "json"
+    "ParamsType": ""
   }
 ]
 ```
@@ -1267,11 +1261,11 @@ Inputs:
 [
   {
     "address": "f01234",
-    "gasOverEstimation": 12.3,
-    "gasOverPremium": 12.3,
-    "maxFeeStr": "string value",
-    "gasFeeCapStr": "string value",
-    "baseFeeStr": "string value"
+    "gasOverEstimation": 0,
+    "gasOverPremium": 0,
+    "maxFeeStr": "",
+    "gasFeeCapStr": "",
+    "baseFeeStr": ""
   }
 ]
 ```
@@ -1317,12 +1311,12 @@ Inputs:
 ```json
 [
   {
-    "id": 42,
-    "selMsgNum": 42,
-    "gasOverEstimation": 12.3,
+    "id": 0,
+    "selMsgNum": 0,
+    "gasOverEstimation": 0,
     "maxFee": "0",
     "gasFeeCap": "0",
-    "gasOverPremium": 12.3,
+    "gasOverPremium": 0,
     "baseFee": "0"
   }
 ]
@@ -1340,10 +1334,10 @@ Inputs:
 [
   "e26f1e5c-47f7-4561-a11d-18fab6e748af",
   {
-    "gasOverEstimation": 12.3,
+    "gasOverEstimation": null,
     "maxFee": "0",
     "gasFeeCap": "0",
-    "gasOverPremium": 12.3,
+    "gasOverPremium": null,
     "baseFee": "0"
   }
 ]
@@ -1416,7 +1410,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131840
+  "APIVersion": 0
 }
 ```
 
@@ -1448,9 +1442,9 @@ Response:
   "From": "f01234",
   "Nonce": 42,
   "Value": "0",
-  "GasLimit": 9,
-  "GasFeeCap": "0",
-  "GasPremium": "0",
+  "GasLimit": 0,
+  "GasFeeCap": "\u003cnil\u003e",
+  "GasPremium": "\u003cnil\u003e",
   "Method": 1,
   "Params": "Ynl0ZSBhcnJheQ==",
   "Signature": {
@@ -1462,7 +1456,7 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 0
   },
   "TipSetKey": [
     {
@@ -1473,10 +1467,10 @@ Response:
     }
   ],
   "Meta": {
-    "expireEpoch": 10101,
-    "gasOverEstimation": 12.3,
+    "expireEpoch": 0,
+    "gasOverEstimation": 0,
     "maxFee": "0",
-    "gasOverPremium": 12.3
+    "gasOverPremium": 0
   },
   "WalletName": "test",
   "State": 1,
