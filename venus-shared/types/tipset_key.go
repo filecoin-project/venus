@@ -172,7 +172,7 @@ func (tsk TipSetKey) ToStorageBlock() (block.Block, error) {
 	return block.NewBlockWithCid(buf.Bytes(), cid)
 }
 
-func (tsk *TipSetKey) UnmarshalCBOR(r io.Reader) error {
+func (tsk *TipSetKey) V0UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
@@ -203,7 +203,7 @@ func (tsk *TipSetKey) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (tsk TipSetKey) MarshalCBOR(w io.Writer) error {
+func (tsk TipSetKey) V0MarshalCBOR(w io.Writer) error {
 	cids := tsk.Cids()
 	if len(cids) > cbg.MaxLength {
 		return fmt.Errorf("slice value in field t.Parents was too long")
@@ -219,6 +219,45 @@ func (tsk TipSetKey) MarshalCBOR(w io.Writer) error {
 		}
 	}
 	return nil
+}
+
+func (tsk *TipSetKey) UnmarshalCBOR(reader io.Reader) error {
+	cr := cbg.NewCborReader(reader)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if extra > cbg.ByteArrayMaxLen {
+		return fmt.Errorf("t.Binary: byte array too large (%d)", extra)
+	}
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+
+	b := make([]uint8, extra)
+
+	if _, err := io.ReadFull(cr, b); err != nil {
+		return err
+	}
+
+	*tsk, err = TipSetKeyFromBytes(b)
+	return err
+}
+
+func (tsk TipSetKey) MarshalCBOR(writer io.Writer) error {
+	if err := cbg.WriteMajorTypeHeader(writer, cbg.MajByteString, uint64(len(tsk.Bytes()))); err != nil {
+		return err
+	}
+
+	_, err := writer.Write(tsk.Bytes())
+	return err
 }
 
 func encodeKey(cids []cid.Cid) []byte {

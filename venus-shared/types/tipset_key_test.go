@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -42,4 +43,15 @@ func TestTipSetKey(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, tsk, decoded)
+
+	// marshal MarshalCBOR
+	buf := bytes.Buffer{}
+	err = tsk.MarshalCBOR(&buf)
+	require.NoError(t, err)
+
+	var decoded2 TipSetKey
+	err = decoded2.UnmarshalCBOR(&buf)
+	require.NoError(t, err)
+
+	require.Equal(t, tsk, decoded2)
 }
