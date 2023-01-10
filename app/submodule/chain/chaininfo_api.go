@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
@@ -730,27 +729,14 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 func (cia *chainInfoAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (map[string]cid.Cid, error) {
 	actorVersion, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
-		return nil, fmt.Errorf("invalid network version")
+		return nil, fmt.Errorf("invalid network version %d: %w", nv, err)
 	}
 
-	cids := make(map[string]cid.Cid)
-
-	manifestCid, ok := actors.GetManifest(actorVersion)
-	if !ok {
-		return nil, fmt.Errorf("cannot get manifest CID")
+	cids, err := actors.GetActorCodeIDs(actorVersion)
+	if err != nil {
+		return nil, fmt.Errorf("could not find cids for network version %d, actors version %d: %w", nv, actorVersion, err)
 	}
 
-	cids["_manifest"] = manifestCid
-
-	actorKeys := manifest.GetBuiltinActorsKeys(actorVersion)
-	for _, name := range actorKeys {
-		actorCID, ok := actors.GetActorCodeID(actorVersion, name)
-		if !ok {
-			return nil, fmt.Errorf("didn't find actor %v code id for actor version %d", name,
-				actorVersion)
-		}
-		cids[name] = actorCID
-	}
 	return cids, nil
 }
 
