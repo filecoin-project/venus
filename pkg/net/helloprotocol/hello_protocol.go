@@ -35,7 +35,7 @@ var (
 
 // HelloMessage is the data structure of a single message in the hello protocol.
 type HelloMessage struct {
-	HeaviestTipSetCids   types.TipSetKey
+	HeaviestTipSetCids   []cid.Cid
 	HeaviestTipSetHeight abi.ChainEpoch
 	HeaviestTipSetWeight fbig.Int
 	GenesisHash          cid.Cid
@@ -152,9 +152,9 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 		time.Sleep(time.Millisecond * 300)
 	}
 
-	fullTipSet, err := h.loadLocalFullTipset(ctx, hello.HeaviestTipSetCids)
+	fullTipSet, err := h.loadLocalFullTipset(ctx, types.NewTipSetKey(hello.HeaviestTipSetCids...))
 	if err != nil {
-		fullTipSet, err = h.exchange.GetFullTipSet(ctx, []peer.ID{from}, hello.HeaviestTipSetCids) //nolint
+		fullTipSet, err = h.exchange.GetFullTipSet(ctx, []peer.ID{from}, types.NewTipSetKey(hello.HeaviestTipSetCids...)) //nolint
 		if err == nil {
 			for _, b := range fullTipSet.Blocks {
 				_, err = h.chainStore.PutObject(ctx, b.Header)
@@ -220,7 +220,7 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 
 	return &HelloMessage{
 		GenesisHash:          h.genesis,
-		HeaviestTipSetCids:   heaviest.Key(),
+		HeaviestTipSetCids:   heaviest.Cids(),
 		HeaviestTipSetHeight: height,
 		HeaviestTipSetWeight: weight,
 	}, nil

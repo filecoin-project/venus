@@ -33,9 +33,18 @@ func (t *HelloMessage) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.HeaviestTipSetCids (types.TipSetKey) (struct)
-	if err := t.HeaviestTipSetCids.MarshalCBOR(cw); err != nil {
+	// t.HeaviestTipSetCids ([]cid.Cid) (slice)
+	if len(t.HeaviestTipSetCids) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.HeaviestTipSetCids was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.HeaviestTipSetCids))); err != nil {
 		return err
+	}
+	for _, v := range t.HeaviestTipSetCids {
+		if err := cbg.WriteCid(w, v); err != nil {
+			return xerrors.Errorf("failed writing cid field t.HeaviestTipSetCids: %w", err)
+		}
 	}
 
 	// t.HeaviestTipSetHeight (abi.ChainEpoch) (int64)
@@ -86,15 +95,34 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.HeaviestTipSetCids (types.TipSetKey) (struct)
+	// t.HeaviestTipSetCids ([]cid.Cid) (slice)
 
-	{
-
-		if err := t.HeaviestTipSetCids.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.HeaviestTipSetCids: %w", err)
-		}
-
+	maj, extra, err = cr.ReadHeader()
+	if err != nil {
+		return err
 	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("t.HeaviestTipSetCids: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+
+	if extra > 0 {
+		t.HeaviestTipSetCids = make([]cid.Cid, extra)
+	}
+
+	for i := 0; i < int(extra); i++ {
+
+		c, err := cbg.ReadCid(cr)
+		if err != nil {
+			return xerrors.Errorf("reading cid field t.HeaviestTipSetCids failed: %w", err)
+		}
+		t.HeaviestTipSetCids[i] = c
+	}
+
 	// t.HeaviestTipSetHeight (abi.ChainEpoch) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
