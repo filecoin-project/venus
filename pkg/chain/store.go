@@ -252,7 +252,11 @@ func (store *Store) loadHead(ctx context.Context) (*types.TipSet, error) {
 	var tsk types.TipSetKey
 	err = tsk.UnmarshalCBOR(bytes.NewReader(tskBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to cast headCids")
+		// todo: remove after nv18
+		err = tsk.V0UnmarshalCBOR(bytes.NewReader(tskBytes))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to cast headCids")
+		}
 	}
 
 	return store.GetTipSet(ctx, tsk)
@@ -704,10 +708,10 @@ func (store *Store) ReadOnlyStateStore() util.ReadOnlyIpldStore {
 }
 
 // writeHead writes the given cid set as head to disk.
-func (store *Store) writeHead(ctx context.Context, cids types.TipSetKey) error {
-	log.Debugf("WriteHead %s", cids.String())
+func (store *Store) writeHead(ctx context.Context, tsk types.TipSetKey) error {
+	log.Debugf("WriteHead %s", tsk.String())
 	buf := new(bytes.Buffer)
-	err := cids.MarshalCBOR(buf)
+	err := tsk.MarshalCBOR(buf)
 	if err != nil {
 		return err
 	}
