@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/venus/venus-devtool/util"
 	gatewayv0 "github.com/filecoin-project/venus/venus-shared/api/gateway/v0"
 	gatewayv1 "github.com/filecoin-project/venus/venus-shared/api/gateway/v1"
+	gatewayv2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
 	"github.com/filecoin-project/venus/venus-shared/api/market"
 	market_client "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/filecoin-project/venus/venus-shared/api/messager"
@@ -45,7 +46,7 @@ func init() {
 			},
 		},
 		util.APIMeta{
-			Type: reflect.TypeOf((*gatewayv1.IGateway)(nil)).Elem(),
+			Type: reflect.TypeOf((*gatewayv2.IGateway)(nil)).Elem(),
 			ParseOpt: util.InterfaceParseOption{
 				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/gateway/v2",
 				IncludeAll: true,
