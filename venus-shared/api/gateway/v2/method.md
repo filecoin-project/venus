@@ -60,13 +60,7 @@ Inputs:
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  {
-    "ID": {
-      "Miner": 1000,
-      "Number": 9
-    },
-    "ProofType": 8
-  },
+  9,
   10,
   1032
 ]
@@ -116,13 +110,7 @@ Inputs:
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  {
-    "ID": {
-      "Miner": 1000,
-      "Number": 9
-    },
-    "ProofType": 8
-  },
+  9,
   10,
   1032,
   "string value"
