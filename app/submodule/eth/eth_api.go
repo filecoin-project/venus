@@ -77,7 +77,7 @@ func (a *ethAPI) EthAccounts(context.Context) ([]types.EthAddress, error) {
 }
 
 func (a *ethAPI) countTipsetMsgs(ctx context.Context, ts *types.TipSet) (int, error) {
-	msgs, err := a.em.chainModule.MessageStore.LoadTipSetMessage(ctx, ts)
+	msgs, err := a.em.chainModule.MessageStore.MessagesForTipset(ts)
 	if err != nil {
 		return 0, fmt.Errorf("error loading messages for tipset: %v: %w", ts, err)
 	}

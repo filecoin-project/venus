@@ -164,6 +164,16 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 				Data: make([]byte, 65),
 			},
 		}
+	default:
+		// XXX: Hack to make sending from f099 (and others) "just work".
+		// REMOVE ME.
+		msgApply = &types.SignedMessage{
+			Message: *msg,
+			Signature: crypto.Signature{
+				Type: crypto.SigTypeSecp256k1,
+				Data: make([]byte, 65),
+			},
+		}
 	}
 
 	// If the fee cap is set to zero, make gas free.
