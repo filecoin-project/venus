@@ -290,21 +290,26 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg typ
 			msgCid := msg.Cid()
 			if msg.VMMessage().From == expectedFrom { // cheaper to just check origin first
 				if msg.VMMessage().Nonce == expectedNonce {
-					if allowReplaced && msg.VMMessage().EqualCall(expectedMsg) {
-						if expectedCid != msgCid {
-							log.Warnw("found message with equal nonce and call params but different CID",
-								"wanted", expectedCid, "found", msgCid, "nonce", expectedNonce, "from", expectedFrom)
-						}
-						recpt, err := w.receiptByIndex(ctx, pts, msgCid, blockMessageInfos)
-						if err != nil {
-							return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
-						}
-						return &types.ChainMessage{TS: ts, Message: msg.VMMessage(), Block: bms.Block, Receipt: recpt}, true, nil
+					if !msg.VMMessage().EqualCall(expectedMsg) {
+						// this is an entirely different message, fail
+						return nil, false, fmt.Errorf("found message with equal nonce as the one we are looking for that is NOT a valid replacement message (F:%s n %d, TS: %s n%d)",
+							expectedMsg.Cid(), expectedMsg.Nonce, msg.Cid(), msg.VMMessage().Nonce)
 					}
 
-					// this should be that message
-					return nil, false, fmt.Errorf("found message with equal nonce as the one we are looking for (F: n %d, TS: %s n%d)",
-						expectedMsg.Nonce, msg.Cid(), msg.VMMessage().Nonce)
+					if msgCid != expectedCid {
+						if !allowReplaced {
+							log.Warnw("found message with equal nonce and call params but different CID",
+								"wanted", expectedCid, "found", msgCid, "nonce", expectedNonce, "from", expectedFrom)
+							return nil, false, fmt.Errorf("found message with equal nonce as the one we are looking for (F:%s n %d, TS: %s n%d)",
+								expectedCid, expectedNonce, msgCid, msg.VMMessage().Nonce)
+						}
+					}
+
+					recpt, err := w.receiptByIndex(ctx, pts, msgCid, blockMessageInfos)
+					if err != nil {
+						return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
+					}
+					return &types.ChainMessage{TS: ts, Message: msg.VMMessage(), Block: bms.Block, Receipt: recpt}, true, nil
 				}
 			}
 		}
