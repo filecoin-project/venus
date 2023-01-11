@@ -754,7 +754,7 @@ func IsValidForSending(act *types.Actor) bool {
 	}
 
 	// HACK: Allow Eth embryos to send messages
-	if !builtin.IsEmbryoActor(act.Code) || act.Nonce != 0 || act.Address == nil || act.Address.Protocol() != address.Delegated {
+	if !builtin.IsPlaceholderActor(act.Code) || act.Nonce != 0 || act.Address == nil || act.Address.Protocol() != address.Delegated {
 		return false
 	}
 	id, _, err := varint.FromUvarint(act.Address.Payload())
