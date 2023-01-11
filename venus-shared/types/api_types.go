@@ -79,21 +79,23 @@ const (
 	NetworkNameIntegration NetworkName = "integrationnet"
 	NetworkNameForce       NetworkName = "forcenet"
 	NetworkNameWallaby     NetworkName = "wallabynet"
+	NetworkNameHyperspace  NetworkName = "hyperspacenet"
 )
 
 type NetworkType int
 
 const (
-	NetworkDefault   NetworkType = 0
-	NetworkMainnet   NetworkType = 0x1
-	Network2k        NetworkType = 0x2
-	NetworkDebug     NetworkType = 0x3
-	NetworkCalibnet  NetworkType = 0x4
-	NetworkNerpa     NetworkType = 0x5
-	NetworkInterop   NetworkType = 0x6
-	NetworkForce     NetworkType = 0x7
-	NetworkButterfly NetworkType = 0x8
-	NetworkWallaby   NetworkType = 0x9
+	NetworkDefault    NetworkType = 0
+	NetworkMainnet    NetworkType = 0x1
+	Network2k         NetworkType = 0x2
+	NetworkDebug      NetworkType = 0x3
+	NetworkCalibnet   NetworkType = 0x4
+	NetworkNerpa      NetworkType = 0x5
+	NetworkInterop    NetworkType = 0x6
+	NetworkForce      NetworkType = 0x7
+	NetworkButterfly  NetworkType = 0x8
+	NetworkWallaby    NetworkType = 0x9
+	NetworkHyperspace NetworkType = 0x10
 
 	Integrationnet NetworkType = 0x30
 )

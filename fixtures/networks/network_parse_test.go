@@ -53,6 +53,11 @@ func TestGetNetworkFromName(t *testing.T) {
 			err:     nil,
 		},
 		{
+			name:    "hyperspacenet",
+			network: types.NetworkHyperspace,
+			err:     nil,
+		},
+		{
 			name:    "unknown",
 			network: 0,
 			err:     fmt.Errorf("unknown network name %s", "unknown"),
@@ -110,6 +115,11 @@ func TestGetNetworkConfig(t *testing.T) {
 			err:     nil,
 		},
 		{
+			name:    "hyperspacenet",
+			network: HyperspaceNet(),
+			err:     nil,
+		},
+		{
 			name:    "unknown",
 			network: nil,
 			err:     fmt.Errorf("unknown network name %s", "unknown"),
@@ -117,7 +127,7 @@ func TestGetNetworkConfig(t *testing.T) {
 	}
 
 	for _, test := range testCast {
-		network, err := GetNetworkConfig(test.name)
+		network, err := GetNetworkConfigFromName(test.name)
 		assert.Equal(t, test.network, network)
 		assert.Equal(t, test.err, err)
 	}
