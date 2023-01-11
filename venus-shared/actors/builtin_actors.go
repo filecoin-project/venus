@@ -47,13 +47,14 @@ func init() {
 	}
 }
 
-// NetworkMainnet   NetworkType = 0x1
-// Network2k        NetworkType = 0x2
-// NetworkCalibnet  NetworkType = 0x4
-// NetworkInterop   NetworkType = 0x6
-// NetworkForce     NetworkType = 0x7
-// NetworkButterfly NetworkType = 0x8
-// NetworkWallaby   NetworkType = 0x9
+// NetworkMainnet    NetworkType = 0x1
+// Network2k         NetworkType = 0x2
+// NetworkCalibnet   NetworkType = 0x4
+// NetworkInterop    NetworkType = 0x6
+// NetworkForce      NetworkType = 0x7
+// NetworkButterfly  NetworkType = 0x8
+// NetworkWallaby    NetworkType = 0x9
+// NetworkHyperspace NetworkType = 0x10
 // Avoid import cycle, we use concrete values
 func SetNetworkBundle(networkType int) error {
 	networkBundle := ""
@@ -61,21 +62,24 @@ func SetNetworkBundle(networkType int) error {
 	// case types.Network2k:
 	case 0x2:
 		networkBundle = "devnet"
+	// case types.NetworkCalibnet:
+	case 0x4:
+		networkBundle = "calibrationnet"
+	// case types.NetworkInterop:
+	case 0x6:
+		networkBundle = "caterpillarnet"
 	// types.NetworkForce
 	case 0x7:
 		networkBundle = "testing"
 	// case types.NetworkButterfly:
 	case 0x8:
 		networkBundle = "butterflynet"
-	// case types.NetworkInterop:
-	case 0x6:
-		networkBundle = "caterpillarnet"
 	// case types.NetworkWallaby:
 	case 0x9:
 		networkBundle = "wallaby"
-	// case types.NetworkCalibnet:
-	case 0x4:
-		networkBundle = "calibrationnet"
+	// case types.NetworkHyperspace:
+	case 0x10:
+		networkBundle = "hyperspacenet"
 	default:
 		networkBundle = "mainnet"
 	}

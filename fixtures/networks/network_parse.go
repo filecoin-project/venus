@@ -23,7 +23,7 @@ func GetNetworkFromName(name string) (types.NetworkType, error) {
 }
 
 func SetConfigFromOptions(cfg *config.Config, networkName string) error {
-	netcfg, err := GetNetworkConfig(networkName)
+	netcfg, err := GetNetworkConfigFromName(networkName)
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func SetConfigFromOptions(cfg *config.Config, networkName string) error {
 }
 
 func SetConfigFromNetworkType(cfg *config.Config, networkType types.NetworkType) error {
-	netcfg, err := GetNetworkConfig(networkType)
+	netcfg, err := GetNetworkConfigFromType(networkType)
 	if err != nil {
 		return err
 	}
@@ -41,22 +41,7 @@ func SetConfigFromNetworkType(cfg *config.Config, networkType types.NetworkType)
 	return nil
 }
 
-func GetNetworkConfig(network interface{}) (*NetworkConf, error) {
-	var networkType types.NetworkType
-	var err error
-
-	switch val := network.(type) {
-	case types.NetworkType:
-		networkType = val
-	case string:
-		networkType, err = GetNetworkFromName(val)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("not expect type %T %v", network, network)
-	}
-
+func GetNetworkConfigFromType(networkType types.NetworkType) (*NetworkConf, error) {
 	switch networkType {
 	case types.NetworkMainnet:
 		return Mainnet(), nil
@@ -74,6 +59,18 @@ func GetNetworkConfig(network interface{}) (*NetworkConf, error) {
 		return ButterflySnapNet(), nil
 	case types.NetworkWallaby:
 		return WallabyNet(), nil
+	case types.NetworkHyperspace:
+		return HyperspaceNet(), nil
 	}
+
 	return nil, fmt.Errorf("unknown network type %d", networkType)
+}
+
+func GetNetworkConfigFromName(networkName string) (*NetworkConf, error) {
+	networkType, err := GetNetworkFromName(networkName)
+	if err != nil {
+		return nil, err
+	}
+
+	return GetNetworkConfigFromType(networkType)
 }
