@@ -53,9 +53,9 @@ import (
 	datacap10 "github.com/filecoin-project/go-state-types/builtin/v10/datacap"
 
 	eam10 "github.com/filecoin-project/go-state-types/builtin/v10/eam"
-	embryo10 "github.com/filecoin-project/go-state-types/builtin/v10/embryo"
 	ethaccount10 "github.com/filecoin-project/go-state-types/builtin/v10/ethaccount"
 	evm10 "github.com/filecoin-project/go-state-types/builtin/v10/evm"
+	placeholder10 "github.com/filecoin-project/go-state-types/builtin/v10/placeholder"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -369,10 +369,10 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 					methods: eam10.Methods,
 					state:   nil,
 				})
-			case manifest.EmbryoKey:
+			case manifest.PlaceholderKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
-					methods: embryo10.Methods,
+					methods: placeholder10.Methods,
 					state:   nil,
 				})
 			case manifest.EthAccountKey:
