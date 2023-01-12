@@ -46,7 +46,7 @@ type pendingPkg struct {
 
 var pendingPkgs = func() map[string]*pendingPkg {
 	pkgs := make(map[string]*pendingPkg, 4)
-	list := []string{"market", "miner", "verifreg"}
+	list := []string{"market", "miner", "verifreg", "multisig"}
 	pkgs["paych"] = &pendingPkg{
 		name: "paych",
 		ver:  actors.Version8,
@@ -81,6 +81,10 @@ var (
 		"WithdrawBalanceParams": {
 			{pkgName: "market", newName: "MarketWithdrawBalanceParams"},
 			{pkgName: "miner", newName: "MinerWithdrawBalanceParams"},
+		},
+		"ConstructorParams": {
+			{pkgName: "multisig", newName: "MultisigConstructorParams"},
+			{pkgName: "paych", newName: "PaychConstructorParams"},
 		},
 	}
 )
