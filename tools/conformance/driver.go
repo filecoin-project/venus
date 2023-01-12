@@ -128,6 +128,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 			SysCallsImpl:        syscalls,
 			TipSetGetter:        vmcontext.TipSetGetterForTipset(chainStore.GetTipSetByHeight, nil),
 			Tracing:             true,
+			ActorDebugging:      mainNetParams.Network.ActorDebugging,
 		}
 	)
 

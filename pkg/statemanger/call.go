@@ -103,6 +103,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		Fork:                s.fork,
 		TipSetGetter:        vmcontext.TipSetGetterForTipset(s.cs.GetTipSetByHeight, ts),
 		Tracing:             true,
+		ActorDebugging:      s.actorDebugging,
 	}
 
 	vmi, err := fvm.NewVM(ctx, vmOption)
@@ -259,6 +260,7 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 		SysCallsImpl:        s.syscallsImpl,
 		TipSetGetter:        vmcontext.TipSetGetterForTipset(s.cs.GetTipSetByHeight, ts),
 		Tracing:             true,
+		ActorDebugging:      s.actorDebugging,
 	}
 
 	v, err := fvm.NewVM(ctx, vmOption)

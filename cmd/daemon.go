@@ -51,7 +51,7 @@ var daemonCmd = &cmds.Command{
 		cmds.BoolOption(IsRelay, "advertise and allow venus network traffic to be relayed through this node"),
 		cmds.StringOption(ImportSnapshot, "import chain state from a given chain export file or url"),
 		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
-		cmds.StringOption(Network, "when set, populates config with network specific parameters, eg. mainnet,2k,calibrationnet,interopnet,butterflynet").WithDefault("mainnet"),
+		cmds.StringOption(Network, "when set, populates config with network specific parameters, eg. mainnet,2k,calibrationnet,interopnet,butterflynet,wallabynet").WithDefault("mainnet"),
 		cmds.StringOption(Password, "set wallet password"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -122,7 +122,7 @@ func initRun(req *cmds.Request) error {
 	cfg := rep.Config()
 	network, _ := req.Options[Network].(string)
 	if err := networks.SetConfigFromOptions(cfg, network); err != nil {
-		return fmt.Errorf("setting config %v", err)
+		return fmt.Errorf("setting config: %v", err)
 	}
 	// genesis node
 	if mkGen, ok := req.Options[makeGenFlag].(string); ok {

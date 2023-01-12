@@ -15,6 +15,7 @@ var NetworkNameWithNetworkType = map[types.NetworkName]types.NetworkType{
 	types.NetworkNameInterop:     types.NetworkInterop,
 	types.NetworkNameIntegration: types.Integrationnet,
 	types.NetworkNameForce:       types.NetworkForce,
+	types.NetworkNameWallaby:     types.NetworkWallaby,
 }
 
 var NetworkTypeWithNetworkName = func() map[types.NetworkType]types.NetworkName {

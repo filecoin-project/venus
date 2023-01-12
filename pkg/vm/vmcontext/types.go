@@ -49,6 +49,8 @@ type VmOption struct { //nolint
 	SysCallsImpl         SyscallsImpl
 	TipSetGetter         TipSetGetter
 	Tracing              bool
+
+	ActorDebugging bool
 }
 
 type ILookBack interface {
