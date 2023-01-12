@@ -5,10 +5,11 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/multisig"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 )
 
-////////// market //////////
+// //////// market //////////
 const (
 	DealMaxLabelSize     = market.DealMaxLabelSize
 	EpochUndefined       = market.EpochUndefined
@@ -55,7 +56,7 @@ var (
 	ValidateDealsForActivation   = market.ValidateDealsForActivation
 )
 
-////////// miner //////////
+// //////// miner //////////
 const (
 	AddressedPartitionsMax                       = miner.AddressedPartitionsMax
 	AddressedSectorsMax                          = miner.AddressedSectorsMax
@@ -169,14 +170,35 @@ var (
 	SectorKey                              = miner.SectorKey
 )
 
-////////// paych //////////
+// //////// multisig //////////
+const (
+	SignersMax = multisig.SignersMax
+)
+
+type (
+	AddSignerParams                   = multisig.AddSignerParams
+	ApproveReturn                     = multisig.ApproveReturn
+	ChangeNumApprovalsThresholdParams = multisig.ChangeNumApprovalsThresholdParams
+	MultisigConstructorParams         = multisig.ConstructorParams
+	LockBalanceParams                 = multisig.LockBalanceParams
+	ProposalHashData                  = multisig.ProposalHashData
+	ProposeParams                     = multisig.ProposeParams
+	ProposeReturn                     = multisig.ProposeReturn
+	RemoveSignerParams                = multisig.RemoveSignerParams
+	SwapSignerParams                  = multisig.SwapSignerParams
+	Transaction                       = multisig.Transaction
+	TxnID                             = multisig.TxnID
+	TxnIDParams                       = multisig.TxnIDParams
+)
+
+// //////// paych //////////
 const (
 	LaneStatesAmtBitwidth = paych.LaneStatesAmtBitwidth
 	SettleDelay           = paych.SettleDelay
 )
 
 type (
-	ConstructorParams        = paych.ConstructorParams
+	PaychConstructorParams   = paych.ConstructorParams
 	LaneState                = paych.LaneState
 	Merge                    = paych.Merge
 	ModVerifyParams          = paych.ModVerifyParams
@@ -184,7 +206,7 @@ type (
 	UpdateChannelStateParams = paych.UpdateChannelStateParams
 )
 
-////////// verifreg //////////
+// //////// verifreg //////////
 const (
 	EndOfLifeClaimDropPeriod                = verifreg.EndOfLifeClaimDropPeriod
 	MaximumVerifiedAllocationExpiration     = verifreg.MaximumVerifiedAllocationExpiration
