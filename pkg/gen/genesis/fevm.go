@@ -109,9 +109,8 @@ func SetupFEVM(ctx context.Context, cs *chain.Store, sroot cid.Cid, nv network.V
 		SubAddress:        make([]byte, 20),
 	}
 
-	// TODO method 3 is Exec4; we have to name the methods in go-state-types and avoid using the number
-	//      directly.
-	if _, err := doExecValue(ctx, genesisVM, builtintypes.InitActorAddr, builtintypes.EthereumAddressManagerActorAddr, big.Zero(), 3, mustEnc(params)); err != nil {
+	if _, err := doExecValue(ctx, genesisVM, builtintypes.InitActorAddr, builtintypes.EthereumAddressManagerActorAddr, big.Zero(),
+		builtintypes.MethodsInit.Exec4, mustEnc(params)); err != nil {
 		return cid.Undef, fmt.Errorf("creating ETH0 actor: %w", err)
 	}
 
