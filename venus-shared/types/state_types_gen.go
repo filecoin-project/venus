@@ -5,6 +5,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/multisig"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 )
 
@@ -172,6 +173,28 @@ var (
 	SectorKey                              = miner.SectorKey
 )
 
+////////// multisig //////////
+
+const (
+	SignersMax = multisig.SignersMax
+)
+
+type (
+	AddSignerParams                   = multisig.AddSignerParams
+	ApproveReturn                     = multisig.ApproveReturn
+	ChangeNumApprovalsThresholdParams = multisig.ChangeNumApprovalsThresholdParams
+	MultisigConstructorParams         = multisig.ConstructorParams
+	LockBalanceParams                 = multisig.LockBalanceParams
+	ProposalHashData                  = multisig.ProposalHashData
+	ProposeParams                     = multisig.ProposeParams
+	ProposeReturn                     = multisig.ProposeReturn
+	RemoveSignerParams                = multisig.RemoveSignerParams
+	SwapSignerParams                  = multisig.SwapSignerParams
+	Transaction                       = multisig.Transaction
+	TxnID                             = multisig.TxnID
+	TxnIDParams                       = multisig.TxnIDParams
+)
+
 ////////// paych //////////
 
 const (
@@ -180,7 +203,7 @@ const (
 )
 
 type (
-	ConstructorParams        = paych.ConstructorParams
+	PaychConstructorParams   = paych.ConstructorParams
 	LaneState                = paych.LaneState
 	Merge                    = paych.Merge
 	ModVerifyParams          = paych.ModVerifyParams

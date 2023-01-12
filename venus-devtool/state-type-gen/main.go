@@ -107,6 +107,10 @@ var stateTypesOpt = option{
 			{pkgName: "market", newName: "MarketWithdrawBalanceParams"},
 			{pkgName: "miner", newName: "MinerWithdrawBalanceParams"},
 		},
+		"ConstructorParams": {
+			{pkgName: "multisig", newName: "MultisigConstructorParams"},
+			{pkgName: "paych", newName: "PaychConstructorParams"},
+		},
 	},
 }
 
@@ -126,7 +130,7 @@ var getStateTypesIncludePkgs = func() []string {
 	aliasVesion := map[string]actors.Version{
 		"paych": actors.Version8,
 	}
-	for _, pkg := range []string{"market", "miner", "verifreg", "paych"} {
+	for _, pkg := range []string{"market", "miner", "verifreg", "paych", "multisig"} {
 		if v, ok := aliasVesion[pkg]; ok {
 			pkgs = append(pkgs, fmt.Sprintf("v%v/%s", v, pkg))
 		} else {

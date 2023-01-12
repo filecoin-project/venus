@@ -1077,7 +1077,7 @@ func (mr *MockFullNodeMockRecorder) MsigCreate(arg0, arg1, arg2, arg3, arg4, arg
 }
 
 // MsigGetAvailableBalance mocks base method.
-func (m *MockFullNode) MsigGetAvailableBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (big.Int, error) {
+func (m *MockFullNode) MsigGetAvailableBalance(arg0 context.Context, arg1 address.Address, arg2 types0.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigGetAvailableBalance", arg0, arg1, arg2)
 	ret0, _ := ret[0].(big.Int)
@@ -1092,10 +1092,10 @@ func (mr *MockFullNodeMockRecorder) MsigGetAvailableBalance(arg0, arg1, arg2 int
 }
 
 // MsigGetPending mocks base method.
-func (m *MockFullNode) MsigGetPending(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) ([]*types.MsigTransaction, error) {
+func (m *MockFullNode) MsigGetPending(arg0 context.Context, arg1 address.Address, arg2 types0.TipSetKey) ([]*types0.MsigTransaction, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigGetPending", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]*types.MsigTransaction)
+	ret0, _ := ret[0].([]*types0.MsigTransaction)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1122,10 +1122,10 @@ func (mr *MockFullNodeMockRecorder) MsigGetVested(arg0, arg1, arg2, arg3 interfa
 }
 
 // MsigGetVestingSchedule mocks base method.
-func (m *MockFullNode) MsigGetVestingSchedule(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (types.MsigVesting, error) {
+func (m *MockFullNode) MsigGetVestingSchedule(arg0 context.Context, arg1 address.Address, arg2 types0.TipSetKey) (types0.MsigVesting, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MsigGetVestingSchedule", arg0, arg1, arg2)
-	ret0, _ := ret[0].(types.MsigVesting)
+	ret0, _ := ret[0].(types0.MsigVesting)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
