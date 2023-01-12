@@ -18,14 +18,15 @@ func TestMigration(t *testing.T) {
 	tf.UnitTest(t)
 
 	cfgs := map[types.NetworkType]*config.NetworkParamsConfig{
-		types.Network2k:        &networks.Net2k().Network,
-		types.NetworkForce:     &networks.ForceNet().Network,
-		types.NetworkInterop:   &networks.InteropNet().Network,
-		types.NetworkButterfly: &networks.ButterflySnapNet().Network,
-		types.NetworkCalibnet:  &networks.Calibration().Network,
-		types.NetworkMainnet:   &networks.Mainnet().Network,
-		types.Integrationnet:   &networks.IntegrationNet().Network,
-		types.NetworkWallaby:   &networks.WallabyNet().Network,
+		types.Network2k:         &networks.Net2k().Network,
+		types.NetworkForce:      &networks.ForceNet().Network,
+		types.NetworkInterop:    &networks.InteropNet().Network,
+		types.NetworkButterfly:  &networks.ButterflySnapNet().Network,
+		types.NetworkCalibnet:   &networks.Calibration().Network,
+		types.NetworkMainnet:    &networks.Mainnet().Network,
+		types.Integrationnet:    &networks.IntegrationNet().Network,
+		types.NetworkWallaby:    &networks.WallabyNet().Network,
+		types.NetworkHyperspace: &networks.HyperspaceNet().Network,
 	}
 
 	for nt, paramsCfg := range cfgs {
