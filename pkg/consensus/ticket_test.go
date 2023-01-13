@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/venus/pkg/testhelpers"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -83,7 +84,7 @@ func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 	assert.Nil(t, badTicket.VRFProof)
 }
 
-func requireAddress(t *testing.T, ki *crypto.KeyInfo) address.Address {
+func requireAddress(t *testing.T, ki *key.KeyInfo) address.Address {
 	addr, err := ki.Address()
 	require.NoError(t, err)
 	return addr

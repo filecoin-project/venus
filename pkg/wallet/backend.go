@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
-
 	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 )
 
 // Backend is the interface to represent different storage backends
@@ -24,9 +24,9 @@ type Backend interface {
 
 	// GetKeyInfo will return the keyinfo associated with address `addr`
 	// iff backend contains the addr.
-	GetKeyInfo(context.Context, address.Address) (*crypto.KeyInfo, error)
+	GetKeyInfo(context.Context, address.Address) (*key.KeyInfo, error)
 
-	GetKeyInfoPassphrase(context.Context, address.Address, []byte) (*crypto.KeyInfo, error)
+	GetKeyInfoPassphrase(context.Context, address.Address, []byte) (*key.KeyInfo, error)
 
 	LockWallet(context.Context) error
 	UnLockWallet(context.Context, []byte) error
@@ -39,5 +39,5 @@ type Backend interface {
 type Importer interface {
 	// ImportKey imports the key described by the given keyinfo
 	// into the backend
-	ImportKey(context.Context, *crypto.KeyInfo) error
+	ImportKey(context.Context, *key.KeyInfo) error
 }

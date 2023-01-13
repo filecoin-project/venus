@@ -16,9 +16,9 @@ import (
 	"github.com/filecoin-project/venus/app/node/test"
 	"github.com/filecoin-project/venus/cmd"
 	"github.com/filecoin-project/venus/fixtures/fortest"
-	"github.com/filecoin-project/venus/pkg/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 )
 
 func TestAddressNewAndList(t *testing.T) {
@@ -122,7 +122,7 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", resultAddr, string(wallet.TestPassword)).ReadStdoutTrimNewlines()
 	data, err := hex.DecodeString(exportJSON)
 	require.NoError(t, err)
-	var exportResult crypto.KeyInfo
+	var exportResult key.KeyInfo
 	err = json.Unmarshal(data, &exportResult)
 	require.NoError(t, err)
 

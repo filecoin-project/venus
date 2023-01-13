@@ -1,33 +1,30 @@
-package crypto
+package key
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/awnumar/memguard"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
+	acrypto "github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/sha3"
 )
 
-const (
-	stBLS       = "bls"
-	stSecp256k1 = "secp256k1"
-	stDelegated = "delegated"
-)
-
 var log = logging.Logger("keyinfo")
 
 // KeyInfo is a key and its type used for signing.
-type KeyInfo struct {
+type KeyInfo struct { // nolint
 	// Private key.
 	PrivateKey *memguard.Enclave `json:"privateKey"`
 	// Cryptographic system used to generate private key.
-	SigType SigType `json:"type"`
+	SigType types.SigType `json:"type"`
 }
 
 type keyInfo struct {
@@ -48,11 +45,11 @@ func (ki *KeyInfo) UnmarshalJSON(data []byte) error {
 	case string:
 		// compatible with lotus
 		st := k.SigType.(string)
-		if st == stBLS {
+		if st == string(types.KTBLS) {
 			ki.SigType = crypto.SigTypeBLS
-		} else if st == stSecp256k1 {
+		} else if st == string(types.KTSecp256k1) {
 			ki.SigType = crypto.SigTypeSecp256k1
-		} else if st == stDelegated {
+		} else if st == string(types.KTDelegated) {
 			ki.SigType = crypto.SigTypeDelegated
 		} else {
 			return fmt.Errorf("unknown sig type value: %s", st)
@@ -80,11 +77,11 @@ func (ki KeyInfo) MarshalJSON() ([]byte, error) {
 		k := keyInfo{}
 		k.PrivateKey = privateKey
 		if ki.SigType == crypto.SigTypeBLS {
-			k.SigType = stBLS
+			k.SigType = types.KTBLS
 		} else if ki.SigType == crypto.SigTypeSecp256k1 {
-			k.SigType = stSecp256k1
+			k.SigType = types.KTSecp256k1
 		} else if ki.SigType == crypto.SigTypeDelegated {
-			k.SigType = stDelegated
+			k.SigType = types.KTDelegated
 		} else {
 			return fmt.Errorf("unsupport keystore types %T", k.SigType)
 		}
@@ -112,7 +109,7 @@ func (ki *KeyInfo) Key() []byte {
 }
 
 // Type returns the type of curve used to generate the private key
-func (ki *KeyInfo) Type() SigType {
+func (ki *KeyInfo) Type() types.SigType {
 	return ki.SigType
 }
 
@@ -149,13 +146,13 @@ func (ki *KeyInfo) Address() (address.Address, error) {
 	if err != nil {
 		return address.Undef, err
 	}
-	if ki.SigType == SigTypeBLS {
+	if ki.SigType == types.SigTypeBLS {
 		return address.NewBLSAddress(pubKey)
 	}
-	if ki.SigType == SigTypeSecp256k1 {
+	if ki.SigType == types.SigTypeSecp256k1 {
 		return address.NewSecp256k1Address(pubKey)
 	}
-	if ki.SigType == SigTypeDelegated {
+	if ki.SigType == types.SigTypeDelegated {
 		// Assume eth for now
 		hasher := sha3.NewLegacyKeccak256()
 		// if we get an uncompressed public key (that's what we get from the library,
@@ -177,7 +174,7 @@ func (ki *KeyInfo) PublicKey() ([]byte, error) {
 	var pubKey []byte
 	err := ki.UsePrivateKey(func(privateKey []byte) error {
 		var err error
-		pubKey, err = ToPublic(ki.SigType, privateKey)
+		pubKey, err = acrypto.ToPublic(ki.SigType, privateKey)
 		return err
 	})
 
@@ -197,4 +194,44 @@ func (ki *KeyInfo) UsePrivateKey(f func([]byte) error) error {
 func (ki *KeyInfo) SetPrivateKey(privateKey []byte) {
 	// will wipes privateKey with zeroes
 	ki.PrivateKey = memguard.NewEnclave(privateKey)
+}
+
+// NewSecpKeyFromSeed generates a new key from the given reader.
+func NewSecpKeyFromSeed(seed io.Reader) (KeyInfo, error) {
+	k, err := acrypto.GenerateFromSeed(crypto.SigTypeSecp256k1, seed)
+	if err != nil {
+		return KeyInfo{}, err
+	}
+	ki := &KeyInfo{
+		SigType: types.SigTypeSecp256k1,
+	}
+	ki.SetPrivateKey(k)
+	copy(k, make([]byte, len(k))) // wipe with zero bytes
+	return *ki, nil
+}
+
+func NewBLSKeyFromSeed(seed io.Reader) (KeyInfo, error) {
+	k, err := acrypto.GenerateFromSeed(crypto.SigTypeBLS, seed)
+	if err != nil {
+		return KeyInfo{}, err
+	}
+	ki := &KeyInfo{
+		SigType: types.SigTypeBLS,
+	}
+	ki.SetPrivateKey(k)
+	copy(k, make([]byte, len(k))) // wipe with zero bytes
+	return *ki, nil
+}
+
+func NewDelegatedKeyFromSeed(seed io.Reader) (KeyInfo, error) {
+	k, err := acrypto.GenerateFromSeed(crypto.SigTypeDelegated, seed)
+	if err != nil {
+		return KeyInfo{}, err
+	}
+	ki := &KeyInfo{
+		SigType: types.SigTypeDelegated,
+	}
+	ki.SetPrivateKey(k)
+	copy(k, make([]byte, len(k))) // wipe with zero bytes
+	return *ki, nil
 }

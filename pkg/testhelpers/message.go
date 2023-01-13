@@ -7,11 +7,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/crypto"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -218,7 +217,7 @@ type MessageMaker struct {
 }
 
 // NewMessageMaker creates a new message maker with a set of signing keys.
-func NewMessageMaker(t *testing.T, keys []crypto.KeyInfo) *MessageMaker {
+func NewMessageMaker(t *testing.T, keys []key.KeyInfo) *MessageMaker {
 	addresses := make([]address.Address, len(keys))
 	signer := NewMockSigner(keys)
 

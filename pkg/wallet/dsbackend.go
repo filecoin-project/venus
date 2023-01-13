@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 )
 
 const (
@@ -47,7 +48,7 @@ type DSBackend struct {
 	PassphraseConf config.PassphraseConfig
 
 	password *memguard.Enclave
-	unLocked map[address.Address]*crypto.KeyInfo
+	unLocked map[address.Address]*key.KeyInfo
 
 	state int
 }
@@ -81,7 +82,7 @@ func NewDSBackend(ctx context.Context, ds repo.Datastore, passphraseCfg config.P
 		ds:             ds,
 		cache:          addrCache,
 		PassphraseConf: passphraseCfg,
-		unLocked:       make(map[address.Address]*crypto.KeyInfo, len(addrCache)),
+		unLocked:       make(map[address.Address]*key.KeyInfo, len(addrCache)),
 	}
 
 	if len(password) != 0 {
@@ -94,7 +95,7 @@ func NewDSBackend(ctx context.Context, ds repo.Datastore, passphraseCfg config.P
 }
 
 // ImportKey loads the address in `ai` and KeyInfo `ki` into the backend
-func (backend *DSBackend) ImportKey(ctx context.Context, ki *crypto.KeyInfo) error {
+func (backend *DSBackend) ImportKey(ctx context.Context, ki *key.KeyInfo) error {
 	return backend.putKeyInfo(ctx, ki)
 }
 
@@ -139,7 +140,7 @@ func (backend *DSBackend) NewAddress(ctx context.Context, protocol address.Proto
 }
 
 func (backend *DSBackend) newDelegatedAddress(ctx context.Context) (address.Address, error) {
-	ki, err := crypto.NewDelegatedKeyFromSeed(rand.Reader)
+	ki, err := key.NewDelegatedKeyFromSeed(rand.Reader)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -151,7 +152,7 @@ func (backend *DSBackend) newDelegatedAddress(ctx context.Context) (address.Addr
 }
 
 func (backend *DSBackend) newSecpAddress(ctx context.Context) (address.Address, error) {
-	ki, err := crypto.NewSecpKeyFromSeed(rand.Reader)
+	ki, err := key.NewSecpKeyFromSeed(rand.Reader)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -163,7 +164,7 @@ func (backend *DSBackend) newSecpAddress(ctx context.Context) (address.Address, 
 }
 
 func (backend *DSBackend) newBLSAddress(ctx context.Context) (address.Address, error) {
-	ki, err := crypto.NewBLSKeyFromSeed(rand.Reader)
+	ki, err := key.NewBLSKeyFromSeed(rand.Reader)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -174,7 +175,7 @@ func (backend *DSBackend) newBLSAddress(ctx context.Context) (address.Address, e
 	return ki.Address()
 }
 
-func (backend *DSBackend) putKeyInfo(ctx context.Context, ki *crypto.KeyInfo) error {
+func (backend *DSBackend) putKeyInfo(ctx context.Context, ki *key.KeyInfo) error {
 	addr, err := ki.Address()
 	if err != nil {
 		return err
@@ -240,7 +241,7 @@ func (backend *DSBackend) SignBytes(ctx context.Context, data []byte, addr addre
 
 // GetKeyInfo will return the private & public keys associated with address `addr`
 // iff backend contains the addr.
-func (backend *DSBackend) GetKeyInfo(ctx context.Context, addr address.Address) (*crypto.KeyInfo, error) {
+func (backend *DSBackend) GetKeyInfo(ctx context.Context, addr address.Address) (*key.KeyInfo, error) {
 	if !backend.HasAddress(ctx, addr) {
 		return nil, errors.New("backend does not contain address")
 	}
@@ -260,7 +261,7 @@ func (backend *DSBackend) GetKeyInfo(ctx context.Context, addr address.Address) 
 }
 
 // GetKeyInfoPassphrase get private private key from wallet, get encrypt byte from db and decrypto it with password
-func (backend *DSBackend) GetKeyInfoPassphrase(ctx context.Context, addr address.Address, password []byte) (*crypto.KeyInfo, error) {
+func (backend *DSBackend) GetKeyInfoPassphrase(ctx context.Context, addr address.Address, password []byte) (*key.KeyInfo, error) {
 	if !backend.HasAddress(ctx, addr) {
 		return nil, errors.New("backend does not contain address")
 	}

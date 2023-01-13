@@ -89,6 +89,16 @@ func Generate(sigType crypto.SigType) ([]byte, error) {
 	return sv.GenPrivate()
 }
 
+// GenerateFromSeed generates private key of given type and seed
+func GenerateFromSeed(sigType crypto.SigType, seed io.Reader) ([]byte, error) {
+	sv, ok := sigs[sigType]
+	if !ok {
+		return nil, fmt.Errorf("cannot generate private key of unsupported type: %v", sigType)
+	}
+
+	return sv.GenPrivateFromSeed(seed)
+}
+
 // ToPublic converts private key to public key
 func ToPublic(sigType crypto.SigType, pk []byte) ([]byte, error) {
 	sv, ok := sigs[sigType]

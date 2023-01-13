@@ -1,32 +1,63 @@
-// stm: #unit
-package crypto_test
+package key
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"testing"
-
-	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-address"
-
-	"crypto/rand"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/crypto"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/delegated"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
-func TestGenerateSecpKey(t *testing.T) {
-	tf.UnitTest(t)
+func TestKeyInfoAddress(t *testing.T) {
+	prv, _ := hex.DecodeString("2a2a2a2a2a2a2a2a5fbf0ed0f8364c01ff27540ecd6669ff4cc548cbe60ef5ab")
+	ki := &KeyInfo{
+		SigType: crypto.SigTypeSecp256k1,
+	}
+	ki.SetPrivateKey(prv)
 
+	sign, _ := crypto.Sign([]byte("hello filecoin"), prv, crypto.SigTypeSecp256k1)
+	t.Logf("%x", sign)
+}
+
+func TestKeyInfoUnmarshalAndMarshal(t *testing.T) {
+	prv := []byte("marshal_and_unmarshal")
+	prvCp := make([]byte, len(prv))
+	copy(prvCp, prv)
+	ki := &KeyInfo{
+		SigType: crypto.SigTypeSecp256k1,
+	}
+	ki.SetPrivateKey(prv)
+
+	assert.NotNil(t, ki.PrivateKey)
+	t.Log(string(prv))
+	assert.Equal(t, prvCp, ki.Key())
+
+	kiByte, err := json.Marshal(ki)
+	assert.NoError(t, err)
+
+	var newKI KeyInfo
+	assert.NoError(t, json.Unmarshal(kiByte, &newKI))
+
+	assert.Equal(t, ki.Key(), newKI.Key())
+	assert.Equal(t, ki.SigType, newKI.SigType)
+}
+
+func TestGenerateSecpKey(t *testing.T) {
 	token := bytes.Repeat([]byte{42}, 512)
 	// stm: @CRYPTO_CRYPTO_NEW_BLS_KEY_001
-	ki, err := crypto.NewSecpKeyFromSeed(bytes.NewReader(token))
+	ki, err := NewSecpKeyFromSeed(bytes.NewReader(token))
 	assert.NoError(t, err)
 	sk := ki.Key()
 	t.Logf("%x", sk)
@@ -78,7 +109,7 @@ func TestGenerateSecpKey(t *testing.T) {
 func TestBLSSigning(t *testing.T) {
 	token := bytes.Repeat([]byte{42}, 512)
 	// stm: @CRYPTO_CRYPTO_NEW_BLS_KEY_001
-	ki, err := crypto.NewBLSKeyFromSeed(bytes.NewReader(token))
+	ki, err := NewBLSKeyFromSeed(bytes.NewReader(token))
 	assert.NoError(t, err)
 
 	data := []byte("data to be signed")
@@ -111,7 +142,7 @@ func TestBLSSigning(t *testing.T) {
 
 func TestDelegatedSigning(t *testing.T) {
 	token := bytes.Repeat([]byte{42}, 512)
-	ki, err := crypto.NewDelegatedKeyFromSeed(bytes.NewReader(token))
+	ki, err := NewDelegatedKeyFromSeed(bytes.NewReader(token))
 	assert.NoError(t, err)
 
 	data := []byte("data to be signed")
@@ -172,12 +203,12 @@ func TestVerifyAggregate(t *testing.T) {
 		size     = 10
 		messages = make([][]byte, size)
 		blsSigs  = make([]*crypto.Signature, size)
-		kis      = make([]*crypto.KeyInfo, size)
+		kis      = make([]*KeyInfo, size)
 		pubKeys  = make([][]byte, size)
 	)
 
 	for idx := 0; idx < size; idx++ {
-		ki, err := crypto.NewBLSKeyFromSeed(rand.Reader)
+		ki, err := NewBLSKeyFromSeed(rand.Reader)
 		assert.NoError(t, err)
 
 		msg := make([]byte, 32)

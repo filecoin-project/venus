@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 
 	"github.com/pborman/uuid"
 )
@@ -19,7 +19,7 @@ type Key struct {
 	ID uuid.UUID // Version 4 "random" for unique id not derived from key data
 	// to simplify lookups we also store the address
 	Address address.Address
-	KeyInfo *crypto.KeyInfo
+	KeyInfo *key.KeyInfo
 }
 
 type plainKey struct {
@@ -85,7 +85,7 @@ func (k *Key) UnmarshalJSON(j []byte) (err error) {
 		return err
 	}
 
-	k.KeyInfo = new(crypto.KeyInfo)
+	k.KeyInfo = new(key.KeyInfo)
 	kiBytes, err := hex.DecodeString(plainKey.KeyInfo)
 	if err != nil {
 		return err
