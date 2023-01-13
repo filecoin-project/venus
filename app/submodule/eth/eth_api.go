@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	builtinactors "github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
@@ -559,17 +558,11 @@ func (a *ethAPI) EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes
 func (a *ethAPI) ethCallToFilecoinMessage(ctx context.Context, tx types.EthCall) (*types.Message, error) {
 	var from address.Address
 	if tx.From == nil || *tx.From == (types.EthAddress{}) {
-		// TODO: We're sending from the "burnt funds" account for now, because we need to
-		// send from an actual account till we deploy an EVM _account_ to this address, not
-		// an empty EVM contract.
-		//
-		// See https://github.com/filecoin-project/ref-fvm/issues/1173
-		from = builtinactors.BurntFundsActorAddr
-		// Send from the filecoin "system" address.
-		// from, err = (api.EthAddress{}).ToFilecoinAddress()
-		// if err != nil {
-		//	return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
-		// }
+		var err error
+		from, err = (types.EthAddress{}).ToFilecoinAddress()
+		if err != nil {
+			return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
+		}
 	} else {
 		// The from address must be translatable to an f4 address.
 		var err error
@@ -771,7 +764,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 // Filecoin address. It does the following:
 //
 //  1. If the supplied address is an f410 address, we return its payload as the EthAddress.
-//  2. Otherwise (f0, f1, f2, f3), we look up the actor on the state tree. If it has a predictable address, we return it if it's f410 address.
+//  2. Otherwise (f0, f1, f2, f3), we look up the actor on the state tree. If it has a delegated address, we return it if it's f410 address.
 //  3. Otherwise, we fall back to returning a masked ID Ethereum address. If the supplied address is an f0 address, we
 //     use that ID to form the masked ID address.
 //  4. Otherwise, we fetch the actor's ID from the state tree and form the masked ID with it.
