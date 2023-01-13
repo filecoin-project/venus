@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-address"
@@ -31,7 +30,7 @@ type PreSeal struct {
 }
 
 type Key struct {
-	wallet.KeyInfo
+	types.KeyInfo
 
 	PublicKey []byte
 	Address   address.Address
