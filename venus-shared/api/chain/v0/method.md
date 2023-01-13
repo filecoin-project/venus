@@ -135,7 +135,10 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [MsigCancel](#msigcancel)
   * [MsigCancelTxnHash](#msigcanceltxnhash)
   * [MsigCreate](#msigcreate)
+  * [MsigGetAvailableBalance](#msiggetavailablebalance)
+  * [MsigGetPending](#msiggetpending)
   * [MsigGetVested](#msiggetvested)
+  * [MsigGetVestingSchedule](#msiggetvestingschedule)
   * [MsigPropose](#msigpropose)
   * [MsigRemoveSigner](#msigremovesigner)
   * [MsigSwapApprove](#msigswapapprove)
@@ -4205,7 +4208,11 @@ Inputs:
 [
   "f01234",
   42,
-  "f01234"
+  "f01234",
+  "0",
+  "f01234",
+  42,
+  "Ynl0ZSBhcnJheQ=="
 ]
 ```
 
@@ -4273,6 +4280,68 @@ Response:
 }
 ```
 
+### MsigGetAvailableBalance
+MsigGetAvailableBalance returns the portion of a multisig's balance that can be withdrawn or spent
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"0"`
+
+### MsigGetPending
+MsigGetPending returns pending transactions for the given multisig
+wallet. Once pending transactions are fully approved, they will no longer
+appear here.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": 9,
+    "To": "f01234",
+    "Value": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "Approved": [
+      "f01234"
+    ]
+  }
+]
+```
+
 ### MsigGetVested
 
 
@@ -4302,6 +4371,36 @@ Inputs:
 ```
 
 Response: `"0"`
+
+### MsigGetVestingSchedule
+MsigGetVestingSchedule returns the vesting details of a given multisig.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "InitialBalance": "0",
+  "StartEpoch": 10101,
+  "UnlockDuration": 10101
+}
+```
 
 ### MsigPropose
 

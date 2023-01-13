@@ -23,10 +23,11 @@ type Env struct {
 	MingingAPI           v1api.IMining
 	MessagePoolAPI       v1api.IMessagePool
 
-	MultiSigAPI v0api.IMultiSig
-	MarketAPI   v1api.IMarket
-	PaychAPI    v1api.IPaychan
-	CommonAPI   v1api.ICommon
+	MultiSigAPIV0 v0api.IMultiSig
+	MultiSigAPIV1 v1api.IMultiSig
+	MarketAPI     v1api.IMarket
+	PaychAPI      v1api.IPaychan
+	CommonAPI     v1api.ICommon
 }
 
 var _ cmds.Environment = (*Env)(nil)

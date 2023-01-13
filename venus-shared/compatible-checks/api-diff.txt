@@ -61,11 +61,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ MpoolPublishMessage
 	> MpoolPushMessage {[func(context.Context, *internal.Message, *types.MessageSendSpec) (*types.SignedMessage, error) <> func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
 	+ MpoolSelects
-	> MsigCancel {[func(context.Context, address.Address, uint64, address.Address) (cid.Cid, error) <> func(context.Context, address.Address, uint64, address.Address, big.Int, address.Address, uint64, []uint8) (cid.Cid, error)] base=func in num: 4 != 8; nested=nil}
 	+ MsigCancelTxnHash
-	- MsigGetAvailableBalance
-	- MsigGetPending
-	- MsigGetVestingSchedule
 	- NetBlockAdd
 	- NetBlockList
 	- NetBlockRemove
@@ -180,9 +176,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ MpoolPublishMessage
 	> MpoolPushMessage {[func(context.Context, *internal.Message, *types.MessageSendSpec) (*types.SignedMessage, error) <> func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
 	+ MpoolSelects
-	- MsigGetAvailableBalance
-	- MsigGetPending
-	- MsigGetVestingSchedule
 	- NetBlockAdd
 	- NetBlockList
 	- NetBlockRemove

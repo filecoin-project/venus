@@ -1092,6 +1092,36 @@ func (mr *MockFullNodeMockRecorder) MsigCreate(arg0, arg1, arg2, arg3, arg4, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigCreate", reflect.TypeOf((*MockFullNode)(nil).MsigCreate), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 }
 
+// MsigGetAvailableBalance mocks base method.
+func (m *MockFullNode) MsigGetAvailableBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MsigGetAvailableBalance", arg0, arg1, arg2)
+	ret0, _ := ret[0].(big.Int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MsigGetAvailableBalance indicates an expected call of MsigGetAvailableBalance.
+func (mr *MockFullNodeMockRecorder) MsigGetAvailableBalance(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigGetAvailableBalance", reflect.TypeOf((*MockFullNode)(nil).MsigGetAvailableBalance), arg0, arg1, arg2)
+}
+
+// MsigGetPending mocks base method.
+func (m *MockFullNode) MsigGetPending(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) ([]*types.MsigTransaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MsigGetPending", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*types.MsigTransaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MsigGetPending indicates an expected call of MsigGetPending.
+func (mr *MockFullNodeMockRecorder) MsigGetPending(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigGetPending", reflect.TypeOf((*MockFullNode)(nil).MsigGetPending), arg0, arg1, arg2)
+}
+
 // MsigGetVested mocks base method.
 func (m *MockFullNode) MsigGetVested(arg0 context.Context, arg1 address.Address, arg2, arg3 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
@@ -1105,6 +1135,21 @@ func (m *MockFullNode) MsigGetVested(arg0 context.Context, arg1 address.Address,
 func (mr *MockFullNodeMockRecorder) MsigGetVested(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigGetVested", reflect.TypeOf((*MockFullNode)(nil).MsigGetVested), arg0, arg1, arg2, arg3)
+}
+
+// MsigGetVestingSchedule mocks base method.
+func (m *MockFullNode) MsigGetVestingSchedule(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (types.MsigVesting, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MsigGetVestingSchedule", arg0, arg1, arg2)
+	ret0, _ := ret[0].(types.MsigVesting)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MsigGetVestingSchedule indicates an expected call of MsigGetVestingSchedule.
+func (mr *MockFullNodeMockRecorder) MsigGetVestingSchedule(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigGetVestingSchedule", reflect.TypeOf((*MockFullNode)(nil).MsigGetVestingSchedule), arg0, arg1, arg2)
 }
 
 // MsigPropose mocks base method.
