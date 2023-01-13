@@ -566,20 +566,23 @@ func (s *IMessagePoolStruct) MpoolSub(p0 context.Context) (<-chan types.MpoolUpd
 
 type IMultiSigStruct struct {
 	Internal struct {
-		MsigAddApprove     func(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, newAdd address.Address, inc bool) (*types.MessagePrototype, error)                                   `perm:"sign"`
-		MsigAddCancel      func(ctx context.Context, msig address.Address, src address.Address, txID uint64, newAdd address.Address, inc bool) (*types.MessagePrototype, error)                                                             `perm:"sign"`
-		MsigAddPropose     func(ctx context.Context, msig address.Address, src address.Address, newAdd address.Address, inc bool) (*types.MessagePrototype, error)                                                                          `perm:"sign"`
-		MsigApprove        func(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*types.MessagePrototype, error)                                                                                               `perm:"sign"`
-		MsigApproveTxnHash func(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error) `perm:"sign"`
-		MsigCancel         func(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*types.MessagePrototype, error)                                                                                               `perm:"sign"`
-		MsigCancelTxnHash  func(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (*types.MessagePrototype, error)                                                                  `perm:"sign"`
-		MsigCreate         func(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (*types.MessagePrototype, error)                                 `perm:"sign"`
-		MsigGetVested      func(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)                                                                                                `perm:"read"`
-		MsigPropose        func(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error)                                        `perm:"sign"`
-		MsigRemoveSigner   func(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (*types.MessagePrototype, error)                                                              `perm:"sign"`
-		MsigSwapApprove    func(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error)                     `perm:"sign"`
-		MsigSwapCancel     func(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error)                                               `perm:"sign"`
-		MsigSwapPropose    func(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error)                                                            `perm:"sign"`
+		MsigAddApprove          func(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, newAdd address.Address, inc bool) (*types.MessagePrototype, error)                                   `perm:"sign"`
+		MsigAddCancel           func(ctx context.Context, msig address.Address, src address.Address, txID uint64, newAdd address.Address, inc bool) (*types.MessagePrototype, error)                                                             `perm:"sign"`
+		MsigAddPropose          func(ctx context.Context, msig address.Address, src address.Address, newAdd address.Address, inc bool) (*types.MessagePrototype, error)                                                                          `perm:"sign"`
+		MsigApprove             func(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*types.MessagePrototype, error)                                                                                               `perm:"sign"`
+		MsigApproveTxnHash      func(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error) `perm:"sign"`
+		MsigCancel              func(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*types.MessagePrototype, error)                                                                                               `perm:"sign"`
+		MsigCancelTxnHash       func(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (*types.MessagePrototype, error)                                                                  `perm:"sign"`
+		MsigCreate              func(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (*types.MessagePrototype, error)                                 `perm:"sign"`
+		MsigGetAvailableBalance func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)                                                                                                                                    `perm:"read"`
+		MsigGetPending          func(context.Context, address.Address, types.TipSetKey) ([]*types.MsigTransaction, error)                                                                                                                        `perm:"read"`
+		MsigGetVested           func(context.Context, address.Address, types.TipSetKey, types.TipSetKey) (types.BigInt, error)                                                                                                                   `perm:"read"`
+		MsigGetVestingSchedule  func(context.Context, address.Address, types.TipSetKey) (types.MsigVesting, error)                                                                                                                               `perm:"read"`
+		MsigPropose             func(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error)                                        `perm:"sign"`
+		MsigRemoveSigner        func(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (*types.MessagePrototype, error)                                                              `perm:"sign"`
+		MsigSwapApprove         func(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error)                     `perm:"sign"`
+		MsigSwapCancel          func(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error)                                               `perm:"sign"`
+		MsigSwapPropose         func(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error)                                                            `perm:"sign"`
 	}
 }
 
@@ -607,8 +610,17 @@ func (s *IMultiSigStruct) MsigCancelTxnHash(p0 context.Context, p1 address.Addre
 func (s *IMultiSigStruct) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*types.MessagePrototype, error) {
 	return s.Internal.MsigCreate(p0, p1, p2, p3, p4, p5, p6)
 }
+func (s *IMultiSigStruct) MsigGetAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
+	return s.Internal.MsigGetAvailableBalance(p0, p1, p2)
+}
+func (s *IMultiSigStruct) MsigGetPending(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*types.MsigTransaction, error) {
+	return s.Internal.MsigGetPending(p0, p1, p2)
+}
 func (s *IMultiSigStruct) MsigGetVested(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) {
 	return s.Internal.MsigGetVested(p0, p1, p2, p3)
+}
+func (s *IMultiSigStruct) MsigGetVestingSchedule(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MsigVesting, error) {
+	return s.Internal.MsigGetVestingSchedule(p0, p1, p2)
 }
 func (s *IMultiSigStruct) MsigPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (*types.MessagePrototype, error) {
 	return s.Internal.MsigPropose(p0, p1, p2, p3, p4, p5, p6)

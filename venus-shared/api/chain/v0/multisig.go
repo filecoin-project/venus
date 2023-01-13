@@ -29,7 +29,15 @@ type IMultiSig interface {
 	MsigSwapCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (cid.Cid, error)                                                   //perm:sign
 	MsigApprove(ctx context.Context, msig address.Address, txID uint64, src address.Address) (cid.Cid, error)                                                                                                      //perm:sign
 	MsigApproveTxnHash(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error) //perm:sign
-	MsigCancel(ctx context.Context, msig address.Address, txID uint64, src address.Address) (cid.Cid, error)                                                                                                       //perm:sign
+	MsigCancel(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)                                                                          //perm:sign
 	MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (cid.Cid, error)                                                                //perm:sign
 	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)                                                                                     //perm:read
+	// MsigGetAvailableBalance returns the portion of a multisig's balance that can be withdrawn or spent
+	MsigGetAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
+	//MsigGetPending returns pending transactions for the given multisig
+	//wallet. Once pending transactions are fully approved, they will no longer
+	//appear here.
+	MsigGetPending(context.Context, address.Address, types.TipSetKey) ([]*types.MsigTransaction, error) //perm:read
+	// MsigGetVestingSchedule returns the vesting details of a given multisig.
+	MsigGetVestingSchedule(context.Context, address.Address, types.TipSetKey) (types.MsigVesting, error) //perm:read
 }

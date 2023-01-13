@@ -118,7 +118,7 @@ var msigCreateCmd = &cmds.Command{
 		d := abi.ChainEpoch(duration)
 		gp := types.NewInt(1)
 
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigCreate(req.Context, required, addrs, d, intVal, sendAddr, gp)
+		msgCid, err := env.(*node.Env).MultiSigAPIV0.MsigCreate(req.Context, required, addrs, d, intVal, sendAddr, gp)
 		if err != nil {
 			return err
 		}
@@ -371,7 +371,7 @@ var msigProposeCmd = &cmds.Command{
 			return fmt.Errorf("actor %s is not a multisig actor", msig)
 		}
 
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigPropose(ctx, msig, dest, types.BigInt(value), from, method, params)
+		msgCid, err := env.(*node.Env).MultiSigAPIV0.MsigPropose(ctx, msig, dest, types.BigInt(value), from, method, params)
 		if err != nil {
 			return err
 		}
@@ -435,7 +435,7 @@ var msigRemoveProposeCmd = &cmds.Command{
 			return err
 		}
 		dt := reqBoolOption(req, "decrease-threshold")
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigRemoveSigner(ctx, msig, from, addr, dt)
+		msgCid, err := env.(*node.Env).MultiSigAPIV0.MsigRemoveSigner(ctx, msig, from, addr, dt)
 		if err != nil {
 			return err
 		}
@@ -512,7 +512,7 @@ var msigApproveCmd = &cmds.Command{
 		}
 		var msgCid cid.Cid
 		if argLen == 2 {
-			msgCid, err = env.(*node.Env).MultiSigAPI.MsigApprove(ctx, msig, txid, from)
+			msgCid, err = env.(*node.Env).MultiSigAPIV0.MsigApprove(ctx, msig, txid, from)
 			if err != nil {
 				return err
 			}
@@ -555,7 +555,7 @@ var msigApproveCmd = &cmds.Command{
 				params = p
 			}
 
-			msgCid, err = env.(*node.Env).MultiSigAPI.MsigApproveTxnHash(ctx, msig, txid, proposer, dest, types.BigInt(value), from, method, params)
+			msgCid, err = env.(*node.Env).MultiSigAPIV0.MsigApproveTxnHash(ctx, msig, txid, proposer, dest, types.BigInt(value), from, method, params)
 			if err != nil {
 				return err
 			}
@@ -637,7 +637,7 @@ var msigAddProposeCmd = &cmds.Command{
 			}
 		}
 
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigAddPropose(ctx, msig, from, addr, reqBoolOption(req, "increase-threshold"))
+		msgCid, err := env.(*node.Env).MultiSigAPIV0.MsigAddPropose(ctx, msig, from, addr, reqBoolOption(req, "increase-threshold"))
 		if err != nil {
 			return err
 		}
@@ -712,7 +712,7 @@ var msigAddApproveCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigAddApprove(ctx, msig, from, txid, prop, newAdd, inc)
+		msgCid, err := env.(*node.Env).MultiSigAPIV0.MsigAddApprove(ctx, msig, from, txid, prop, newAdd, inc)
 		if err != nil {
 			return err
 		}
@@ -774,7 +774,7 @@ var msigAddCancelCmd = &cmds.Command{
 			return err
 		}
 
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigAddCancel(ctx, msig, from, txid, newAdd, inc)
+		msgCid, err := env.(*node.Env).MultiSigAPIV0.MsigAddCancel(ctx, msig, from, txid, newAdd, inc)
 		if err != nil {
 			return err
 		}
@@ -840,9 +840,16 @@ var msigCancelCmd = &cmds.Command{
 		ctx := ReqContext(req.Context)
 		var msgCid cid.Cid
 		if argLen == 2 {
-			if msgCid, err = api.MultiSigAPI.MsigCancel(ctx, msig, txid, from); err != nil {
+			p, err := api.MultiSigAPIV1.MsigCancel(ctx, msig, txid, from)
+			if err != nil {
 				return err
 			}
+			sm, err := api.MessagePoolAPI.MpoolPushMessage(ctx, &p.Message, nil)
+			if err != nil {
+				return fmt.Errorf("pushing message: %w", err)
+			}
+			msgCid = sm.Cid()
+
 		} else {
 			dest, err := address.NewFromString(req.Arguments[2])
 			if err != nil {
@@ -864,7 +871,7 @@ var msigCancelCmd = &cmds.Command{
 					return err
 				}
 			}
-			if msgCid, err = api.MultiSigAPI.MsigCancelTxnHash(ctx, msig, txid, dest, types.BigInt(value),
+			if msgCid, err = api.MultiSigAPIV0.MsigCancelTxnHash(ctx, msig, txid, dest, types.BigInt(value),
 				from, method, params); err != nil {
 				return err
 			}
@@ -921,7 +928,7 @@ var msigSwapProposeCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigSwapPropose(ctx, msig, from, oldAdd, newAdd)
+		msgCid, err := env.(*node.Env).MultiSigAPIV0.MsigSwapPropose(ctx, msig, from, oldAdd, newAdd)
 		if err != nil {
 			return err
 		}
@@ -995,7 +1002,7 @@ var msigSwapApproveCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigSwapApprove(ctx, msig, from, txid, prop, oldAdd, newAdd)
+		msgCid, err := env.(*node.Env).MultiSigAPIV0.MsigSwapApprove(ctx, msig, from, txid, prop, oldAdd, newAdd)
 		if err != nil {
 			return err
 		}
@@ -1056,7 +1063,7 @@ var msigSwapCancelCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigSwapCancel(ctx, msig, from, txid, oldAdd, newAdd)
+		msgCid, err := env.(*node.Env).MultiSigAPIV0.MsigSwapCancel(ctx, msig, from, txid, oldAdd, newAdd)
 		if err != nil {
 			return err
 		}
@@ -1126,7 +1133,7 @@ var msigLockProposeCmd = &cmds.Command{
 		if actErr != nil {
 			return actErr
 		}
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigPropose(ctx, msig, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
+		msgCid, err := env.(*node.Env).MultiSigAPIV0.MsigPropose(ctx, msig, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
 		if err != nil {
 			return err
 		}
@@ -1218,7 +1225,7 @@ var msigLockApproveCmd = &cmds.Command{
 			return actErr
 		}
 
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigApproveTxnHash(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
+		msgCid, err := env.(*node.Env).MultiSigAPIV0.MsigApproveTxnHash(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
 		if err != nil {
 			return err
 		}
@@ -1295,7 +1302,7 @@ var msigLockCancelCmd = &cmds.Command{
 			return actErr
 		}
 
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigCancelTxnHash(ctx, msig, txid, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
+		msgCid, err := env.(*node.Env).MultiSigAPIV0.MsigCancelTxnHash(ctx, msig, txid, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
 		if err != nil {
 			return err
 		}
@@ -1357,7 +1364,7 @@ var msigVestedCmd = &cmds.Command{
 			}
 		}
 
-		ret, err := env.(*node.Env).MultiSigAPI.MsigGetVested(ctx, msig, start.Key(), end.Key())
+		ret, err := env.(*node.Env).MultiSigAPIV0.MsigGetVested(ctx, msig, start.Key(), end.Key())
 		if err != nil {
 			return err
 		}
@@ -1406,7 +1413,7 @@ var msigProposeThresholdCmd = &cmds.Command{
 			return actErr
 		}
 
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigPropose(ctx, msig, msig, types.NewInt(0), from, uint64(multisig.Methods.ChangeNumApprovalsThreshold), params)
+		msgCid, err := env.(*node.Env).MultiSigAPIV0.MsigPropose(ctx, msig, msig, types.NewInt(0), from, uint64(multisig.Methods.ChangeNumApprovalsThreshold), params)
 		if err != nil {
 			return fmt.Errorf("failed to propose change of threshold: %w", err)
 		}

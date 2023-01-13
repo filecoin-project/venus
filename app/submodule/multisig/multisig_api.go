@@ -311,6 +311,88 @@ func (a *multiSig) msigApproveOrCancelTxnHash(ctx context.Context, operation Msi
 	}, nil
 }
 
+func (a *multiSig) MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	ts, err := a.state.ChainGetTipSet(ctx, tsk)
+	if err != nil {
+		return types.EmptyInt, fmt.Errorf("failed to load tipset: %w", err)
+	}
+	act, err := a.state.StateGetActor(ctx, addr, tsk)
+	if err != nil {
+		return types.EmptyInt, fmt.Errorf("failed to load multisig actor: %w", err)
+	}
+	msas, err := multisig.Load(a.store.Store(ctx), act)
+	if err != nil {
+		return types.EmptyInt, fmt.Errorf("failed to load multisig actor state: %w", err)
+	}
+	locked, err := msas.LockedBalance(ts.Height())
+	if err != nil {
+		return types.EmptyInt, fmt.Errorf("failed to compute locked multisig balance: %w", err)
+	}
+	return types.BigSub(act.Balance, locked), nil
+}
+
+func (a *multiSig) MsigGetVestingSchedule(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MsigVesting, error) {
+	act, err := a.state.StateGetActor(ctx, addr, tsk)
+	if err != nil {
+		return types.EmptyVesting, fmt.Errorf("failed to load multisig actor: %w", err)
+	}
+
+	msas, err := multisig.Load(a.store.Store(ctx), act)
+	if err != nil {
+		return types.EmptyVesting, fmt.Errorf("failed to load multisig actor state: %w", err)
+	}
+
+	ib, err := msas.InitialBalance()
+	if err != nil {
+		return types.EmptyVesting, fmt.Errorf("failed to load multisig initial balance: %w", err)
+	}
+
+	se, err := msas.StartEpoch()
+	if err != nil {
+		return types.EmptyVesting, fmt.Errorf("failed to load multisig start epoch: %w", err)
+	}
+
+	ud, err := msas.UnlockDuration()
+	if err != nil {
+		return types.EmptyVesting, fmt.Errorf("failed to load multisig unlock duration: %w", err)
+	}
+
+	return types.MsigVesting{
+		InitialBalance: ib,
+		StartEpoch:     se,
+		UnlockDuration: ud,
+	}, nil
+}
+
+func (a *multiSig) MsigGetPending(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*types.MsigTransaction, error) {
+	act, err := a.state.StateGetActor(ctx, addr, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load multisig actor: %w", err)
+	}
+	msas, err := multisig.Load(a.store.Store(ctx), act)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load multisig actor state: %w", err)
+	}
+
+	var out = []*types.MsigTransaction{}
+	if err := msas.ForEachPendingTxn(func(id int64, txn multisig.Transaction) error {
+		out = append(out, &types.MsigTransaction{
+			ID:     id,
+			To:     txn.To,
+			Value:  txn.Value,
+			Method: txn.Method,
+			Params: txn.Params,
+
+			Approved: txn.Approved,
+		})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
 func serializeAddParams(new address.Address, inc bool) ([]byte, error) {
 	enc, actErr := actors.SerializeParams(&multisig2.AddSignerParams{
 		Signer:   new,
