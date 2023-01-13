@@ -181,6 +181,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.paychan,
 		nd.market,
 		nd.common,
+		nd.multiSig,
 	)
 
 	if err != nil {
