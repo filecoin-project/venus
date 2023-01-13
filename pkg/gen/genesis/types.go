@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-address"
@@ -25,7 +25,7 @@ type PreSeal struct {
 	CommD         cid.Cid
 	SectorID      abi.SectorNumber
 	Deal          types.DealProposal
-	DealClientKey *crypto.KeyInfo
+	DealClientKey *key.KeyInfo
 	ProofType     abi.RegisteredSealProof
 }
 

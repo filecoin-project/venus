@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/genesis"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -83,7 +84,7 @@ type GenesisCfg struct {
 	KeysToGen int
 
 	// Import keys are pre-generated keys to be imported. These keys will be appended to the generated keys.
-	ImportKeys []*crypto.KeyInfo
+	ImportKeys []*key.KeyInfo
 
 	// PreallocatedFunds is a mapping from generated key index to string values of whole filecoin
 	// that will be preallocated to each account
@@ -102,7 +103,7 @@ type GenesisCfg struct {
 // RenderedGenInfo contains information about a genesis block creation
 type RenderedGenInfo struct {
 	// Keys is the set of keys generated
-	Keys []*crypto.KeyInfo
+	Keys []*key.KeyInfo
 
 	// Miners is the list of addresses of miners created
 	Miners []*RenderedMinerInfo
@@ -150,7 +151,7 @@ func GenKeys(n int, prealloc string) GenOption {
 }
 
 // ImportKeys returns a config option that imports keys and pre-allocates to them
-func ImportKeys(kis []crypto.KeyInfo, prealloc string) GenOption {
+func ImportKeys(kis []key.KeyInfo, prealloc string) GenOption {
 	return func(gc *GenesisCfg) error {
 		for _, ki := range kis {
 			gc.ImportKeys = append(gc.ImportKeys, &ki)

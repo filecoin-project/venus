@@ -22,9 +22,9 @@ import (
 
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/gen"
 	"github.com/filecoin-project/venus/pkg/gen/genesis"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 	"github.com/filecoin-project/venus/tools/seed"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -570,10 +570,10 @@ var preSealCmd = &cmds.Command{
 			return err
 		}
 
-		var ki *crypto.KeyInfo
-		if key, _ := req.Options["key"].(string); key != "" {
-			ki = new(crypto.KeyInfo)
-			kh, err := os.ReadFile(key)
+		var ki *key.KeyInfo
+		if keyPath, _ := req.Options["key"].(string); keyPath != "" {
+			ki = new(key.KeyInfo)
+			kh, err := os.ReadFile(keyPath)
 			if err != nil {
 				return err
 			}
