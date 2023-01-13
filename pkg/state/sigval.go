@@ -28,23 +28,6 @@ func (v *SignatureValidator) ValidateSignature(ctx context.Context, data []byte,
 	return crypto.Verify(&sig, signerAddress, data)
 }
 
-// ValidateSignature check the signature of message is valid or not. first get the cid of message and than checkout signature of messager cid and address
-func (v *SignatureValidator) ValidateMessageSignature(ctx context.Context, msg *types.SignedMessage) error {
-	digest := msg.Message.Cid().Bytes()
-	if msg.Signature.Type == crypto.SigTypeDelegated {
-		txArgs, err := types.NewEthTxArgsFromMessage(&msg.Message)
-		if err != nil {
-			return err
-		}
-		msg, err := txArgs.ToRlpUnsignedMsg()
-		if err != nil {
-			return err
-		}
-		digest = msg
-	}
-	return v.ValidateSignature(ctx, digest, msg.Message.From, msg.Signature)
-}
-
 // ValidateBLSMessageAggregate validate bls aggregate message
 func (v *SignatureValidator) ValidateBLSMessageAggregate(ctx context.Context, msgs []*types.Message, sig *crypto.Signature) error {
 	if sig == nil {
