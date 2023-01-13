@@ -210,6 +210,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *types.Bloc
 
 	var blsMsgCids, secpkMsgCids []cid.Cid
 	var blsSigs []crypto.Signature
+	nv := miningAPI.Ming.ChainModule.Fork.GetNetworkVersion(ctx, bt.Epoch)
 	for _, msg := range bt.Messages {
 		if msg.Signature.Type == crypto.SigTypeBLS {
 			blsSigs = append(blsSigs, msg.Signature)
@@ -220,7 +221,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *types.Bloc
 			}
 
 			blsMsgCids = append(blsMsgCids, c)
-		} else if msg.Signature.Type == crypto.SigTypeSecp256k1 || msg.Signature.Type == crypto.SigTypeDelegated {
+		} else if chain.IsValidSecpkSigType(nv, msg.Signature.Type) {
 			c, err := messageStore.StoreMessage(msg)
 			if err != nil {
 				return nil, err

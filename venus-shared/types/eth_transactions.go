@@ -16,7 +16,6 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus/pkg/crypto/delegated"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 )
 
@@ -329,7 +328,7 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
-	ethAddr, err := delegated.EthAddressFromPubKey(pubk)
+	ethAddr, err := EthAddressFromPubKey(pubk)
 	if err != nil {
 		return address.Undef, err
 	}

@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 
@@ -270,7 +270,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 		}
 		keyStateView := bv.state.PowerStateView(stateRoot)
 		sigValidator := appstate.NewSignatureValidator(keyStateView)
-		if err := bv.checkBlockMessages(ctx, sigValidator, blk, parent); err != nil {
+		if err := bv.checkBlockMessages(ctx, sigValidator, blk, parent, keyStateView); err != nil {
 			return fmt.Errorf("block had invalid messages: %w", err)
 		}
 		return nil
@@ -748,20 +748,46 @@ func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network
 	return nil
 }
 
-func IsValidForSending(act *types.Actor) bool {
+func IsValidForSending(nv network.Version, act *types.Actor) bool {
+	// Before nv18 (Hygge), we only supported built-in account actors as senders.
+	//
+	// Note: this gate is probably superfluous, since:
+	// 1. Placeholder actors cannot be created before nv18.
+	// 2. EthAccount actors cannot be created before nv18.
+	// 3. Delegated addresses cannot be created before nv18.
+	//
+	// But it's a safeguard.
+	//
+	// Note 2: ad-hoc checks for network versions like this across the codebase
+	// will be problematic with networks with diverging version lineages
+	// (e.g. Hyperspace). We need to revisit this strategy entirely.
+	if nv < network.Version18 {
+		return builtin.IsAccountActor(act.Code)
+	}
+
+	// After nv18, we also support other kinds of senders.
 	if builtin.IsAccountActor(act.Code) || builtin.IsEthAccountActor(act.Code) {
 		return true
 	}
 
+	// Allow placeholder actors with a delegated address and nonce 0 to send a message.
+	// These will be converted to an EthAccount actor on first send.
 	if !builtin.IsPlaceholderActor(act.Code) || act.Nonce != 0 || act.Address == nil || act.Address.Protocol() != address.Delegated {
 		return false
 	}
+
+	// Only allow such actors to send if their delegated address is in the EAM's namespace.
 	id, _, err := varint.FromUvarint(act.Address.Payload())
 	return err == nil && id == builtintypes.EthereumAddressManagerActorID
 }
 
 // TODO: We should extract this somewhere else and make the message pool and miner use the same logic
-func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *appstate.SignatureValidator, blk *types.BlockHeader, baseTS *types.TipSet) (err error) {
+func (bv *BlockValidator) checkBlockMessages(ctx context.Context,
+	sigValidator *appstate.SignatureValidator,
+	blk *types.BlockHeader,
+	baseTS *types.TipSet,
+	stateView appstate.PowerStateView,
+) (err error) {
 	blksecpMsgs, blkblsMsgs, err := bv.messageStore.LoadMetaMessages(ctx, blk.Messages)
 	if err != nil {
 		return fmt.Errorf("failed loading message list %s for block %s %v", blk.Messages, blk.Cid(), err)
@@ -775,7 +801,12 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 
 		// Verify that all secp message signatures are correct
 		for i, msg := range blksecpMsgs {
-			if err := sigValidator.ValidateMessageSignature(ctx, msg); err != nil {
+			signer, err := stateView.ResolveToKeyAddr(ctx, msg.Message.From)
+			if err != nil {
+				return errors.Wrapf(err, "failed to load signer address for %v", signer)
+			}
+
+			if err := chain.AuthenticateMessage(msg, signer); err != nil {
 				return fmt.Errorf("invalid signature for secp message %d in block %s %v", i, blk.Cid(), err)
 			}
 		}
@@ -788,6 +819,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 		return fmt.Errorf("loading state: %v", err)
 	}
 
+	nv := bv.fork.GetNetworkVersion(ctx, blk.Height)
 	pl := bv.gasPirceSchedule.PricelistByEpoch(blk.Height)
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
@@ -829,7 +861,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 				return fmt.Errorf("actor %s not found", sender)
 			}
 
-			if !IsValidForSending(act) {
+			if !IsValidForSending(nv, act) {
 				return errors.New("sender must be an account actor")
 			}
 			nonces[sender] = act.Nonce
@@ -855,10 +887,8 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 
 	secpMsgs := make([]types.ChainMsg, len(blksecpMsgs))
 	for i, m := range blksecpMsgs {
-		if bv.fork.GetNetworkVersion(ctx, blk.Height) >= network.Version14 {
-			if m.Signature.Type != crypto.SigTypeSecp256k1 && m.Signature.Type != crypto.SigTypeDelegated {
-				return fmt.Errorf("block had invalid secpk message at index %d: %w", i, err)
-			}
+		if nv >= network.Version14 && !chain.IsValidSecpkSigType(nv, m.Signature.Type) {
+			return fmt.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}
 		if err := checkMsg(m); err != nil {
 			return fmt.Errorf("block had invalid secpk message at index %d: %v", i, err)
