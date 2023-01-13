@@ -19,7 +19,6 @@ import (
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/crypto/delegated"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 )
 
@@ -198,7 +197,7 @@ func TestDelegatedSigner(t *testing.T) {
 	r := mustDecodeHex(rHex)
 	s := mustDecodeHex(sHex)
 
-	addrHash, err := delegated.EthAddressFromPubKey(pubk)
+	addrHash, err := EthAddressFromPubKey(pubk)
 	require.NoError(t, err)
 
 	from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, addrHash[12:])

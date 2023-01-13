@@ -855,20 +855,8 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	if m.Signature.Type == crypto.SigTypeDelegated {
-		txArgs, err := types.NewEthTxArgsFromMessage(&m.Message)
-		if err != nil {
-			return fmt.Errorf("failed to convert to eth tx args: %w", err)
-		}
-		msg, err := txArgs.ToRlpUnsignedMsg()
-		if err != nil {
-			return err
-		}
-		if err := crypto2.Verify(&m.Signature, m.Message.From, msg); err != nil {
-			return err
-		}
-	} else if err := crypto2.Verify(&m.Signature, m.Message.From, m.Message.Cid().Bytes()); err != nil {
-		return err
+	if err := chain.AuthenticateMessage(m, m.Message.From); err != nil {
+		return fmt.Errorf("failed to validate signature: %w", err)
 	}
 
 	mp.sigValCache.Add(sck, struct{}{})
@@ -927,8 +915,12 @@ func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS 
 		return false, fmt.Errorf("failed to get sender actor: %w", err)
 	}
 
+	// This message can only be included in the _next_ epoch and beyond, hence the +1.
+	epoch := curTS.Height() + 1
+	nv := mp.api.StateNetworkVersion(ctx, epoch)
+
 	// TODO: I'm not thrilled about depending on filcns here, but I prefer this to duplicating logic
-	if !consensus.IsValidForSending(senderAct) {
+	if !consensus.IsValidForSending(nv, senderAct) {
 		return false, fmt.Errorf("sender actor %s is not a valid top-level sender", m.Message.From)
 	}
 

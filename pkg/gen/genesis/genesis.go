@@ -16,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/state/tree"
@@ -27,7 +26,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/datacap"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -145,12 +143,7 @@ Genesis: {
 
 func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Template) (*tree.State, map[address.Address]address.Address, error) {
 	// Create empty state tree
-
 	cst := cbor.NewCborStore(bs)
-	_, err := cst.Put(context.TODO(), []struct{}{})
-	if err != nil {
-		return nil, nil, fmt.Errorf("putting empty object: %w", err)
-	}
 
 	sv, err := tree.VersionForNetwork(template.NetworkVersion)
 	if err != nil {
@@ -611,10 +604,18 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 		return nil, fmt.Errorf("setup miners failed: %w", err)
 	}
 
-	// setup FEVM
-	stateroot, err = SetupFEVM(ctx, cs, stateroot, template.NetworkVersion, para)
+	st, err = tree.LoadState(ctx, st.Store, stateroot)
 	if err != nil {
-		return nil, fmt.Errorf("failed to setup FEVM functionality: %w", err)
+		return nil, fmt.Errorf("failed to load updated state tree: %w", err)
+	}
+	// Set up Eth null addresses.
+	if _, err := SetupEthNullAddresses(ctx, st, template.NetworkVersion); err != nil {
+		return nil, fmt.Errorf("failed to set up Eth null addresses: %w", err)
+	}
+
+	stateroot, err = st.Flush(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to flush state tree: %w", err)
 	}
 
 	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
@@ -699,29 +700,4 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 	return &GenesisBootstrap{
 		Genesis: b,
 	}, nil
-}
-
-func SetupEAM(ctx context.Context, nst tree.Tree, nv network.Version) error {
-	av, err := actorstypes.VersionForNetwork(nv)
-	if err != nil {
-		return fmt.Errorf("failed to get actors version for network version %d: %w", nv, err)
-	}
-
-	if av < actorstypes.Version10 {
-		// Not defined before version 10; migration has to create.
-		return nil
-	}
-
-	codecid, ok := actors.GetActorCodeID(av, manifest.EamKey)
-	if !ok {
-		return fmt.Errorf("failed to get CodeCID for EAM during genesis")
-	}
-
-	header := &types.Actor{
-		Code:    codecid,
-		Head:    vmcontext.EmptyObjectCid,
-		Balance: big.Zero(),
-		Address: &builtintypes.EthereumAddressManagerActorAddr, // so that it can create ETH0
-	}
-	return nst.SetActor(ctx, builtintypes.EthereumAddressManagerActorAddr, header)
 }

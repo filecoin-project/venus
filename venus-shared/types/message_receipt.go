@@ -18,6 +18,8 @@ const (
 	MessageReceiptV1 MessageReceiptVersion = 1
 )
 
+const EventAMTBitwidth = 5
+
 // MessageReceipt is what is returned by executing a message on the vm.
 type MessageReceipt struct {
 	version MessageReceiptVersion
