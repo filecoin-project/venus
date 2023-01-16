@@ -559,19 +559,17 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 		recpt := msgResult.Receipt
 		if recpt.ExitCode == 0 && len(recpt.Return) > 0 {
 			vmsg := chainMsg.VMMessage()
-			t, err := cia.getReturnType(ctx, vmsg.To, vmsg.Method)
-			if err != nil {
-				if errors.Is(err, ErrMetadataNotFound) {
-					// This is not necessarily an error -- EVM methods (and in the future native actors) may
-					//  return just bytes, and in the not so distant future we'll have native wasm actors
-					//  that are by definition not in the registry.
-					// So in this case, log a debug message and retun the raw bytes.
-					log.Debugf("failed to get return type: %s", err)
-					returndec = recpt.Return
-				} else {
-					return nil, fmt.Errorf("failed to get return type: %w", err)
-				}
-			} else {
+			switch t, err := cia.getReturnType(ctx, vmsg.To, vmsg.Method); {
+			case errors.Is(err, ErrMetadataNotFound):
+				// This is not necessarily an error -- EVM methods (and in the future native actors) may
+				// return just bytes, and in the not so distant future we'll have native wasm actors
+				// that are by definition not in the registry.
+				// So in this case, log a debug message and retun the raw bytes.
+				log.Debugf("failed to get return type: %s", err)
+				returndec = recpt.Return
+			case err != nil:
+				return nil, fmt.Errorf("failed to get return type: %w", err)
+			default:
 				if err := t.UnmarshalCBOR(bytes.NewReader(recpt.Return)); err != nil {
 					return nil, err
 				}

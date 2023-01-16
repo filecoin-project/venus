@@ -377,8 +377,8 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 		return nil, fmt.Errorf("not an EIP-1559 transaction: decoded data is not a list")
 	}
 
-	if len(decoded) != 9 && len(decoded) != 12 {
-		return nil, fmt.Errorf("not an EIP-1559 transaction: should have 6 or 9 elements in the list")
+	if len(decoded) != 12 {
+		return nil, fmt.Errorf("not an EIP-1559 transaction: should have 12 elements in the rlp list")
 	}
 
 	chainID, err := parseInt(decoded[0])
