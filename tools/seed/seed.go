@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -28,7 +29,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/minio/blake2b-simd"
 
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/gen/genesis"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/basicfs"
 	"github.com/filecoin-project/venus/pkg/util/storiface"
@@ -36,7 +36,7 @@ import (
 
 var log = logging.Logger("preseal")
 
-func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, ki *crypto.KeyInfo, fakeSectors bool) (*genesis.Miner, *crypto.KeyInfo, error) {
+func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, ki *key.KeyInfo, fakeSectors bool) (*genesis.Miner, *key.KeyInfo, error) {
 	mid, err := address.IDFromAddress(maddr)
 	if err != nil {
 		return nil, nil, err
@@ -91,7 +91,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 			return nil, nil, err
 		}
 	} else {
-		newKeyInfo, err := crypto.NewBLSKeyFromSeed(rand.Reader)
+		newKeyInfo, err := key.NewBLSKeyFromSeed(rand.Reader)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -223,7 +223,7 @@ func cleanupUnsealed(sbfs *basicfs.Provider, ref storage.SectorRef) error {
 	return os.Remove(paths.Unsealed)
 }
 
-func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, key *crypto.KeyInfo) error {
+func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, key *key.KeyInfo) error {
 	output := map[string]genesis.Miner{
 		maddr.String(): *gm,
 	}
@@ -254,7 +254,7 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 	return nil
 }
 
-func createDeals(m *genesis.Miner, ki *crypto.KeyInfo, maddr address.Address, ssize abi.SectorSize) error {
+func createDeals(m *genesis.Miner, ki *key.KeyInfo, maddr address.Address, ssize abi.SectorSize) error {
 	addr, err := ki.Address()
 	if err != nil {
 		return err

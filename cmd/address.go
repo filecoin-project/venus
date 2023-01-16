@@ -20,8 +20,8 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/cmd/tablewriter"
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -265,7 +265,7 @@ var balanceCmd = &cmds.Command{
 
 // WalletSerializeResult is the type wallet export and import return and expect.
 type WalletSerializeResult struct {
-	KeyInfo []*crypto.KeyInfo
+	KeyInfo []*key.KeyInfo
 }
 
 var walletImportCmd = &cmds.Command{

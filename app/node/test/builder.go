@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/wallet"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/app/node"
@@ -52,7 +50,7 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 			}),
 		},
 		builderOpts: []node.BuilderOpt{
-			node.SetWalletPassword(wallet.TestPassword),
+			node.SetWalletPassword([]byte("test-password")),
 		},
 		tb: tb,
 	}
