@@ -582,20 +582,13 @@ func (a *ethAPI) ethCallToFilecoinMessage(ctx context.Context, tx types.EthCall)
 		// this is a contract creation
 		to = builtintypes.EthereumAddressManagerActorAddr
 
-		nonce, err := a.mpool.MpoolGetNonce(ctx, from)
-		if err != nil {
-			nonce = 0 // assume a zero nonce on error (e.g. sender doesn't exist).
-		}
-
-		params2, err := actors.SerializeParams(&eam.CreateParams{
-			Initcode: tx.Data,
-			Nonce:    nonce,
-		})
+		initcode := abi.CborBytes(tx.Data)
+		params2, err := actors.SerializeParams(&initcode)
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize Create params: %w", err)
 		}
 		params = params2
-		method = builtintypes.MethodsEAM.Create
+		method = builtintypes.MethodsEAM.CreateExternal
 	} else {
 		addr, err := tx.To.ToFilecoinAddress()
 		if err != nil {
@@ -828,6 +821,11 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 			var params eam.Create2Params
 			err = params.UnmarshalCBOR(bytes.NewReader(smsg.Message.Params))
 			input = params.Initcode
+		case builtintypes.MethodsEAM.CreateExternal:
+			toAddr = nil
+			var params abi.CborBytes
+			err = params.UnmarshalCBOR(bytes.NewReader(smsg.Message.Params))
+			input = []byte(params)
 		}
 		if err != nil {
 			return types.EthTx{}, err

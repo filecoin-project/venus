@@ -55,27 +55,25 @@ type EthTxArgs struct {
 	S                    big.Int     `json:"s"`
 }
 
-func NewEthTxArgsFromMessage(msg *Message) (EthTxArgs, error) {
+func EthTxArgsFromMessage(msg *Message) (EthTxArgs, error) {
 	var (
-		to            *EthAddress
-		decodedParams []byte
-		paramsReader  = bytes.NewReader(msg.Params)
+		to           *EthAddress
+		params       []byte
+		paramsReader = bytes.NewReader(msg.Params)
 	)
+
+	if msg.Version != 0 {
+		return EthTxArgs{}, fmt.Errorf("unsupported msg version: %d", msg.Version)
+	}
 
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		switch msg.Method {
-		case builtintypes.MethodsEAM.Create:
-			var create eam.CreateParams
+		case builtintypes.MethodsEAM.CreateExternal:
+			var create abi.CborBytes
 			if err := create.UnmarshalCBOR(paramsReader); err != nil {
 				return EthTxArgs{}, err
 			}
-			decodedParams = create.Initcode
-		case builtintypes.MethodsEAM.Create2:
-			var create2 eam.Create2Params
-			if err := create2.UnmarshalCBOR(paramsReader); err != nil {
-				return EthTxArgs{}, err
-			}
-			decodedParams = create2.Initcode
+			params = create
 		default:
 			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
 		}
@@ -86,13 +84,32 @@ func NewEthTxArgsFromMessage(msg *Message) (EthTxArgs, error) {
 		}
 		to = &addr
 
-		if len(msg.Params) > 0 {
-			params, err := cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
-			if err != nil {
-				return EthTxArgs{}, err
+		if len(msg.Params) == 0 {
+			if msg.Method != builtintypes.MethodSend {
+				return EthTxArgs{}, fmt.Errorf("cannot invoke method %d on non-EAM actor without params", msg.Method)
 			}
-			decodedParams = params
+		} else {
+			if msg.Method != builtintypes.MethodsEVM.InvokeContract {
+				return EthTxArgs{},
+					fmt.Errorf("invalid methodnum %d: only allowed non-send method is InvokeContract(%d)",
+						msg.Method,
+						builtintypes.MethodsEVM.InvokeContract)
+			}
+
+			params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
+			if err != nil {
+				return EthTxArgs{}, fmt.Errorf("failed to read params byte array: %w", err)
+			}
+
+			if len(params) == 0 {
+				// Otherwise, we don't get a guaranteed round-trip.
+				return EthTxArgs{}, fmt.Errorf("cannot invoke contracts with empty parameters from an eth-account")
+			}
 		}
+	}
+
+	if paramsReader.Len() != 0 {
+		return EthTxArgs{}, fmt.Errorf("extra data found in params")
 	}
 
 	return EthTxArgs{
@@ -100,7 +117,7 @@ func NewEthTxArgsFromMessage(msg *Message) (EthTxArgs, error) {
 		Nonce:                int(msg.Nonce),
 		To:                   to,
 		Value:                msg.Value,
-		Input:                decodedParams,
+		Input:                params,
 		MaxFeePerGas:         msg.GasFeeCap,
 		MaxPriorityFeePerGas: msg.GasPremium,
 		GasLimit:             int(msg.GasLimit),
