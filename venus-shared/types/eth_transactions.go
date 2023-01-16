@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 )
@@ -124,76 +123,83 @@ func EthTxArgsFromMessage(msg *Message) (EthTxArgs, error) {
 	}, nil
 }
 
-func (tx *EthTxArgs) ToSignedMessage() (*SignedMessage, error) {
-	from, err := tx.Sender()
-	if err != nil {
-		return nil, err
+func (tx *EthTxArgs) ToUnsignedMessage(from address.Address) (*Message, error) {
+	if tx.ChainID != Eip155ChainID {
+		return nil, fmt.Errorf("unsupported chain id: %d", tx.ChainID)
 	}
 
-	var to address.Address
+	var err error
+	method := builtintypes.MethodSend
 	var params []byte
-
-	if len(tx.To) == 0 && len(tx.Input) == 0 {
-		return nil, fmt.Errorf("to and input cannot both be empty")
-	}
-
-	var method abi.MethodNum
+	var to address.Address
+	// nil indicates the EAM, only CreateExternal is allowed
 	if tx.To == nil {
-		// TODO unify with applyEvmMsg
-
-		// this is a contract creation
 		to = builtintypes.EthereumAddressManagerActorAddr
-
-		params2, err := actors.SerializeParams(&eam.CreateParams{
-			Initcode: tx.Input,
-			Nonce:    uint64(tx.Nonce),
-		})
+		method = builtintypes.MethodsEAM.CreateExternal
+		if len(tx.Input) == 0 {
+			return nil, fmt.Errorf("cannot call CreateExternal without params")
+		}
+		inputParams := abi.CborBytes(tx.Input)
+		params, err = actors.SerializeParams(&inputParams)
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize Create params: %w", err)
 		}
-		params = params2
-		method = builtintypes.MethodsEAM.Create
-	} else {
-		addr, err := tx.To.ToFilecoinAddress()
-		if err != nil {
-			return nil, err
-		}
-		to = addr
 
-		if len(tx.Input) > 0 {
-			var buf bytes.Buffer
-			if err := cbg.WriteByteArray(&buf, tx.Input); err != nil {
-				return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
-			}
-			params = buf.Bytes()
-			method = builtintypes.MethodsEVM.InvokeContract
-		} else {
+	} else {
+		to, err = tx.To.ToFilecoinAddress()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert To into filecoin addr: %w", err)
+		}
+		if len(tx.Input) == 0 {
+			// Yes, this is redundant, but let's be sure what we're doing
 			method = builtintypes.MethodSend
+			params = make([]byte, 0)
+		} else {
+			// must be InvokeContract
+			method = builtintypes.MethodsEVM.InvokeContract
+			buf := new(bytes.Buffer)
+			if err = cbg.WriteByteArray(buf, tx.Input); err != nil {
+				return nil, fmt.Errorf("failed to write input args: %w", err)
+			}
+
+			params = buf.Bytes()
 		}
 	}
 
-	msg := &Message{
-		Nonce:      uint64(tx.Nonce),
-		From:       from,
+	return &Message{
+		Version:    0,
 		To:         to,
+		From:       from,
+		Nonce:      uint64(tx.Nonce),
 		Value:      tx.Value,
-		Method:     method,
-		Params:     params,
 		GasLimit:   int64(tx.GasLimit),
 		GasFeeCap:  tx.MaxFeePerGas,
 		GasPremium: tx.MaxPriorityFeePerGas,
-	}
+		Method:     method,
+		Params:     params,
+	}, nil
+}
 
-	sig, err := tx.Signature()
+func (tx *EthTxArgs) ToSignedMessage() (*SignedMessage, error) {
+	from, err := tx.Sender()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to calculate sender: %w", err)
 	}
 
-	signedMsg := SignedMessage{
-		Message:   *msg,
-		Signature: *sig,
+	unsignedMsg, err := tx.ToUnsignedMessage(from)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert to unsigned msg: %w", err)
 	}
-	return &signedMsg, nil
+
+	siggy, err := tx.Signature()
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate signature: %w", err)
+	}
+
+	return &SignedMessage{
+		Message:   *unsignedMsg,
+		Signature: *siggy,
+	}, nil
 }
 
 func (tx *EthTxArgs) HashedOriginalRlpMsg() ([]byte, error) {

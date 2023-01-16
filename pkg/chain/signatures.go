@@ -1,7 +1,7 @@
 package chain
 
 import (
-	"golang.org/x/xerrors"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/network"
@@ -20,21 +20,30 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error
 	typ := msg.Signature.Type
 	switch typ {
 	case crypto.SigTypeDelegated:
-		txArgs, err := types.NewEthTxArgsFromMessage(&msg.Message)
+		txArgs, err := types.EthTxArgsFromMessage(&msg.Message)
 		if err != nil {
-			return xerrors.Errorf("failed to reconstruct eth transaction: %w", err)
+			return fmt.Errorf("failed to reconstruct eth transaction: %w", err)
 		}
-		msg, err := txArgs.ToRlpUnsignedMsg()
+		roundTripMsg, err := txArgs.ToUnsignedMessage(msg.Message.From)
 		if err != nil {
-			return xerrors.Errorf("failed to repack eth rlp message: %w", err)
+			return fmt.Errorf("failed to reconstruct filecoin msg: %w", err)
 		}
-		digest = msg
+
+		if !msg.Message.Equals(roundTripMsg) {
+			return fmt.Errorf("ethereum tx failed to roundtrip")
+		}
+
+		rlpEncodedMsg, err := txArgs.ToRlpUnsignedMsg()
+		if err != nil {
+			return fmt.Errorf("failed to repack eth rlp message: %w", err)
+		}
+		digest = rlpEncodedMsg
 	default:
 		digest = msg.Message.Cid().Bytes()
 	}
 
 	if err := crypto.Verify(&msg.Signature, signer, digest); err != nil {
-		return xerrors.Errorf("message %s has invalid signature (type %d): %w", msg.Cid(), typ, err)
+		return fmt.Errorf("message %s has invalid signature (type %d): %w", msg.Cid(), typ, err)
 	}
 	return nil
 }
