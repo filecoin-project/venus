@@ -27,20 +27,20 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var ethCmd = &cmds.Command{
+var evmCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Ethereum operations",
+		Tagline: "Commands related to the Filecoin EVM runtime",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"deploy":           ethDeployCmd,
-		"invoke":           ethInvokeCmd,
-		"stat":             ethGetInfoCmd,
-		"call":             ethCallSimulateCmd,
-		"contract-address": ethGetContractAddressCmd,
+		"deploy":           evmDeployCmd,
+		"invoke":           evmInvokeCmd,
+		"stat":             evmGetInfoCmd,
+		"call":             evmCallSimulateCmd,
+		"contract-address": evmGetContractAddressCmd,
 	},
 }
 
-var ethGetInfoCmd = &cmds.Command{
+var evmGetInfoCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Print eth/filecoin addrs and code cid",
 	},
@@ -96,7 +96,7 @@ var ethGetInfoCmd = &cmds.Command{
 	},
 }
 
-var ethCallSimulateCmd = &cmds.Command{
+var evmCallSimulateCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Simulate an eth contract call",
 	},
@@ -141,7 +141,7 @@ var ethCallSimulateCmd = &cmds.Command{
 	},
 }
 
-var ethGetContractAddressCmd = &cmds.Command{
+var evmGetContractAddressCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Generate contract address from smart contract code",
 	},
@@ -193,7 +193,7 @@ var ethGetContractAddressCmd = &cmds.Command{
 	},
 }
 
-var ethDeployCmd = &cmds.Command{
+var evmDeployCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Deploy an EVM smart contract and return its address",
 	},
@@ -310,7 +310,7 @@ var ethDeployCmd = &cmds.Command{
 	},
 }
 
-var ethInvokeCmd = &cmds.Command{
+var evmInvokeCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Invoke an EVM smart contract using the specified CALLDATA",
 	},

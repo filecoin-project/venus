@@ -6,7 +6,9 @@ import (
 	"fmt"
 )
 
-// set a limit to make sure it doesn't loop infinitely
+// maxListElements restricts the amount of RLP list elements we'll read.
+// The ETH API only ever reads EIP-1559 transactions, which are bounded by
+// 12 elements exactly, so we play it safe and set exactly that limit here.
 const maxListElements = 500
 
 func EncodeRLP(val interface{}) ([]byte, error) {
@@ -14,7 +16,7 @@ func EncodeRLP(val interface{}) ([]byte, error) {
 }
 
 func encodeRLPListItems(list []interface{}) (result []byte, err error) {
-	res := []byte{}
+	var res []byte
 	for _, elem := range list {
 		encoded, err := encodeRLP(elem)
 		if err != nil {
@@ -161,7 +163,7 @@ func decodeLength(data []byte, lenInBytes int) (length int, err error) {
 
 func decodeListElems(data []byte, length int) (res []interface{}, err error) {
 	totalConsumed := 0
-	result := []interface{}{}
+	var result []interface{}
 
 	for i := 0; totalConsumed < length && i < maxListElements; i++ {
 		elem, consumed, err := decodeRLP(data[totalConsumed:])
