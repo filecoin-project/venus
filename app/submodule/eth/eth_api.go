@@ -552,7 +552,7 @@ func (a *ethAPI) EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes
 	if err != nil {
 		return types.EmptyEthHash, err
 	}
-	return types.NewEthHashFromCid(cid)
+	return types.EthHashFromCid(cid)
 }
 
 func (a *ethAPI) ethCallToFilecoinMessage(ctx context.Context, tx types.EthCall) (*types.Message, error) {
@@ -706,7 +706,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 	if err != nil {
 		return types.EthBlock{}, err
 	}
-	parentBlkHash, err := types.NewEthHashFromCid(parentKeyCid)
+	parentBlkHash, err := types.EthHashFromCid(parentKeyCid)
 	if err != nil {
 		return types.EthBlock{}, err
 	}
@@ -715,7 +715,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 	if err != nil {
 		return types.EthBlock{}, err
 	}
-	blkHash, err := types.NewEthHashFromCid(blkCid)
+	blkHash, err := types.EthHashFromCid(blkCid)
 	if err != nil {
 		return types.EthBlock{}, err
 	}
@@ -743,7 +743,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 			}
 			block.Transactions = append(block.Transactions, tx)
 		} else {
-			hash, err := types.NewEthHashFromCid(msg.Cid())
+			hash, err := types.EthHashFromCid(msg.Cid())
 			if err != nil {
 				return types.EthBlock{}, err
 			}
@@ -769,30 +769,27 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 //     use that ID to form the masked ID address.
 //  4. Otherwise, we fetch the actor's ID from the state tree and form the masked ID with it.
 func lookupEthAddress(ctx context.Context, addr address.Address, ca v1.IChain) (types.EthAddress, error) {
-	// Attempt to convert directly.
-	if ethAddr, ok, err := types.TryEthAddressFromFilecoinAddress(addr, false); err != nil {
-		return types.EthAddress{}, err
-	} else if ok {
+	// BLOCK A: We are trying to get an actual Ethereum address from an f410 address.
+	// Attempt to convert directly, if it's an f4 address.
+	ethAddr, err := types.EthAddressFromFilecoinAddress(addr)
+	if err == nil && !ethAddr.IsMaskedID() {
 		return ethAddr, nil
 	}
 
-	// Lookup on the target actor.
+	// Lookup on the target actor and try to get an f410 address.
 	actor, err := ca.StateGetActor(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return types.EthAddress{}, err
 	}
 	if actor.Address != nil {
-		if ethAddr, ok, err := types.TryEthAddressFromFilecoinAddress(*actor.Address, false); err != nil {
-			return types.EthAddress{}, err
-		} else if ok {
+		if ethAddr, err := types.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
 			return ethAddr, nil
 		}
 	}
 
+	// BLOCK B: We gave up on getting an actual Ethereum address and are falling back to a Masked ID address.
 	// Check if we already have an ID addr, and use it if possible.
-	if ethAddr, ok, err := types.TryEthAddressFromFilecoinAddress(addr, true); err != nil {
-		return types.EthAddress{}, err
-	} else if ok {
+	if err == nil && ethAddr.IsMaskedID() {
 		return ethAddr, nil
 	}
 
@@ -850,7 +847,7 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 		r, s, v = types.EthBigIntZero, types.EthBigIntZero, types.EthBigIntZero
 	}
 
-	hash, err := types.NewEthHashFromCid(smsg.Cid())
+	hash, err := types.EthHashFromCid(smsg.Cid())
 	if err != nil {
 		return types.EthTx{}, err
 	}
@@ -882,7 +879,7 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *types.Msg
 		return types.EthTx{}, fmt.Errorf("msg does not exist")
 	}
 	cid := msgLookup.Message
-	txHash, err := types.NewEthHashFromCid(cid)
+	txHash, err := types.EthHashFromCid(cid)
 	if err != nil {
 		return types.EthTx{}, err
 	}
@@ -920,7 +917,7 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *types.Msg
 		}
 	}
 
-	blkHash, err := types.NewEthHashFromCid(parentTSCid)
+	blkHash, err := types.EthHashFromCid(parentTSCid)
 	if err != nil {
 		return types.EthTx{}, err
 	}

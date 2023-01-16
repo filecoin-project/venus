@@ -68,7 +68,7 @@ var evmGetInfoCmd = &cmds.Command{
 				return err
 			}
 		} else if ethAddr != "" {
-			eaddr, err := types.EthAddressFromHex(ethAddr)
+			eaddr, err := types.ParseEthAddress(ethAddr)
 			if err != nil {
 				return err
 			}
@@ -110,12 +110,12 @@ var evmCallSimulateCmd = &cmds.Command{
 			return fmt.Errorf("incorrect number of arguments, got %d", len(req.Arguments))
 		}
 
-		fromEthAddr, err := types.EthAddressFromHex(req.Arguments[0])
+		fromEthAddr, err := types.ParseEthAddress(req.Arguments[0])
 		if err != nil {
 			return err
 		}
 
-		toEthAddr, err := types.EthAddressFromHex(req.Arguments[1])
+		toEthAddr, err := types.ParseEthAddress(req.Arguments[1])
 		if err != nil {
 			return err
 		}
@@ -155,7 +155,7 @@ var evmGetContractAddressCmd = &cmds.Command{
 			return fmt.Errorf("incorrect number of arguments, got %d", len(req.Arguments))
 		}
 
-		sender, err := types.EthAddressFromHex(req.Arguments[0])
+		sender, err := types.ParseEthAddress(req.Arguments[0])
 		if err != nil {
 			return err
 		}

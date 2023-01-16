@@ -8,7 +8,6 @@ import (
 
 	"github.com/awnumar/memguard"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	acrypto "github.com/filecoin-project/venus/pkg/crypto"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
@@ -17,7 +16,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/sha3"
 )
 
 var log = logging.Logger("keyinfo")
@@ -156,17 +154,18 @@ func (ki *KeyInfo) Address() (address.Address, error) {
 		return address.NewSecp256k1Address(pubKey)
 	}
 	if ki.SigType == types.SigTypeDelegated {
-		// Assume eth for now
-		hasher := sha3.NewLegacyKeccak256()
-		// if we get an uncompressed public key (that's what we get from the library,
-		// but putting this check here for defensiveness), strip the prefix
-		if pubKey[0] == 0x04 {
-			pubKey = pubKey[1:]
+		// Transitory Delegated signature verification as per FIP-0055
+		ethAddr, err := types.EthAddressFromPubKey(pubKey)
+		if err != nil {
+			return address.Undef, fmt.Errorf("failed to calculate Eth address from public key: %w", err)
+		}
+		ea, err := types.CastEthAddress(ethAddr)
+		if err != nil {
+			return address.Undef, fmt.Errorf("failed to create ethereum address from bytes: %w", err)
 		}
 
-		hasher.Write(pubKey)
-
-		return address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, hasher.Sum(nil)[12:])
+		// return address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, hasher.Sum(nil)[12:])
+		return ea.ToFilecoinAddress()
 	}
 
 	return address.Undef, errors.Errorf("can not generate address for unknown crypto system: %d", ki.SigType)

@@ -14,8 +14,8 @@ import (
 
 func TestNetworkNamtToNetworkType(t *testing.T) {
 	tf.UnitTest(t)
-	assert.Len(t, NetworkTypeWithNetworkName, 7)
-	assert.Len(t, NetworkNameWithNetworkType, 7)
+	assert.Len(t, NetworkTypeWithNetworkName, 8)
+	assert.Len(t, NetworkNameWithNetworkType, 8)
 	for nt, nn := range NetworkTypeWithNetworkName {
 		got, err := NetworkNameToNetworkType(nn)
 		assert.Nil(t, err)
