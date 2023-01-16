@@ -49,6 +49,8 @@ func TestMessageReceiptBasic(t *testing.T) {
 			},
 
 			Finished: func() {
+				// V0 version MessageReceipt does not contain EventsRoot field
+				src.EventsRoot = nil
 				require.Equal(t, src, dst, "from src to dst through cbor")
 				require.Equal(t, src.String(), dst.String(), "string representation")
 			},

@@ -271,9 +271,9 @@ func init() {
 	ethint := types.EthUint64(5)
 	addExample(ethint)
 	addExample(&ethint)
-	ethaddr, _ := types.EthAddressFromHex("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
+	ethaddr, _ := types.ParseEthAddress("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
 	addExample(&ethaddr)
-	ethhash, _ := types.NewEthHashFromCid(c)
+	ethhash, _ := types.EthHashFromCid(c)
 	addExample(&ethhash)
 	ethFeeHistoryReward := [][]types.EthBigInt{}
 	addExample(&ethFeeHistoryReward)
