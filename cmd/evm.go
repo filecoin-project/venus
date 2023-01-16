@@ -232,15 +232,8 @@ var evmDeployCmd = &cmds.Command{
 			return err
 		}
 
-		nonce, err := env.(*node.Env).MessagePoolAPI.MpoolGetNonce(ctx, fromAddr)
-		if err != nil {
-			nonce = 0 // assume a zero nonce on error (e.g. sender doesn't exist).
-		}
-
-		params, err := actors.SerializeParams(&eam.CreateParams{
-			Initcode: contract,
-			Nonce:    nonce,
-		})
+		initcode := abi.CborBytes(contract)
+		params, err := actors.SerializeParams(&initcode)
 		if err != nil {
 			return fmt.Errorf("failed to serialize Create params: %w", err)
 		}
@@ -249,7 +242,7 @@ var evmDeployCmd = &cmds.Command{
 			To:     builtintypes.EthereumAddressManagerActorAddr,
 			From:   fromAddr,
 			Value:  big.Zero(),
-			Method: builtintypes.MethodsEAM.Create,
+			Method: builtintypes.MethodsEAM.CreateExternal,
 			Params: params,
 		}
 
