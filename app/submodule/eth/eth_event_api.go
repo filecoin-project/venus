@@ -545,7 +545,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*types.EthFilterRe
 			return nil, err
 		}
 
-		log.TransactionHash, err = types.NewEthHashFromCid(ev.MsgCid)
+		log.TransactionHash, err = types.EthHashFromCid(ev.MsgCid)
 		if err != nil {
 			return nil, err
 		}
@@ -554,7 +554,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*types.EthFilterRe
 		if err != nil {
 			return nil, err
 		}
-		log.BlockHash, err = types.NewEthHashFromCid(c)
+		log.BlockHash, err = types.EthHashFromCid(c)
 		if err != nil {
 			return nil, err
 		}
@@ -573,7 +573,7 @@ func ethFilterResultFromTipSets(tsks []types.TipSetKey) (*types.EthFilterResult,
 		if err != nil {
 			return nil, err
 		}
-		hash, err := types.NewEthHashFromCid(c)
+		hash, err := types.EthHashFromCid(c)
 		if err != nil {
 			return nil, err
 		}
@@ -588,7 +588,7 @@ func ethFilterResultFromMessages(cs []cid.Cid) (*types.EthFilterResult, error) {
 	res := &types.EthFilterResult{}
 
 	for _, c := range cs {
-		hash, err := types.NewEthHashFromCid(c)
+		hash, err := types.EthHashFromCid(c)
 		if err != nil {
 			return nil, err
 		}
