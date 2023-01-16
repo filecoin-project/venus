@@ -18,6 +18,8 @@ const (
 	MessageReceiptV1 MessageReceiptVersion = 1
 )
 
+const EventAMTBitwidth = 5
+
 // MessageReceipt is what is returned by executing a message on the vm.
 type MessageReceipt struct {
 	version MessageReceiptVersion
@@ -26,7 +28,7 @@ type MessageReceipt struct {
 	Return   []byte
 	GasUsed  int64
 
-	EventsRoot *cid.Cid // Root of Event AMT
+	EventsRoot *cid.Cid // Root of Event AMT with bitwidth = EventAMTBitwidth
 }
 
 // NewMessageReceiptV0 creates a new pre FIP-0049 receipt with no capability to

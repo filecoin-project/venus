@@ -16,7 +16,6 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus/pkg/crypto/delegated"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 )
 
@@ -329,7 +328,7 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
-	ethAddr, err := delegated.EthAddressFromPubKey(pubk)
+	ethAddr, err := EthAddressFromPubKey(pubk)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -378,8 +377,8 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 		return nil, fmt.Errorf("not an EIP-1559 transaction: decoded data is not a list")
 	}
 
-	if len(decoded) != 9 && len(decoded) != 12 {
-		return nil, fmt.Errorf("not an EIP-1559 transaction: should have 6 or 9 elements in the list")
+	if len(decoded) != 12 {
+		return nil, fmt.Errorf("not an EIP-1559 transaction: should have 12 elements in the rlp list")
 	}
 
 	chainID, err := parseInt(decoded[0])

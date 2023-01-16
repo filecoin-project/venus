@@ -327,14 +327,6 @@ func blockDelay(req *cmds.Request) (uint64, error) {
 	return cfg.NetworkParams.BlockDelay, nil
 }
 
-type ActorInfo struct {
-	Address string
-	Balance string
-	Nonce   uint64
-	Code    string
-	Head    string
-}
-
 var stateGetActorCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Print actor information",
@@ -358,17 +350,19 @@ var stateGetActorCmd = &cmds.Command{
 			return err
 		}
 
+		buf := &bytes.Buffer{}
+		writer := NewSilentWriter(buf)
 		strtype := builtin.ActorNameByCode(a.Code)
 
-		return re.Emit(ActorInfo{
-			Address: addr.String(),
-			Balance: fmt.Sprintf("%s", types.FIL(a.Balance)),
-			Nonce:   a.Nonce,
-			Code:    fmt.Sprintf("%s (%s)", a.Code, strtype),
-			Head:    a.Head.String(),
-		})
+		writer.Printf("Address:\t%s\n", addr)
+		writer.Printf("Balance:\t%s\n", types.FIL(a.Balance))
+		writer.Printf("Nonce:\t\t%d\n", a.Nonce)
+		writer.Printf("Code:\t\t%s (%s)\n", a.Code, strtype)
+		writer.Printf("Head:\t\t%s\n", a.Head)
+		writer.Printf("Delegated address:\t\t%s\n", a.Address)
+
+		return re.Emit(buf)
 	},
-	Type: ActorInfo{},
 }
 
 var stateLookupIDCmd = &cmds.Command{

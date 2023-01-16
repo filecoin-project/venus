@@ -125,8 +125,8 @@ Paych COMMANDS
 Cid COMMANDS
   manifest-cid-from-car  - Get the manifest CID from a car file
 
-Eth COMMANDS
-  eth                    - Manage eth contract 
+Evm COMMANDS
+  evm                    - Commands related to the Filecoin EVM runtime
 
 TOOL COMMANDS
   inspect                - Show info about the venus node
@@ -178,7 +178,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"paych":   paychCmd,
 	"msig":    multisigCmd,
 	"info":    infoCmd,
-	"eth":     ethCmd,
+	"evm":     evmCmd,
 }
 
 func init() {

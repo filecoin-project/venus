@@ -46,7 +46,7 @@ type ActorV5 struct {
 	Head    cid.Cid
 	Nonce   uint64
 	Balance BigInt
-	// Predictable Address
+	// Deterministic Address
 	Address *address.Address
 }
 

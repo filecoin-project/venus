@@ -196,6 +196,8 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 		return true
 	}
 	// TODO: optimize this naive algorithm
+	// tracked in https://github.com/filecoin-project/lotus/issues/9987
+
 	// Note keys names may be repeated so we may have multiple opportunities to match
 
 	matched := map[string]bool{}
@@ -446,7 +448,7 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTS, rc
 			continue
 		}
 
-		evtArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(5))
+		evtArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 		if err != nil {
 			return nil, xerrors.Errorf("load events amt: %w", err)
 		}
