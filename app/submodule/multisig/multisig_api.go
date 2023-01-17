@@ -107,12 +107,12 @@ func (a *multiSig) StateMsigInfo(ctx context.Context, addr address.Address, tsk 
 
 	ret.StartEpoch, err = msas.StartEpoch()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get start epoch")
+		return nil, fmt.Errorf("failed to get start epoch: %w", err)
 	}
 
 	ret.UnlockDuration, err = msas.UnlockDuration()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get unlocked duration")
+		return nil, fmt.Errorf("failed to get unlocked duration %w", err)
 	}
 
 	return ret, nil
