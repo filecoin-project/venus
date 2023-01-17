@@ -67,6 +67,57 @@ func (a *multiSig) MsigCreate(ctx context.Context, req uint64, addrs []address.A
 	}, nil
 }
 
+func (a *multiSig) StateMsigInfo(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.MsigInfo, error) {
+	ret := &types.MsigInfo{}
+
+	ts, err := a.state.ChainGetTipSet(ctx, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	act, err := a.state.StateGetActor(ctx, addr, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load multisig actor: %w", err)
+	}
+	msas, err := multisig.Load(a.store.Store(ctx), act)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load multisig actor state: %w", err)
+	}
+
+	ret.ApprovalsThreshold, err = msas.Threshold()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get threshold: %w", err)
+	}
+
+	ret.Signers, err = msas.Signers()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get signers: %w", err)
+	}
+
+	ret.InitialBalance, err = msas.InitialBalance()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get initial balance: %w", err)
+	}
+
+	ret.CurrentBalance = act.Balance
+	ret.LockBalance, err = msas.LockedBalance(ts.Height())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get locked balance: %w", err)
+	}
+
+	ret.StartEpoch, err = msas.StartEpoch()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get start epoch")
+	}
+
+	ret.UnlockDuration, err = msas.UnlockDuration()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get unlocked duration")
+	}
+
+	return ret, nil
+}
+
 func (a *multiSig) MsigPropose(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error) {
 	mb, err := a.messageBuilder(ctx, src)
 	if err != nil {

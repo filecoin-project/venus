@@ -2539,6 +2539,21 @@ func (mr *MockFullNodeMockRecorder) StateMinerWorkerAddress(arg0, arg1, arg2 int
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerWorkerAddress", reflect.TypeOf((*MockFullNode)(nil).StateMinerWorkerAddress), arg0, arg1, arg2)
 }
 
+// StateMsigInfo mocks base method.
+func (m *MockFullNode) StateMsigInfo(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (*types.MsigInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMsigInfo", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*types.MsigInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMsigInfo indicates an expected call of StateMsigInfo.
+func (mr *MockFullNodeMockRecorder) StateMsigInfo(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMsigInfo", reflect.TypeOf((*MockFullNode)(nil).StateMsigInfo), arg0, arg1, arg2)
+}
+
 // StateNetworkName mocks base method.
 func (m *MockFullNode) StateNetworkName(arg0 context.Context) (types.NetworkName, error) {
 	m.ctrl.T.Helper()

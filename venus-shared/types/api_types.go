@@ -140,6 +140,16 @@ var EmptyVesting = MsigVesting{
 	UnlockDuration: -1,
 }
 
+type MsigInfo struct {
+	ApprovalsThreshold uint64
+	Signers            []address.Address
+	InitialBalance     abi.TokenAmount
+	CurrentBalance     abi.TokenAmount
+	LockBalance        abi.TokenAmount
+	StartEpoch         abi.ChainEpoch
+	UnlockDuration     abi.ChainEpoch
+}
+
 // SectorInfo provides information about a sector construction
 type SectorInfo struct {
 	Size         abi.SectorSize
