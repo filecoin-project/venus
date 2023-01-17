@@ -45,7 +45,7 @@ func TestLoadBuiltinActors(t *testing.T) {
 	full := mock.NewMockFullNode(ctrl)
 
 	for nn := range NetworkNameWithNetworkType {
-		if nn == types.NetworkNameWallaby || nn == types.NetworkNameHyperspace {
+		if nn == types.NetworkNameWallaby {
 			continue
 		}
 
