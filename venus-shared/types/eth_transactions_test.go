@@ -19,6 +19,7 @@ import (
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
+	_ "github.com/filecoin-project/venus/pkg/crypto/delegated"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 )
 
