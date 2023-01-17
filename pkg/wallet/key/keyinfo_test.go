@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"testing"
 
@@ -19,12 +18,6 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/crypto"
-)
-
-// copy from `github.com/filecoin-project/venus/pkg/testhelpers/testflags`，avoid `import cycle not allowed`
-var (
-	integrationTest = flag.Bool("integration", true, "Run the integration go tests") // nolint
-	unitTest        = flag.Bool("unit", true, "Run the unit go tests")               // nolint
 )
 
 func TestKeyInfoAddress(t *testing.T) {
