@@ -583,6 +583,7 @@ type IMultiSigStruct struct {
 		MsigSwapApprove         func(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error)                     `perm:"sign"`
 		MsigSwapCancel          func(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error)                                               `perm:"sign"`
 		MsigSwapPropose         func(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error)                                                            `perm:"sign"`
+		StateMsigInfo           func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.MsigInfo, error)                                                                                                                    `perm:"read"`
 	}
 }
 
@@ -636,6 +637,9 @@ func (s *IMultiSigStruct) MsigSwapCancel(p0 context.Context, p1 address.Address,
 }
 func (s *IMultiSigStruct) MsigSwapPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*types.MessagePrototype, error) {
 	return s.Internal.MsigSwapPropose(p0, p1, p2, p3, p4)
+}
+func (s *IMultiSigStruct) StateMsigInfo(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.MsigInfo, error) {
+	return s.Internal.StateMsigInfo(p0, p1, p2)
 }
 
 type INetworkStruct struct {

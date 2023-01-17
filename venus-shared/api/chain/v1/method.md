@@ -195,6 +195,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [MsigSwapApprove](#msigswapapprove)
   * [MsigSwapCancel](#msigswapcancel)
   * [MsigSwapPropose](#msigswappropose)
+  * [StateMsigInfo](#statemsiginfo)
 * [Network](#network)
   * [ID](#id)
   * [NetAddrsListen](#netaddrslisten)
@@ -6065,6 +6066,41 @@ Response:
     "Params": "Ynl0ZSBhcnJheQ=="
   },
   "ValidNonce": true
+}
+```
+
+### StateMsigInfo
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "ApprovalsThreshold": 42,
+  "Signers": [
+    "f01234"
+  ],
+  "InitialBalance": "0",
+  "CurrentBalance": "0",
+  "LockBalance": "0",
+  "StartEpoch": 10101,
+  "UnlockDuration": 10101
 }
 ```
 

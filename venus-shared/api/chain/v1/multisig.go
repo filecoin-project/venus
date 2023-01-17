@@ -11,6 +11,7 @@ import (
 
 type IMultiSig interface {
 	MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (*types.MessagePrototype, error)   //perm:sign
+	StateMsigInfo(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.MsigInfo, error)                                                                                   //perm:read
 	MsigPropose(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error)         //perm:sign
 	MsigAddPropose(ctx context.Context, msig address.Address, src address.Address, newAdd address.Address, inc bool) (*types.MessagePrototype, error)                                        //perm:sign
 	MsigAddApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, newAdd address.Address, inc bool) (*types.MessagePrototype, error) //perm:sign
