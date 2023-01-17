@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 )
 
-// //////// market //////////
+////////// market //////////
 const (
 	DealMaxLabelSize     = market.DealMaxLabelSize
 	EpochUndefined       = market.EpochUndefined
@@ -56,7 +56,7 @@ var (
 	ValidateDealsForActivation   = market.ValidateDealsForActivation
 )
 
-// //////// miner //////////
+////////// miner //////////
 const (
 	AddressedPartitionsMax                       = miner.AddressedPartitionsMax
 	AddressedSectorsMax                          = miner.AddressedSectorsMax
@@ -170,7 +170,7 @@ var (
 	SectorKey                              = miner.SectorKey
 )
 
-// //////// multisig //////////
+////////// multisig //////////
 const (
 	SignersMax = multisig.SignersMax
 )
@@ -191,7 +191,7 @@ type (
 	TxnIDParams                       = multisig.TxnIDParams
 )
 
-// //////// paych //////////
+////////// paych //////////
 const (
 	LaneStatesAmtBitwidth = paych.LaneStatesAmtBitwidth
 	SettleDelay           = paych.SettleDelay
@@ -206,7 +206,7 @@ type (
 	UpdateChannelStateParams = paych.UpdateChannelStateParams
 )
 
-// //////// verifreg //////////
+////////// verifreg //////////
 const (
 	EndOfLifeClaimDropPeriod                = verifreg.EndOfLifeClaimDropPeriod
 	MaximumVerifiedAllocationExpiration     = verifreg.MaximumVerifiedAllocationExpiration
