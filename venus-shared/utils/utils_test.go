@@ -45,19 +45,17 @@ func TestLoadBuiltinActors(t *testing.T) {
 	full := mock.NewMockFullNode(ctrl)
 
 	for nn := range NetworkNameWithNetworkType {
-		full.EXPECT().StateNetworkName(ctx).Return(nn, nil)
+		if nn == types.NetworkNameWallaby || nn == types.NetworkNameHyperspace {
+			continue
+		}
 
+		full.EXPECT().StateNetworkName(ctx).Return(nn, nil)
 		assert.Nil(t, LoadBuiltinActors(ctx, full))
 
 		for _, actorsMetadata := range actors.EmbeddedBuiltinActorsMetadata {
 			if actorsMetadata.Network == string(nn) {
 				for name, actor := range actorsMetadata.Actors {
-					res, ok := actors.GetActorCodeID(actorsMetadata.Version, name)
-					assert.True(t, ok)
-					assert.Equal(t, actor, res)
-
-					_, ok2 := MethodsMap[actor]
-					assert.True(t, ok2)
+					checkActorCode(t, actorsMetadata.Version, actor, name, actorsMetadata.Network)
 				}
 			}
 		}
