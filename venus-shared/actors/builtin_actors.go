@@ -79,7 +79,7 @@ func SetNetworkBundle(networkType int) error {
 		networkBundle = "wallaby"
 	// case types.NetworkHyperspace:
 	case 0x10:
-		networkBundle = "hyperspacenet"
+		networkBundle = "hyperspace"
 	default:
 		networkBundle = "mainnet"
 	}
