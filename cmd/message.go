@@ -84,6 +84,7 @@ var msgSendCmd = &cmds.Command{
 	Options: []cmds.Option{
 		cmds.StringOption("value", "Value to send with message in FIL"),
 		cmds.StringOption("from", "address to send message from"),
+		cmds.StringOption("from-eth-addr", "optionally specify the eth addr to send funds from"),
 		feecapOption,
 		premiumOption,
 		limitOption,
@@ -109,9 +110,17 @@ var msgSendCmd = &cmds.Command{
 			methodID = abi.MethodNum(method.(uint64))
 		}
 
-		fromAddr, err := fromAddrOrDefault(req, env)
-		if err != nil {
-			return err
+		var fromAddr address.Address
+		if addrStr, _ := req.Options["from-eth-addr"].(string); len(addrStr) != 0 {
+			fromAddr, err = address.NewFromString(addrStr)
+			if err != nil {
+				return err
+			}
+		} else {
+			fromAddr, err = fromAddrOrDefault(req, env)
+			if err != nil {
+				return err
+			}
 		}
 
 		if methodID == builtin.MethodSend && fromAddr.String() == toAddr.String() {

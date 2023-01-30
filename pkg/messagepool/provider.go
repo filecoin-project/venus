@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/messagesigner"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -49,7 +50,7 @@ type mpoolProvider struct {
 	config *config.NetworkParamsConfig
 	ps     *pubsub.PubSub
 
-	lite MpoolNonceAPI
+	lite messagesigner.MpoolNonceAPI
 }
 
 var _ Provider = (*mpoolProvider)(nil)
@@ -64,7 +65,7 @@ func NewProvider(sm *statemanger.Stmgr, cs *chain.Store, cms *chain.MessageStore
 	}
 }
 
-func NewProviderLite(sm *chain.Store, ps *pubsub.PubSub, noncer MpoolNonceAPI) Provider {
+func NewProviderLite(sm *chain.Store, ps *pubsub.PubSub, noncer messagesigner.MpoolNonceAPI) Provider {
 	return &mpoolProvider{sm: sm, ps: ps, lite: noncer}
 }
 
