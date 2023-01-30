@@ -2,6 +2,8 @@ package repo
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/filecoin-project/venus/pkg/repo/fskeystore"
@@ -95,11 +97,6 @@ func (mr *MemRepo) PaychDatastore() Datastore {
 	return mr.Paych
 }
 
-/*// ChainDatastore returns the chain datastore.
-func (mr *MemRepo) MarketDatastore() Datastore {
-	return mr.Market
-}
-*/
 // ChainDatastore returns the chain datastore.
 func (mr *MemRepo) MetaDatastore() Datastore {
 	return mr.Meta
@@ -149,6 +146,14 @@ func (mr *MemRepo) Path() (string, error) {
 // JournalPath returns a string to satisfy the repo interface.
 func (mr *MemRepo) JournalPath() string {
 	return "in_memory_filecoin_journal_path"
+}
+
+func (mr *MemRepo) SqlitePath() (string, error) {
+	sqlitePath := filepath.Join(os.TempDir(), "sqlite")
+	if err := os.MkdirAll(sqlitePath, 0755); err != nil {
+		return "", err
+	}
+	return sqlitePath, nil
 }
 
 // repo return the repo

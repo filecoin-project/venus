@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -17,7 +15,7 @@ type MemPoolFilter struct {
 	ch         chan<- interface{}
 
 	mu        sync.Mutex
-	collected []cid.Cid
+	collected []*types.SignedMessage
 	lastTaken time.Time
 }
 
@@ -54,10 +52,10 @@ func (f *MemPoolFilter) CollectMessage(ctx context.Context, msg *types.SignedMes
 		copy(f.collected, f.collected[1:])
 		f.collected = f.collected[:len(f.collected)-1]
 	}
-	f.collected = append(f.collected, msg.Cid())
+	f.collected = append(f.collected, msg)
 }
 
-func (f *MemPoolFilter) TakeCollectedMessages(context.Context) []cid.Cid {
+func (f *MemPoolFilter) TakeCollectedMessages(context.Context) []*types.SignedMessage {
 	f.mu.Lock()
 	collected := f.collected
 	f.collected = nil

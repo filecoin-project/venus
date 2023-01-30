@@ -155,6 +155,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ Concurrent
 	- CreateBackup
 	- Discover
+	+ EthGetTransactionHashByCid
 	+ GasBatchEstimateMessageGas
 	> GasEstimateMessageGas {[func(context.Context, *internal.Message, *types.MessageSendSpec, types.TipSetKey) (*internal.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
 	+ GetActor

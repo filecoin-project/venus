@@ -40,6 +40,7 @@ type Config struct {
 	SlashFilterDs *SlashFilterDsConfig `json:"slashFilter"`
 	RateLimitCfg  *RateLimitCfg        `json:"rateLimit"`
 	ActorEventCfg *ActorEventConfig    `json:"actorEvent"`
+	FevmConfig    *FevmConfig          `json:"fevm"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -415,6 +416,21 @@ func newActorEventConfig() *ActorEventConfig {
 	}
 }
 
+type FevmConfig struct {
+	// EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids
+	// You will not be able to look up ethereum transactions by their hash if this is disabled.
+	EnableEthHashToFilecoinCidMapping bool
+	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
+	// Set to 0 to keep all mappings
+	EthTxHashMappingLifetimeDays int
+}
+
+func newFevmConfig() *FevmConfig {
+	return &FevmConfig{
+		EnableEthHashToFilecoinCidMapping: false,
+	}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -430,6 +446,7 @@ func NewDefaultConfig() *Config {
 		SlashFilterDs: newDefaultSlashFilterDsConfig(),
 		RateLimitCfg:  newRateLimitConfig(),
 		ActorEventCfg: newActorEventConfig(),
+		FevmConfig:    newFevmConfig(),
 	}
 }
 
