@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
+	"github.com/filecoin-project/venus/pkg/messagesigner"
 	"github.com/filecoin-project/venus/pkg/repo"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -55,7 +56,7 @@ type MessagePoolSubmodule struct { //nolint
 	MessageSub *pubsub.Subscription
 
 	MPool      *messagepool.MessagePool
-	msgSigner  *messagepool.MessageSigner
+	msgSigner  *messagesigner.MessageSigner
 	chain      *chain.ChainSubmodule
 	network    *network.NetworkSubmodule
 	walletAPI  v1api.IWallet
@@ -94,7 +95,7 @@ func NewMpoolSubmodule(ctx context.Context, cfg messagepoolConfig,
 		walletAPI:  wallet.API(),
 		network:    network,
 		networkCfg: cfg.Repo().Config().NetworkParams,
-		msgSigner:  messagepool.NewMessageSigner(wallet.WalletIntersection(), mp, cfg.Repo().MetaDatastore()),
+		msgSigner:  messagesigner.NewMessageSigner(wallet.WalletIntersection(), mp, cfg.Repo().MetaDatastore()),
 	}, nil
 }
 

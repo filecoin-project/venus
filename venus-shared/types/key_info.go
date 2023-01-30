@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 )
 
@@ -90,6 +91,19 @@ func SignType2Key(kt SigType) KeyType {
 		return KTDelegated
 	default:
 		return KTUnknown
+	}
+}
+
+func AddressProtocol2SignType(p address.Protocol) SigType {
+	switch p {
+	case address.BLS:
+		return SigTypeBLS
+	case address.SECP256K1:
+		return SigTypeSecp256k1
+	case address.Delegated:
+		return SigTypeDelegated
+	default:
+		return SigTypeUnknown
 	}
 }
 
