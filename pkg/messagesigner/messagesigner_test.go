@@ -1,5 +1,5 @@
 // stm: #unit
-package messagepool
+package messagesigner
 
 import (
 	"context"
