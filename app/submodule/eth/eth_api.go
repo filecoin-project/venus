@@ -1070,7 +1070,7 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLooku
 			}
 
 			for _, entry := range evt.Entries {
-				value := types.EthBytes(leftpad32(decodeLogBytes(entry.Value)))
+				value := types.EthBytes(leftpad32(entry.Value)) // value has already been cbor-decoded but see https://github.com/filecoin-project/ref-fvm/issues/1345
 				if entry.Key == types.EthTopic1 || entry.Key == types.EthTopic2 || entry.Key == types.EthTopic3 || entry.Key == types.EthTopic4 {
 					l.Topics = append(l.Topics, value)
 				} else {
