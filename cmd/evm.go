@@ -309,7 +309,6 @@ var evmInvokeCmd = &cmds.Command{
 	},
 	Arguments: []cmds.Argument{
 		cmds.StringArg("address", true, false, "address"),
-		cmds.StringArg("contract-entry-point", true, false, ""),
 		cmds.StringArg("call-data", false, false, "call data"),
 	},
 	Options: []cmds.Option{
@@ -319,8 +318,8 @@ var evmInvokeCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := req.Context
 
-		if argc := len(req.Arguments); argc < 2 || argc > 3 {
-			return fmt.Errorf("must pass the address, entry point and (optionally) input data")
+		if len(req.Arguments) != 2 {
+			return fmt.Errorf("must pass the address and calldata")
 		}
 
 		addr, err := address.NewFromString(req.Arguments[0])
@@ -335,7 +334,7 @@ var evmInvokeCmd = &cmds.Command{
 
 		var callData []byte
 		if len(req.Arguments) == 3 {
-			callData, err = hex.DecodeString(req.Arguments[2])
+			callData, err = hex.DecodeString(req.Arguments[1])
 			if err != nil {
 				return fmt.Errorf("decoding hex input data: %w", err)
 			}
@@ -370,7 +369,7 @@ var evmInvokeCmd = &cmds.Command{
 			To:     addr,
 			From:   fromAddr,
 			Value:  val,
-			Method: abi.MethodNum(2),
+			Method: builtintypes.MethodsEVM.InvokeContract,
 			Params: callData,
 		}
 
