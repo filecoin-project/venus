@@ -76,6 +76,7 @@
   * [EthGetTransactionByBlockNumberAndIndex](#ethgettransactionbyblocknumberandindex)
   * [EthGetTransactionByHash](#ethgettransactionbyhash)
   * [EthGetTransactionCount](#ethgettransactioncount)
+  * [EthGetTransactionHashByCid](#ethgettransactionhashbycid)
   * [EthGetTransactionReceipt](#ethgettransactionreceipt)
   * [EthMaxPriorityFeePerGas](#ethmaxpriorityfeepergas)
   * [EthProtocolVersion](#ethprotocolversion)
@@ -2507,6 +2508,22 @@ Inputs:
 ```
 
 Response: `"0x5"`
+
+### EthGetTransactionHashByCid
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 
 ### EthGetTransactionReceipt
 
