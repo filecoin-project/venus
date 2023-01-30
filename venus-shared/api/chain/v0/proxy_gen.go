@@ -525,80 +525,6 @@ func (s *IMessagePoolStruct) MpoolSub(p0 context.Context) (<-chan types.MpoolUpd
 	return s.Internal.MpoolSub(p0)
 }
 
-type IMultiSigStruct struct {
-	Internal struct {
-		MsigAddApprove          func(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, newAdd address.Address, inc bool) (cid.Cid, error)                                   `perm:"sign"`
-		MsigAddCancel           func(ctx context.Context, msig address.Address, src address.Address, txID uint64, newAdd address.Address, inc bool) (cid.Cid, error)                                                             `perm:"sign"`
-		MsigAddPropose          func(ctx context.Context, msig address.Address, src address.Address, newAdd address.Address, inc bool) (cid.Cid, error)                                                                          `perm:"sign"`
-		MsigApprove             func(ctx context.Context, msig address.Address, txID uint64, src address.Address) (cid.Cid, error)                                                                                               `perm:"sign"`
-		MsigApproveTxnHash      func(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error) `perm:"sign"`
-		MsigCancel              func(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)                                                                  `perm:"sign"`
-		MsigCancelTxnHash       func(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)                                                                  `perm:"sign"`
-		MsigCreate              func(context.Context, uint64, []address.Address, abi.ChainEpoch, types.BigInt, address.Address, types.BigInt) (cid.Cid, error)                                                                   `perm:"sign"`
-		MsigGetAvailableBalance func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)                                                                                                                    `perm:"read"`
-		MsigGetPending          func(context.Context, address.Address, types.TipSetKey) ([]*types.MsigTransaction, error)                                                                                                        `perm:"read"`
-		MsigGetVested           func(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)                                                                                `perm:"read"`
-		MsigGetVestingSchedule  func(context.Context, address.Address, types.TipSetKey) (types.MsigVesting, error)                                                                                                               `perm:"read"`
-		MsigPropose             func(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error)                                        `perm:"sign"`
-		MsigRemoveSigner        func(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (cid.Cid, error)                                                              `perm:"sign"`
-		MsigSwapApprove         func(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, oldAdd address.Address, newAdd address.Address) (cid.Cid, error)                     `perm:"sign"`
-		MsigSwapCancel          func(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (cid.Cid, error)                                               `perm:"sign"`
-		MsigSwapPropose         func(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (cid.Cid, error)                                                            `perm:"sign"`
-	}
-}
-
-func (s *IMultiSigStruct) MsigAddApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (cid.Cid, error) {
-	return s.Internal.MsigAddApprove(p0, p1, p2, p3, p4, p5, p6)
-}
-func (s *IMultiSigStruct) MsigAddCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (cid.Cid, error) {
-	return s.Internal.MsigAddCancel(p0, p1, p2, p3, p4, p5)
-}
-func (s *IMultiSigStruct) MsigAddPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (cid.Cid, error) {
-	return s.Internal.MsigAddPropose(p0, p1, p2, p3, p4)
-}
-func (s *IMultiSigStruct) MsigApprove(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (cid.Cid, error) {
-	return s.Internal.MsigApprove(p0, p1, p2, p3)
-}
-func (s *IMultiSigStruct) MsigApproveTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (cid.Cid, error) {
-	return s.Internal.MsigApproveTxnHash(p0, p1, p2, p3, p4, p5, p6, p7, p8)
-}
-func (s *IMultiSigStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (cid.Cid, error) {
-	return s.Internal.MsigCancel(p0, p1, p2, p3, p4, p5, p6, p7)
-}
-func (s *IMultiSigStruct) MsigCancelTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (cid.Cid, error) {
-	return s.Internal.MsigCancelTxnHash(p0, p1, p2, p3, p4, p5, p6, p7)
-}
-func (s *IMultiSigStruct) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (cid.Cid, error) {
-	return s.Internal.MsigCreate(p0, p1, p2, p3, p4, p5, p6)
-}
-func (s *IMultiSigStruct) MsigGetAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
-	return s.Internal.MsigGetAvailableBalance(p0, p1, p2)
-}
-func (s *IMultiSigStruct) MsigGetPending(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*types.MsigTransaction, error) {
-	return s.Internal.MsigGetPending(p0, p1, p2)
-}
-func (s *IMultiSigStruct) MsigGetVested(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) {
-	return s.Internal.MsigGetVested(p0, p1, p2, p3)
-}
-func (s *IMultiSigStruct) MsigGetVestingSchedule(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MsigVesting, error) {
-	return s.Internal.MsigGetVestingSchedule(p0, p1, p2)
-}
-func (s *IMultiSigStruct) MsigPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (cid.Cid, error) {
-	return s.Internal.MsigPropose(p0, p1, p2, p3, p4, p5, p6)
-}
-func (s *IMultiSigStruct) MsigRemoveSigner(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (cid.Cid, error) {
-	return s.Internal.MsigRemoveSigner(p0, p1, p2, p3, p4)
-}
-func (s *IMultiSigStruct) MsigSwapApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (cid.Cid, error) {
-	return s.Internal.MsigSwapApprove(p0, p1, p2, p3, p4, p5, p6)
-}
-func (s *IMultiSigStruct) MsigSwapCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (cid.Cid, error) {
-	return s.Internal.MsigSwapCancel(p0, p1, p2, p3, p4, p5)
-}
-func (s *IMultiSigStruct) MsigSwapPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (cid.Cid, error) {
-	return s.Internal.MsigSwapPropose(p0, p1, p2, p3, p4)
-}
-
 type INetworkStruct struct {
 	Internal struct {
 		ID                          func(ctx context.Context) (peer.ID, error)                             `perm:"read"`
@@ -869,7 +795,6 @@ type FullNodeStruct struct {
 	IMarketStruct
 	IMiningStruct
 	IMessagePoolStruct
-	IMultiSigStruct
 	INetworkStruct
 	IPaychanStruct
 	ISyncerStruct

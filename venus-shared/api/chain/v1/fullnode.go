@@ -6,7 +6,6 @@ type FullNode interface {
 	IMarket
 	IMining
 	IMessagePool
-	IMultiSig
 	INetwork
 	IPaychan
 	ISyncer
