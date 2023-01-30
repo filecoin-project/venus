@@ -327,17 +327,9 @@ var evmInvokeCmd = &cmds.Command{
 			return fmt.Errorf("failed to decode address: %w", err)
 		}
 
-		// entryPoint, err := hex.DecodeString(req.Arguments[1])
-		// if err != nil {
-		// 	return fmt.Errorf("failed to decode hex entry point: %w", err)
-		// }
-
-		var callData []byte
-		if len(req.Arguments) == 3 {
-			callData, err = hex.DecodeString(req.Arguments[1])
-			if err != nil {
-				return fmt.Errorf("decoding hex input data: %w", err)
-			}
+		callData, err := hex.DecodeString(req.Arguments[1])
+		if err != nil {
+			return fmt.Errorf("decoding hex input data: %w", err)
 		}
 
 		var buffer bytes.Buffer
