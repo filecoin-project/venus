@@ -54,6 +54,9 @@ type Repo interface {
 	// JournalPath returns the journal path.
 	JournalPath() string
 
+	// SqlitePath returns the path for the Sqlite database
+	SqlitePath() (string, error)
+
 	// Close shuts down the repo.
 	Close() error
 
