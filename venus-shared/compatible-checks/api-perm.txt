@@ -20,7 +20,6 @@ v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/fi
 	- IMessagePool.MpoolPublishByAddr
 	- IMessagePool.MpoolPublishMessage
 	- IMessagePool.MpoolSelects
-	- IMultiSig.MsigCancelTxnHash
 	- INetwork.ID
 	- INetwork.NetAddrsListen
 	- INetwork.NetAgentVersion
@@ -73,7 +72,6 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- IMessagePool.MpoolPublishByAddr
 	- IMessagePool.MpoolPublishMessage
 	- IMessagePool.MpoolSelects
-	- IMultiSig.StateMsigInfo
 	> INetwork.NetConnect: admin <> Net.NetConnect: write
 	> INetwork.NetDisconnect: admin <> Net.NetDisconnect: write
 	- INetwork.NetFindProvidersAsync

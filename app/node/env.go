@@ -6,7 +6,6 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
-	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
@@ -23,11 +22,9 @@ type Env struct {
 	MingingAPI           v1api.IMining
 	MessagePoolAPI       v1api.IMessagePool
 
-	MultiSigAPIV0 v0api.IMultiSig
-	MultiSigAPIV1 v1api.IMultiSig
-	MarketAPI     v1api.IMarket
-	PaychAPI      v1api.IPaychan
-	CommonAPI     v1api.ICommon
+	MarketAPI v1api.IMarket
+	PaychAPI  v1api.IPaychan
+	CommonAPI v1api.ICommon
 }
 
 var _ cmds.Environment = (*Env)(nil)
