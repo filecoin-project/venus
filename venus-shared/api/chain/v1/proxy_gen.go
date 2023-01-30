@@ -956,6 +956,7 @@ type IETHStruct struct {
 		EthGetBlockTransactionCountByHash      func(ctx context.Context, blkHash types.EthHash) (types.EthUint64, error)                                                       `perm:"read"`
 		EthGetBlockTransactionCountByNumber    func(ctx context.Context, blkNum types.EthUint64) (types.EthUint64, error)                                                      `perm:"read"`
 		EthGetCode                             func(ctx context.Context, address types.EthAddress, blkOpt string) (types.EthBytes, error)                                      `perm:"read"`
+		EthGetMessageCidByTransactionHash      func(ctx context.Context, txHash *types.EthHash) (*cid.Cid, error)                                                              `perm:"read"`
 		EthGetStorageAt                        func(ctx context.Context, address types.EthAddress, position types.EthBytes, blkParam string) (types.EthBytes, error)           `perm:"read"`
 		EthGetTransactionByBlockHashAndIndex   func(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error)                                  `perm:"read"`
 		EthGetTransactionByBlockNumberAndIndex func(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error)                                 `perm:"read"`
@@ -1009,6 +1010,9 @@ func (s *IETHStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 
 }
 func (s *IETHStruct) EthGetCode(p0 context.Context, p1 types.EthAddress, p2 string) (types.EthBytes, error) {
 	return s.Internal.EthGetCode(p0, p1, p2)
+}
+func (s *IETHStruct) EthGetMessageCidByTransactionHash(p0 context.Context, p1 *types.EthHash) (*cid.Cid, error) {
+	return s.Internal.EthGetMessageCidByTransactionHash(p0, p1)
 }
 func (s *IETHStruct) EthGetStorageAt(p0 context.Context, p1 types.EthAddress, p2 types.EthBytes, p3 string) (types.EthBytes, error) {
 	return s.Internal.EthGetStorageAt(p0, p1, p2, p3)

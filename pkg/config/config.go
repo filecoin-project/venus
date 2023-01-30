@@ -428,6 +428,7 @@ type FevmConfig struct {
 func newFevmConfig() *FevmConfig {
 	return &FevmConfig{
 		EnableEthHashToFilecoinCidMapping: false,
+		EthTxHashMappingLifetimeDays:      0,
 	}
 }
 
