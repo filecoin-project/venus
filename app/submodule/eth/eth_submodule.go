@@ -40,16 +40,12 @@ type EthSubModule struct { // nolint
 	txHashDBPath string
 
 	ethEventAPI      *ethEventAPI
-	ethTxHashManager *ethTxHashManager // may nil
+	ethTxHashManager *ethTxHashManager
 }
 
 func (em *EthSubModule) Start(ctx context.Context) error {
 	if err := em.ethEventAPI.Start(ctx); err != nil {
 		return err
-	}
-
-	if len(em.txHashDBPath) == 0 {
-		return nil
 	}
 
 	transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(filepath.Join(em.txHashDBPath, "txhash.db"))
@@ -87,11 +83,8 @@ func (em *EthSubModule) Close(ctx context.Context) error {
 	if err := em.ethEventAPI.Close(ctx); err != nil {
 		return err
 	}
-	if em.ethTxHashManager != nil {
-		return em.ethTxHashManager.TransactionHashLookup.Close()
-	}
 
-	return nil
+	return em.ethTxHashManager.TransactionHashLookup.Close()
 }
 
 type fullETHAPI struct {
