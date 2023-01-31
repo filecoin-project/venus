@@ -3,13 +3,10 @@ package eth
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/ethhashlookup"
-	"github.com/filecoin-project/venus/pkg/events"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
@@ -30,6 +27,14 @@ func NewEthSubModule(cfg *config.Config,
 	}
 	em.ethEventAPI = ee
 
+	em.ehtAdapter = &ethAPIDummy{}
+	if em.cfg.FevmConfig.EnableEthRPC {
+		em.ehtAdapter, err = newEthAPI(em)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return em, nil
 }
 
@@ -39,8 +44,8 @@ type EthSubModule struct { // nolint
 	mpoolModule  *mpool.MessagePoolSubmodule
 	txHashDBPath string
 
-	ethEventAPI      *ethEventAPI
-	ethTxHashManager *ethTxHashManager
+	ethEventAPI *ethEventAPI
+	ehtAdapter  ehtAPIAdapter
 }
 
 func (em *EthSubModule) Start(ctx context.Context) error {
@@ -48,35 +53,7 @@ func (em *EthSubModule) Start(ctx context.Context) error {
 		return err
 	}
 
-	transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(filepath.Join(em.txHashDBPath, "txhash.db"))
-	if err != nil {
-		return err
-	}
-
-	ethTxHashManager := ethTxHashManager{
-		chainAPI:              em.chainModule.API(),
-		TransactionHashLookup: transactionHashLookup,
-	}
-	em.ethTxHashManager = &ethTxHashManager
-
-	const ChainHeadConfidence = 1
-	ev, err := events.NewEventsWithConfidence(ctx, em.ethTxHashManager.chainAPI, ChainHeadConfidence)
-	if err != nil {
-		return err
-	}
-
-	// Tipset listener
-	_ = ev.Observe(&ethTxHashManager)
-
-	ch, err := em.mpoolModule.MPool.Updates(ctx)
-	if err != nil {
-		return err
-	}
-	go waitForMpoolUpdates(ctx, ch, &ethTxHashManager)
-	go ethTxHashGC(ctx, em.cfg.FevmConfig.EthTxHashMappingLifetimeDays, &ethTxHashManager)
-
-	return nil
-
+	return em.ehtAdapter.start(ctx)
 }
 
 func (em *EthSubModule) Close(ctx context.Context) error {
@@ -84,19 +61,25 @@ func (em *EthSubModule) Close(ctx context.Context) error {
 		return err
 	}
 
-	return em.ethTxHashManager.TransactionHashLookup.Close()
+	return em.ehtAdapter.close()
+}
+
+type ehtAPIAdapter interface {
+	v1api.IETH
+	start(ctx context.Context) error
+	close() error
 }
 
 type fullETHAPI struct {
-	*ethAPI
+	v1api.IETH
 	*ethEventAPI
 }
 
 var _ v1api.IETH = (*fullETHAPI)(nil)
 
-func (em *EthSubModule) API() v1api.IETH {
+func (em *EthSubModule) API() v1api.FullETH {
 	return &fullETHAPI{
-		ethAPI:      newEthAPI(em),
+		IETH:        em.ehtAdapter,
 		ethEventAPI: em.ethEventAPI,
 	}
 }

@@ -7,6 +7,11 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
+type FullETH interface {
+	IETH
+	IETHEvent
+}
+
 type IETH interface {
 	// These methods are used for Ethereum-compatible JSON-RPC calls
 	//
@@ -44,8 +49,6 @@ type IETH interface {
 	EthCall(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error) //perm:read
 
 	EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error) //perm:read
-
-	IETHEvent
 }
 
 type IETHEvent interface {

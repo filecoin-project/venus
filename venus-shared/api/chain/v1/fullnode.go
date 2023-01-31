@@ -12,5 +12,5 @@ type FullNode interface {
 	ISyncer
 	IWallet
 	ICommon
-	IETH
+	FullETH
 }

@@ -417,8 +417,8 @@ func newActorEventConfig() *ActorEventConfig {
 }
 
 type FevmConfig struct {
-	//EnableEthPRC enables eth_rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
-	EnableEthPRC bool
+	//EnableEthRPC enables eth_rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
+	EnableEthRPC bool
 	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
 	// Set to 0 to keep all mappings
 	EthTxHashMappingLifetimeDays int
@@ -426,7 +426,7 @@ type FevmConfig struct {
 
 func newFevmConfig() *FevmConfig {
 	return &FevmConfig{
-		EnableEthPRC:                 false,
+		EnableEthRPC:                 false,
 		EthTxHashMappingLifetimeDays: 0,
 	}
 }
