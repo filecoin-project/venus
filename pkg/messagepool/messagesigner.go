@@ -1,4 +1,4 @@
-package messagesigner
+package messagepool
 
 import (
 	"bytes"
@@ -8,16 +8,12 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
-
-var log = logging.Logger("messagepool")
 
 const dsKeyActorNonce = "ActorNextNonce"
 
@@ -59,7 +55,7 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb
 	// Sign the message with the nonce
 	msg.Nonce = nonce
 
-	sb, err := SigningBytes(msg, types.AddressProtocol2SignType(msg.From.Protocol()))
+	sb, err := msg.SigningBytes(types.AddressProtocol2SignType(msg.From.Protocol()))
 	if err != nil {
 		return nil, err
 	}
@@ -163,20 +159,4 @@ func (ms *MessageSigner) saveNonce(ctx context.Context, addr address.Address, no
 
 func (ms *MessageSigner) dstoreKey(addr address.Address) datastore.Key {
 	return datastore.KeyWithNamespaces([]string{dsKeyActorNonce, addr.String()})
-}
-
-func SigningBytes(msg *types.Message, sigType crypto.SigType) ([]byte, error) {
-	if sigType == crypto.SigTypeDelegated {
-		txArgs, err := types.EthTxArgsFromMessage(msg)
-		if err != nil {
-			return nil, fmt.Errorf("failed to reconstruct eth transaction: %w", err)
-		}
-		rlpEncodedMsg, err := txArgs.ToRlpUnsignedMsg()
-		if err != nil {
-			return nil, fmt.Errorf("failed to repack eth rlp message: %w", err)
-		}
-		return rlpEncodedMsg, nil
-	}
-
-	return msg.Cid().Bytes(), nil
 }
