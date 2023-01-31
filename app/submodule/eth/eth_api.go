@@ -769,7 +769,7 @@ func (a *ethAPI) EthEstimateGas(ctx context.Context, tx types.EthCall) (types.Et
 func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error) {
 	msg, err := a.ethCallToFilecoinMessage(ctx, tx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}
 	ts, err := a.parseBlkParam(ctx, blkParam)
 	if err != nil {
@@ -778,11 +778,17 @@ func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam string)
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to apply message: %w", err)
 	}
-	if len(invokeResult.MsgRct.Return) > 0 {
+
+	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
+		// As far as I can tell, the Eth API always returns empty on contract deployment
+		return types.EthBytes{}, nil
+
+	} else if len(invokeResult.MsgRct.Return) > 0 {
 		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
 	}
+
 	return types.EthBytes{}, nil
 }
 
