@@ -1143,7 +1143,10 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLooku
 			}
 
 			for _, entry := range evt.Entries {
-				value := types.EthBytes(leftpad32(entry.Value)) // value has already been cbor-decoded but see https://github.com/filecoin-project/ref-fvm/issues/1345
+				value, err := cborDecodeTopicValue(entry.Value)
+				if err != nil {
+					return types.EthTxReceipt{}, fmt.Errorf("failed to decode event log value: %w", err)
+				}
 				if entry.Key == types.EthTopic1 || entry.Key == types.EthTopic2 || entry.Key == types.EthTopic3 || entry.Key == types.EthTopic4 {
 					l.Topics = append(l.Topics, value)
 				} else {
@@ -1252,6 +1255,54 @@ func ethTxHashGC(ctx context.Context, retentionDays int, manager *ethTxHashManag
 		log.Info("garbage collection run on eth transaction hash lookup database. %d entries deleted", entriesDeleted)
 		time.Sleep(gcPeriod)
 	}
+}
+
+func trimLeadingZeros(b []byte) []byte {
+	for i := range b {
+		if b[i] != 0 {
+			return b[i:]
+		}
+	}
+	return []byte{}
+}
+
+func cborEncodeTopicValue(orig []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	err := cbg.WriteByteArray(&buf, trimLeadingZeros(orig))
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func cborDecodeTopicValue(orig []byte) ([]byte, error) {
+	if len(orig) == 0 {
+		return orig, nil
+	}
+	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
+	if err != nil {
+		return nil, err
+	}
+	return leftpad32(decoded), nil
+}
+
+func parseEthTopics(topics types.EthTopicSpec) (map[string][][]byte, error) {
+	keys := map[string][][]byte{}
+	for idx, vals := range topics {
+		if len(vals) == 0 {
+			continue
+		}
+		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
+		key := fmt.Sprintf("topic%d", idx+1)
+		for _, v := range vals {
+			encodedVal, err := cborEncodeTopicValue(v[:])
+			if err != nil {
+				return nil, fmt.Errorf("failed to encode topic value")
+			}
+			keys[key] = append(keys[key], encodedVal)
+		}
+	}
+	return keys, nil
 }
 
 var _ v1.IETH = &ethAPI{}
