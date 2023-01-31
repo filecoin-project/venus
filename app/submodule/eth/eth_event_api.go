@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -28,14 +29,14 @@ var _ v1.IETHEvent = (*ethEventAPI)(nil)
 func newEthEventAPI(em *EthSubModule) (*ethEventAPI, error) {
 	chainAPI := em.chainModule.API()
 	bsstore := em.chainModule.ChainReader.Blockstore()
-	cfg := em.cfg.ActorEventCfg
+	cfg := em.cfg.FevmConfig
 	ee := &ethEventAPI{
 		em:                   em,
 		ChainAPI:             chainAPI,
-		MaxFilterHeightRange: abi.ChainEpoch(cfg.MaxFilterHeightRange),
+		MaxFilterHeightRange: abi.ChainEpoch(cfg.Event.MaxFilterHeightRange),
 	}
 
-	if !cfg.EnableRealTimeFilterAPI {
+	if !cfg.EnableEthRPC || cfg.Event.EnableRealTimeFilterAPI {
 		// all event functionality is disabled
 		// the historic filter API relies on the real time one
 		return ee, nil
@@ -45,13 +46,20 @@ func newEthEventAPI(em *EthSubModule) (*ethEventAPI, error) {
 		ChainAPI:     chainAPI,
 		messageStore: ee.SubManager.messageStore,
 	}
-	ee.FilterStore = filter.NewMemFilterStore(cfg.MaxFilters)
+	ee.FilterStore = filter.NewMemFilterStore(cfg.Event.MaxFilters)
 
 	// Enable indexing of actor events
 	var eventIndex *filter.EventIndex
-	if cfg.EnableHistoricFilterAPI {
+	if !cfg.Event.EnableHistoricFilterAPI {
+		var dbPath string
+		if len(cfg.Event.DatabasePath) == 0 {
+			dbPath = filepath.Join(ee.em.sqlitePath, "events.db")
+		} else {
+			dbPath = cfg.Event.DatabasePath
+		}
+
 		var err error
-		eventIndex, err = filter.NewEventIndex(cfg.ActorEventDatabasePath)
+		eventIndex, err = filter.NewEventIndex(dbPath)
 		if err != nil {
 			return nil, err
 		}
@@ -83,13 +91,13 @@ func newEthEventAPI(em *EthSubModule) (*ethEventAPI, error) {
 			return *actor.Address, true
 		},
 
-		MaxFilterResults: cfg.MaxFilterResults,
+		MaxFilterResults: cfg.Event.MaxFilterResults,
 	}
 	ee.TipSetFilterManager = &filter.TipSetFilterManager{
-		MaxFilterResults: cfg.MaxFilterResults,
+		MaxFilterResults: cfg.Event.MaxFilterResults,
 	}
 	ee.MemPoolFilterManager = &filter.MemPoolFilterManager{
-		MaxFilterResults: cfg.MaxFilterResults,
+		MaxFilterResults: cfg.Event.MaxFilterResults,
 	}
 
 	return ee, nil
@@ -107,12 +115,12 @@ type ethEventAPI struct {
 }
 
 func (e *ethEventAPI) Start(ctx context.Context) error {
-	if !e.em.cfg.ActorEventCfg.EnableRealTimeFilterAPI {
+	if !e.em.cfg.FevmConfig.Event.EnableRealTimeFilterAPI {
 		return nil
 	}
 
 	// Start garbage collection for filters
-	go e.GC(ctx, time.Duration(e.em.cfg.ActorEventCfg.FilterTTL))
+	go e.GC(ctx, time.Duration(e.em.cfg.FevmConfig.Event.FilterTTL))
 
 	ev, err := events.NewEventsWithConfidence(ctx, e.ChainAPI, ChainHeadConfidence)
 	if err != nil {
