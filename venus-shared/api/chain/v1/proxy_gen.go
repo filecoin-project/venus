@@ -897,51 +897,7 @@ func (s *ICommonStruct) Version(p0 context.Context) (types.Version, error) {
 	return s.Internal.Version(p0)
 }
 
-type IETHEventStruct struct {
-	Internal struct {
-		EthGetFilterChanges            func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)                                                `perm:"write"`
-		EthGetFilterLogs               func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)                                                `perm:"write"`
-		EthGetLogs                     func(ctx context.Context, filter *types.EthFilterSpec) (*types.EthFilterResult, error)                                         `perm:"read"`
-		EthNewBlockFilter              func(ctx context.Context) (types.EthFilterID, error)                                                                           `perm:"write"`
-		EthNewFilter                   func(ctx context.Context, filter *types.EthFilterSpec) (types.EthFilterID, error)                                              `perm:"write"`
-		EthNewPendingTransactionFilter func(ctx context.Context) (types.EthFilterID, error)                                                                           `perm:"write"`
-		EthSubscribe                   func(ctx context.Context, eventType string, params *types.EthSubscriptionParams) (<-chan types.EthSubscriptionResponse, error) `perm:"write"`
-		EthUninstallFilter             func(ctx context.Context, id types.EthFilterID) (bool, error)                                                                  `perm:"write"`
-		EthUnsubscribe                 func(ctx context.Context, id types.EthSubscriptionID) (bool, error)                                                            `perm:"write"`
-	}
-}
-
-func (s *IETHEventStruct) EthGetFilterChanges(p0 context.Context, p1 types.EthFilterID) (*types.EthFilterResult, error) {
-	return s.Internal.EthGetFilterChanges(p0, p1)
-}
-func (s *IETHEventStruct) EthGetFilterLogs(p0 context.Context, p1 types.EthFilterID) (*types.EthFilterResult, error) {
-	return s.Internal.EthGetFilterLogs(p0, p1)
-}
-func (s *IETHEventStruct) EthGetLogs(p0 context.Context, p1 *types.EthFilterSpec) (*types.EthFilterResult, error) {
-	return s.Internal.EthGetLogs(p0, p1)
-}
-func (s *IETHEventStruct) EthNewBlockFilter(p0 context.Context) (types.EthFilterID, error) {
-	return s.Internal.EthNewBlockFilter(p0)
-}
-func (s *IETHEventStruct) EthNewFilter(p0 context.Context, p1 *types.EthFilterSpec) (types.EthFilterID, error) {
-	return s.Internal.EthNewFilter(p0, p1)
-}
-func (s *IETHEventStruct) EthNewPendingTransactionFilter(p0 context.Context) (types.EthFilterID, error) {
-	return s.Internal.EthNewPendingTransactionFilter(p0)
-}
-func (s *IETHEventStruct) EthSubscribe(p0 context.Context, p1 string, p2 *types.EthSubscriptionParams) (<-chan types.EthSubscriptionResponse, error) {
-	return s.Internal.EthSubscribe(p0, p1, p2)
-}
-func (s *IETHEventStruct) EthUninstallFilter(p0 context.Context, p1 types.EthFilterID) (bool, error) {
-	return s.Internal.EthUninstallFilter(p0, p1)
-}
-func (s *IETHEventStruct) EthUnsubscribe(p0 context.Context, p1 types.EthSubscriptionID) (bool, error) {
-	return s.Internal.EthUnsubscribe(p0, p1)
-}
-
 type IETHStruct struct {
-	IETHEventStruct
-
 	Internal struct {
 		EthAccounts                            func(ctx context.Context) ([]types.EthAddress, error)                                                                           `perm:"read"`
 		EthBlockNumber                         func(ctx context.Context) (types.EthUint64, error)                                                                              `perm:"read"`
@@ -1045,6 +1001,53 @@ func (s *IETHStruct) NetListening(p0 context.Context) (bool, error) {
 }
 func (s *IETHStruct) NetVersion(p0 context.Context) (string, error) { return s.Internal.NetVersion(p0) }
 
+type IETHEventStruct struct {
+	Internal struct {
+		EthGetFilterChanges            func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)                                                `perm:"write"`
+		EthGetFilterLogs               func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)                                                `perm:"write"`
+		EthGetLogs                     func(ctx context.Context, filter *types.EthFilterSpec) (*types.EthFilterResult, error)                                         `perm:"read"`
+		EthNewBlockFilter              func(ctx context.Context) (types.EthFilterID, error)                                                                           `perm:"write"`
+		EthNewFilter                   func(ctx context.Context, filter *types.EthFilterSpec) (types.EthFilterID, error)                                              `perm:"write"`
+		EthNewPendingTransactionFilter func(ctx context.Context) (types.EthFilterID, error)                                                                           `perm:"write"`
+		EthSubscribe                   func(ctx context.Context, eventType string, params *types.EthSubscriptionParams) (<-chan types.EthSubscriptionResponse, error) `perm:"write"`
+		EthUninstallFilter             func(ctx context.Context, id types.EthFilterID) (bool, error)                                                                  `perm:"write"`
+		EthUnsubscribe                 func(ctx context.Context, id types.EthSubscriptionID) (bool, error)                                                            `perm:"write"`
+	}
+}
+
+func (s *IETHEventStruct) EthGetFilterChanges(p0 context.Context, p1 types.EthFilterID) (*types.EthFilterResult, error) {
+	return s.Internal.EthGetFilterChanges(p0, p1)
+}
+func (s *IETHEventStruct) EthGetFilterLogs(p0 context.Context, p1 types.EthFilterID) (*types.EthFilterResult, error) {
+	return s.Internal.EthGetFilterLogs(p0, p1)
+}
+func (s *IETHEventStruct) EthGetLogs(p0 context.Context, p1 *types.EthFilterSpec) (*types.EthFilterResult, error) {
+	return s.Internal.EthGetLogs(p0, p1)
+}
+func (s *IETHEventStruct) EthNewBlockFilter(p0 context.Context) (types.EthFilterID, error) {
+	return s.Internal.EthNewBlockFilter(p0)
+}
+func (s *IETHEventStruct) EthNewFilter(p0 context.Context, p1 *types.EthFilterSpec) (types.EthFilterID, error) {
+	return s.Internal.EthNewFilter(p0, p1)
+}
+func (s *IETHEventStruct) EthNewPendingTransactionFilter(p0 context.Context) (types.EthFilterID, error) {
+	return s.Internal.EthNewPendingTransactionFilter(p0)
+}
+func (s *IETHEventStruct) EthSubscribe(p0 context.Context, p1 string, p2 *types.EthSubscriptionParams) (<-chan types.EthSubscriptionResponse, error) {
+	return s.Internal.EthSubscribe(p0, p1, p2)
+}
+func (s *IETHEventStruct) EthUninstallFilter(p0 context.Context, p1 types.EthFilterID) (bool, error) {
+	return s.Internal.EthUninstallFilter(p0, p1)
+}
+func (s *IETHEventStruct) EthUnsubscribe(p0 context.Context, p1 types.EthSubscriptionID) (bool, error) {
+	return s.Internal.EthUnsubscribe(p0, p1)
+}
+
+type FullETHStruct struct {
+	IETHStruct
+	IETHEventStruct
+}
+
 type FullNodeStruct struct {
 	IBlockStoreStruct
 	IChainStruct
@@ -1057,5 +1060,5 @@ type FullNodeStruct struct {
 	ISyncerStruct
 	IWalletStruct
 	ICommonStruct
-	IETHStruct
+	FullETHStruct
 }

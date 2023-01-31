@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/ethhashlookup"
+	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
@@ -33,13 +35,24 @@ import (
 
 var log = logging.Logger("eth_api")
 
-func newEthAPI(em *EthSubModule) *ethAPI {
-	return &ethAPI{
-		em:               em,
-		chain:            em.chainModule.API(),
-		mpool:            em.mpoolModule.API(),
-		ethTxHashManager: em.ethTxHashManager,
+func newEthAPI(em *EthSubModule) (*ethAPI, error) {
+	a := &ethAPI{
+		em:    em,
+		chain: em.chainModule.API(),
+		mpool: em.mpoolModule.API(),
 	}
+
+	transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(filepath.Join(a.em.txHashDBPath, "txhash.db"))
+	if err != nil {
+		return nil, err
+	}
+
+	a.ethTxHashManager = &ethTxHashManager{
+		chainAPI:              a.chain,
+		TransactionHashLookup: transactionHashLookup,
+	}
+
+	return a, nil
 }
 
 type ethAPI struct {
@@ -47,6 +60,30 @@ type ethAPI struct {
 	chain            v1.IChain
 	mpool            v1.IMessagePool
 	ethTxHashManager *ethTxHashManager
+}
+
+func (a *ethAPI) start(ctx context.Context) error {
+	const ChainHeadConfidence = 1
+	ev, err := events.NewEventsWithConfidence(ctx, a.chain, ChainHeadConfidence)
+	if err != nil {
+		return err
+	}
+
+	// Tipset listener
+	_ = ev.Observe(a.ethTxHashManager)
+
+	ch, err := a.em.mpoolModule.MPool.Updates(ctx)
+	if err != nil {
+		return err
+	}
+	go waitForMpoolUpdates(ctx, ch, a.ethTxHashManager)
+	go ethTxHashGC(ctx, a.em.cfg.FevmConfig.EthTxHashMappingLifetimeDays, a.ethTxHashManager)
+
+	return nil
+}
+
+func (a *ethAPI) close() error {
+	return a.ethTxHashManager.TransactionHashLookup.Close()
 }
 
 func (a *ethAPI) StateNetworkName(ctx context.Context) (types.NetworkName, error) {
@@ -1216,3 +1253,6 @@ func ethTxHashGC(ctx context.Context, retentionDays int, manager *ethTxHashManag
 		time.Sleep(gcPeriod)
 	}
 }
+
+var _ v1.IETH = &ethAPI{}
+var _ ehtAPIAdapter = &ethAPI{}
