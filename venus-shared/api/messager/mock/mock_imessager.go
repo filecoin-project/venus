@@ -10,8 +10,8 @@ import (
 	time "time"
 
 	address "github.com/filecoin-project/go-address"
-	internal "github.com/filecoin-project/venus/venus-shared/internal"
-	types "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/actors/types"
+	types0 "github.com/filecoin-project/venus/venus-shared/types"
 	messager "github.com/filecoin-project/venus/venus-shared/types/messager"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
@@ -456,7 +456,7 @@ func (mr *MockIMessagerMockRecorder) NetPeers(arg0 interface{}) *gomock.Call {
 }
 
 // PushMessage mocks base method.
-func (m *MockIMessager) PushMessage(arg0 context.Context, arg1 *internal.Message, arg2 *messager.SendSpec) (string, error) {
+func (m *MockIMessager) PushMessage(arg0 context.Context, arg1 *types.Message, arg2 *messager.SendSpec) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PushMessage", arg0, arg1, arg2)
 	ret0, _ := ret[0].(string)
@@ -471,7 +471,7 @@ func (mr *MockIMessagerMockRecorder) PushMessage(arg0, arg1, arg2 interface{}) *
 }
 
 // PushMessageWithId mocks base method.
-func (m *MockIMessager) PushMessageWithId(arg0 context.Context, arg1 string, arg2 *internal.Message, arg3 *messager.SendSpec) (string, error) {
+func (m *MockIMessager) PushMessageWithId(arg0 context.Context, arg1 string, arg2 *types.Message, arg3 *messager.SendSpec) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PushMessageWithId", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(string)
@@ -673,10 +673,10 @@ func (mr *MockIMessagerMockRecorder) UpdateNonce(arg0, arg1, arg2 interface{}) *
 }
 
 // Version mocks base method.
-func (m *MockIMessager) Version(arg0 context.Context) (types.Version, error) {
+func (m *MockIMessager) Version(arg0 context.Context) (types0.Version, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Version", arg0)
-	ret0, _ := ret[0].(types.Version)
+	ret0, _ := ret[0].(types0.Version)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

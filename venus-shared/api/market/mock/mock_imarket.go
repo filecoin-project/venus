@@ -16,8 +16,8 @@ import (
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	internal "github.com/filecoin-project/venus/venus-shared/internal"
-	types "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/actors/types"
+	types0 "github.com/filecoin-project/venus/venus-shared/types"
 	gateway "github.com/filecoin-project/venus/venus-shared/types/gateway"
 	market "github.com/filecoin-project/venus/venus-shared/types/market"
 	gomock "github.com/golang/mock/gomock"
@@ -344,10 +344,10 @@ func (mr *MockIMarketMockRecorder) DealsMaxProviderCollateralMultiplier(arg0, ar
 }
 
 // DealsMaxPublishFee mocks base method.
-func (m *MockIMarket) DealsMaxPublishFee(arg0 context.Context, arg1 address.Address) (internal.FIL, error) {
+func (m *MockIMarket) DealsMaxPublishFee(arg0 context.Context, arg1 address.Address) (types.FIL, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DealsMaxPublishFee", arg0, arg1)
-	ret0, _ := ret[0].(internal.FIL)
+	ret0, _ := ret[0].(types.FIL)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -502,7 +502,7 @@ func (mr *MockIMarketMockRecorder) DealsSetMaxProviderCollateralMultiplier(arg0,
 }
 
 // DealsSetMaxPublishFee mocks base method.
-func (m *MockIMarket) DealsSetMaxPublishFee(arg0 context.Context, arg1 address.Address, arg2 internal.FIL) error {
+func (m *MockIMarket) DealsSetMaxPublishFee(arg0 context.Context, arg1 address.Address, arg2 types.FIL) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DealsSetMaxPublishFee", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -838,10 +838,10 @@ func (mr *MockIMarketMockRecorder) MarketListDataTransfers(arg0 interface{}) *go
 }
 
 // MarketListDeals mocks base method.
-func (m *MockIMarket) MarketListDeals(arg0 context.Context, arg1 []address.Address) ([]*types.MarketDeal, error) {
+func (m *MockIMarket) MarketListDeals(arg0 context.Context, arg1 []address.Address) ([]*types0.MarketDeal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarketListDeals", arg0, arg1)
-	ret0, _ := ret[0].([]*types.MarketDeal)
+	ret0, _ := ret[0].([]*types0.MarketDeal)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -913,10 +913,10 @@ func (mr *MockIMarketMockRecorder) MarketListStorageAsk(arg0 interface{}) *gomoc
 }
 
 // MarketMaxBalanceAddFee mocks base method.
-func (m *MockIMarket) MarketMaxBalanceAddFee(arg0 context.Context, arg1 address.Address) (internal.FIL, error) {
+func (m *MockIMarket) MarketMaxBalanceAddFee(arg0 context.Context, arg1 address.Address) (types.FIL, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarketMaxBalanceAddFee", arg0, arg1)
-	ret0, _ := ret[0].(internal.FIL)
+	ret0, _ := ret[0].(types.FIL)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1043,7 +1043,7 @@ func (mr *MockIMarketMockRecorder) MarketSetDataTransferPath(arg0, arg1, arg2 in
 }
 
 // MarketSetMaxBalanceAddFee mocks base method.
-func (m *MockIMarket) MarketSetMaxBalanceAddFee(arg0 context.Context, arg1 address.Address, arg2 internal.FIL) error {
+func (m *MockIMarket) MarketSetMaxBalanceAddFee(arg0 context.Context, arg1 address.Address, arg2 types.FIL) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarketSetMaxBalanceAddFee", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -1100,10 +1100,10 @@ func (mr *MockIMarketMockRecorder) MarketWithdraw(arg0, arg1, arg2, arg3 interfa
 }
 
 // MessagerGetMessage mocks base method.
-func (m *MockIMarket) MessagerGetMessage(arg0 context.Context, arg1 cid.Cid) (*internal.Message, error) {
+func (m *MockIMarket) MessagerGetMessage(arg0 context.Context, arg1 cid.Cid) (*types.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MessagerGetMessage", arg0, arg1)
-	ret0, _ := ret[0].(*internal.Message)
+	ret0, _ := ret[0].(*types.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1115,7 +1115,7 @@ func (mr *MockIMarketMockRecorder) MessagerGetMessage(arg0, arg1 interface{}) *g
 }
 
 // MessagerPushMessage mocks base method.
-func (m *MockIMarket) MessagerPushMessage(arg0 context.Context, arg1 *internal.Message, arg2 *types.MessageSendSpec) (cid.Cid, error) {
+func (m *MockIMarket) MessagerPushMessage(arg0 context.Context, arg1 *types.Message, arg2 *types0.MessageSendSpec) (cid.Cid, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MessagerPushMessage", arg0, arg1, arg2)
 	ret0, _ := ret[0].(cid.Cid)
@@ -1130,10 +1130,10 @@ func (mr *MockIMarketMockRecorder) MessagerPushMessage(arg0, arg1, arg2 interfac
 }
 
 // MessagerWaitMessage mocks base method.
-func (m *MockIMarket) MessagerWaitMessage(arg0 context.Context, arg1 cid.Cid) (*types.MsgLookup, error) {
+func (m *MockIMarket) MessagerWaitMessage(arg0 context.Context, arg1 cid.Cid) (*types0.MsgLookup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MessagerWaitMessage", arg0, arg1)
-	ret0, _ := ret[0].(*types.MsgLookup)
+	ret0, _ := ret[0].(*types0.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1348,10 +1348,10 @@ func (mr *MockIMarketMockRecorder) UpdateStorageDealStatus(arg0, arg1, arg2, arg
 }
 
 // Version mocks base method.
-func (m *MockIMarket) Version(arg0 context.Context) (types.Version, error) {
+func (m *MockIMarket) Version(arg0 context.Context) (types0.Version, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Version", arg0)
-	ret0, _ := ret[0].(types.Version)
+	ret0, _ := ret[0].(types0.Version)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
