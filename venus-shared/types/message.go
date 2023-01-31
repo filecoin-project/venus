@@ -1,13 +1,13 @@
 package types
 
 import (
-	"github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/venus/venus-shared/actors/types"
 )
 
-const MessageVersion = internal.MessageVersion
+const MessageVersion = types.MessageVersion
 
-type ChainMsg = internal.ChainMsg
+type ChainMsg = types.ChainMsg
 
-var DecodeMessage = internal.DecodeMessage
+var DecodeMessage = types.DecodeMessage
 
-type Message = internal.Message
+type Message = types.Message

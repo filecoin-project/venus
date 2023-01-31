@@ -3,7 +3,7 @@ package types
 import (
 	"math/big"
 
-	"github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/venus/venus-shared/actors/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -15,9 +15,9 @@ import (
 
 var blocksPerEpochBig = big.NewInt(0).SetUint64(params.BlocksPerEpoch)
 
-var TotalFilecoinInt = internal.TotalFilecoinInt
+var TotalFilecoinInt = types.TotalFilecoinInt
 
-var ZeroAddress = internal.ZeroAddress
+var ZeroAddress = types.ZeroAddress
 
 var EmptyTokenAmount = abi.TokenAmount{}
 

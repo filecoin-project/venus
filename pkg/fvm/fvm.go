@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	types2 "github.com/filecoin-project/venus/venus-shared/actors/types"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
@@ -327,7 +328,7 @@ func defaultFVMOpts(ctx context.Context, opts *vm.VmOption) (*ffi.FVMOpts, error
 		},
 		Epoch:          opts.Epoch,
 		Timestamp:      opts.Timestamp,
-		ChainID:        uint64(types.Eip155ChainID),
+		ChainID:        uint64(types2.Eip155ChainID),
 		BaseFee:        opts.BaseFee,
 		BaseCircSupply: circToReport,
 		NetworkVersion: opts.NetworkVersion,
