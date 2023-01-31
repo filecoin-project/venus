@@ -491,11 +491,12 @@ func TestCheckMessageBig(t *testing.T) {
 			GasPremium: types.NewInt(1),
 			Params:     make([]byte, 41<<10), // 41KiB payload
 		}
+		sb, err := msg.SigningBytes(types.AddressProtocol2SignType(from.Protocol()))
+		assert.NoError(t, err)
 
-		sig, err := w.WalletSign(context.Background(), from, msg.Cid().Bytes(), types.MsgMeta{})
-		if err != nil {
-			panic(err)
-		}
+		sig, err := w.WalletSign(context.Background(), from, sb, types.MsgMeta{})
+		assert.NoError(t, err)
+
 		sm := &types.SignedMessage{
 			Message:   *msg,
 			Signature: *sig,
@@ -515,7 +516,10 @@ func TestCheckMessageBig(t *testing.T) {
 			Params:     make([]byte, 64<<10), // 64KiB payload
 		}
 
-		sig, err := w.WalletSign(context.Background(), from, msg.Cid().Bytes(), types.MsgMeta{})
+		sb, err := msg.SigningBytes(types.AddressProtocol2SignType(from.Protocol()))
+		assert.NoError(t, err)
+
+		sig, err := w.WalletSign(context.Background(), from, sb, types.MsgMeta{})
 		if err != nil {
 			panic(err)
 		}

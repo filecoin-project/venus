@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/submodule/wallet/remotewallet"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/messagesigner"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -124,7 +123,7 @@ func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, m
 
 // WalletSignMessage signs the given message using the given address.
 func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
-	sb, err := messagesigner.SigningBytes(msg, types.AddressProtocol2SignType(k.Protocol()))
+	sb, err := msg.SigningBytes(types.AddressProtocol2SignType(k.Protocol()))
 	if err != nil {
 		return nil, err
 	}
