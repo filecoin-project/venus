@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/venus/fixtures/assets"
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"github.com/filecoin-project/venus/venus-shared/types"
+	types2 "github.com/filecoin-project/venus/venus-shared/actors/types"
 	"github.com/filecoin-project/venus/venus-shared/utils"
 
 	"github.com/filecoin-project/venus/pkg/util/ulimit"
@@ -180,8 +180,8 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 		return err
 	}
 	utils.ReloadMethodsMap()
-	types.SetEip155ChainId(config.NetworkParams.Eip155ChainID)
-	log.Infof("Eip155ChainId %v", types.Eip155ChainID)
+	types2.SetEip155ChainID(config.NetworkParams.Eip155ChainID)
+	log.Infof("Eip155ChainId %v", types2.Eip155ChainID)
 
 	// second highest precedence is env vars.
 	if envAPI := os.Getenv("VENUS_API"); envAPI != "" {

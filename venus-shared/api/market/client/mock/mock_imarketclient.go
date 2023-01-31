@@ -13,8 +13,8 @@ import (
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	big "github.com/filecoin-project/go-state-types/big"
-	internal "github.com/filecoin-project/venus/venus-shared/internal"
-	types "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/actors/types"
+	types0 "github.com/filecoin-project/venus/venus-shared/types"
 	market "github.com/filecoin-project/venus/venus-shared/types/market"
 	client "github.com/filecoin-project/venus/venus-shared/types/market/client"
 	gomock "github.com/golang/mock/gomock"
@@ -547,10 +547,10 @@ func (mr *MockIMarketClientMockRecorder) MarketWithdraw(arg0, arg1, arg2, arg3 i
 }
 
 // MessagerGetMessage mocks base method.
-func (m *MockIMarketClient) MessagerGetMessage(arg0 context.Context, arg1 cid.Cid) (*internal.Message, error) {
+func (m *MockIMarketClient) MessagerGetMessage(arg0 context.Context, arg1 cid.Cid) (*types.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MessagerGetMessage", arg0, arg1)
-	ret0, _ := ret[0].(*internal.Message)
+	ret0, _ := ret[0].(*types.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -562,7 +562,7 @@ func (mr *MockIMarketClientMockRecorder) MessagerGetMessage(arg0, arg1 interface
 }
 
 // MessagerPushMessage mocks base method.
-func (m *MockIMarketClient) MessagerPushMessage(arg0 context.Context, arg1 *internal.Message, arg2 *types.MessageSendSpec) (cid.Cid, error) {
+func (m *MockIMarketClient) MessagerPushMessage(arg0 context.Context, arg1 *types.Message, arg2 *types0.MessageSendSpec) (cid.Cid, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MessagerPushMessage", arg0, arg1, arg2)
 	ret0, _ := ret[0].(cid.Cid)
@@ -577,10 +577,10 @@ func (mr *MockIMarketClientMockRecorder) MessagerPushMessage(arg0, arg1, arg2 in
 }
 
 // MessagerWaitMessage mocks base method.
-func (m *MockIMarketClient) MessagerWaitMessage(arg0 context.Context, arg1 cid.Cid) (*types.MsgLookup, error) {
+func (m *MockIMarketClient) MessagerWaitMessage(arg0 context.Context, arg1 cid.Cid) (*types0.MsgLookup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MessagerWaitMessage", arg0, arg1)
-	ret0, _ := ret[0].(*types.MsgLookup)
+	ret0, _ := ret[0].(*types0.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -592,10 +592,10 @@ func (mr *MockIMarketClientMockRecorder) MessagerWaitMessage(arg0, arg1 interfac
 }
 
 // Version mocks base method.
-func (m *MockIMarketClient) Version(arg0 context.Context) (types.Version, error) {
+func (m *MockIMarketClient) Version(arg0 context.Context) (types0.Version, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Version", arg0)
-	ret0, _ := ret[0].(types.Version)
+	ret0, _ := ret[0].(types0.Version)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

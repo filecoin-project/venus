@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	types "github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/venus/venus-shared/actors/types"
 
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
