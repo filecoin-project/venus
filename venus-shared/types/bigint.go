@@ -1,22 +1,22 @@
 package types
 
 import (
-	"github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/venus/venus-shared/actors/types"
 )
 
-var EmptyInt = internal.EmptyInt
+var EmptyInt = types.EmptyInt
 
-type BigInt = internal.BigInt
+type BigInt = types.BigInt
 
 var (
-	NewInt        = internal.NewInt
-	BigFromBytes  = internal.BigFromBytes
-	BigFromString = internal.BigFromString
-	BigMul        = internal.BigMul
-	BigDiv        = internal.BigDiv
-	BigDivFloat   = internal.BigDivFloat
-	BigMod        = internal.BigMod
-	BigAdd        = internal.BigAdd
-	BigSub        = internal.BigSub
-	BigCmp        = internal.BigCmp
+	NewInt        = types.NewInt
+	BigFromBytes  = types.BigFromBytes
+	BigFromString = types.BigFromString
+	BigMul        = types.BigMul
+	BigDiv        = types.BigDiv
+	BigDivFloat   = types.BigDivFloat
+	BigMod        = types.BigMod
+	BigAdd        = types.BigAdd
+	BigSub        = types.BigSub
+	BigCmp        = types.BigCmp
 )

@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors"
+	types2 "github.com/filecoin-project/venus/venus-shared/actors/types"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
@@ -439,7 +440,7 @@ func (a *ethAPI) EthGetBalance(ctx context.Context, address types.EthAddress, bl
 }
 
 func (a *ethAPI) EthChainId(ctx context.Context) (types.EthUint64, error) {
-	return types.EthUint64(types.Eip155ChainID), nil
+	return types.EthUint64(types2.Eip155ChainID), nil
 }
 
 func (a *ethAPI) EthFeeHistory(ctx context.Context, blkCount types.EthUint64, newestBlkNum string, rewardPercentiles []float64) (types.EthFeeHistory, error) {
@@ -891,7 +892,7 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 	}
 
 	tx := types.EthTx{
-		ChainID:              types.EthUint64(types.Eip155ChainID),
+		ChainID:              types.EthUint64(types2.Eip155ChainID),
 		From:                 fromEthAddr,
 		To:                   toAddr,
 		Value:                types.EthBigInt(smsg.Message.Value),
@@ -998,7 +999,7 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *types.Msg
 		ti = types.EthUint64(txIdx)
 	)
 
-	tx.ChainID = types.EthUint64(types.Eip155ChainID)
+	tx.ChainID = types.EthUint64(types2.Eip155ChainID)
 	tx.BlockHash = &blkHash
 	tx.BlockNumber = &bn
 	tx.TransactionIndex = &ti

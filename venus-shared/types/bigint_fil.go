@@ -1,22 +1,22 @@
 package types
 
 import (
-	"github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/venus/venus-shared/actors/types"
 )
 
-var ZeroFIL = internal.ZeroFIL
+var ZeroFIL = types.ZeroFIL
 
-type FIL = internal.FIL
+type FIL = types.FIL
 
 var (
-	AttoFil  = internal.AttoFil
-	FemtoFil = internal.FemtoFil
-	PicoFil  = internal.PicoFil
-	NanoFil  = internal.NanoFil
+	AttoFil  = types.AttoFil
+	FemtoFil = types.FemtoFil
+	PicoFil  = types.PicoFil
+	NanoFil  = types.NanoFil
 )
 
 var (
-	ParseFIL     = internal.ParseFIL
-	MustParseFIL = internal.MustParseFIL
-	FromFil      = internal.FromFil
+	ParseFIL     = types.ParseFIL
+	MustParseFIL = types.MustParseFIL
+	FromFil      = types.FromFil
 )
