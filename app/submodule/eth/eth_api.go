@@ -46,7 +46,7 @@ type ethAPI struct {
 	em               *EthSubModule
 	chain            v1.IChain
 	mpool            v1.IMessagePool
-	ethTxHashManager *ethTxHashManager // may nil
+	ethTxHashManager *ethTxHashManager
 }
 
 func (a *ethAPI) StateNetworkName(ctx context.Context) (types.NetworkName, error) {
@@ -117,11 +117,6 @@ func (a *ethAPI) EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, f
 	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.chain)
 }
 
-func (a *ethAPI) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*types.EthHash, error) {
-	hash, err := ethTxHashFromFilecoinMessageCid(ctx, cid, a.em.chainModule.MessageStore, a.chain)
-	return &hash, err
-}
-
 func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string) (tipset *types.TipSet, err error) {
 	if blkParam == "earliest" {
 		return nil, fmt.Errorf("block param \"earliest\" is not supported")
@@ -168,14 +163,11 @@ func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthH
 		return nil, nil
 	}
 
-	c := cid.Undef
-	if a.ethTxHashManager != nil {
-		var err error
-		c, err = a.ethTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
-		if err != nil {
-			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
-		}
+	c, err := a.ethTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	if err != nil {
+		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 	}
+
 	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
 	if c == cid.Undef {
 		c = txHash.ToCid()
@@ -211,6 +203,53 @@ func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthH
 	return nil, nil
 }
 
+func (a *ethAPI) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *types.EthHash) (*cid.Cid, error) {
+	// Ethereum's behavior is to return null when the txHash is invalid, so we use nil to check if txHash is valid
+	if txHash == nil {
+		return nil, nil
+	}
+
+	c, err := a.ethTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	// We fall out of the first condition and continue
+	if errors.Is(err, ethhashlookup.ErrNotFound) {
+		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
+	} else if err != nil {
+		return nil, fmt.Errorf("database error: %w", err)
+	} else {
+		return &c, nil
+	}
+
+	// This isn't an eth transaction we have the mapping for, so let's try looking it up as a filecoin message
+	if c == cid.Undef {
+		c = txHash.ToCid()
+	}
+
+	_, err = a.em.chainModule.MessageStore.LoadSignedMessage(ctx, c)
+	if err == nil {
+		// This is an Eth Tx, Secp message, Or BLS message in the mpool
+		return &c, nil
+	}
+
+	_, err = a.em.chainModule.MessageStore.LoadUnsignedMessage(ctx, c)
+	if err == nil {
+		// This is a BLS message
+		return &c, nil
+	}
+
+	// Ethereum clients expect an empty response when the message was not found
+	return nil, nil
+}
+
+func (a *ethAPI) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*types.EthHash, error) {
+	hash, err := ethTxHashFromFilecoinMessageCid(ctx, cid, a.em.chainModule.MessageStore, a.chain)
+	if hash == types.EmptyEthHash {
+		// not found
+		return nil, nil
+	}
+
+	return &hash, err
+}
+
 func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkParam string) (types.EthUint64, error) {
 	addr, err := sender.ToFilecoinAddress()
 	if err != nil {
@@ -228,14 +267,11 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 }
 
 func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error) {
-	c := cid.Undef
-	if a.ethTxHashManager != nil {
-		var err error
-		c, err = a.ethTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
-		if err != nil {
-			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
-		}
+	c, err := a.ethTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
+	if err != nil {
+		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 	}
+
 	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
 	if c == cid.Undef {
 		c = txHash.ToCid()
