@@ -16,7 +16,7 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
-	types "github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/venus/venus-shared/actors/types"
 )
 
 type message9 struct{ message0 }

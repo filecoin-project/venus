@@ -14,7 +14,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	types "github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/venus/venus-shared/actors/types"
 
 	"github.com/filecoin-project/go-state-types/manifest"
 
