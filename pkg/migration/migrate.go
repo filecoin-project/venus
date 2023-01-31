@@ -376,7 +376,7 @@ func Version11Upgrade(repoPath string) (err error) {
 	cfg := fsrRepo.Config()
 
 	// add default actor event config
-	cfg.ActorEventCfg = config.NewDefaultConfig().ActorEventCfg
+	cfg.FevmConfig = config.NewDefaultConfig().FevmConfig
 
 	switch cfg.NetworkParams.NetworkType {
 	case types.NetworkMainnet:

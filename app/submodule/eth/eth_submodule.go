@@ -13,13 +13,13 @@ import (
 func NewEthSubModule(cfg *config.Config,
 	chainModule *chain.ChainSubmodule,
 	mpoolModule *mpool.MessagePoolSubmodule,
-	txHashDBPath string,
+	sqlitePath string,
 ) (*EthSubModule, error) {
 	em := &EthSubModule{
-		cfg:          cfg,
-		chainModule:  chainModule,
-		mpoolModule:  mpoolModule,
-		txHashDBPath: txHashDBPath,
+		cfg:         cfg,
+		chainModule: chainModule,
+		mpoolModule: mpoolModule,
+		sqlitePath:  sqlitePath,
 	}
 	ee, err := newEthEventAPI(em)
 	if err != nil {
@@ -39,10 +39,10 @@ func NewEthSubModule(cfg *config.Config,
 }
 
 type EthSubModule struct { // nolint
-	cfg          *config.Config
-	chainModule  *chain.ChainSubmodule
-	mpoolModule  *mpool.MessagePoolSubmodule
-	txHashDBPath string
+	cfg         *config.Config
+	chainModule *chain.ChainSubmodule
+	mpoolModule *mpool.MessagePoolSubmodule
+	sqlitePath  string
 
 	ethEventAPI *ethEventAPI
 	ehtAdapter  ehtAPIAdapter

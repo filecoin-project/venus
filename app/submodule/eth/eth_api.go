@@ -42,7 +42,7 @@ func newEthAPI(em *EthSubModule) (*ethAPI, error) {
 		mpool: em.mpoolModule.API(),
 	}
 
-	transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(filepath.Join(a.em.txHashDBPath, "txhash.db"))
+	transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(filepath.Join(a.em.sqlitePath, "txhash.db"))
 	if err != nil {
 		return nil, err
 	}
