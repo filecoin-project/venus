@@ -1121,7 +1121,8 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 			a == builtin.CronActorAddr ||
 			a == builtin.BurntFundsActorAddr ||
 			a == builtin.SaftAddress ||
-			a == builtin.ReserveAddress:
+			a == builtin.ReserveAddress ||
+			a == builtin.EthereumAddressManagerActorAddr:
 
 			unCirc = big.Add(unCirc, actor.Balance)
 
@@ -1139,7 +1140,12 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 			circ = big.Add(circ, big.Sub(actor.Balance, lb))
 			unCirc = big.Add(unCirc, lb)
 
-		case builtin.IsAccountActor(actor.Code) || builtin.IsPaymentChannelActor(actor.Code):
+		case builtin.IsAccountActor(actor.Code) ||
+			builtin.IsPaymentChannelActor(actor.Code) ||
+			builtin.IsEthAccountActor(actor.Code) ||
+			builtin.IsEvmActor(actor.Code) ||
+			builtin.IsPlaceholderActor(actor.Code):
+
 			circ = big.Add(circ, actor.Balance)
 
 		case builtin.IsStorageMinerActor(actor.Code):
