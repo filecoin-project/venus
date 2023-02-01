@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
@@ -58,6 +57,7 @@ func EthTxArgsFromMessage(msg *Message) (EthTxArgs, error) {
 		to           *EthAddress
 		params       []byte
 		paramsReader = bytes.NewReader(msg.Params)
+		err          error
 	)
 
 	if msg.Version != 0 {
@@ -67,11 +67,10 @@ func EthTxArgsFromMessage(msg *Message) (EthTxArgs, error) {
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		switch msg.Method {
 		case builtintypes.MethodsEAM.CreateExternal:
-			var create abi.CborBytes
-			if err := create.UnmarshalCBOR(paramsReader); err != nil {
-				return EthTxArgs{}, err
+			params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
+			if err != nil {
+				return EthTxArgs{}, fmt.Errorf("failed to read params byte array: %w", err)
 			}
-			params = create
 		default:
 			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
 		}
@@ -98,16 +97,16 @@ func EthTxArgsFromMessage(msg *Message) (EthTxArgs, error) {
 			if err != nil {
 				return EthTxArgs{}, fmt.Errorf("failed to read params byte array: %w", err)
 			}
-
-			if len(params) == 0 {
-				// Otherwise, we don't get a guaranteed round-trip.
-				return EthTxArgs{}, fmt.Errorf("cannot invoke contracts with empty parameters from an eth-account")
-			}
 		}
 	}
 
 	if paramsReader.Len() != 0 {
 		return EthTxArgs{}, fmt.Errorf("extra data found in params")
+	}
+
+	if len(params) == 0 && msg.Method != builtintypes.MethodSend {
+		// Otherwise, we don't get a guaranteed round-trip.
+		return EthTxArgs{}, fmt.Errorf("msgs with empty parameters from an eth-account must be Sends (MethodNum: %d)", msg.Method)
 	}
 
 	return EthTxArgs{
@@ -138,12 +137,12 @@ func (tx *EthTxArgs) ToUnsignedMessage(from address.Address) (*Message, error) {
 		if len(tx.Input) == 0 {
 			return nil, fmt.Errorf("cannot call CreateExternal without params")
 		}
-		inputParams := abi.CborBytes(tx.Input)
-		params, err = SerializeParams(&inputParams)
-		if err != nil {
+		buf := new(bytes.Buffer)
+		if err = cbg.WriteByteArray(buf, tx.Input); err != nil {
 			return nil, fmt.Errorf("failed to serialize Create params: %w", err)
 		}
 
+		params = buf.Bytes()
 	} else {
 		to, err = tx.To.ToFilecoinAddress()
 		if err != nil {
