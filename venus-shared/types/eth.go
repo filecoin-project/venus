@@ -64,4 +64,5 @@ var (
 	ParseEthHash                     = types.ParseEthHash
 	EthHashFromTxBytes               = types.EthHashFromTxBytes
 	GetContractEthAddressFromCode    = types.GetContractEthAddressFromCode
+	DecodeHexString                  = types.DecodeHexString
 )

@@ -44,40 +44,35 @@ var evmGetInfoCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Print eth/filecoin addrs and code cid",
 	},
-	Options: []cmds.Option{
-		cmds.StringOption("filAddr", "Filecoin address"),
-		cmds.StringOption("ethAddr", "Ethereum address"),
+	Arguments: []cmds.Argument{
+		cmds.StringArg("address", true, false, "Filecoin address or Ethereum address"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		filAddr, _ := req.Options["filAddr"].(string)
-		ethAddr, _ := req.Options["ethAddr"].(string)
-
-		var faddr address.Address
-		var eaddr types.EthAddress
+		if len(req.Arguments) != 1 {
+			return fmt.Errorf("incorrect number of arguments, got %d", len(req.Arguments))
+		}
 
 		ctx := req.Context
 		chainAPI := env.(*node.Env).ChainAPI
+		addrString := req.Arguments[0]
 
-		if filAddr != "" {
-			addr, err := address.NewFromString(filAddr)
-			if err != nil {
-				return err
-			}
-			eaddr, faddr, err = ethAddrFromFilecoinAddress(ctx, addr, chainAPI)
-			if err != nil {
-				return err
-			}
-		} else if ethAddr != "" {
-			eaddr, err := types.ParseEthAddress(ethAddr)
-			if err != nil {
-				return err
+		var faddr address.Address
+		var eaddr types.EthAddress
+		addr, err := address.NewFromString(addrString)
+		if err != nil { // This isn't a filecoin address
+			eaddr, err = types.ParseEthAddress(addrString)
+			if err != nil { // This isn't an Eth address either
+				return fmt.Errorf("address is not a filecoin or eth address")
 			}
 			faddr, err = eaddr.ToFilecoinAddress()
 			if err != nil {
 				return err
 			}
 		} else {
-			return fmt.Errorf("neither filAddr nor ethAddr specified")
+			eaddr, faddr, err = ethAddrFromFilecoinAddress(ctx, addr, chainAPI)
+			if err != nil {
+				return err
+			}
 		}
 
 		actor, err := chainAPI.StateGetActor(ctx, faddr, types.EmptyTSK)
@@ -120,7 +115,7 @@ var evmCallSimulateCmd = &cmds.Command{
 			return err
 		}
 
-		params, err := hex.DecodeString(req.Arguments[2])
+		params, err := types.DecodeHexString(req.Arguments[2])
 		if err != nil {
 			return err
 		}
@@ -160,7 +155,7 @@ var evmGetContractAddressCmd = &cmds.Command{
 			return err
 		}
 
-		salt, err := hex.DecodeString(req.Arguments[1])
+		salt, err := types.DecodeHexString(req.Arguments[1])
 		if err != nil {
 			return fmt.Errorf("could not decode salt: %v", err)
 		}
@@ -179,7 +174,7 @@ var evmGetContractAddressCmd = &cmds.Command{
 
 			return err
 		}
-		contract, err := hex.DecodeString(string(contractHex))
+		contract, err := types.DecodeHexString(string(contractHex))
 		if err != nil {
 			return fmt.Errorf("could not decode contract file: %v", err)
 		}
@@ -215,7 +210,7 @@ var evmDeployCmd = &cmds.Command{
 			return fmt.Errorf("failed to read contract: %w", err)
 		}
 		if isHex, _ := req.Options["hex"].(bool); isHex {
-			contract, err = hex.DecodeString(string(contract))
+			contract, err = types.DecodeHexString(string(contract))
 			if err != nil {
 				return fmt.Errorf("failed to decode contract: %w", err)
 			}
@@ -287,7 +282,12 @@ var evmDeployCmd = &cmds.Command{
 		afmt.Printf("Robust Address: %s\n", result.RobustAddress)
 		afmt.Printf("Eth Address: %s\n", "0x"+hex.EncodeToString(result.EthAddress[:]))
 
-		delegated, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, result.EthAddress[:])
+		ea, err := types.CastEthAddress(result.EthAddress[:])
+		if err != nil {
+			return fmt.Errorf("failed to create ethereum address: %w", err)
+		}
+
+		delegated, err := ea.ToFilecoinAddress()
 		if err != nil {
 			return fmt.Errorf("failed to calculate f4 address: %w", err)
 		}
@@ -309,7 +309,7 @@ var evmInvokeCmd = &cmds.Command{
 	},
 	Arguments: []cmds.Argument{
 		cmds.StringArg("address", true, false, "address"),
-		cmds.StringArg("call-data", false, false, "call data"),
+		cmds.StringArg("call-data", false, false, "calldata"),
 	},
 	Options: []cmds.Option{
 		cmds.StringOption("from", "optionally specify the account to use for sending the exec message"),
@@ -327,7 +327,7 @@ var evmInvokeCmd = &cmds.Command{
 			return fmt.Errorf("failed to decode address: %w", err)
 		}
 
-		callData, err := hex.DecodeString(req.Arguments[1])
+		callData, err := types.DecodeHexString(req.Arguments[1])
 		if err != nil {
 			return fmt.Errorf("decoding hex input data: %w", err)
 		}
@@ -407,23 +407,23 @@ var evmInvokeCmd = &cmds.Command{
 
 			var evt types.Event
 			err = amt.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
-				fmt.Printf("%x\n", deferred.Raw)
+				afmt.Printf("%x\n", deferred.Raw)
 				if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
 					return err
 				}
 				if err != nil {
 					return err
 				}
-				fmt.Printf("\tEmitter ID: %s\n", evt.Emitter)
+				afmt.Printf("\tEmitter ID: %s\n", evt.Emitter)
 				for _, e := range evt.Entries {
 					value, err := cbg.ReadByteArray(bytes.NewBuffer(e.Value), uint64(len(e.Value)))
 					if err != nil {
 						return err
 					}
-					fmt.Printf("\t\tKey: %s, Value: 0x%x, Flags: b%b\n", e.Key, value, e.Flags)
+					afmt.Printf("\t\tKey: %s, Value: 0x%x, Flags: b%b\n", e.Key, value, e.Flags)
 				}
-				return nil
 
+				return nil
 			})
 		}
 		if err != nil {
@@ -434,22 +434,22 @@ var evmInvokeCmd = &cmds.Command{
 	},
 }
 
-func ethAddrFromFilecoinAddress(ctx context.Context, addr address.Address, fnapi v1api.IChain) (types.EthAddress, address.Address, error) {
+func ethAddrFromFilecoinAddress(ctx context.Context, addr address.Address, chainAPI v1api.IChain) (types.EthAddress, address.Address, error) {
 	var faddr address.Address
 	var err error
 
 	switch addr.Protocol() {
 	case address.BLS, address.SECP256K1:
-		faddr, err = fnapi.StateLookupID(ctx, addr, types.EmptyTSK)
+		faddr, err = chainAPI.StateLookupID(ctx, addr, types.EmptyTSK)
 		if err != nil {
 			return types.EthAddress{}, addr, err
 		}
 	case address.Actor, address.ID:
-		faddr, err = fnapi.StateLookupID(ctx, addr, types.EmptyTSK)
+		faddr, err = chainAPI.StateLookupID(ctx, addr, types.EmptyTSK)
 		if err != nil {
 			return types.EthAddress{}, addr, err
 		}
-		fAct, err := fnapi.StateGetActor(ctx, faddr, types.EmptyTSK)
+		fAct, err := chainAPI.StateGetActor(ctx, faddr, types.EmptyTSK)
 		if err != nil {
 			return types.EthAddress{}, addr, err
 		}
