@@ -637,13 +637,6 @@ func (a *ethAPI) EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes
 		return types.EmptyEthHash, err
 	}
 
-	_, err = a.chain.StateGetActor(ctx, smsg.Message.To, types.EmptyTSK)
-	if err != nil {
-		// if actor does not exist on chain yet, set the method to 0 because
-		// placeholders only implement method 0
-		smsg.Message.Method = builtin.MethodSend
-	}
-
 	_, err = a.mpool.MpoolPush(ctx, smsg)
 	if err != nil {
 		return types.EmptyEthHash, err
