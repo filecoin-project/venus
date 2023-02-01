@@ -14,8 +14,8 @@ import (
 
 func TestNetworkNamtToNetworkType(t *testing.T) {
 	tf.UnitTest(t)
-	assert.Len(t, NetworkTypeWithNetworkName, 8)
-	assert.Len(t, NetworkNameWithNetworkType, 8)
+	assert.Len(t, NetworkTypeWithNetworkName, 6)
+	assert.Len(t, NetworkNameWithNetworkType, 6)
 	for nt, nn := range NetworkTypeWithNetworkName {
 		got, err := NetworkNameToNetworkType(nn)
 		assert.Nil(t, err)
@@ -45,10 +45,6 @@ func TestLoadBuiltinActors(t *testing.T) {
 	full := mock.NewMockFullNode(ctrl)
 
 	for nn := range NetworkNameWithNetworkType {
-		if nn == types.NetworkNameWallaby {
-			continue
-		}
-
 		full.EXPECT().StateNetworkName(ctx).Return(nn, nil)
 		assert.Nil(t, LoadBuiltinActors(ctx, full))
 
