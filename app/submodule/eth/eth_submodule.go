@@ -27,9 +27,9 @@ func NewEthSubModule(cfg *config.Config,
 	}
 	em.ethEventAPI = ee
 
-	em.ehtAdapter = &ethAPIDummy{}
+	em.ethAPIAdapter = &ethAPIDummy{}
 	if em.cfg.FevmConfig.EnableEthRPC {
-		em.ehtAdapter, err = newEthAPI(em)
+		em.ethAPIAdapter, err = newEthAPI(em)
 		if err != nil {
 			return nil, err
 		}
@@ -44,8 +44,8 @@ type EthSubModule struct { // nolint
 	mpoolModule *mpool.MessagePoolSubmodule
 	sqlitePath  string
 
-	ethEventAPI *ethEventAPI
-	ehtAdapter  ehtAPIAdapter
+	ethEventAPI   *ethEventAPI
+	ethAPIAdapter ethAPIAdapter
 }
 
 func (em *EthSubModule) Start(ctx context.Context) error {
@@ -53,7 +53,7 @@ func (em *EthSubModule) Start(ctx context.Context) error {
 		return err
 	}
 
-	return em.ehtAdapter.start(ctx)
+	return em.ethAPIAdapter.start(ctx)
 }
 
 func (em *EthSubModule) Close(ctx context.Context) error {
@@ -61,10 +61,10 @@ func (em *EthSubModule) Close(ctx context.Context) error {
 		return err
 	}
 
-	return em.ehtAdapter.close()
+	return em.ethAPIAdapter.close()
 }
 
-type ehtAPIAdapter interface {
+type ethAPIAdapter interface {
 	v1api.IETH
 	start(ctx context.Context) error
 	close() error
@@ -79,7 +79,7 @@ var _ v1api.IETH = (*fullETHAPI)(nil)
 
 func (em *EthSubModule) API() v1api.FullETH {
 	return &fullETHAPI{
-		IETH:        em.ehtAdapter,
+		IETH:        em.ethAPIAdapter,
 		ethEventAPI: em.ethEventAPI,
 	}
 }

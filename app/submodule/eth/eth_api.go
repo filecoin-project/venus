@@ -1305,4 +1305,4 @@ func parseEthTopics(topics types.EthTopicSpec) (map[string][][]byte, error) {
 }
 
 var _ v1.IETH = &ethAPI{}
-var _ ehtAPIAdapter = &ethAPI{}
+var _ ethAPIAdapter = &ethAPI{}
