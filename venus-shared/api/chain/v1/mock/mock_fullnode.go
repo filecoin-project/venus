@@ -694,6 +694,21 @@ func (mr *MockFullNodeMockRecorder) EthGetLogs(arg0, arg1 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetLogs", reflect.TypeOf((*MockFullNode)(nil).EthGetLogs), arg0, arg1)
 }
 
+// EthGetMessageCidByTransactionHash mocks base method.
+func (m *MockFullNode) EthGetMessageCidByTransactionHash(arg0 context.Context, arg1 *types.EthHash) (*cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetMessageCidByTransactionHash", arg0, arg1)
+	ret0, _ := ret[0].(*cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthGetMessageCidByTransactionHash indicates an expected call of EthGetMessageCidByTransactionHash.
+func (mr *MockFullNodeMockRecorder) EthGetMessageCidByTransactionHash(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetMessageCidByTransactionHash", reflect.TypeOf((*MockFullNode)(nil).EthGetMessageCidByTransactionHash), arg0, arg1)
+}
+
 // EthGetStorageAt mocks base method.
 func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 types.EthAddress, arg2 types.EthBytes, arg3 string) (types.EthBytes, error) {
 	m.ctrl.T.Helper()

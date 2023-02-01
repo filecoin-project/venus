@@ -166,12 +166,9 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	blockDelay := b.repo.Config().NetworkParams.BlockDelay
 	nd.common = common.NewCommonModule(nd.chain, nd.network, blockDelay)
 
-	var txHashDBPath string
-	if b.repo.Config().FevmConfig.EnableEthHashToFilecoinCidMapping {
-		txHashDBPath, err = b.repo.SqlitePath()
-		if err != nil {
-			return nil, err
-		}
+	txHashDBPath, err := b.repo.SqlitePath()
+	if err != nil {
+		return nil, err
 	}
 	if nd.eth, err = eth.NewEthSubModule(b.repo.Config(), nd.chain, nd.mpool, txHashDBPath); err != nil {
 		return nil, err

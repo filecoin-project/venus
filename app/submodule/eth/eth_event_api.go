@@ -1,7 +1,6 @@
 package eth
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -20,7 +19,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-varint"
-	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 const ChainHeadConfidence = 1
@@ -255,7 +253,7 @@ func (e *ethEventAPI) installEthFilterSpec(ctx context.Context, filterSpec *type
 				return nil, fmt.Errorf("failed to got head %v", err)
 			}
 			if maxHeight-ts.Height() > e.MaxFilterHeightRange {
-				return nil, fmt.Errorf("invalid epoch range")
+				return nil, fmt.Errorf("invalid epoch range: to block is too far in the future (maximum: %d)", e.MaxFilterHeightRange)
 			}
 		} else if minHeight >= 0 && maxHeight == -1 {
 			// Here the client is looking for events between some time in the past and the current head
@@ -264,11 +262,13 @@ func (e *ethEventAPI) installEthFilterSpec(ctx context.Context, filterSpec *type
 				return nil, fmt.Errorf("failed to got head %v", err)
 			}
 			if ts.Height()-minHeight > e.MaxFilterHeightRange {
-				return nil, fmt.Errorf("invalid epoch range")
+				return nil, fmt.Errorf("invalid epoch range: from block is too far in the past (maximum: %d)", e.MaxFilterHeightRange)
 			}
 		} else if minHeight >= 0 && maxHeight >= 0 {
-			if minHeight > maxHeight || maxHeight-minHeight > e.MaxFilterHeightRange {
-				return nil, fmt.Errorf("invalid epoch range")
+			if minHeight > maxHeight {
+				return nil, fmt.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", minHeight, maxHeight)
+			} else if maxHeight-minHeight > e.MaxFilterHeightRange {
+				return nil, fmt.Errorf("invalid epoch range: range between to and from blocks is too large (maximum: %d)", e.MaxFilterHeightRange)
 			}
 		}
 	}
@@ -283,13 +283,16 @@ func (e *ethEventAPI) installEthFilterSpec(ctx context.Context, filterSpec *type
 	}
 
 	for idx, vals := range filterSpec.Topics {
+		if len(vals) == 0 {
+			continue
+		}
 		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
 		key := fmt.Sprintf("topic%d", idx+1)
-		keyvals := make([][]byte, len(vals))
-		for i, v := range vals {
-			keyvals[i] = v[:]
+		for _, v := range vals {
+			buf := make([]byte, len(v[:]))
+			copy(buf, v[:])
+			keys[key] = append(keys[key], buf)
 		}
-		keys[key] = keyvals
 	}
 
 	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keys)
@@ -532,7 +535,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageSt
 		var err error
 
 		for _, entry := range ev.Entries {
-			value := types.EthBytes(leftpad32(decodeLogBytes(entry.Value)))
+			value := types.EthBytes(leftpad32(entry.Value)) // value has already been cbor-decoded but see https://github.com/filecoin-project/ref-fvm/issues/1345
 			if entry.Key == types.EthTopic1 || entry.Key == types.EthTopic2 || entry.Key == types.EthTopic3 || entry.Key == types.EthTopic4 {
 				log.Topics = append(log.Topics, value)
 			} else {
@@ -718,21 +721,6 @@ func (e *ethSubscription) stop() {
 		close(e.out)
 		e.quit = nil
 	}
-}
-
-// decodeLogBytes decodes a CBOR-serialized array into its original form.
-//
-// This function swallows errors and returns the original array if it failed
-// to decode.
-func decodeLogBytes(orig []byte) []byte {
-	if orig == nil {
-		return orig
-	}
-	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
-	if err != nil {
-		return orig
-	}
-	return decoded
 }
 
 // TODO we could also emit full EVM words from the EVM runtime, but not doing so

@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/venus-shared/types/params"
 	blocks "github.com/ipfs/go-block-format"
@@ -206,6 +207,22 @@ func (m *Message) VMMessage() *Message {
 
 func (m *Message) RequiredFunds() abi.TokenAmount {
 	return abi.TokenAmount{Int: BigMul(BigInt{Int: m.GasFeeCap.Int}, NewInt(uint64(m.GasLimit))).Int}
+}
+
+func (m *Message) SigningBytes(sigType crypto.SigType) ([]byte, error) {
+	if sigType == crypto.SigTypeDelegated {
+		txArgs, err := EthTxArgsFromMessage(m)
+		if err != nil {
+			return nil, fmt.Errorf("failed to reconstruct eth transaction: %w", err)
+		}
+		rlpEncodedMsg, err := txArgs.ToRlpUnsignedMsg()
+		if err != nil {
+			return nil, fmt.Errorf("failed to repack eth rlp message: %w", err)
+		}
+		return rlpEncodedMsg, nil
+	}
+
+	return m.Cid().Bytes(), nil
 }
 
 var _ ChainMsg = (*Message)(nil)

@@ -571,13 +571,18 @@ func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
 		new: added,
 	}
 
-	tskBlk, err := newTS.Key().ToStorageBlock()
-	if err != nil {
-		log.Errorf("failed to create a block from tsk: %s", newTS.Key())
-	}
-	_ = store.bsstore.Put(ctx, tskBlk)
+	store.persistTipSetKey(ctx, newTS.Key())
 
 	return nil
+}
+
+func (store *Store) persistTipSetKey(ctx context.Context, key types.TipSetKey) {
+	tskBlk, err := key.ToStorageBlock()
+	if err != nil {
+		log.Errorf("failed to create a block from tsk: %s", key)
+	}
+
+	_ = store.bsstore.Put(ctx, tskBlk)
 }
 
 func (store *Store) reorgWorker(ctx context.Context) chan reorg {
@@ -1044,6 +1049,10 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 		if err != nil {
 			return nil, err
 		}
+
+		// save tipsetkey
+		store.persistTipSetKey(ctx, curParentTipset.Key())
+
 		curTipset = curParentTipset
 	}
 

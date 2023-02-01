@@ -7,6 +7,11 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
+type FullETH interface {
+	IETH
+	IETHEvent
+}
+
 type IETH interface {
 	// These methods are used for Ethereum-compatible JSON-RPC calls
 	//
@@ -23,6 +28,7 @@ type IETH interface {
 	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error)                                  //perm:read
 	EthGetTransactionByHash(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error)                                         //perm:read
 	EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*types.EthHash, error)                                              //perm:read
+	EthGetMessageCidByTransactionHash(ctx context.Context, txHash *types.EthHash) (*cid.Cid, error)                                   //perm:read
 	EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkOpt string) (types.EthUint64, error)                      //perm:read
 	EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error)                                  //perm:read
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error)    //perm:read
@@ -43,8 +49,6 @@ type IETH interface {
 	EthCall(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error) //perm:read
 
 	EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error) //perm:read
-
-	IETHEvent
 }
 
 type IETHEvent interface {
