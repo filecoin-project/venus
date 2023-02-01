@@ -382,7 +382,7 @@ func Version11Upgrade(repoPath string) (err error) {
 	case types.NetworkMainnet:
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 99999999999999
 	case types.Network2k:
-		cfg.NetworkParams.GenesisNetworkVersion = network.Version18
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version17
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 30
 	case types.NetworkCalibnet:
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 99999999999999
