@@ -784,7 +784,6 @@ func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam string)
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		// As far as I can tell, the Eth API always returns empty on contract deployment
 		return types.EthBytes{}, nil
-
 	} else if len(invokeResult.MsgRct.Return) > 0 {
 		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
 	}
