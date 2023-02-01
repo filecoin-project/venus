@@ -791,6 +791,10 @@ func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam string)
 	return types.EthBytes{}, nil
 }
 
+func (a *ethAPI) Web3ClientVersion(ctx context.Context) (string, error) {
+	return constants.UserVersion(), nil
+}
+
 func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, ms *chain.MessageStore, ca v1.IChain) (types.EthBlock, error) {
 	parent, err := ca.ChainGetTipSet(ctx, ts.Parents())
 	if err != nil {

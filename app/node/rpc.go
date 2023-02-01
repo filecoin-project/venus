@@ -171,6 +171,8 @@ func aliasETHAPI(rpcServer *jsonrpc.RPCServer) {
 	rpcServer.AliasMethod("eth_getBlockByHash", "Filecoin.EthGetBlockByHash")
 	rpcServer.AliasMethod("eth_getBlockByNumber", "Filecoin.EthGetBlockByNumber")
 	rpcServer.AliasMethod("eth_getTransactionByHash", "Filecoin.EthGetTransactionByHash")
+	rpcServer.AliasMethod("eth_getTransactionHashByCid", "Filecoin.EthGetTransactionHashByCid")
+	rpcServer.AliasMethod("eth_getMessageCidByTransactionHash", "Filecoin.EthGetMessageCidByTransactionHash")
 	rpcServer.AliasMethod("eth_getTransactionCount", "Filecoin.EthGetTransactionCount")
 	rpcServer.AliasMethod("eth_getTransactionReceipt", "Filecoin.EthGetTransactionReceipt")
 	rpcServer.AliasMethod("eth_getTransactionByBlockHashAndIndex", "Filecoin.EthGetTransactionByBlockHashAndIndex")
@@ -188,6 +190,8 @@ func aliasETHAPI(rpcServer *jsonrpc.RPCServer) {
 
 	rpcServer.AliasMethod("net_version", "Filecoin.NetVersion")
 	rpcServer.AliasMethod("net_listening", "Filecoin.NetListening")
+
+	rpcServer.AliasMethod("web3_clientVersion", "Filecoin.Web3ClientVersion")
 
 	rpcServer.AliasMethod("eth_estimateGas", "Filecoin.EthEstimateGas")
 	rpcServer.AliasMethod("eth_call", "Filecoin.EthCall")

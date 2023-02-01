@@ -83,6 +83,7 @@
   * [EthSendRawTransaction](#ethsendrawtransaction)
   * [NetListening](#netlistening)
   * [NetVersion](#netversion)
+  * [Web3ClientVersion](#web3clientversion)
 * [ETHEvent](#ethevent)
   * [EthGetFilterChanges](#ethgetfilterchanges)
   * [EthGetFilterLogs](#ethgetfilterlogs)
@@ -2614,6 +2615,16 @@ Inputs: `[]`
 Response: `true`
 
 ### NetVersion
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"string value"`
+
+### Web3ClientVersion
+Returns the client version
 
 
 Perms: read

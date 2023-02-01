@@ -924,6 +924,7 @@ type IETHStruct struct {
 		EthSendRawTransaction                  func(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error)                                                          `perm:"read"`
 		NetListening                           func(ctx context.Context) (bool, error)                                                                                         `perm:"read"`
 		NetVersion                             func(ctx context.Context) (string, error)                                                                                       `perm:"read"`
+		Web3ClientVersion                      func(ctx context.Context) (string, error)                                                                                       `perm:"read"`
 	}
 }
 
@@ -1000,6 +1001,9 @@ func (s *IETHStruct) NetListening(p0 context.Context) (bool, error) {
 	return s.Internal.NetListening(p0)
 }
 func (s *IETHStruct) NetVersion(p0 context.Context) (string, error) { return s.Internal.NetVersion(p0) }
+func (s *IETHStruct) Web3ClientVersion(p0 context.Context) (string, error) {
+	return s.Internal.Web3ClientVersion(p0)
+}
 
 type IETHEventStruct struct {
 	Internal struct {

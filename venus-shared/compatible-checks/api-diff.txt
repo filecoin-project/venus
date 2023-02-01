@@ -222,4 +222,5 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ WalletState
 	- WalletValidateAddress
 	- WalletVerify
+	+ Web3ClientVersion
 
