@@ -14,6 +14,7 @@ import (
 	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
 	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -53,7 +54,9 @@ func DumpActorState(codeLoader *dispatch.CodeLoader, act *types.Actor, b []byte)
 
 	um := vmActor.State()
 	if um == nil {
-		// TODO: I would like to assert that we have the empty object here
+		if act.Code != vmcontext.EmptyObjectCid {
+			return nil, fmt.Errorf("actor with code %s should only have empty object (%s) as its Head, instead has %s", act.Code, vmcontext.EmptyObjectCid, act.Head)
+		}
 		return nil, nil
 	}
 	if err := um.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
