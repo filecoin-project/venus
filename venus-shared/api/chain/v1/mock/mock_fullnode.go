@@ -12,6 +12,7 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
+	jsonrpc "github.com/filecoin-project/go-jsonrpc"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
@@ -905,18 +906,18 @@ func (mr *MockFullNodeMockRecorder) EthSendRawTransaction(arg0, arg1 interface{}
 }
 
 // EthSubscribe mocks base method.
-func (m *MockFullNode) EthSubscribe(arg0 context.Context, arg1 string, arg2 *types.EthSubscriptionParams) (<-chan types.EthSubscriptionResponse, error) {
+func (m *MockFullNode) EthSubscribe(arg0 context.Context, arg1 jsonrpc.RawParams) (types.EthSubscriptionID, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EthSubscribe", arg0, arg1, arg2)
-	ret0, _ := ret[0].(<-chan types.EthSubscriptionResponse)
+	ret := m.ctrl.Call(m, "EthSubscribe", arg0, arg1)
+	ret0, _ := ret[0].(types.EthSubscriptionID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // EthSubscribe indicates an expected call of EthSubscribe.
-func (mr *MockFullNodeMockRecorder) EthSubscribe(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) EthSubscribe(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSubscribe", reflect.TypeOf((*MockFullNode)(nil).EthSubscribe), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSubscribe", reflect.TypeOf((*MockFullNode)(nil).EthSubscribe), arg0, arg1)
 }
 
 // EthUninstallFilter mocks base method.

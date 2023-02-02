@@ -10,7 +10,8 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
-func NewEthSubModule(cfg *config.Config,
+func NewEthSubModule(ctx context.Context,
+	cfg *config.Config,
 	chainModule *chain.ChainSubmodule,
 	mpoolModule *mpool.MessagePoolSubmodule,
 	sqlitePath string,
@@ -21,7 +22,7 @@ func NewEthSubModule(cfg *config.Config,
 		mpoolModule: mpoolModule,
 		sqlitePath:  sqlitePath,
 	}
-	ee, err := newEthEventAPI(em)
+	ee, err := newEthEventAPI(ctx, em)
 	if err != nil {
 		return nil, fmt.Errorf("create eth event api error %v", err)
 	}

@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 )
@@ -85,8 +86,14 @@ type IETHEvent interface {
 	//  - logs: notify new event logs that match a criteria
 	// params contains additional parameters used with the log event type
 	// The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
-	EthSubscribe(ctx context.Context, eventType string, params *types.EthSubscriptionParams) (<-chan types.EthSubscriptionResponse, error) //perm:write
+	EthSubscribe(ctx context.Context, params jsonrpc.RawParams) (types.EthSubscriptionID, error) //perm:write
 
 	// Unsubscribe from a websocket subscription
 	EthUnsubscribe(ctx context.Context, id types.EthSubscriptionID) (bool, error) //perm:write
+}
+
+// reverse interface to the client, called after EthSubscribe
+type EthSubscriber interface {
+	// note: the parameter is ethtypes.EthSubscriptionResponse serialized as json object
+	EthSubscription(ctx context.Context, params jsonrpc.RawParams) error //rpc_method:eth_subscription notify:true
 }
