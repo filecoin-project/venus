@@ -219,7 +219,7 @@ func (m *Message) RequiredFunds() abi.TokenAmount {
 
 func (m *Message) SigningBytes(sigType crypto.SigType) ([]byte, error) {
 	if sigType == crypto.SigTypeDelegated {
-		txArgs, err := EthTxArgsFromMessage(m)
+		txArgs, err := EthTxArgsFromUnsignedEthMessage(m)
 		if err != nil {
 			return nil, fmt.Errorf("failed to reconstruct eth transaction: %w", err)
 		}

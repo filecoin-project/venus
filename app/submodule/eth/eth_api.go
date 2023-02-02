@@ -212,8 +212,8 @@ func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthH
 
 	// first, try to get the cid from mined transactions
 	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, constants.LookbackNoLimit, true)
-	if err == nil {
-		tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.chain)
+	if err == nil && msgLookup != nil {
+		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.chain)
 		if err == nil {
 			return &tx, nil
 		}
@@ -229,7 +229,7 @@ func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthH
 
 	for _, p := range pending {
 		if p.Cid() == c {
-			tx, err := newEthTxFromFilecoinMessage(ctx, p, a.chain)
+			tx, err := newEthTxFromSignedMessage(ctx, p, a.chain)
 			if err != nil {
 				return nil, fmt.Errorf("could not convert Filecoin message into tx: %v", err)
 			}
@@ -278,7 +278,7 @@ func (a *ethAPI) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *
 }
 
 func (a *ethAPI) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*types.EthHash, error) {
-	hash, err := ethTxHashFromFilecoinMessageCid(ctx, cid, a.em.chainModule.MessageStore, a.chain)
+	hash, err := ethTxHashFromMessageCid(ctx, cid, a.em.chainModule.MessageStore, a.chain)
 	if hash == types.EmptyEthHash {
 		// not found
 		return nil, nil
@@ -319,7 +319,7 @@ func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthH
 		return nil, nil
 	}
 
-	tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.chain)
+	tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.chain)
 	if err != nil {
 		return nil, nil
 	}
@@ -827,7 +827,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		}
 		gasUsed += msgLookup.Receipt.GasUsed
 
-		tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, txIdx, ms, ca)
+		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, txIdx, ms, ca)
 		if err != nil {
 			return types.EthBlock{}, nil
 		}
@@ -889,101 +889,61 @@ func lookupEthAddress(ctx context.Context, addr address.Address, ca v1.IChain) (
 	return types.EthAddressFromFilecoinAddress(idAddr)
 }
 
-func ethTxHashFromFilecoinMessageCid(ctx context.Context, c cid.Cid, ms *chain.MessageStore, ca v1.IChain) (types.EthHash, error) {
+func ethTxHashFromMessageCid(ctx context.Context, c cid.Cid, ms *chain.MessageStore, ca v1.IChain) (types.EthHash, error) {
 	smsg, err := ms.LoadSignedMessage(ctx, c)
 	if err == nil {
-		return ethTxHashFromSignedFilecoinMessage(ctx, smsg, ca)
+		// This is an Eth Tx, Secp message, Or BLS message in the mpool
+		return ethTxHashFromSignedMessage(ctx, smsg, ca)
 	}
 
 	return types.EthHashFromCid(c)
 }
 
-func ethTxHashFromSignedFilecoinMessage(ctx context.Context, smsg *types.SignedMessage, ca v1.IChain) (types.EthHash, error) {
+func ethTxHashFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, ca v1.IChain) (types.EthHash, error) {
 	if smsg.Signature.Type == crypto.SigTypeDelegated {
-		ethTx, err := newEthTxFromFilecoinMessage(ctx, smsg, ca)
+		ethTx, err := newEthTxFromSignedMessage(ctx, smsg, ca)
 		if err != nil {
 			return types.EmptyEthHash, err
 		}
 		return ethTx.Hash, nil
+	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 {
+		return types.EthHashFromCid(smsg.Cid())
+	} else { // BLS message
+		return types.EthHashFromCid(smsg.Message.Cid())
 	}
-
-	return types.EthHashFromCid(smsg.Cid())
 }
 
-func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage, ca v1.IChain) (types.EthTx, error) {
-	// Ignore errors here so we can still parse non-eth messages
-	fromEthAddr, _ := lookupEthAddress(ctx, smsg.Message.From, ca)
-	toEthAddr, _ := lookupEthAddress(ctx, smsg.Message.To, ca)
-
-	toAddr := &toEthAddr
-	input := smsg.Message.Params
+func newEthTxFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, ca v1.IChain) (types.EthTx, error) {
+	var tx types.EthTx
 	var err error
-	// Check to see if we need to decode as contract deployment.
-	// We don't need to resolve the to address, because there's only one form (an ID).
-	if smsg.Message.To == builtintypes.EthereumAddressManagerActorAddr {
-		switch smsg.Message.Method {
-		case builtintypes.MethodsEAM.Create:
-			toAddr = nil
-			var params eam.CreateParams
-			err = params.UnmarshalCBOR(bytes.NewReader(smsg.Message.Params))
-			input = params.Initcode
-		case builtintypes.MethodsEAM.Create2:
-			toAddr = nil
-			var params eam.Create2Params
-			err = params.UnmarshalCBOR(bytes.NewReader(smsg.Message.Params))
-			input = params.Initcode
-		case builtintypes.MethodsEAM.CreateExternal:
-			toAddr = nil
-			var params abi.CborBytes
-			err = params.UnmarshalCBOR(bytes.NewReader(smsg.Message.Params))
-			input = []byte(params)
-		}
-		if err != nil {
-			return types.EthTx{}, err
-		}
-	}
-	// Otherwise, try to decode as a cbor byte array.
-	// TODO: Actually check if this is an ethereum call. This code will work for demo purposes, but is not correct.
-	if toAddr != nil {
-		if decodedParams, err := cbg.ReadByteArray(bytes.NewReader(smsg.Message.Params), uint64(len(smsg.Message.Params))); err == nil {
-			input = decodedParams
-		}
-	}
-
-	r, s, v, err := types.RecoverSignature(smsg.Signature)
-	if err != nil {
-		// we don't want to return error if the message is not an Eth tx
-		r, s, v = types.EthBigIntZero, types.EthBigIntZero, types.EthBigIntZero
-	}
-
-	tx := types.EthTx{
-		ChainID:              types.EthUint64(types2.Eip155ChainID),
-		From:                 fromEthAddr,
-		To:                   toAddr,
-		Value:                types.EthBigInt(smsg.Message.Value),
-		Type:                 types.EthUint64(2),
-		Input:                input,
-		Gas:                  types.EthUint64(smsg.Message.GasLimit),
-		MaxFeePerGas:         types.EthBigInt(smsg.Message.GasFeeCap),
-		MaxPriorityFeePerGas: types.EthBigInt(smsg.Message.GasPremium),
-		V:                    v,
-		R:                    r,
-		S:                    s,
-	}
 
 	// This is an eth tx
 	if smsg.Signature.Type == crypto.SigTypeDelegated {
+		tx, err = types.EthTxFromSignedEthMessage(smsg)
+		if err != nil {
+			return types.EthTx{}, fmt.Errorf("failed to convert from signed message: %w", err)
+		}
+
 		tx.Hash, err = tx.TxHash()
 		if err != nil {
-			return tx, err
+			return types.EthTx{}, fmt.Errorf("failed to calculate hash for ethTx: %w", err)
 		}
-	} else if smsg.Signature.Type == crypto.SigTypeUnknown { // BLS Filecoin message
-		tx.Hash, err = types.EthHashFromCid(smsg.Message.Cid())
+
+		fromAddr, err := lookupEthAddress(ctx, smsg.Message.From, ca)
+		if err != nil {
+			return types.EthTx{}, fmt.Errorf("failed to resolve Ethereum address: %w", err)
+		}
+
+		tx.From = fromAddr
+	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 { // Secp Filecoin Message
+		tx = ethTxFromNativeMessage(ctx, smsg.VMMessage(), ca)
+		tx.Hash, err = types.EthHashFromCid(smsg.Cid())
 		if err != nil {
 			return tx, err
 		}
-	} else { // Secp Filecoin Message
-		tx.Hash, err = types.EthHashFromCid(smsg.Cid())
+	} else { // BLS Filecoin message
+		tx = ethTxFromNativeMessage(ctx, smsg.VMMessage(), ca)
+		tx.Hash, err = types.EthHashFromCid(smsg.Message.Cid())
 		if err != nil {
 			return tx, err
 		}
@@ -992,10 +952,32 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 	return tx, nil
 }
 
-// newEthTxFromFilecoinMessageLookup creates an ethereum transaction from filecoin message lookup. If a negative txIdx is passed
-// into the function, it looksup the transaction index of the message in the tipset, otherwise it uses the txIdx passed into the
+// ethTxFromNativeMessage does NOT populate:
+// - BlockHash
+// - BlockNumber
+// - TransactionIndex
+// - Hash
+func ethTxFromNativeMessage(ctx context.Context, msg *types.Message, ca v1.IChain) types.EthTx {
+	// We don't care if we error here, conversion is best effort for non-eth transactions
+	from, _ := lookupEthAddress(ctx, msg.From, ca)
+	to, _ := lookupEthAddress(ctx, msg.To, ca)
+	return types.EthTx{
+		To:                   &to,
+		From:                 from,
+		Nonce:                types.EthUint64(msg.Nonce),
+		ChainID:              types.EthUint64(types2.Eip155ChainID),
+		Value:                types.EthBigInt(msg.Value),
+		Type:                 types.Eip1559TxType,
+		Gas:                  types.EthUint64(msg.GasLimit),
+		MaxFeePerGas:         types.EthBigInt(msg.GasFeeCap),
+		MaxPriorityFeePerGas: types.EthBigInt(msg.GasPremium),
+	}
+}
+
+// newEthTxFromMessageLookup creates an ethereum transaction from filecoin message lookup. If a negative txIdx is passed
+// into the function, it looks up the transaction index of the message in the tipset, otherwise it uses the txIdx passed into the
 // function
-func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *types.MsgLookup, txIdx int, ms *chain.MessageStore, ca v1.IChain) (types.EthTx, error) {
+func newEthTxFromMessageLookup(ctx context.Context, msgLookup *types.MsgLookup, txIdx int, ms *chain.MessageStore, ca v1.IChain) (types.EthTx, error) {
 	if msgLookup == nil {
 		return types.EthTx{}, fmt.Errorf("msg does not exist")
 	}
@@ -1054,7 +1036,7 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *types.Msg
 		}
 	}
 
-	tx, err := newEthTxFromFilecoinMessage(ctx, smsg, ca)
+	tx, err := newEthTxFromSignedMessage(ctx, smsg, ca)
 	if err != nil {
 		return types.EthTx{}, err
 	}
@@ -1100,21 +1082,29 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLooku
 		LogsBloom:        types.EmptyEthBloom[:],
 	}
 
-	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
-		// Create and Create2 return the same things.
-		var ret eam.CreateReturn
-		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
-			return types.EthTxReceipt{}, fmt.Errorf("failed to parse contract creation result: %w", err)
-		}
-		addr := types.EthAddress(ret.EthAddress)
-		receipt.ContractAddress = &addr
-	}
-
 	if lookup.Receipt.ExitCode.IsSuccess() {
 		receipt.Status = 1
 	}
 	if lookup.Receipt.ExitCode.IsError() {
 		receipt.Status = 0
+	}
+
+	receipt.GasUsed = types.EthUint64(lookup.Receipt.GasUsed)
+
+	// TODO: handle CumulativeGasUsed
+	receipt.CumulativeGasUsed = types.EmptyEthInt
+
+	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
+	receipt.EffectiveGasPrice = types.EthBigInt(effectiveGasPrice)
+
+	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
+		// Create and Create2 return the same things.
+		var ret eam.CreateExternalReturn
+		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
+			return types.EthTxReceipt{}, fmt.Errorf("failed to parse contract creation result: %w", err)
+		}
+		addr := types.EthAddress(ret.EthAddress)
+		receipt.ContractAddress = &addr
 	}
 
 	if len(events) > 0 {
@@ -1160,14 +1150,6 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLooku
 		}
 	}
 
-	receipt.GasUsed = types.EthUint64(lookup.Receipt.GasUsed)
-
-	// TODO: handle CumulativeGasUsed
-	receipt.CumulativeGasUsed = types.EmptyEthInt
-
-	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
-	receipt.EffectiveGasPrice = types.EthBigInt(effectiveGasPrice)
-
 	return receipt, nil
 }
 
@@ -1188,7 +1170,7 @@ func (m *ethTxHashManager) Apply(ctx context.Context, from, to *types.TipSet) er
 				continue
 			}
 
-			hash, err := ethTxHashFromSignedFilecoinMessage(ctx, smsg, m.chainAPI)
+			hash, err := ethTxHashFromSignedMessage(ctx, smsg, m.chainAPI)
 			if err != nil {
 				return err
 			}
@@ -1220,7 +1202,7 @@ func waitForMpoolUpdates(ctx context.Context, ch <-chan types.MpoolUpdate, manag
 				continue
 			}
 
-			ethTx, err := newEthTxFromFilecoinMessage(ctx, u.Message, manager.chainAPI)
+			ethTx, err := newEthTxFromSignedMessage(ctx, u.Message, manager.chainAPI)
 			if err != nil {
 				log.Errorf("error converting filecoin message to eth tx: %s", err)
 			}

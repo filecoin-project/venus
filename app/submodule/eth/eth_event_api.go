@@ -549,7 +549,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageSt
 			return nil, err
 		}
 
-		log.TransactionHash, err = ethTxHashFromFilecoinMessageCid(context.TODO(), ev.MsgCid, ms, ca)
+		log.TransactionHash, err = ethTxHashFromMessageCid(context.TODO(), ev.MsgCid, ms, ca)
 		if err != nil {
 			return nil, err
 		}
@@ -592,7 +592,7 @@ func ethFilterResultFromMessages(cs []*types.SignedMessage, ca v1.IChain) (*type
 	res := &types.EthFilterResult{}
 
 	for _, c := range cs {
-		hash, err := ethTxHashFromSignedFilecoinMessage(context.TODO(), c, ca)
+		hash, err := ethTxHashFromSignedMessage(context.TODO(), c, ca)
 		if err != nil {
 			return nil, err
 		}
