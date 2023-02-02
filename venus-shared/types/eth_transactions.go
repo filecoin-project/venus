@@ -12,7 +12,8 @@ type (
 )
 
 var (
-	EthTxArgsFromMessage = types.EthTxArgsFromMessage
-	RecoverSignature     = types.RecoverSignature
-	ParseEthTxArgs       = types.ParseEthTxArgs
+	EthTxArgsFromUnsignedEthMessage = types.EthTxArgsFromUnsignedEthMessage
+	EthTxFromSignedEthMessage       = types.EthTxFromSignedEthMessage
+	RecoverSignature                = types.RecoverSignature
+	ParseEthTxArgs                  = types.ParseEthTxArgs
 )

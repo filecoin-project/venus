@@ -52,7 +52,44 @@ type EthTxArgs struct {
 	S                    big.Int     `json:"s"`
 }
 
-func EthTxArgsFromMessage(msg *Message) (EthTxArgs, error) {
+// EthTxFromSignedEthMessage does NOT populate:
+// - BlockHash
+// - BlockNumber
+// - TransactionIndex
+// - From
+// - Hash
+func EthTxFromSignedEthMessage(smsg *SignedMessage) (EthTx, error) {
+	if smsg.Signature.Type != typescrypto.SigTypeDelegated {
+		return EthTx{}, fmt.Errorf("signature is not delegated type, is type: %d", smsg.Signature.Type)
+	}
+
+	txArgs, err := EthTxArgsFromUnsignedEthMessage(&smsg.Message)
+	if err != nil {
+		return EthTx{}, fmt.Errorf("failed to convert the unsigned message: %w", err)
+	}
+
+	r, s, v, err := RecoverSignature(smsg.Signature)
+	if err != nil {
+		return EthTx{}, fmt.Errorf("failed to recover signature: %w", err)
+	}
+
+	return EthTx{
+		Nonce:                EthUint64(txArgs.Nonce),
+		ChainID:              EthUint64(txArgs.ChainID),
+		To:                   txArgs.To,
+		Value:                EthBigInt(txArgs.Value),
+		Type:                 Eip1559TxType,
+		Gas:                  EthUint64(txArgs.GasLimit),
+		MaxFeePerGas:         EthBigInt(txArgs.MaxFeePerGas),
+		MaxPriorityFeePerGas: EthBigInt(txArgs.MaxPriorityFeePerGas),
+		V:                    v,
+		R:                    r,
+		S:                    s,
+		Input:                txArgs.Input,
+	}, nil
+}
+
+func EthTxArgsFromUnsignedEthMessage(msg *Message) (EthTxArgs, error) {
 	var (
 		to           *EthAddress
 		params       []byte
