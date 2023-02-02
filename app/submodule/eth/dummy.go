@@ -131,4 +131,4 @@ func (e *ethAPIDummy) close() error {
 }
 
 var _ v1.IETH = &ethAPIDummy{}
-var _ ehtAPIAdapter = &ethAPIDummy{}
+var _ ethAPIAdapter = &ethAPIDummy{}

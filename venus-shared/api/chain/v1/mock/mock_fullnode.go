@@ -3520,3 +3520,18 @@ func (mr *MockFullNodeMockRecorder) WalletState(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletState", reflect.TypeOf((*MockFullNode)(nil).WalletState), arg0)
 }
+
+// Web3ClientVersion mocks base method.
+func (m *MockFullNode) Web3ClientVersion(arg0 context.Context) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Web3ClientVersion", arg0)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Web3ClientVersion indicates an expected call of Web3ClientVersion.
+func (mr *MockFullNodeMockRecorder) Web3ClientVersion(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Web3ClientVersion", reflect.TypeOf((*MockFullNode)(nil).Web3ClientVersion), arg0)
+}

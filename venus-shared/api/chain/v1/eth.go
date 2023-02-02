@@ -49,6 +49,9 @@ type IETH interface {
 	EthCall(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error) //perm:read
 
 	EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error) //perm:read
+
+	// Returns the client version
+	Web3ClientVersion(ctx context.Context) (string, error) //perm:read
 }
 
 type IETHEvent interface {

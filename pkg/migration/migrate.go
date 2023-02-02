@@ -376,14 +376,14 @@ func Version11Upgrade(repoPath string) (err error) {
 	cfg := fsrRepo.Config()
 
 	// add default actor event config
-	cfg.ActorEventCfg = config.NewDefaultConfig().ActorEventCfg
+	cfg.FevmConfig = config.NewDefaultConfig().FevmConfig
 
 	switch cfg.NetworkParams.NetworkType {
 	case types.NetworkMainnet:
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 99999999999999
 	case types.Network2k:
-		cfg.NetworkParams.GenesisNetworkVersion = network.Version18
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = -21
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version17
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 30
 	case types.NetworkCalibnet:
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 99999999999999
 	case types.NetworkForce:

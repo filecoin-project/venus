@@ -23,7 +23,12 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
-const indexed uint8 = 0x01
+func isIndexedValue(b uint8) bool {
+	// currently we mark the full entry as indexed if either the key
+	// or the value are indexed; in the future we will need finer-grained
+	// management of indices
+	return b&(types.EventFlagIndexedKey|types.EventFlagIndexedValue) > 0
+}
 
 type EventFilter struct {
 	id         types.FilterID
@@ -212,7 +217,7 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 	matched := map[string]bool{}
 	for _, ee := range ees {
 		// Skip an entry that is not indexable
-		if ee.Flags&indexed != indexed {
+		if !isIndexedValue(ee.Flags) {
 			continue
 		}
 
@@ -224,7 +229,7 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 		}
 
 		wantlist, ok := f.keys[keyname]
-		if !ok {
+		if !ok || len(wantlist) == 0 {
 			continue
 		}
 
@@ -239,7 +244,6 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 			// all keys have been matched
 			return true
 		}
-
 	}
 
 	return false
@@ -278,13 +282,13 @@ func (te *TipSetEvents) messages(ctx context.Context) ([]executedMessage, error)
 }
 
 type executedMessage struct {
-	msg *types.Message
+	msg types.ChainMsg
 	rct *types.MessageReceipt
 	// events extracted from receipt
 	evs []*types.Event
 }
 
-func (e *executedMessage) Message() *types.Message {
+func (e *executedMessage) Message() types.ChainMsg {
 	return e.msg
 }
 
@@ -441,7 +445,7 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTS, rc
 	ems := make([]executedMessage, len(msgs))
 
 	for i := 0; i < len(msgs); i++ {
-		ems[i].msg = msgs[i].VMMessage()
+		ems[i].msg = msgs[i]
 
 		var rct types.MessageReceipt
 		found, err := arr.Get(uint64(i), &rct)

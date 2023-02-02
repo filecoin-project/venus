@@ -39,7 +39,6 @@ type Config struct {
 	Wallet        *WalletConfig        `json:"walletModule"`
 	SlashFilterDs *SlashFilterDsConfig `json:"slashFilter"`
 	RateLimitCfg  *RateLimitCfg        `json:"rateLimit"`
-	ActorEventCfg *ActorEventConfig    `json:"actorEvent"`
 	FevmConfig    *FevmConfig          `json:"fevm"`
 }
 
@@ -58,40 +57,6 @@ type RateLimitCfg struct {
 	User     string `json:"user"`
 	Pwd      string `json:"pwd"`
 	Enable   bool   `json:"enable"`
-}
-
-type ActorEventConfig struct {
-	// EnableRealTimeFilterAPI enables APIs that can create and query filters for actor events as they are emitted.
-	EnableRealTimeFilterAPI bool
-
-	// EnableHistoricFilterAPI enables APIs that can create and query filters for actor events that occurred in the past.
-	// A queryable index of events will be maintained.
-	EnableHistoricFilterAPI bool
-
-	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
-	// this time become eligible for automatic deletion.
-	FilterTTL Duration
-
-	// MaxFilters specifies the maximum number of filters that may exist at any one time.
-	MaxFilters int
-
-	// MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
-	MaxFilterResults int
-
-	// MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
-	// the entire chain)
-	MaxFilterHeightRange uint64
-
-	// ActorEventDatabasePath is the full path to a sqlite database that will be used to index actor events to
-	// support the historic filter APIs. If the database does not exist it will be created. The directory containing
-	// the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
-	// relative to the CWD (current working directory).
-	ActorEventDatabasePath string
-
-	// Others, not implemented yet:
-	// Set a limit on the number of active websocket subscriptions (may be zero)
-	// Set a timeout for subscription clients
-	// Set upper bound on index size
 }
 
 func newDefaultAPIConfig() *APIConfig {
@@ -405,29 +370,62 @@ func newRateLimitConfig() *RateLimitCfg {
 	}
 }
 
-func newActorEventConfig() *ActorEventConfig {
-	return &ActorEventConfig{
-		EnableRealTimeFilterAPI: false,
-		EnableHistoricFilterAPI: false,
-		FilterTTL:               Duration(time.Hour * 24),
-		MaxFilters:              100,
-		MaxFilterResults:        10000,
-		MaxFilterHeightRange:    2880, // conservative limit of one day
-	}
+type EventConfig struct {
+	// EnableRealTimeFilterAPI enables APIs that can create and query filters for actor events as they are emitted.
+	EnableRealTimeFilterAPI bool `json:"enableRealTimeFilterAPI"`
+
+	// EnableHistoricFilterAPI enables APIs that can create and query filters for actor events that occurred in the past.
+	// A queryable index of events will be maintained.
+	EnableHistoricFilterAPI bool `json:"enableHistoricFilterAPI"`
+
+	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
+	// this time become eligible for automatic deletion.
+	FilterTTL Duration `json:"filterTTL"`
+
+	// MaxFilters specifies the maximum number of filters that may exist at any one time.
+	MaxFilters int `json:"maxFilters"`
+
+	// MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
+	MaxFilterResults int `json:"maxFilterResults"`
+
+	// MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+	// the entire chain)
+	MaxFilterHeightRange uint64 `json:"maxFilterHeightRange"`
+
+	// DatabasePath is the full path to a sqlite database that will be used to index actor events to
+	// support the historic filter APIs. If the database does not exist it will be created. The directory containing
+	// the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
+	// relative to the CWD (current working directory).
+	DatabasePath string `json:"databasePath"`
+
+	// Others, not implemented yet:
+	// Set a limit on the number of active websocket subscriptions (may be zero)
+	// Set a timeout for subscription clients
+	// Set upper bound on index size
 }
 
 type FevmConfig struct {
 	//EnableEthRPC enables eth_rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
-	EnableEthRPC bool
+	EnableEthRPC bool `jsom:"enableEthRPC"`
 	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
 	// Set to 0 to keep all mappings
-	EthTxHashMappingLifetimeDays int
+	EthTxHashMappingLifetimeDays int `json:"ethTxHashMappingLifetimeDays"`
+
+	Event EventConfig `json:"event"`
 }
 
 func newFevmConfig() *FevmConfig {
 	return &FevmConfig{
 		EnableEthRPC:                 false,
 		EthTxHashMappingLifetimeDays: 0,
+		Event: EventConfig{
+			EnableRealTimeFilterAPI: false,
+			EnableHistoricFilterAPI: false,
+			FilterTTL:               Duration(time.Hour * 24),
+			MaxFilters:              100,
+			MaxFilterResults:        10000,
+			MaxFilterHeightRange:    2880, // conservative limit of one day
+		},
 	}
 }
 
@@ -445,7 +443,6 @@ func NewDefaultConfig() *Config {
 		Wallet:        newDefaultWalletConfig(),
 		SlashFilterDs: newDefaultSlashFilterDsConfig(),
 		RateLimitCfg:  newRateLimitConfig(),
-		ActorEventCfg: newActorEventConfig(),
 		FevmConfig:    newFevmConfig(),
 	}
 }
