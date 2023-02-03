@@ -118,12 +118,14 @@ func (builder *RPCBuilder) AddService(service RPCService) error {
 }
 
 func (builder *RPCBuilder) Build(version string, limiter *ratelimit.RateLimiter) *jsonrpc.RPCServer {
+	var server *jsonrpc.RPCServer
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	serverOptions = append(serverOptions, jsonrpc.WithProxyBind(jsonrpc.PBMethod))
 
-	server := jsonrpc.NewServer(serverOptions...)
 	switch version {
 	case "v0":
+		server = jsonrpc.NewServer(serverOptions...)
+
 		var fullNodeV0 v0api.FullNodeStruct
 		for _, apiStruct := range builder.v0APIStruct {
 			permission.PermissionProxy(apiStruct, &fullNodeV0)
@@ -139,6 +141,9 @@ func (builder *RPCBuilder) Build(version string, limiter *ratelimit.RateLimiter)
 			server.Register(nameSpace, &fullNodeV0)
 		}
 	case "v1":
+		serverOptions = append(serverOptions, jsonrpc.WithReverseClient[v1api.EthSubscriberMethods](v1api.MethodNamespace))
+		server = jsonrpc.NewServer(serverOptions...)
+
 		var fullNode v1api.FullNodeStruct
 		for _, apiStruct := range builder.v1APIStruct {
 			permission.PermissionProxy(apiStruct, &fullNode)

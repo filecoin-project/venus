@@ -42,12 +42,44 @@ const MajorVersion = {{ .MajorVersion }}
 const APINamespace = "{{ .APINs }}"
 const MethodNamespace = "{{ .MethNs }}"
 
+{{if .ExtendOpts}}
+type FullNodeOptions struct {
+	ethSubHandler EthSubscriber
+	rpcOpts []jsonrpc.Option
+}
+
+type FullNodeOption func(*FullNodeOptions)
+
+func FullNodeWithEthSubscribtionHandler(sh EthSubscriber) FullNodeOption {
+	return func(opts *FullNodeOptions) {
+		opts.ethSubHandler = sh
+	}
+}
+
+func FullNodeWithRPCOtpions(rpcOpts ...jsonrpc.Option) FullNodeOption {
+	return func (opts *FullNodeOptions)  {
+		opts.rpcOpts = rpcOpts
+	}
+}
+{{end}}
+
 // New{{ .APIName }}RPC creates a new httpparse jsonrpc remotecli.
+{{- if .ExtendOpts}}
+func New{{ .APIName }}RPC(ctx context.Context, addr string, requestHeader http.Header, opts ...FullNodeOption) ({{ .APIName }}, jsonrpc.ClientCloser, error) {
+{{else}}
 func New{{ .APIName }}RPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) ({{ .APIName }}, jsonrpc.ClientCloser, error) {
+{{end -}}
 	endpoint, err := api.Endpoint(addr, MajorVersion)
 	if err != nil {
 		return nil, nil, fmt.Errorf("invalid addr %s: %w", addr, err)
 	}
+
+	{{if .ExtendOpts}}
+	var nodeOpts FullNodeOptions
+	for _, opt := range opts {
+		opt(&nodeOpts)
+	}
+	{{end}}
 
 	if requestHeader == nil {
 		requestHeader = http.Header{}
@@ -55,18 +87,33 @@ func New{{ .APIName }}RPC(ctx context.Context, addr string, requestHeader http.H
 	requestHeader.Set(api.VenusAPINamespaceHeader, APINamespace) 
 
 	var res {{ .APIStruct }}
+	{{- if .ExtendOpts}}
+	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, nodeOpts.rpcOpts...)
+	{{else}}
 	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, opts...)
+	{{end}}
 
 	return &res, closer, err
 }
 
 // Dial{{ .APIName }}RPC is a more convinient way of building client, as it resolves any format (url, multiaddr) of addr string.
+{{- if .ExtendOpts}}
+func Dial{{ .APIName }}RPC(ctx context.Context, addr string, token string, requestHeader http.Header, opts ...FullNodeOption) ({{ .APIName }}, jsonrpc.ClientCloser, error) {
+{{else}}
 func Dial{{ .APIName }}RPC(ctx context.Context, addr string, token string, requestHeader http.Header, opts ...jsonrpc.Option) ({{ .APIName }}, jsonrpc.ClientCloser, error) {
+{{end -}}
 	ainfo := api.NewAPIInfo(addr, token)
 	endpoint, err := ainfo.DialArgs(api.VerString(MajorVersion))
 	if err != nil {
 		return nil, nil, fmt.Errorf("get dial args: %w", err)
 	}
+
+	{{if .ExtendOpts}}
+	var nodeOpts FullNodeOptions
+	for _, opt := range opts {
+		opt(&nodeOpts)
+	}
+	{{end}}
 
 	if requestHeader == nil {
 		requestHeader = http.Header{}
@@ -75,7 +122,11 @@ func Dial{{ .APIName }}RPC(ctx context.Context, addr string, token string, reque
 	ainfo.SetAuthHeader(requestHeader)
 
 	var res {{ .APIStruct }}
+	{{- if .ExtendOpts}}
+	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, nodeOpts.rpcOpts...)
+	{{else}}
 	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, opts...)
+	{{end}}
 
 	return &res, closer, err
 }
@@ -116,6 +167,11 @@ func genClientForAPI(t util.APIMeta) error {
 		methNs = "Filecoin"
 	}
 
+	var extendOpts bool
+	if t.Type == util.V1FullNodeElem {
+		extendOpts = true
+	}
+
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, map[string]interface{}{
 		"PkgName":      apiIface.Pkg.Name,
@@ -124,6 +180,7 @@ func genClientForAPI(t util.APIMeta) error {
 		"APINs":        ns,
 		"MethNs":       methNs,
 		"MajorVersion": t.RPCMeta.Version,
+		"ExtendOpts":   extendOpts,
 	})
 	if err != nil {
 		return fmt.Errorf("exec template: %w", err)

@@ -96,3 +96,12 @@ type EthSubscriber interface {
 	// note: the parameter is ethtypes.EthSubscriptionResponse serialized as json object
 	EthSubscription(ctx context.Context, params jsonrpc.RawParams) error //rpc_method:eth_subscription notify:true
 }
+
+// todo: generate by venus-devtool
+type EthSubscriberStruct struct {
+	EthSubscriberMethods
+}
+
+type EthSubscriberMethods struct {
+	EthSubscription func(p0 context.Context, p1 jsonrpc.RawParams) error `notify:"true" rpc_method:"eth_subscription"`
+}

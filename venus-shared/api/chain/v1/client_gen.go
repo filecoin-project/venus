@@ -15,11 +15,35 @@ const MajorVersion = 1
 const APINamespace = "v1.FullNode"
 const MethodNamespace = "Filecoin"
 
+type FullNodeOptions struct {
+	ethSubHandler EthSubscriber
+	rpcOpts       []jsonrpc.Option
+}
+
+type FullNodeOption func(*FullNodeOptions)
+
+func FullNodeWithEthSubscribtionHandler(sh EthSubscriber) FullNodeOption {
+	return func(opts *FullNodeOptions) {
+		opts.ethSubHandler = sh
+	}
+}
+
+func FullNodeWithRPCOtpions(rpcOpts ...jsonrpc.Option) FullNodeOption {
+	return func(opts *FullNodeOptions) {
+		opts.rpcOpts = rpcOpts
+	}
+}
+
 // NewFullNodeRPC creates a new httpparse jsonrpc remotecli.
-func NewFullNodeRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (FullNode, jsonrpc.ClientCloser, error) {
+func NewFullNodeRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...FullNodeOption) (FullNode, jsonrpc.ClientCloser, error) {
 	endpoint, err := api.Endpoint(addr, MajorVersion)
 	if err != nil {
 		return nil, nil, fmt.Errorf("invalid addr %s: %w", addr, err)
+	}
+
+	var nodeOpts FullNodeOptions
+	for _, opt := range opts {
+		opt(&nodeOpts)
 	}
 
 	if requestHeader == nil {
@@ -28,17 +52,22 @@ func NewFullNodeRPC(ctx context.Context, addr string, requestHeader http.Header,
 	requestHeader.Set(api.VenusAPINamespaceHeader, APINamespace)
 
 	var res FullNodeStruct
-	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, opts...)
+	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, nodeOpts.rpcOpts...)
 
 	return &res, closer, err
 }
 
 // DialFullNodeRPC is a more convinient way of building client, as it resolves any format (url, multiaddr) of addr string.
-func DialFullNodeRPC(ctx context.Context, addr string, token string, requestHeader http.Header, opts ...jsonrpc.Option) (FullNode, jsonrpc.ClientCloser, error) {
+func DialFullNodeRPC(ctx context.Context, addr string, token string, requestHeader http.Header, opts ...FullNodeOption) (FullNode, jsonrpc.ClientCloser, error) {
 	ainfo := api.NewAPIInfo(addr, token)
 	endpoint, err := ainfo.DialArgs(api.VerString(MajorVersion))
 	if err != nil {
 		return nil, nil, fmt.Errorf("get dial args: %w", err)
+	}
+
+	var nodeOpts FullNodeOptions
+	for _, opt := range opts {
+		opt(&nodeOpts)
 	}
 
 	if requestHeader == nil {
@@ -48,7 +77,7 @@ func DialFullNodeRPC(ctx context.Context, addr string, token string, requestHead
 	ainfo.SetAuthHeader(requestHeader)
 
 	var res FullNodeStruct
-	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, opts...)
+	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, nodeOpts.rpcOpts...)
 
 	return &res, closer, err
 }
