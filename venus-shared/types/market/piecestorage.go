@@ -20,3 +20,9 @@ type S3Storage struct {
 	SubDir   string
 	Status   StorageStatus
 }
+
+type StorageStatus struct {
+	Capacity  int64
+	Available int64
+	Reserved  int64
+}

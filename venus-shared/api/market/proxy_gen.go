@@ -62,7 +62,6 @@ type IMarketStruct struct {
 		GetStorageDealStatistic                 func(ctx context.Context, miner address.Address) (*market.StorageDealStatistic, error)                                                                                                              `perm:"read"`
 		GetUnPackedDeals                        func(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                                   `perm:"read"`
 		ID                                      func(context.Context) (peer.ID, error)                                                                                                                                                              `perm:"read"`
-		ImportV1Data                            func(ctx context.Context, src string) error                                                                                                                                                         `perm:"write"`
 		ListPieceStorageInfos                   func(ctx context.Context) market.PieceStorageInfos                                                                                                                                                  `perm:"read"`
 		ListenMarketEvent                       func(ctx context.Context, policy *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error)                                                                                               `perm:"read"`
 		MarkDealsAsPacking                      func(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                                                                                          `perm:"write"`
@@ -76,12 +75,12 @@ type IMarketStruct struct {
 		MarketGetRetrievalAsk                   func(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error)                                                                                                                      `perm:"read"`
 		MarketImportDealData                    func(ctx context.Context, propcid cid.Cid, path string) error                                                                                                                                       `perm:"write"`
 		MarketImportPublishedDeal               func(ctx context.Context, deal market.MinerDeal) error                                                                                                                                              `perm:"write"`
-		MarketListAsk                           func(ctx context.Context) ([]*market.SignedStorageAsk, error)                                                                                                                                       `perm:"read"`
 		MarketListDataTransfers                 func(ctx context.Context) ([]market.DataTransferChannel, error)                                                                                                                                     `perm:"write"`
 		MarketListDeals                         func(ctx context.Context, addrs []address.Address) ([]*types.MarketDeal, error)                                                                                                                     `perm:"read"`
 		MarketListIncompleteDeals               func(ctx context.Context, mAddr address.Address) ([]market.MinerDeal, error)                                                                                                                        `perm:"read"`
 		MarketListRetrievalAsk                  func(ctx context.Context) ([]*market.RetrievalAsk, error)                                                                                                                                           `perm:"read"`
 		MarketListRetrievalDeals                func(ctx context.Context) ([]market.ProviderDealState, error)                                                                                                                                       `perm:"read"`
+		MarketListStorageAsk                    func(ctx context.Context) ([]*market.SignedStorageAsk, error)                                                                                                                                       `perm:"read"`
 		MarketMaxBalanceAddFee                  func(context.Context, address.Address) (types.FIL, error)                                                                                                                                           `perm:"read"`
 		MarketMaxDealsPerPublishMsg             func(context.Context, address.Address) (uint64, error)                                                                                                                                              `perm:"read"`
 		MarketPendingDeals                      func(ctx context.Context) ([]market.PendingDealInfo, error)                                                                                                                                         `perm:"write"`
@@ -234,9 +233,6 @@ func (s *IMarketStruct) GetUnPackedDeals(p0 context.Context, p1 address.Address,
 	return s.Internal.GetUnPackedDeals(p0, p1, p2)
 }
 func (s *IMarketStruct) ID(p0 context.Context) (peer.ID, error) { return s.Internal.ID(p0) }
-func (s *IMarketStruct) ImportV1Data(p0 context.Context, p1 string) error {
-	return s.Internal.ImportV1Data(p0, p1)
-}
 func (s *IMarketStruct) ListPieceStorageInfos(p0 context.Context) market.PieceStorageInfos {
 	return s.Internal.ListPieceStorageInfos(p0)
 }
@@ -276,9 +272,6 @@ func (s *IMarketStruct) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 
 func (s *IMarketStruct) MarketImportPublishedDeal(p0 context.Context, p1 market.MinerDeal) error {
 	return s.Internal.MarketImportPublishedDeal(p0, p1)
 }
-func (s *IMarketStruct) MarketListAsk(p0 context.Context) ([]*market.SignedStorageAsk, error) {
-	return s.Internal.MarketListAsk(p0)
-}
 func (s *IMarketStruct) MarketListDataTransfers(p0 context.Context) ([]market.DataTransferChannel, error) {
 	return s.Internal.MarketListDataTransfers(p0)
 }
@@ -293,6 +286,9 @@ func (s *IMarketStruct) MarketListRetrievalAsk(p0 context.Context) ([]*market.Re
 }
 func (s *IMarketStruct) MarketListRetrievalDeals(p0 context.Context) ([]market.ProviderDealState, error) {
 	return s.Internal.MarketListRetrievalDeals(p0)
+}
+func (s *IMarketStruct) MarketListStorageAsk(p0 context.Context) ([]*market.SignedStorageAsk, error) {
+	return s.Internal.MarketListStorageAsk(p0)
 }
 func (s *IMarketStruct) MarketMaxBalanceAddFee(p0 context.Context, p1 address.Address) (types.FIL, error) {
 	return s.Internal.MarketMaxBalanceAddFee(p0, p1)
