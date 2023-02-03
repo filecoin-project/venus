@@ -41,7 +41,6 @@
   * [GetStorageDealStatistic](#getstoragedealstatistic)
   * [GetUnPackedDeals](#getunpackeddeals)
   * [ID](#id)
-  * [ImportV1Data](#importv1data)
   * [ListPieceStorageInfos](#listpiecestorageinfos)
   * [ListenMarketEvent](#listenmarketevent)
   * [MarkDealsAsPacking](#markdealsaspacking)
@@ -55,12 +54,12 @@
   * [MarketGetRetrievalAsk](#marketgetretrievalask)
   * [MarketImportDealData](#marketimportdealdata)
   * [MarketImportPublishedDeal](#marketimportpublisheddeal)
-  * [MarketListAsk](#marketlistask)
   * [MarketListDataTransfers](#marketlistdatatransfers)
   * [MarketListDeals](#marketlistdeals)
   * [MarketListIncompleteDeals](#marketlistincompletedeals)
   * [MarketListRetrievalAsk](#marketlistretrievalask)
   * [MarketListRetrievalDeals](#marketlistretrievaldeals)
+  * [MarketListStorageAsk](#marketliststorageask)
   * [MarketMaxBalanceAddFee](#marketmaxbalanceaddfee)
   * [MarketMaxDealsPerPublishMsg](#marketmaxdealsperpublishmsg)
   * [MarketPendingDeals](#marketpendingdeals)
@@ -891,20 +890,6 @@ Inputs: `[]`
 
 Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
 
-### ImportV1Data
-
-
-Perms: write
-
-Inputs:
-```json
-[
-  "string value"
-]
-```
-
-Response: `{}`
-
 ### ListPieceStorageInfos
 
 
@@ -1305,37 +1290,6 @@ Inputs:
 
 Response: `{}`
 
-### MarketListAsk
-
-
-Perms: read
-
-Inputs: `[]`
-
-Response:
-```json
-[
-  {
-    "Ask": {
-      "Price": "0",
-      "VerifiedPrice": "0",
-      "MinPieceSize": 1032,
-      "MaxPieceSize": 1032,
-      "Miner": "f01234",
-      "Timestamp": 10101,
-      "Expiry": 10101,
-      "SeqNo": 42
-    },
-    "Signature": {
-      "Type": 2,
-      "Data": "Ynl0ZSBhcnJheQ=="
-    },
-    "CreatedAt": 42,
-    "UpdatedAt": 42
-  }
-]
-```
-
 ### MarketListDataTransfers
 
 
@@ -1559,6 +1513,37 @@ Response:
     "Message": "string value",
     "CurrentInterval": 42,
     "LegacyProtocol": true,
+    "CreatedAt": 42,
+    "UpdatedAt": 42
+  }
+]
+```
+
+### MarketListStorageAsk
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  {
+    "Ask": {
+      "Price": "0",
+      "VerifiedPrice": "0",
+      "MinPieceSize": 1032,
+      "MaxPieceSize": 1032,
+      "Miner": "f01234",
+      "Timestamp": 10101,
+      "Expiry": 10101,
+      "SeqNo": 42
+    },
+    "Signature": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    },
     "CreatedAt": 42,
     "UpdatedAt": 42
   }

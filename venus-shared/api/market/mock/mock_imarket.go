@@ -632,20 +632,6 @@ func (mr *MockIMarketMockRecorder) ID(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockIMarket)(nil).ID), arg0)
 }
 
-// ImportV1Data mocks base method.
-func (m *MockIMarket) ImportV1Data(arg0 context.Context, arg1 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ImportV1Data", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// ImportV1Data indicates an expected call of ImportV1Data.
-func (mr *MockIMarketMockRecorder) ImportV1Data(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImportV1Data", reflect.TypeOf((*MockIMarket)(nil).ImportV1Data), arg0, arg1)
-}
-
 // ListPieceStorageInfos mocks base method.
 func (m *MockIMarket) ListPieceStorageInfos(arg0 context.Context) market.PieceStorageInfos {
 	m.ctrl.T.Helper()
@@ -836,21 +822,6 @@ func (mr *MockIMarketMockRecorder) MarketImportPublishedDeal(arg0, arg1 interfac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketImportPublishedDeal", reflect.TypeOf((*MockIMarket)(nil).MarketImportPublishedDeal), arg0, arg1)
 }
 
-// MarketListAsk mocks base method.
-func (m *MockIMarket) MarketListAsk(arg0 context.Context) ([]*market.SignedStorageAsk, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MarketListAsk", arg0)
-	ret0, _ := ret[0].([]*market.SignedStorageAsk)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// MarketListAsk indicates an expected call of MarketListAsk.
-func (mr *MockIMarketMockRecorder) MarketListAsk(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketListAsk", reflect.TypeOf((*MockIMarket)(nil).MarketListAsk), arg0)
-}
-
 // MarketListDataTransfers mocks base method.
 func (m *MockIMarket) MarketListDataTransfers(arg0 context.Context) ([]market.DataTransferChannel, error) {
 	m.ctrl.T.Helper()
@@ -924,6 +895,21 @@ func (m *MockIMarket) MarketListRetrievalDeals(arg0 context.Context) ([]market.P
 func (mr *MockIMarketMockRecorder) MarketListRetrievalDeals(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketListRetrievalDeals", reflect.TypeOf((*MockIMarket)(nil).MarketListRetrievalDeals), arg0)
+}
+
+// MarketListStorageAsk mocks base method.
+func (m *MockIMarket) MarketListStorageAsk(arg0 context.Context) ([]*market.SignedStorageAsk, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarketListStorageAsk", arg0)
+	ret0, _ := ret[0].([]*market.SignedStorageAsk)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MarketListStorageAsk indicates an expected call of MarketListStorageAsk.
+func (mr *MockIMarketMockRecorder) MarketListStorageAsk(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketListStorageAsk", reflect.TypeOf((*MockIMarket)(nil).MarketListStorageAsk), arg0)
 }
 
 // MarketMaxBalanceAddFee mocks base method.

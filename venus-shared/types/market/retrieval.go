@@ -1,6 +1,7 @@
 package market
 
 import (
+	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -45,4 +46,13 @@ func (deal *ProviderDealState) NextInterval() uint64 {
 // Identifier provides a unique id for this provider deal
 func (deal ProviderDealState) Identifier() retrievalmarket.ProviderDealIdentifier {
 	return retrievalmarket.ProviderDealIdentifier{Receiver: deal.Receiver, DealID: deal.ID}
+}
+
+type RetrievalAsk struct {
+	Miner                   address.Address
+	PricePerByte            abi.TokenAmount
+	UnsealPrice             abi.TokenAmount
+	PaymentInterval         uint64
+	PaymentIntervalIncrease uint64
+	TimeStamp
 }
