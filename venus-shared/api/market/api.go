@@ -34,7 +34,7 @@ type IMarket interface {
 	MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]market.MinerDeal, error)                                                                                                           //perm:read
 	MarketSetAsk(ctx context.Context, mAddr address.Address, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error //perm:admin
 	MarketGetAsk(ctx context.Context, mAddr address.Address) (*market.SignedStorageAsk, error)                                                                                                                  //perm:read
-	MarketListAsk(ctx context.Context) ([]*market.SignedStorageAsk, error)                                                                                                                                      //perm:read
+	MarketListStorageAsk(ctx context.Context) ([]*market.SignedStorageAsk, error)                                                                                                                               //perm:read
 	MarketSetRetrievalAsk(ctx context.Context, mAddr address.Address, rask *retrievalmarket.Ask) error                                                                                                          //perm:admin
 	MarketGetRetrievalAsk(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error)                                                                                                             //perm:read
 	MarketListRetrievalAsk(ctx context.Context) ([]*market.RetrievalAsk, error)                                                                                                                                 //perm:read
@@ -161,8 +161,6 @@ type IMarket interface {
 
 	// Paych
 	PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) //perm:read
-
-	ImportV1Data(ctx context.Context, src string) error //perm:write
 
 	AddFsPieceStorage(ctx context.Context, name string, path string, readonly bool) error //perm:admin
 
