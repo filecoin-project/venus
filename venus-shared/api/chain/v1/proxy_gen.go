@@ -1052,14 +1052,6 @@ func (s *IETHEventStruct) EthUnsubscribe(p0 context.Context, p1 types.EthSubscri
 	return s.Internal.EthUnsubscribe(p0, p1)
 }
 
-type EthSubscriberStruct struct {
-	Internal EthSubscriberMethods
-}
-
-type EthSubscriberMethods struct {
-	EthSubscription func(p0 context.Context, p1 jsonrpc.RawParams) error `notify:"true"rpc_method:"eth_subscription"`
-}
-
 type FullETHStruct struct {
 	IETHStruct
 	IETHEventStruct
