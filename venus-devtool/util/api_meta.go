@@ -11,6 +11,8 @@ import (
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
+var V1FullNodeElem = reflect.TypeOf((*v1.FullNode)(nil)).Elem()
+
 var ChainAPIPairs = []struct {
 	Ver   int
 	Lotus APIMeta
@@ -46,7 +48,7 @@ var ChainAPIPairs = []struct {
 			},
 		},
 		Venus: APIMeta{
-			Type: reflect.TypeOf((*v1.FullNode)(nil)).Elem(),
+			Type: V1FullNodeElem,
 			ParseOpt: InterfaceParseOption{
 				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/chain/v1",
 				IncludeAll: true,

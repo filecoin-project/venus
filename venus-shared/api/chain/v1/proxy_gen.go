@@ -8,6 +8,7 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
+	jsonrpc "github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -1011,15 +1012,15 @@ func (s *IETHStruct) Web3ClientVersion(p0 context.Context) (string, error) {
 
 type IETHEventStruct struct {
 	Internal struct {
-		EthGetFilterChanges            func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)                                                `perm:"write"`
-		EthGetFilterLogs               func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)                                                `perm:"write"`
-		EthGetLogs                     func(ctx context.Context, filter *types.EthFilterSpec) (*types.EthFilterResult, error)                                         `perm:"read"`
-		EthNewBlockFilter              func(ctx context.Context) (types.EthFilterID, error)                                                                           `perm:"write"`
-		EthNewFilter                   func(ctx context.Context, filter *types.EthFilterSpec) (types.EthFilterID, error)                                              `perm:"write"`
-		EthNewPendingTransactionFilter func(ctx context.Context) (types.EthFilterID, error)                                                                           `perm:"write"`
-		EthSubscribe                   func(ctx context.Context, eventType string, params *types.EthSubscriptionParams) (<-chan types.EthSubscriptionResponse, error) `perm:"write"`
-		EthUninstallFilter             func(ctx context.Context, id types.EthFilterID) (bool, error)                                                                  `perm:"write"`
-		EthUnsubscribe                 func(ctx context.Context, id types.EthSubscriptionID) (bool, error)                                                            `perm:"write"`
+		EthGetFilterChanges            func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)        `perm:"write"`
+		EthGetFilterLogs               func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)        `perm:"write"`
+		EthGetLogs                     func(ctx context.Context, filter *types.EthFilterSpec) (*types.EthFilterResult, error) `perm:"read"`
+		EthNewBlockFilter              func(ctx context.Context) (types.EthFilterID, error)                                   `perm:"write"`
+		EthNewFilter                   func(ctx context.Context, filter *types.EthFilterSpec) (types.EthFilterID, error)      `perm:"write"`
+		EthNewPendingTransactionFilter func(ctx context.Context) (types.EthFilterID, error)                                   `perm:"write"`
+		EthSubscribe                   func(ctx context.Context, params jsonrpc.RawParams) (types.EthSubscriptionID, error)   `perm:"write"`
+		EthUninstallFilter             func(ctx context.Context, id types.EthFilterID) (bool, error)                          `perm:"write"`
+		EthUnsubscribe                 func(ctx context.Context, id types.EthSubscriptionID) (bool, error)                    `perm:"write"`
 	}
 }
 
@@ -1041,8 +1042,8 @@ func (s *IETHEventStruct) EthNewFilter(p0 context.Context, p1 *types.EthFilterSp
 func (s *IETHEventStruct) EthNewPendingTransactionFilter(p0 context.Context) (types.EthFilterID, error) {
 	return s.Internal.EthNewPendingTransactionFilter(p0)
 }
-func (s *IETHEventStruct) EthSubscribe(p0 context.Context, p1 string, p2 *types.EthSubscriptionParams) (<-chan types.EthSubscriptionResponse, error) {
-	return s.Internal.EthSubscribe(p0, p1, p2)
+func (s *IETHEventStruct) EthSubscribe(p0 context.Context, p1 jsonrpc.RawParams) (types.EthSubscriptionID, error) {
+	return s.Internal.EthSubscribe(p0, p1)
 }
 func (s *IETHEventStruct) EthUninstallFilter(p0 context.Context, p1 types.EthFilterID) (bool, error) {
 	return s.Internal.EthUninstallFilter(p0, p1)

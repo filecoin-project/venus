@@ -48,6 +48,7 @@ type (
 	EthHashList             = types.EthHashList
 	EthFilterResult         = types.EthFilterResult
 	EthLog                  = types.EthLog
+	EthSubscribeParams      = types.EthSubscribeParams
 	EthSubscriptionParams   = types.EthSubscriptionParams
 	EthSubscriptionResponse = types.EthSubscriptionResponse
 )
