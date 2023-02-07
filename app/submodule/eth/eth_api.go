@@ -15,6 +15,7 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -22,6 +23,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/ethhashlookup"
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/messagepool"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -751,12 +754,138 @@ func (a *ethAPI) EthEstimateGas(ctx context.Context, tx types.EthCall) (types.Et
 	// gas estimation actually run.
 	msg.GasLimit = 0
 
-	msg, err = a.mpool.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
+	ts, err := a.chain.ChainHead(ctx)
 	if err != nil {
 		return types.EthUint64(0), err
 	}
+	msg, err = a.mpool.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
+	if err != nil {
+		return types.EthUint64(0), fmt.Errorf("failed to estimate gas: %w", err)
+	}
 
-	return types.EthUint64(msg.GasLimit), nil
+	expectedGas, err := ethGasSearch(ctx, a.em.chainModule.Stmgr, a.em.mpoolModule.MPool, msg, ts)
+	if err != nil {
+		log.Errorw("expected gas", "err", err)
+	}
+
+	return types.EthUint64(expectedGas), nil
+}
+
+// gasSearch does an exponential search to find a gas value to execute the
+// message with. It first finds a high gas limit that allows the message to execute
+// by doubling the previous gas limit until it succeeds then does a binary
+// search till it gets within a range of 1%
+func gasSearch(
+	ctx context.Context,
+	smgr *statemanger.Stmgr,
+	msgIn *types.Message,
+	priorMsgs []types.ChainMsg,
+	ts *types.TipSet,
+) (int64, error) {
+	msg := *msgIn
+
+	high := msg.GasLimit
+	low := msg.GasLimit
+
+	canSucceed := func(limit int64) (bool, error) {
+		msg.GasLimit = limit
+
+		res, err := smgr.CallWithGas(ctx, &msg, priorMsgs, ts)
+		if err != nil {
+			return false, fmt.Errorf("CallWithGas failed: %w", err)
+		}
+
+		if res.Receipt.ExitCode.IsSuccess() {
+			return true, nil
+		}
+
+		return false, nil
+	}
+
+	for {
+		ok, err := canSucceed(high)
+		if err != nil {
+			return -1, fmt.Errorf("searching for high gas limit failed: %w", err)
+		}
+		if ok {
+			break
+		}
+
+		low = high
+		high = high * 2
+
+		if high > constants.BlockGasLimit {
+			high = constants.BlockGasLimit
+			break
+		}
+	}
+
+	checkThreshold := high / 100
+	for (high - low) > checkThreshold {
+		median := (low + high) / 2
+		ok, err := canSucceed(median)
+		if err != nil {
+			return -1, fmt.Errorf("searching for optimal gas limit failed: %w", err)
+		}
+
+		if ok {
+			high = median
+		} else {
+			low = median
+		}
+
+		checkThreshold = median / 100
+	}
+
+	return high, nil
+}
+
+func traceContainsExitCode(et types.ExecutionTrace, ex exitcode.ExitCode) bool {
+	if et.MsgRct.ExitCode == ex {
+		return true
+	}
+
+	for _, et := range et.Subcalls {
+		if traceContainsExitCode(et, ex) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ethGasSearch executes a message for gas estimation using the previously estimated gas.
+// If the message fails due to an out of gas error then a gas search is performed.
+// See gasSearch.
+func ethGasSearch(
+	ctx context.Context,
+	stmgr *statemanger.Stmgr,
+	mpool *messagepool.MessagePool,
+	msgIn *types.Message,
+	ts *types.TipSet,
+) (int64, error) {
+	msg := *msgIn
+	currTS := ts
+
+	res, priorMsgs, ts, err := mpool.GasEstimateCallWithGas(ctx, &msg, currTS)
+	if err != nil {
+		return -1, fmt.Errorf("gas estimation failed: %w", err)
+	}
+
+	if res.MsgRct.ExitCode.IsSuccess() {
+		return msg.GasLimit, nil
+	}
+	if traceContainsExitCode(res.ExecutionTrace, exitcode.SysErrOutOfGas) {
+		ret, err := gasSearch(ctx, stmgr, &msg, priorMsgs, ts)
+		if err != nil {
+			return -1, fmt.Errorf("gas estimation search failed: %w", err)
+		}
+
+		ret = int64(float64(ret) * mpool.GetConfig().GasLimitOverestimation)
+		return ret, nil
+	}
+
+	return -1, fmt.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
 }
 
 func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error) {

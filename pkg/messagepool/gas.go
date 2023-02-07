@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/vm"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -217,6 +218,55 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Mes
 	}
 
 	return mp.evalMessageGasLimit(ctx, msgIn, priorMsgs, ts)
+}
+
+// GasEstimateCallWithGas invokes a message "msgIn" on the earliest available tipset with pending
+// messages in the message pool. The function returns the result of the message invocation, the
+// pending messages, the tipset used for the invocation, and an error if occurred.
+// The returned information can be used to make subsequent calls to CallWithGas with the same parameters.
+func (mp *MessagePool) GasEstimateCallWithGas(
+	ctx context.Context,
+	msgIn *types.Message,
+	currTS *types.TipSet,
+) (*types.InvocResult, []types.ChainMsg, *types.TipSet, error) {
+	msg := *msgIn
+	fromA, err := mp.sm.ResolveToDeterministicAddress(ctx, msgIn.From, currTS)
+	if err != nil {
+		return nil, []types.ChainMsg{}, nil, fmt.Errorf("getting key address: %w", err)
+	}
+
+	pending, ts := mp.PendingFor(ctx, fromA)
+	priorMsgs := make([]types.ChainMsg, 0, len(pending))
+	for _, m := range pending {
+		if m.Message.Nonce == msg.Nonce {
+			break
+		}
+		priorMsgs = append(priorMsgs, m)
+	}
+
+	// Try calling until we find a height with no migration.
+	var res *vmcontext.Ret
+	for {
+		res, err = mp.sm.CallWithGas(ctx, &msg, priorMsgs, ts)
+		if err != fork.ErrExpensiveFork {
+			break
+		}
+		ts, err = mp.api.ChainTipSet(ctx, ts.Parents())
+		if err != nil {
+			return nil, []types.ChainMsg{}, nil, fmt.Errorf("getting parent tipset: %w", err)
+		}
+	}
+	if err != nil {
+		return nil, []types.ChainMsg{}, nil, fmt.Errorf("CallWithGas failed: %w", err)
+	}
+
+	return &types.InvocResult{
+		MsgCid:         msg.Cid(),
+		Msg:            &msg,
+		MsgRct:         &res.Receipt,
+		ExecutionTrace: res.GasTracker.ExecutionTrace,
+		Duration:       res.Duration,
+	}, priorMsgs, ts, nil
 }
 
 func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (int64, error) {
