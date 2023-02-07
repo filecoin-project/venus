@@ -122,6 +122,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		chn.SystemCall,
 		circulatingSupplyCalculator,
 		config.Repo().Config().NetworkParams.ActorDebugging,
+		config.Repo().Config().FevmConfig.EnableEthRPC,
 	)
 
 	stmgr := statemanger.NewStateManger(chn.ChainReader, nodeConsensus, rnd,
