@@ -1120,7 +1120,7 @@ func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage
 	}()
 
 	mp.curTSLk.Lock()
-	publish, err := mp.addTS(ctx, m, mp.curTS, false, true)
+	publish, err := mp.addTS(ctx, m, mp.curTS, true, true)
 	if err != nil {
 		mp.curTSLk.Unlock()
 		return cid.Undef, err

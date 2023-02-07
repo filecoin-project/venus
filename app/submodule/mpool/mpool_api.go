@@ -325,27 +325,3 @@ func (a *MessagePoolAPI) MpoolCheckPendingMessages(ctx context.Context, addr add
 func (a *MessagePoolAPI) MpoolCheckReplaceMessages(ctx context.Context, msg []*types.Message) ([][]types.MessageCheckStatus, error) {
 	return a.mp.MPool.CheckReplaceMessages(ctx, msg)
 }
-
-/*// WalletSign signs the given bytes using the given address.
-func (a *MessagePoolAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
-	head := a.mp.chain.ChainReader.GetHead()
-	view, err := a.mp.chain.ChainReader.StateView(head)
-	if err != nil {
-		return nil, err
-	}
-
-	keyAddr, err := view.ResolveToKeyAddr(ctx, k)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve ID address: %v", keyAddr)
-	}
-	//var meta wallet.MsgMeta
-	//if len(metas) > 0 {
-	//	meta = metas[0]
-	//} else {
-	meta := wallet.MsgMeta{
-		Type: wallet.MTUnknown,
-	}
-	//}
-	return a.mp.walletAPI.WalletSign(ctx, keyAddr, msg, meta)
-}
-*/
