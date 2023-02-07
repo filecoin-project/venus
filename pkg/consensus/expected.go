@@ -129,6 +129,7 @@ type Expected struct {
 	blockValidator *BlockValidator
 
 	actorDebugging bool
+	returnEvents   bool
 }
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
@@ -143,6 +144,7 @@ func NewExpected(cs cbor.IpldStore,
 	syscalls vm.SyscallsImpl,
 	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
 	actorDebugging bool,
+	returnEvents bool,
 ) *Expected {
 	processor := NewDefaultProcessor(syscalls, circulatingSupplyCalculator)
 	return &Expected{
@@ -157,6 +159,7 @@ func NewExpected(cs cbor.IpldStore,
 		gasPirceSchedule: gasPirceSchedule,
 		blockValidator:   blockValidator,
 		actorDebugging:   actorDebugging,
+		returnEvents:     returnEvents,
 	}
 }
 
@@ -215,6 +218,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, cb 
 		TipSetGetter:        vmcontext.TipSetGetterForTipset(c.chainState.GetTipSetByHeight, ts),
 		Tracing:             false,
 		ActorDebugging:      c.actorDebugging,
+		ReturnEvents:        c.returnEvents,
 	}
 
 	var parentEpoch abi.ChainEpoch

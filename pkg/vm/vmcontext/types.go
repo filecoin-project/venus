@@ -51,6 +51,8 @@ type VmOption struct { //nolint
 	Tracing              bool
 
 	ActorDebugging bool
+	// ReturnEvents decodes and returns emitted events.
+	ReturnEvents bool
 }
 
 type ILookBack interface {
@@ -93,6 +95,7 @@ type Ret struct {
 	Receipt    types.MessageReceipt
 	ActorErr   error
 	Duration   time.Duration
+	Events     []types.Event
 }
 
 // Failure returns with a non-zero exit code.

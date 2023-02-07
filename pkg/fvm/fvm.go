@@ -303,6 +303,9 @@ func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerID address.Add
 type FVM struct {
 	fvm *ffi.FVM
 	nv  network.Version
+
+	// returnEvents specifies whether to parse and return events when applying messages.
+	returnEvents bool
 }
 
 func defaultFVMOpts(ctx context.Context, opts *vm.VmOption) (*ffi.FVMOpts, error) {
@@ -350,8 +353,9 @@ func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 	}
 
 	return &FVM{
-		fvm: fvm,
-		nv:  opts.NetworkVersion,
+		fvm:          fvm,
+		nv:           opts.NetworkVersion,
+		returnEvents: opts.ReturnEvents,
 	}, nil
 }
 
@@ -452,8 +456,9 @@ func NewDebugFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 	}
 
 	return &FVM{
-		fvm: fvm,
-		nv:  opts.NetworkVersion,
+		fvm:          fvm,
+		nv:           opts.NetworkVersion,
+		returnEvents: opts.ReturnEvents,
 	}, nil
 }
 
@@ -506,7 +511,7 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 		et.Error = aerr.Error()
 	}
 
-	return &vm.Ret{
+	applyRet := &vm.Ret{
 		Receipt: receipt,
 		OutPuts: gas.GasOutputs{
 			BaseFeeBurn:        ret.BaseFeeBurn,
@@ -522,7 +527,16 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 			ExecutionTrace: et,
 		},
 		Duration: duration,
-	}, nil
+	}
+
+	if fvm.returnEvents && len(ret.EventsBytes) > 0 {
+		applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
+		}
+	}
+
+	return applyRet, nil
 }
 
 func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret, error) {
@@ -582,6 +596,13 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 			ExecutionTrace: et,
 		},
 		Duration: duration,
+	}
+
+	if fvm.returnEvents && len(ret.EventsBytes) > 0 {
+		applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
+		}
 	}
 
 	if ret.ExitCode != 0 {

@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 
 	"github.com/filecoin-project/go-address"
+	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin"
@@ -19,7 +20,9 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/cron"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 var processLog = logging.Logger("process block")
@@ -71,8 +74,12 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 	cb vm.ExecCallBack,
 ) (cid.Cid, []types.MessageReceipt, error) {
 	toProcessTipset := time.Now()
-	var receipts []types.MessageReceipt
-	var err error
+	var (
+		receipts      []types.MessageReceipt
+		err           error
+		storingEvents = vmOpts.ReturnEvents
+		events        [][]types.Event
+	)
 
 	makeVMWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.Interface, error) {
 		vmOpt := vm.VmOption{
@@ -168,6 +175,12 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
 			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
 			receipts = append(receipts, ret.Receipt)
+
+			if storingEvents {
+				// Appends nil when no events are returned to preserve positional alignment.
+				events = append(events, ret.Events)
+			}
+
 			if cb != nil {
 				if err := cb(mcid, m.VMMessage(), ret); err != nil {
 					return cid.Undef, nil, err
@@ -207,6 +220,23 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 	if cb != nil {
 		if err := cb(cronMessage.Cid(), cronMessage, ret); err != nil {
 			return cid.Undef, nil, fmt.Errorf("callback failed on cron message: %w", err)
+		}
+	}
+
+	// Slice will be empty if not storing events.
+	for i, evs := range events {
+		if len(evs) == 0 {
+			continue
+		}
+		switch root, err := storeEventsAMT(ctx, vmOpts.Bsstore, evs); {
+		case err != nil:
+			return cid.Undef, nil, fmt.Errorf("failed to store events amt: %w", err)
+		case i >= len(receipts):
+			return cid.Undef, nil, fmt.Errorf("assertion failed: receipt and events array lengths inconsistent")
+		case receipts[i].EventsRoot == nil:
+			return cid.Undef, nil, fmt.Errorf("assertion failed: VM returned events with no events root")
+		case root != *receipts[i].EventsRoot:
+			return cid.Undef, nil, fmt.Errorf("assertion failed: returned events AMT root does not match derived")
 		}
 	}
 
@@ -262,4 +292,13 @@ func makeBlockRewardMessage(blockMiner address.Address,
 		Method:     reward.Methods.AwardBlockReward,
 		Params:     buf.Bytes(),
 	}
+}
+
+func storeEventsAMT(ctx context.Context, bs cbor.IpldBlockstore, events []types.Event) (cid.Cid, error) {
+	cst := cbor.NewCborStore(bs)
+	objs := make([]cbg.CBORMarshaler, len(events))
+	for i := 0; i < len(events); i++ {
+		objs[i] = &events[i]
+	}
+	return amt4.FromArray(ctx, cst, objs, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 }
