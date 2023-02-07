@@ -10,13 +10,12 @@ var bigZero = big.Zero()
 
 var TotalFilecoinInt = FromFil(params.FilBase)
 
-var ZeroAddress = func() address.Address {
-	addr := "f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a"
+var ZeroAddress address.Address = One(address.NewFromString("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a"))
 
-	ret, err := address.NewFromString(addr)
+func One[R any](r R, err error) R {
 	if err != nil {
 		panic(err)
 	}
 
-	return ret
-}()
+	return r
+}
