@@ -22,7 +22,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-varint"
-	"golang.org/x/xerrors"
 )
 
 const ChainHeadConfidence = 1
@@ -434,7 +433,7 @@ func (e *ethEventAPI) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ty
 
 	ethCb, ok := jsonrpc.ExtractReverseClient[v1.EthSubscriberMethods](ctx)
 	if !ok {
-		return types.EthSubscriptionID{}, xerrors.Errorf("connection doesn't support callbacks")
+		return types.EthSubscriptionID{}, fmt.Errorf("connection doesn't support callbacks")
 	}
 
 	sub, err := e.SubManager.StartSubscription(e.SubscribtionCtx, ethCb.EthSubscription)
@@ -469,7 +468,7 @@ func (e *ethEventAPI) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ty
 			for _, ea := range params.Params.Address {
 				a, err := ea.ToFilecoinAddress()
 				if err != nil {
-					return types.EthSubscriptionID{}, xerrors.Errorf("invalid address %x", ea)
+					return types.EthSubscriptionID{}, fmt.Errorf("invalid address %x", ea)
 				}
 				addresses = append(addresses, a)
 			}
