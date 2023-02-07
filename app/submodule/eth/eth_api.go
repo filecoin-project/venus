@@ -384,6 +384,11 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 		return nil, fmt.Errorf("cannot parse block param: %s", blkParam)
 	}
 
+	// StateManager.Call will panic if there is no parent
+	if ts.Height() == 0 {
+		return nil, fmt.Errorf("block param must not specify genesis block")
+	}
+
 	// Try calling until we find a height with no migration.
 	var res *vm.Ret
 	for {
@@ -574,7 +579,7 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, blkCount types.EthUint64, ne
 	}
 
 	return types.EthFeeHistory{
-		OldestBlock:   oldestBlkHeight,
+		OldestBlock:   types.EthUint64(oldestBlkHeight),
 		BaseFeePerGas: baseFeeArray,
 		GasUsedRatio:  gasUsedRatioArray,
 	}, nil
