@@ -97,7 +97,7 @@ func (v *View) InitResolveAddress(ctx context.Context, a addr.Address) (addr.Add
 	return rAddr, nil
 }
 
-// ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
+// GetMinerWorkerRaw returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func (v *View) GetMinerWorkerRaw(ctx context.Context, maddr addr.Address) (addr.Address, error) {
 	minerState, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
@@ -108,7 +108,7 @@ func (v *View) GetMinerWorkerRaw(ctx context.Context, maddr addr.Address) (addr.
 	if err != nil {
 		return addr.Undef, err
 	}
-	return v.ResolveToKeyAddr(ctx, minerInfo.Worker)
+	return v.ResolveToDeterministicAddress(ctx, minerInfo.Worker)
 }
 
 // MinerInfo returns info about the indicated miner
@@ -694,10 +694,10 @@ func (v *View) LoadActor(ctx context.Context, address addr.Address) (*types.Acto
 	return v.loadActor(ctx, address)
 }
 
-// ResolveToKeyAddress is similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses.
+// ResolveToDeterministicAddress is similar to `vm.ResolveToDeterministicAddress` but does not allow `Actor` type of addresses.
 // Uses the `TipSet` `ts` to generate the VM state.
-// todo: use pkg/vm/vm.go.ResolveToKeyAddr, avoid repetitive implementations
-func (v *View) ResolveToKeyAddr(ctx context.Context, address addr.Address) (addr.Address, error) {
+// todo: use pkg/vm/vm.go.ResolveToDeterministicAddress, avoid repetitive implementations
+func (v *View) ResolveToDeterministicAddress(ctx context.Context, address addr.Address) (addr.Address, error) {
 	if address.Protocol() == addr.BLS || address.Protocol() == addr.SECP256K1 || address.Protocol() == addr.Delegated {
 		return address, nil
 	}

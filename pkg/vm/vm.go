@@ -60,4 +60,4 @@ type (
 	TipSetGetter        = vmcontext.TipSetGetter
 )
 
-var ResolveToKeyAddr = vmcontext.ResolveToKeyAddr
+var ResolveToDeterministicAddress = vmcontext.ResolveToDeterministicAddress

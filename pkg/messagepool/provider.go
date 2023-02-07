@@ -134,7 +134,7 @@ func (mpp *mpoolProvider) StateAccountKeyAtFinality(ctx context.Context, addr ad
 			return address.Undef, fmt.Errorf("failed to load lookback tipset: %w", err)
 		}
 	}
-	return mpp.stmgr.ResolveToKeyAddress(ctx, addr, ts)
+	return mpp.stmgr.ResolveToDeterministicAddress(ctx, addr, ts)
 }
 
 func (mpp *mpoolProvider) StateNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
@@ -142,7 +142,7 @@ func (mpp *mpoolProvider) StateNetworkVersion(ctx context.Context, height abi.Ch
 }
 
 func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	return mpp.stmgr.ResolveToKeyAddress(ctx, addr, ts)
+	return mpp.stmgr.ResolveToDeterministicAddress(ctx, addr, ts)
 }
 
 func (mpp *mpoolProvider) MessagesForBlock(ctx context.Context, h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {

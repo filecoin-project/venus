@@ -23,9 +23,9 @@ func newSyscallsStateView(ctx *invocationContext, VM *LegacyVM) *syscallsStateVi
 	return &syscallsStateView{ctx: ctx, LegacyVM: VM}
 }
 
-// ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
-func (vm *syscallsStateView) ResolveToKeyAddr(ctx context.Context, accountAddr address.Address) (address.Address, error) {
-	return ResolveToKeyAddr(ctx, vm.State, accountAddr, vm.ctx.gasIpld)
+// ResolveToDeterministicAddress returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
+func (vm *syscallsStateView) ResolveToDeterministicAddress(ctx context.Context, accountAddr address.Address) (address.Address, error) {
+	return ResolveToDeterministicAddress(ctx, vm.State, accountAddr, vm.ctx.gasIpld)
 }
 
 // MinerInfo get miner info

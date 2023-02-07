@@ -24,7 +24,7 @@ import (
 )
 
 type FaultStateView interface {
-	ResolveToKeyAddr(ctx context.Context, address address.Address) (address.Address, error)
+	ResolveToDeterministicAddress(ctx context.Context, address address.Address) (address.Address, error)
 	MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error)
 }
 

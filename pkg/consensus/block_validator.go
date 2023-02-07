@@ -801,7 +801,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context,
 
 		// Verify that all secp message signatures are correct
 		for i, msg := range blksecpMsgs {
-			signer, err := stateView.ResolveToKeyAddr(ctx, msg.Message.From)
+			signer, err := stateView.ResolveToDeterministicAddress(ctx, msg.Message.From)
 			if err != nil {
 				return errors.Wrapf(err, "failed to load signer address for %v", signer)
 			}

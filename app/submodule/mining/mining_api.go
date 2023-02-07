@@ -123,7 +123,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	if err != nil {
 		return nil, fmt.Errorf("failed to load latest state: %v", err)
 	}
-	worker, err := st.ResolveToKeyAddr(ctx, info.Worker)
+	worker, err := st.ResolveToDeterministicAddress(ctx, info.Worker)
 	if err != nil {
 		return nil, fmt.Errorf("resolving worker address: %v", err)
 	}

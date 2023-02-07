@@ -27,5 +27,5 @@ func (accountAPI *accountAPI) StateAccountKey(ctx context.Context, addr address.
 	if err != nil {
 		return address.Undef, fmt.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return accountAPI.chain.Stmgr.ResolveToKeyAddress(ctx, addr, ts)
+	return accountAPI.chain.Stmgr.ResolveToDeterministicAddress(ctx, addr, ts)
 }

@@ -11,12 +11,12 @@ import (
 
 // todo remove Account view a nd headsignerview
 type AccountView interface {
-	ResolveToKeyAddr(ctx context.Context, address address.Address) (address.Address, error)
+	ResolveToDeterministicAddress(ctx context.Context, address address.Address) (address.Address, error)
 }
 
 type tipSignerView interface {
 	GetHead() *types.TipSet
-	ResolveToKeyAddr(ctx context.Context, ts *types.TipSet, address address.Address) (address.Address, error)
+	ResolveToDeterministicAddress(ctx context.Context, ts *types.TipSet, address address.Address) (address.Address, error)
 }
 
 // Signer looks up non-signing addresses before signing
@@ -35,7 +35,7 @@ func NewSigner(signerView AccountView, wallet *wallet.Wallet) *Signer {
 
 // SignBytes creates a signature for the given data using either the given addr or its associated signing address
 func (s *Signer) SignBytes(ctx context.Context, data []byte, addr address.Address) (*crypto.Signature, error) {
-	signingAddr, err := s.signerView.ResolveToKeyAddr(ctx, addr)
+	signingAddr, err := s.signerView.ResolveToDeterministicAddress(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func (s *Signer) SignBytes(ctx context.Context, data []byte, addr address.Addres
 
 // HasAddress returns whether this signer can sign with the given address
 func (s *Signer) HasAddress(ctx context.Context, addr address.Address) (bool, error) {
-	signingAddr, err := s.signerView.ResolveToKeyAddr(ctx, addr)
+	signingAddr, err := s.signerView.ResolveToDeterministicAddress(ctx, addr)
 	if err != nil {
 		return false, err
 	}
@@ -59,7 +59,7 @@ func NewHeadSignView(tipSignerView tipSignerView) *HeadSignView {
 	return &HeadSignView{tipSignerView: tipSignerView}
 }
 
-func (headSignView *HeadSignView) ResolveToKeyAddr(ctx context.Context, addr address.Address) (address.Address, error) {
+func (headSignView *HeadSignView) ResolveToDeterministicAddress(ctx context.Context, addr address.Address) (address.Address, error) {
 	head := headSignView.GetHead()
-	return headSignView.tipSignerView.ResolveToKeyAddr(ctx, head, addr) // nil will use latest
+	return headSignView.tipSignerView.ResolveToDeterministicAddress(ctx, head, addr) // nil will use latest
 }
