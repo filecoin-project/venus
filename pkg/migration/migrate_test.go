@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -30,9 +31,8 @@ func TestMigration(t *testing.T) {
 	for nt, paramsCfg := range cfgs {
 		cfg := config.NewDefaultConfig()
 		cfg.NetworkParams.NetworkType = nt
-		repoPath := t.TempDir()
-		assert.Nil(t, os.RemoveAll(repoPath))
-		t.Log(repoPath)
+		repoPath := filepath.Join(os.TempDir(), fmt.Sprintf("TestMigration%d", time.Now().UnixNano()))
+
 		assert.Nil(t, repo.InitFSRepo(repoPath, 0, cfg))
 
 		assert.Nil(t, TryToMigrate(repoPath))
@@ -41,6 +41,7 @@ func TestMigration(t *testing.T) {
 		newCfg := fsRepo.Config()
 		assert.Equal(t, paramsCfg.NetworkType, newCfg.NetworkParams.NetworkType)
 		assert.EqualValuesf(t, config.NewDefaultConfig().NetworkParams.ForkUpgradeParam, newCfg.NetworkParams.ForkUpgradeParam, fmt.Sprintf("current network type %d", paramsCfg.NetworkType))
+		assert.NoError(t, fsRepo.Close())
 
 		cfgTmp, err := config.ReadFile(filepath.Join(repoPath, "config.json"))
 		assert.NoError(t, err)
