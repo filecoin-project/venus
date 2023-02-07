@@ -202,7 +202,7 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Mes
 	msg.GasFeeCap = big.NewInt(int64(constants.MinimumBaseFee) + 1)
 	msg.GasPremium = big.NewInt(1)
 
-	fromA, err := mp.sm.ResolveToKeyAddress(ctx, msgIn.From, currTS)
+	fromA, err := mp.sm.ResolveToDeterministicAddress(ctx, msgIn.From, currTS)
 	if err != nil {
 		return -1, fmt.Errorf("getting key address: %w", err)
 	}
@@ -364,7 +364,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 		return nil, fmt.Errorf("getting tipset: %w", err)
 	}
 
-	fromA, err := mp.sm.ResolveToKeyAddress(ctx, estimateMessages[0].Msg.From, currTS)
+	fromA, err := mp.sm.ResolveToDeterministicAddress(ctx, estimateMessages[0].Msg.From, currTS)
 	if err != nil {
 		return nil, fmt.Errorf("getting key address: %w", err)
 	}

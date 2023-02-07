@@ -1374,15 +1374,15 @@ func (store *Store) LookupID(ctx context.Context, ts *types.TipSet, addr address
 	return st.LookupID(addr)
 }
 
-// ResolveToKeyAddr get key address of specify address.
+// ResolveToDeterministicAddress get key address of specify address.
 // if ths addr is bls/secpk address, return directly, other get the pubkey and generate address
-func (store *Store) ResolveToKeyAddr(ctx context.Context, ts *types.TipSet, addr address.Address) (address.Address, error) {
+func (store *Store) ResolveToDeterministicAddress(ctx context.Context, ts *types.TipSet, addr address.Address) (address.Address, error) {
 	st, err := store.StateView(ctx, ts)
 	if err != nil {
 		return address.Undef, errors.Wrap(err, "failed to load latest state")
 	}
 
-	return st.ResolveToKeyAddr(ctx, addr)
+	return st.ResolveToDeterministicAddress(ctx, addr)
 }
 
 // StateView return state view at ts epoch

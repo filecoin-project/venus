@@ -146,6 +146,6 @@ func (v *FakeStateView) GetMinerWorkerRaw(ctx context.Context, maddr address.Add
 	return m.Worker, nil
 }
 
-func (v *FakeStateView) ResolveToKeyAddr(ctx context.Context, addr address.Address) (address.Address, error) {
+func (v *FakeStateView) ResolveToDeterministicAddress(ctx context.Context, addr address.Address) (address.Address, error) {
 	return addr, nil
 }

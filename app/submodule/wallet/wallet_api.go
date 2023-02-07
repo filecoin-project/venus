@@ -114,7 +114,7 @@ func (walletAPI *WalletAPI) WalletDelete(ctx context.Context, addr address.Addre
 
 // WalletSign signs the given bytes using the given address.
 func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) {
-	keyAddr, err := walletAPI.walletModule.Chain.Stmgr.ResolveToKeyAddress(ctx, k, nil)
+	keyAddr, err := walletAPI.walletModule.Chain.Stmgr.ResolveToDeterministicAddress(ctx, k, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ResolveTokeyAddress failed:%v", err)
 	}

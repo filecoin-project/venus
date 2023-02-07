@@ -29,7 +29,7 @@ import (
 // stateManagerAPI defines the methods needed from StateManager
 // todo remove this code and add private interface in market and paychanel package
 type IStateManager interface {
-	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
+	ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
 	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*vm.Ret, error)
 	GetMarketState(ctx context.Context, ts *types.TipSet) (market.State, error)
@@ -88,7 +88,7 @@ func NewStateManger(cs *chain.Store,
 	}
 }
 
-func (s *Stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (s *Stmgr) ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
 	case address.BLS, address.SECP256K1, address.Delegated:
 		return addr, nil
@@ -101,7 +101,7 @@ func (s *Stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, t
 	if err != nil {
 		return address.Undef, err
 	}
-	return view.ResolveToKeyAddr(ctx, addr)
+	return view.ResolveToDeterministicAddress(ctx, addr)
 }
 
 func (s *Stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {

@@ -21,7 +21,7 @@ func NewSignatureValidator(signerView AccountView) *SignatureValidator {
 
 // ValidateSignature check the signature is valid or not
 func (v *SignatureValidator) ValidateSignature(ctx context.Context, data []byte, signer address.Address, sig crypto.Signature) error {
-	signerAddress, err := v.signerView.ResolveToKeyAddr(ctx, signer)
+	signerAddress, err := v.signerView.ResolveToDeterministicAddress(ctx, signer)
 	if err != nil {
 		return errors.Wrapf(err, "failed to load signer address for %v", signer)
 	}
@@ -44,7 +44,7 @@ func (v *SignatureValidator) ValidateBLSMessageAggregate(ctx context.Context, ms
 	var pubKeys [][]byte
 	var encodedMsgCids [][]byte
 	for _, msg := range msgs {
-		signerAddress, err := v.signerView.ResolveToKeyAddr(ctx, msg.From)
+		signerAddress, err := v.signerView.ResolveToDeterministicAddress(ctx, msg.From)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load signer address for %v", msg.From)
 		}

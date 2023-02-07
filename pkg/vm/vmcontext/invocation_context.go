@@ -383,8 +383,8 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 	}
 }
 
-func (ctx *invocationContext) resolveToKeyAddr(addr address.Address) (address.Address, error) {
-	return ResolveToKeyAddr(ctx.vm.context, ctx.vm.State, addr, ctx.vm.store)
+func (ctx *invocationContext) resolveToDeterministicAddress(addr address.Address) (address.Address, error) {
+	return ResolveToDeterministicAddress(ctx.vm.context, ctx.vm.State, addr, ctx.vm.store)
 }
 
 // implement runtime.InvocationContext for invocationContext
@@ -473,7 +473,7 @@ var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 // Code is adapted from vm.Runtime#NewActorAddress()
 func (ctx *invocationContext) NewActorAddress() address.Address {
 	buf := new(bytes.Buffer)
-	origin, err := ctx.resolveToKeyAddr(ctx.topLevel.originatorStableAddress)
+	origin, err := ctx.resolveToDeterministicAddress(ctx.topLevel.originatorStableAddress)
 	if err != nil {
 		panic(err)
 	}

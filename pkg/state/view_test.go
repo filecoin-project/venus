@@ -54,7 +54,7 @@ func TestView(t *testing.T) {
 		minerInfo, err := view.MinerInfo(ctx, m, network.Version17)
 		assert.NoError(t, err)
 
-		ownerPkAddress, err := view.ResolveToKeyAddr(ctx, minerInfo.Owner)
+		ownerPkAddress, err := view.ResolveToDeterministicAddress(ctx, minerInfo.Owner)
 		assert.NoError(t, err)
 		_, find := keyMap[ownerPkAddress]
 		assert.True(t, find)
