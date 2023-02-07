@@ -113,7 +113,7 @@ type Interface interface {
 	Flush(ctx context.Context) (cid.Cid, error)
 }
 
-func ResolveToKeyAddr(ctx context.Context, state tree.Tree, addr address.Address, cst cbor.IpldStore) (address.Address, error) {
+func ResolveToDeterministicAddress(ctx context.Context, state tree.Tree, addr address.Address, cst cbor.IpldStore) (address.Address, error) {
 	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 || addr.Protocol() == address.Delegated {
 		return addr, nil
 	}

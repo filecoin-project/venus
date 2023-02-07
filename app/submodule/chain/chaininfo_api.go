@@ -319,7 +319,7 @@ func (cia *chainInfoAPI) ResolveToKeyAddr(ctx context.Context, addr address.Addr
 	if ts == nil {
 		ts = cia.chain.ChainReader.GetHead()
 	}
-	return cia.chain.Stmgr.ResolveToKeyAddress(ctx, addr, ts)
+	return cia.chain.Stmgr.ResolveToDeterministicAddress(ctx, addr, ts)
 }
 
 // ************Drand****************//

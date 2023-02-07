@@ -292,7 +292,7 @@ func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerID address.Add
 	if err != nil {
 		return address.Undef, 0, err
 	}
-	raddr, err := vm.ResolveToKeyAddr(ctx, st, info.Worker, cstWithGas)
+	raddr, err := vm.ResolveToDeterministicAddress(ctx, st, info.Worker, cstWithGas)
 	if err != nil {
 		return address.Undef, 0, err
 	}

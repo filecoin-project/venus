@@ -139,7 +139,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 	}
 	msg.Nonce = fromActor.Nonce
 
-	fromKey, err := view.ResolveToKeyAddr(ctx, msg.VMMessage().From)
+	fromKey, err := view.ResolveToDeterministicAddress(ctx, msg.VMMessage().From)
 	if err != nil {
 		return nil, fmt.Errorf("could not resolve key: %v", err)
 	}

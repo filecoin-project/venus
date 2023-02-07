@@ -30,7 +30,7 @@ func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Ad
 	if err != nil {
 		return nil, err
 	}
-	from, err := ca.sm.ResolveToKeyAddress(ctx, f, nil)
+	from, err := ca.sm.ResolveToDeterministicAddress(ctx, f, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Ad
 	if err != nil {
 		return nil, err
 	}
-	to, err := ca.sm.ResolveToKeyAddress(ctx, t, nil)
+	to, err := ca.sm.ResolveToDeterministicAddress(ctx, t, nil)
 	if err != nil {
 		return nil, err
 	}
