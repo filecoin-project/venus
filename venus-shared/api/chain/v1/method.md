@@ -2205,7 +2205,7 @@ Inputs:
 Response:
 ```json
 {
-  "oldestBlock": 42,
+  "oldestBlock": "0x5",
   "baseFeePerGas": [
     "0x0"
   ],
@@ -2270,7 +2270,7 @@ Response:
   "gasLimit": "0x5",
   "gasUsed": "0x5",
   "timestamp": "0x5",
-  "extraData": "Ynl0ZSBhcnJheQ==",
+  "extraData": "0x07",
   "mixHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "nonce": "0x0707070707070707",
   "baseFeePerGas": "0x0",
@@ -2314,7 +2314,7 @@ Response:
   "gasLimit": "0x5",
   "gasUsed": "0x5",
   "timestamp": "0x5",
-  "extraData": "Ynl0ZSBhcnJheQ==",
+  "extraData": "0x07",
   "mixHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "nonce": "0x0707070707070707",
   "baseFeePerGas": "0x0",
