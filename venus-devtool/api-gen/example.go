@@ -260,6 +260,11 @@ func init() {
 
 	// used in market
 	addExample(filestore.Path("/some/path"))
+	params, _ := json.Marshal(&market.FsTransfer{Path: "/path"})
+	addExample(&market.Transfer{
+		Type:   market.PiecesTransferFs,
+		Params: params,
+	})
 
 	clientDataSelector := client.DataSelector("/ipld/a/b/c")
 	addExample(clientDataSelector)

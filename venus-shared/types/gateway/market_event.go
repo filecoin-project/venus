@@ -1,11 +1,13 @@
 package gateway
 
 import (
+	"github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-storage/storage"
+
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
 )
 
 type MarketRegisterPolicy struct {
@@ -14,7 +16,8 @@ type MarketRegisterPolicy struct {
 
 type IsUnsealRequest struct {
 	PieceCid cid.Cid
-	Sector   storage.SectorRef
+	Miner    address.Address
+	Sid      abi.SectorNumber
 	Offset   types.PaddedByteIndex
 	Size     abi.PaddedPieceSize
 }
@@ -23,10 +26,11 @@ type IsUnsealResponse struct{}
 
 type UnsealRequest struct {
 	PieceCid cid.Cid
-	Sector   storage.SectorRef
+	Miner    address.Address
+	Sid      abi.SectorNumber
 	Offset   types.PaddedByteIndex
 	Size     abi.PaddedPieceSize
-	Dest     string
+	Transfer market.Transfer
 }
 
 type UnsealResponse struct{}
