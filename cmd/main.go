@@ -76,7 +76,8 @@ const (
 	// wallet password
 	Password = "password"
 
-	AuthServiceURL = "auth-url"
+	AuthServiceURL   = "auth-url"
+	AuthServiceToken = "auth-token"
 )
 
 func init() {

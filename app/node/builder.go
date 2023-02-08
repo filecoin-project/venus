@@ -190,7 +190,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	var client *jwtclient.AuthClient
 	cfg := nd.repo.Config()
 	if len(cfg.API.VenusAuthURL) > 0 {
-		client, err = jwtclient.NewAuthClient(cfg.API.VenusAuthURL)
+		client, err = jwtclient.NewAuthClient(cfg.API.VenusAuthURL, cfg.API.VenusAuthToken)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create remote jwt auth client: %w", err)
 		}

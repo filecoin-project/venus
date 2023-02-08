@@ -45,6 +45,7 @@ type Config struct {
 // nolint
 type APIConfig struct {
 	VenusAuthURL                  string   `json:"venusAuthURL"`
+	VenusAuthToken                string   `json:"venusAuthToken"`
 	APIAddress                    string   `json:"apiAddress"`
 	AccessControlAllowOrigin      []string `json:"accessControlAllowOrigin"`
 	AccessControlAllowCredentials bool     `json:"accessControlAllowCredentials"`
