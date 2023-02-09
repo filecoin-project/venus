@@ -1248,11 +1248,6 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLooku
 	}
 
 	if len(events) > 0 {
-		// TODO return a dummy non-zero bloom to signal that there are logs
-		//  need to figure out how worth it is to populate with a real bloom
-		//  should be feasible here since we are iterating over the logs anyway
-		receipt.LogsBloom[255] = 0x01
-
 		receipt.Logs = make([]types.EthLog, 0, len(events))
 		for i, evt := range events {
 			l := types.EthLog{
@@ -1270,6 +1265,7 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLooku
 					continue
 				}
 				if entry.Key == types.EthTopic1 || entry.Key == types.EthTopic2 || entry.Key == types.EthTopic3 || entry.Key == types.EthTopic4 {
+					types.EthBloomSet(receipt.LogsBloom, entry.Value)
 					l.Topics = append(l.Topics, entry.Value)
 				} else {
 					l.Data = entry.Value
@@ -1286,6 +1282,7 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLooku
 				return types.EthTxReceipt{}, fmt.Errorf("failed to resolve Ethereum address: %w", err)
 			}
 
+			types.EthBloomSet(receipt.LogsBloom, l.Address[:])
 			receipt.Logs = append(receipt.Logs, l)
 		}
 	}
