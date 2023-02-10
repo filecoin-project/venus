@@ -206,11 +206,12 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	if authURL, ok := req.Options[AuthServiceURL].(string); ok && len(authURL) > 0 {
 		config.API.VenusAuthURL = authURL
-		if authServiceToken, ok := req.Options[AuthServiceToken].(string); ok && len(authServiceToken) > 0 {
-			config.API.VenusAuthToken = authServiceToken
-		} else {
-			return fmt.Errorf("must also pass token with venus auth service to `--%s`", AuthServiceToken)
-		}
+	}
+	if authServiceToken, ok := req.Options[AuthServiceToken].(string); ok && len(authServiceToken) > 0 {
+		config.API.VenusAuthToken = authServiceToken
+	}
+	if len(config.API.VenusAuthURL)+len(config.API.VenusAuthToken) > 0 && len(config.API.VenusAuthToken)*len(config.API.VenusAuthURL) == 0 {
+		return fmt.Errorf("must set both venus auth service url and token at the same time")
 	}
 
 	opts, err := node.OptionsFromRepo(rep)
