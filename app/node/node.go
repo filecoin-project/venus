@@ -203,6 +203,12 @@ func (node *Node) Start(ctx context.Context) error {
 
 // Stop initiates the shutdown of the node.
 func (node *Node) Stop(ctx context.Context) {
+	// stop eth submodule
+	log.Infof("closing eth ...")
+	if err := node.eth.Close(ctx); err != nil {
+		log.Warnf("error closing eth: %s", err)
+	}
+
 	// stop mpool submodule
 	log.Infof("shutting down mpool...")
 	node.mpool.Stop(ctx)
@@ -236,11 +242,6 @@ func (node *Node) Stop(ctx context.Context) {
 
 	if node.jaegerExporter != nil {
 		node.jaegerExporter.Flush()
-	}
-
-	log.Infof("closing eth event index db")
-	if err := node.eth.Close(ctx); err != nil {
-		log.Warnf("error closing eht event index db: %s", err)
 	}
 }
 
