@@ -115,6 +115,7 @@ type (
 	FaultDeclaration              = miner.FaultDeclaration
 	GetBeneficiaryReturn          = miner.GetBeneficiaryReturn
 	GetControlAddressesReturn     = miner.GetControlAddressesReturn
+	MinerConstructorParams        = miner.MinerConstructorParams
 	PartitionKey                  = miner.PartitionKey
 	PendingBeneficiaryChange      = miner.PendingBeneficiaryChange
 	PoStPartition                 = miner.PoStPartition
@@ -171,22 +172,6 @@ var (
 	SectorKey                              = miner.SectorKey
 )
 
-////////// paych //////////
-
-const (
-	LaneStatesAmtBitwidth = paych.LaneStatesAmtBitwidth
-	SettleDelay           = paych.SettleDelay
-)
-
-type (
-	ConstructorParams        = paych.ConstructorParams
-	LaneState                = paych.LaneState
-	Merge                    = paych.Merge
-	ModVerifyParams          = paych.ModVerifyParams
-	SignedVoucher            = paych.SignedVoucher
-	UpdateChannelStateParams = paych.UpdateChannelStateParams
-)
-
 ////////// verifreg //////////
 
 const (
@@ -213,6 +198,7 @@ type (
 	ClaimExtensionRequest          = verifreg.ClaimExtensionRequest
 	ClaimId                        = verifreg.ClaimId
 	ClaimTerm                      = verifreg.ClaimTerm
+	DataCap                        = verifreg.DataCap
 	ExtendClaimTermsParams         = verifreg.ExtendClaimTermsParams
 	ExtendClaimTermsReturn         = verifreg.ExtendClaimTermsReturn
 	FailCode                       = verifreg.FailCode
@@ -232,4 +218,20 @@ type (
 	SectorAllocationClaim          = verifreg.SectorAllocationClaim
 	UniversalReceiverParams        = verifreg.UniversalReceiverParams
 	UseBytesParams                 = verifreg.UseBytesParams
+)
+
+////////// paych //////////
+
+const (
+	LaneStatesAmtBitwidth = paych.LaneStatesAmtBitwidth
+	SettleDelay           = paych.SettleDelay
+)
+
+type (
+	ConstructorParams        = paych.ConstructorParams
+	LaneState                = paych.LaneState
+	Merge                    = paych.Merge
+	ModVerifyParams          = paych.ModVerifyParams
+	SignedVoucher            = paych.SignedVoucher
+	UpdateChannelStateParams = paych.UpdateChannelStateParams
 )
