@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var ErrModuleDisabled = errors.New("module disabled, enable with Fevm.EnableEthRPC")
+var ErrModuleDisabled = errors.New("module disabled, enable with Fevm.EnableEthRPC / VENUS_FEVM_ENABLEETHRPC")
 
 type ethAPIDummy struct{}
 
