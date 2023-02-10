@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/ethhashlookup"
@@ -45,14 +47,29 @@ func newEthAPI(em *EthSubModule) (*ethAPI, error) {
 		mpool: em.mpoolModule.API(),
 	}
 
-	transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(filepath.Join(a.em.sqlitePath, "txhash.db"))
+	dbPath := filepath.Join(a.em.sqlitePath, "txhash.db")
+
+	// Check if the db exists, if not, we'll back-fill some entries
+	_, err := os.Stat(dbPath)
+	dbAlreadyExists := err == nil
+
+	transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(dbPath)
 	if err != nil {
 		return nil, err
 	}
 
 	a.ethTxHashManager = &ethTxHashManager{
 		chainAPI:              a.chain,
+		messageStore:          em.chainModule.MessageStore,
+		forkUpgradeConfig:     em.cfg.NetworkParams.ForkUpgradeParam,
 		TransactionHashLookup: transactionHashLookup,
+	}
+
+	if !dbAlreadyExists {
+		err = a.ethTxHashManager.PopulateExistingMappings(em.ctx, 0)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return a, nil
@@ -1292,6 +1309,8 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLooku
 
 type ethTxHashManager struct {
 	chainAPI              v1.IChain
+	messageStore          *chain.MessageStore
+	forkUpgradeConfig     *config.ForkUpgradeConfig
 	TransactionHashLookup *ethhashlookup.EthTxHashLookup
 }
 
@@ -1326,6 +1345,55 @@ func (m *ethTxHashManager) Revert(ctx context.Context, from, to *types.TipSet) e
 	return nil
 }
 
+func (m *ethTxHashManager) PopulateExistingMappings(ctx context.Context, minHeight abi.ChainEpoch) error {
+	if minHeight < m.forkUpgradeConfig.UpgradeHyggeHeight {
+		minHeight = m.forkUpgradeConfig.UpgradeHyggeHeight
+	}
+
+	ts, err := m.chainAPI.ChainHead(ctx)
+	if err != nil {
+		return err
+	}
+	for ts.Height() > minHeight {
+		for _, block := range ts.Blocks() {
+			msgs, err := m.messageStore.SecpkMessagesForBlock(ctx, block)
+			if err != nil {
+				// If we can't find the messages, we've either imported from snapshot or pruned the store
+				log.Debug("exiting message mapping population at epoch ", ts.Height())
+				return nil
+			}
+
+			for _, msg := range msgs {
+				m.ProcessSignedMessage(ctx, msg)
+			}
+		}
+
+		var err error
+		ts, err = m.chainAPI.ChainGetTipSet(ctx, ts.Parents())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *ethTxHashManager) ProcessSignedMessage(ctx context.Context, msg *types.SignedMessage) {
+	if msg.Signature.Type != crypto.SigTypeDelegated {
+		return
+	}
+
+	ethTx, err := newEthTxFromSignedMessage(ctx, msg, m.chainAPI)
+	if err != nil {
+		log.Errorf("error converting filecoin message to eth tx: %s", err)
+	}
+
+	err = m.TransactionHashLookup.UpsertHash(ethTx.Hash, msg.Cid())
+	if err != nil {
+		log.Errorf("error inserting tx mapping to db: %s", err)
+	}
+}
+
 func waitForMpoolUpdates(ctx context.Context, ch <-chan types.MpoolUpdate, manager *ethTxHashManager) {
 	for {
 		select {
@@ -1335,19 +1403,8 @@ func waitForMpoolUpdates(ctx context.Context, ch <-chan types.MpoolUpdate, manag
 			if u.Type != types.MpoolAdd {
 				continue
 			}
-			if u.Message.Signature.Type != crypto.SigTypeDelegated {
-				continue
-			}
 
-			ethTx, err := newEthTxFromSignedMessage(ctx, u.Message, manager.chainAPI)
-			if err != nil {
-				log.Errorf("error converting filecoin message to eth tx: %s", err)
-			}
-
-			err = manager.TransactionHashLookup.UpsertHash(ethTx.Hash, u.Message.Cid())
-			if err != nil {
-				log.Errorf("error inserting tx mapping to db: %s", err)
-			}
+			manager.ProcessSignedMessage(ctx, u.Message)
 		}
 	}
 }

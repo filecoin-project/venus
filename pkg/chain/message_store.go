@@ -478,6 +478,20 @@ func (ms *MessageStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, e
 	return out, nil
 }
 
+func (ms *MessageStore) SecpkMessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.SignedMessage, error) {
+	_, secpkcids, err := ms.ReadMsgMetaCids(ctx, b.Messages)
+	if err != nil {
+		return nil, err
+	}
+
+	secpkmsgs, err := ms.LoadSignedMessagesFromCids(ctx, secpkcids)
+	if err != nil {
+		return nil, fmt.Errorf("loading secpk messages for block: %w", err)
+	}
+
+	return secpkmsgs, nil
+}
+
 // StoreMessage put message(include signed message and unsigned message) to database
 func (ms *MessageStore) StoreMessage(message types.ChainMsg) (cid.Cid, error) {
 	return cbor.NewCborStore(ms.bs).Put(context.TODO(), message)
