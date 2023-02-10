@@ -603,6 +603,7 @@ Response:
       {
         "Flags": 7,
         "Key": "string value",
+        "Codec": 42,
         "Value": "Ynl0ZSBhcnJheQ=="
       }
     ]
