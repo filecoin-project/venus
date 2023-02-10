@@ -21,7 +21,7 @@ func ButterflySnapNet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.NetworkButterfly,
-			GenesisNetworkVersion: network.Version16,
+			GenesisNetworkVersion: network.Version17,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 				abi.RegisteredSealProof_StackedDrg32GiBV1,

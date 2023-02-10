@@ -47,7 +47,7 @@ func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error)
 
 	ee.SubManager = &EthSubscriptionManager{
 		ChainAPI:     chainAPI,
-		messageStore: ee.SubManager.messageStore,
+		messageStore: ee.em.chainModule.MessageStore,
 	}
 	ee.FilterStore = filter.NewMemFilterStore(cfg.Event.MaxFilters)
 
@@ -557,14 +557,14 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageSt
 		var err error
 
 		for _, entry := range ev.Entries {
-			value, err := cborDecodeTopicValue(entry.Value)
-			if err != nil {
-				return nil, err
+			// Skip all events that aren't "raw" data.
+			if entry.Codec != cid.Raw {
+				continue
 			}
 			if entry.Key == types.EthTopic1 || entry.Key == types.EthTopic2 || entry.Key == types.EthTopic3 || entry.Key == types.EthTopic4 {
-				log.Topics = append(log.Topics, value)
+				log.Topics = append(log.Topics, entry.Value)
 			} else {
-				log.Data = value
+				log.Data = entry.Value
 			}
 		}
 
@@ -752,14 +752,4 @@ func (e *ethSubscription) stop() {
 		e.quit()
 		e.quit = nil
 	}
-}
-
-func leftpad32(orig []byte) []byte {
-	needed := 32 - len(orig)
-	if needed <= 0 {
-		return orig
-	}
-	ret := make([]byte, 32)
-	copy(ret[needed:], orig)
-	return ret
 }

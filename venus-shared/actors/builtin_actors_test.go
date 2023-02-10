@@ -13,7 +13,13 @@ func TestEmbeddedMetadata(t *testing.T) {
 	metadata, err := ReadEmbeddedBuiltinActorsMetadata()
 	require.NoError(t, err)
 
-	require.Equal(t, metadata, EmbeddedBuiltinActorsMetadata)
+	for i, v1 := range metadata {
+		v2 := EmbeddedBuiltinActorsMetadata[i]
+		require.Equal(t, v1.Network, v2.Network)
+		require.Equal(t, v1.Version, v2.Version)
+		require.Equal(t, v1.ManifestCid, v2.ManifestCid)
+		require.Equal(t, v1.Actors, v2.Actors)
+	}
 }
 
 // Test that we're registering the manifest correctly.

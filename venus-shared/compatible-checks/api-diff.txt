@@ -118,6 +118,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ BlockTime
 	- ChainBlockstoreInfo
 	- ChainCheckBlockstore
+	> ChainGetEvents {[func(context.Context, cid.Cid) ([]types.Event, error) <> func(context.Context, cid.Cid) ([]types.Event, error)] base=func out type: #0 input; nested={[[]types.Event <> []types.Event] base=slice element; nested={[types.Event <> types.Event] base=struct field; nested={[types.Event <> types.Event] base=exported field type: #1 field named Entries; nested={[[]types.EventEntry <> []types.EventEntry] base=slice element; nested={[types.EventEntry <> types.EventEntry] base=struct field; nested={[types.EventEntry <> types.EventEntry] base=exported fields count: 4 != 3; nested=nil}}}}}}}
 	- ChainGetNode
 	+ ChainGetReceipts
 	+ ChainList
