@@ -16,11 +16,14 @@ func NewEthSubModule(ctx context.Context,
 	mpoolModule *mpool.MessagePoolSubmodule,
 	sqlitePath string,
 ) (*EthSubModule, error) {
+	ctx, cancel := context.WithCancel(ctx)
 	em := &EthSubModule{
 		cfg:         cfg,
 		chainModule: chainModule,
 		mpoolModule: mpoolModule,
 		sqlitePath:  sqlitePath,
+		ctx:         ctx,
+		cancel:      cancel,
 	}
 	ee, err := newEthEventAPI(ctx, em)
 	if err != nil {
@@ -47,17 +50,23 @@ type EthSubModule struct { // nolint
 
 	ethEventAPI   *ethEventAPI
 	ethAPIAdapter ethAPIAdapter
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
-func (em *EthSubModule) Start(ctx context.Context) error {
-	if err := em.ethEventAPI.Start(ctx); err != nil {
+func (em *EthSubModule) Start(_ context.Context) error {
+	if err := em.ethEventAPI.Start(em.ctx); err != nil {
 		return err
 	}
 
-	return em.ethAPIAdapter.start(ctx)
+	return em.ethAPIAdapter.start(em.ctx)
 }
 
 func (em *EthSubModule) Close(ctx context.Context) error {
+	// exit waitForMpoolUpdates, avoid panic
+	em.cancel()
+
 	if err := em.ethEventAPI.Close(ctx); err != nil {
 		return err
 	}
