@@ -716,10 +716,8 @@ func (a *ethAPI) ethCallToFilecoinMessage(ctx context.Context, tx types.EthCall)
 				return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
 			}
 			params = buf.Bytes()
-			method = builtintypes.MethodsEVM.InvokeContract
-		} else {
-			method = builtintypes.MethodSend
 		}
+		method = builtintypes.MethodsEVM.InvokeContract
 	}
 
 	return &types.Message{
