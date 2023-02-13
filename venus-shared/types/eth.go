@@ -20,10 +20,6 @@ var (
 	EmptyUncleHash    = types.EmptyUncleHash
 	ErrInvalidAddress = types.ErrInvalidAddress
 	EthBigIntZero     = types.EthBigIntZero
-	EthTopic1         = types.EthTopic1
-	EthTopic2         = types.EthTopic2
-	EthTopic3         = types.EthTopic3
-	EthTopic4         = types.EthTopic4
 	FullEthBloom      = types.FullEthBloom
 )
 

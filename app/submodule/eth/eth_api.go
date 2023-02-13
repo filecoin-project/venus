@@ -1275,18 +1275,16 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLooku
 				BlockNumber:      blockNumber,
 			}
 
-			for _, entry := range evt.Entries {
-				// Ignore any non-raw values/keys.
-				if entry.Codec != cid.Raw {
-					continue
-				}
-				if entry.Key == types.EthTopic1 || entry.Key == types.EthTopic2 || entry.Key == types.EthTopic3 || entry.Key == types.EthTopic4 {
-					types.EthBloomSet(receipt.LogsBloom, entry.Value)
-					l.Topics = append(l.Topics, entry.Value)
-				} else {
-					l.Data = entry.Value
-				}
+			data, topics, ok := ethLogFromEvent(evt.Entries)
+			if !ok {
+				// not an eth event.
+				continue
 			}
+			for _, topic := range topics {
+				types.EthBloomSet(receipt.LogsBloom, topic[:])
+			}
+			l.Data = data
+			l.Topics = topics
 
 			addr, err := address.NewIDAddress(uint64(evt.Emitter))
 			if err != nil {
