@@ -54,7 +54,7 @@ func DumpActorState(codeLoader *dispatch.CodeLoader, act *types.Actor, b []byte)
 
 	um := vmActor.State()
 	if um == nil {
-		if act.Code != vmcontext.EmptyObjectCid {
+		if act.Head != vmcontext.EmptyObjectCid {
 			return nil, fmt.Errorf("actor with code %s should only have empty object (%s) as its Head, instead has %s", act.Code, vmcontext.EmptyObjectCid, act.Head)
 		}
 		return nil, nil

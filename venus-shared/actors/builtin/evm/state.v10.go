@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	evm10 "github.com/filecoin-project/go-state-types/builtin/v10/evm"
 )
 
@@ -44,4 +45,26 @@ func (s *state10) Nonce() (uint64, error) {
 
 func (s *state10) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state10) GetBytecodeCID() (cid.Cid, error) {
+	return s.State.Bytecode, nil
+}
+
+func (s *state10) GetBytecodeHash() ([32]byte, error) {
+	return s.State.BytecodeHash, nil
+}
+
+func (s *state10) GetBytecode() ([]byte, error) {
+	bc, err := s.GetBytecodeCID()
+	if err != nil {
+		return nil, err
+	}
+
+	var byteCode abi.CborBytesTransparent
+	if err := s.store.Get(s.store.Context(), bc, &byteCode); err != nil {
+		return nil, err
+	}
+
+	return byteCode, nil
 }

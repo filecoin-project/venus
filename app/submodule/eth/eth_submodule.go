@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
@@ -32,7 +33,8 @@ func NewEthSubModule(ctx context.Context,
 	em.ethEventAPI = ee
 
 	em.ethAPIAdapter = &ethAPIDummy{}
-	if em.cfg.FevmConfig.EnableEthRPC {
+	if em.cfg.FevmConfig.EnableEthRPC || constants.FevmEnableEthRPC {
+		log.Debug("enable eth rpc")
 		em.ethAPIAdapter, err = newEthAPI(em)
 		if err != nil {
 			return nil, err
