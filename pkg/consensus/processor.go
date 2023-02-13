@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fvm"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
@@ -47,21 +48,32 @@ type DefaultProcessor struct {
 	actors                      vm.ActorCodeLoader
 	syscalls                    vm.SyscallsImpl
 	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor
+	cs                          *chain.Store
+	netParamCfg                 *config.NetworkParamsConfig
 }
 
 var _ Processor = (*DefaultProcessor)(nil)
 
 // NewDefaultProcessor creates a default processor from the given state tree and vms.
-func NewDefaultProcessor(syscalls vm.SyscallsImpl, circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor) *DefaultProcessor {
-	return NewConfiguredProcessor(*vm.GetDefaultActors(), syscalls, circulatingSupplyCalculator)
+func NewDefaultProcessor(syscalls vm.SyscallsImpl,
+	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
+	cs *chain.Store,
+	netParamCfg *config.NetworkParamsConfig) *DefaultProcessor {
+	return NewConfiguredProcessor(*vm.GetDefaultActors(), syscalls, circulatingSupplyCalculator, cs, netParamCfg)
 }
 
 // NewConfiguredProcessor creates a default processor with custom validation and rewards.
-func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl, circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor) *DefaultProcessor {
+func NewConfiguredProcessor(actors vm.ActorCodeLoader,
+	syscalls vm.SyscallsImpl,
+	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
+	cs *chain.Store,
+	netParamCfg *config.NetworkParamsConfig) *DefaultProcessor {
 	return &DefaultProcessor{
 		actors:                      actors,
 		syscalls:                    syscalls,
 		circulatingSupplyCalculator: circulatingSupplyCalculator,
+		cs:                          cs,
+		netParamCfg:                 netParamCfg,
 	}
 }
 
@@ -81,7 +93,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		events        [][]types.Event
 	)
 
-	makeVMWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.Interface, error) {
+	makeVm := func(base cid.Cid, e abi.ChainEpoch, timestamp uint64) (vm.Interface, error) {
 		vmOpt := vm.VmOption{
 			CircSupplyCalculator: vmOpts.CircSupplyCalculator,
 			LookbackStateGetter:  vmOpts.LookbackStateGetter,
@@ -91,7 +103,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			Fork:                 vmOpts.Fork,
 			ActorCodeLoader:      vmOpts.ActorCodeLoader,
 			Epoch:                e,
-			Timestamp:            vmOpts.Timestamp,
+			Timestamp:            timestamp,
 			GasPriceSchedule:     vmOpts.GasPriceSchedule,
 			PRoot:                base,
 			Bsstore:              vmOpts.Bsstore,
@@ -104,9 +116,21 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		return fvm.NewVM(ctx, vmOpt)
 	}
 
+	// May get filled with the genesis block header if there are null rounds
+	// for which to backfill cron execution.
+	var genesis *types.BlockHeader
+
+	// There were null rounds in between the current epoch and the parent epoch.
 	for i := parentEpoch; i < epoch; i++ {
 		if i > parentEpoch {
-			vmCron, err := makeVMWithBaseStateAndEpoch(pstate, i)
+			if genesis == nil {
+				if genesis, err = p.cs.GetGenesisBlock(ctx); err != nil {
+					return cid.Undef, nil, fmt.Errorf("failed to get genesis when backfilling null rounds: %w", err)
+				}
+			}
+
+			timestamp := genesis.Timestamp + p.netParamCfg.BlockDelay*(uint64(i))
+			vmCron, err := makeVm(pstate, i, timestamp)
 			if err != nil {
 				return cid.Undef, nil, fmt.Errorf("making cron vm: %w", err)
 			}
@@ -136,7 +160,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		processLog.Debugf("after fork root: %s\n", pstate)
 	}
 
-	vm, err := makeVMWithBaseStateAndEpoch(pstate, epoch)
+	vm, err := makeVm(pstate, epoch, vmOpts.Timestamp)
 	if err != nil {
 		return cid.Undef, nil, fmt.Errorf("making cron vm: %w", err)
 	}

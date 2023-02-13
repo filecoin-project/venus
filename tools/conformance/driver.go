@@ -174,7 +174,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 	)
 
 	circulatingSupplyCalculator := chain.NewCirculatingSupplyCalculator(bs, preroot, mainNetParams.Network.ForkUpgradeParam)
-	processor := consensus.NewDefaultProcessor(syscalls, circulatingSupplyCalculator)
+	processor := consensus.NewDefaultProcessor(syscalls, circulatingSupplyCalculator, chainStore, &mainNetParams.Network)
 
 	postcid, receipt, err := processor.ApplyBlocks(ctx, blocks, nil, preroot, parentEpoch, execEpoch, vmOption, func(_ cid.Cid, msg *types.Message, ret *vm.Ret) error {
 		messages = append(messages, msg)
