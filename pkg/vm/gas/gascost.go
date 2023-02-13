@@ -216,6 +216,16 @@ func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
 			verifyConsensusFault: 495422,
 			verifyReplicaUpdate:  36316136,
 		},
+		forkParams.UpgradeHyggeHeight: &pricelistV0{
+			computeGasMulti: 1,
+			storageGasMulti: 1300, // only applies to messages/return values.
+
+			onChainMessageComputeBase:    38863 + 475000, // includes the actor update cost
+			onChainMessageStorageBase:    36,
+			onChainMessageStoragePerByte: 1,
+
+			onChainReturnValuePerByte: 1,
+		},
 	}
 	return &PricesSchedule{prices: prices}
 }
