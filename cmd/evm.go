@@ -115,7 +115,7 @@ var evmCallSimulateCmd = &cmds.Command{
 			return err
 		}
 
-		params, err := types.DecodeHexString(req.Arguments[2])
+		params, err := types.DecodeHexStringTrimSpace(req.Arguments[2])
 		if err != nil {
 			return err
 		}
@@ -155,7 +155,7 @@ var evmGetContractAddressCmd = &cmds.Command{
 			return err
 		}
 
-		salt, err := types.DecodeHexString(req.Arguments[1])
+		salt, err := types.DecodeHexStringTrimSpace(req.Arguments[1])
 		if err != nil {
 			return fmt.Errorf("could not decode salt: %v", err)
 		}
@@ -174,7 +174,7 @@ var evmGetContractAddressCmd = &cmds.Command{
 
 			return err
 		}
-		contract, err := types.DecodeHexString(string(contractHex))
+		contract, err := types.DecodeHexStringTrimSpace(string(contractHex))
 		if err != nil {
 			return fmt.Errorf("could not decode contract file: %v", err)
 		}
@@ -210,7 +210,7 @@ var evmDeployCmd = &cmds.Command{
 			return fmt.Errorf("failed to read contract: %w", err)
 		}
 		if isHex, _ := req.Options["hex"].(bool); isHex {
-			contract, err = types.DecodeHexString(string(contract))
+			contract, err = types.DecodeHexStringTrimSpace(string(contract))
 			if err != nil {
 				return fmt.Errorf("failed to decode contract: %w", err)
 			}
@@ -327,7 +327,7 @@ var evmInvokeCmd = &cmds.Command{
 			return fmt.Errorf("failed to decode address: %w", err)
 		}
 
-		callData, err := types.DecodeHexString(req.Arguments[1])
+		callData, err := types.DecodeHexStringTrimSpace(req.Arguments[1])
 		if err != nil {
 			return fmt.Errorf("decoding hex input data: %w", err)
 		}
