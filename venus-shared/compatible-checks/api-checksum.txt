@@ -287,7 +287,7 @@ api.FullNode:
 	EthCall:	In=3,	Out=2,	CheckSum=64610416ed5674a0c717908d51904008
 	EthChainId:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
 	EthEstimateGas:	In=2,	Out=2,	CheckSum=f4d63e320f2fb2778b210a925516a114
-	EthFeeHistory:	In=4,	Out=2,	CheckSum=9164bb73179979bdbcd52af8c63a56d4
+	EthFeeHistory:	In=2,	Out=2,	CheckSum=6a4806cfbd9b939d6f7fc3fbe7dc1ff7
 	EthGasPrice:	In=1,	Out=2,	CheckSum=e2f5588dddfc36a9cdef0fad6f4db93e
 	EthGetBalance:	In=3,	Out=2,	CheckSum=a35a35a610cd3193c836ce7d61f5a05a
 	EthGetBlockByHash:	In=3,	Out=2,	CheckSum=606bca6c962d8e2d4e0b8bb14e8fa0a9
