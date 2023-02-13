@@ -172,6 +172,22 @@ var (
 	SectorKey                              = miner.SectorKey
 )
 
+////////// paych //////////
+
+const (
+	LaneStatesAmtBitwidth = paych.LaneStatesAmtBitwidth
+	SettleDelay           = paych.SettleDelay
+)
+
+type (
+	ConstructorParams        = paych.ConstructorParams
+	LaneState                = paych.LaneState
+	Merge                    = paych.Merge
+	ModVerifyParams          = paych.ModVerifyParams
+	SignedVoucher            = paych.SignedVoucher
+	UpdateChannelStateParams = paych.UpdateChannelStateParams
+)
+
 ////////// verifreg //////////
 
 const (
@@ -218,20 +234,4 @@ type (
 	SectorAllocationClaim          = verifreg.SectorAllocationClaim
 	UniversalReceiverParams        = verifreg.UniversalReceiverParams
 	UseBytesParams                 = verifreg.UseBytesParams
-)
-
-////////// paych //////////
-
-const (
-	LaneStatesAmtBitwidth = paych.LaneStatesAmtBitwidth
-	SettleDelay           = paych.SettleDelay
-)
-
-type (
-	ConstructorParams        = paych.ConstructorParams
-	LaneState                = paych.LaneState
-	Merge                    = paych.Merge
-	ModVerifyParams          = paych.ModVerifyParams
-	SignedVoucher            = paych.SignedVoucher
-	UpdateChannelStateParams = paych.UpdateChannelStateParams
 )
