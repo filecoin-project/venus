@@ -54,6 +54,7 @@ type (
 var (
 	CastEthAddress                   = types.CastEthAddress
 	DecodeHexString                  = types.DecodeHexString
+	DecodeHexStringTrimSpace         = types.DecodeHexStringTrimSpace
 	EthAddressFromFilecoinAddress    = types.EthAddressFromFilecoinAddress
 	EthAddressFromPubKey             = types.EthAddressFromPubKey
 	EthBloomSet                      = types.EthBloomSet
