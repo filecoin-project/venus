@@ -544,6 +544,68 @@ type filterTipSetCollector interface {
 	TakeCollectedTipSets(context.Context) []types.TipSetKey
 }
 
+func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []types.EthHash, ok bool) {
+	var (
+		topicsFound      [4]bool
+		topicsFoundCount int
+		dataFound        bool
+	)
+	for _, entry := range entries {
+		// Drop events with non-raw topics to avoid mistakes.
+		if entry.Codec != cid.Raw {
+			log.Warnw("did not expect an event entry with a non-raw codec", "codec", entry.Codec, "key", entry.Key)
+			return nil, nil, false
+		}
+		// Check if the key is t1..t4
+		if len(entry.Key) == 2 && "t1" <= entry.Key && entry.Key <= "t4" {
+			// '1' - '1' == 0, etc.
+			idx := int(entry.Key[1] - '1')
+
+			// Drop events with mis-sized topics.
+			if len(entry.Value) != 32 {
+				log.Warnw("got an EVM event topic with an invalid size", "key", entry.Key, "size", len(entry.Value))
+				return nil, nil, false
+			}
+
+			// Drop events with duplicate topics.
+			if topicsFound[idx] {
+				log.Warnw("got a duplicate EVM event topic", "key", entry.Key)
+				return nil, nil, false
+			}
+			topicsFound[idx] = true
+			topicsFoundCount++
+
+			// Extend the topics array
+			for len(topics) <= idx {
+				topics = append(topics, types.EthHash{})
+			}
+
+			copy(topics[idx][:], entry.Value)
+		} else if entry.Key == "d" {
+			// Drop events with duplicate data fields.
+			if dataFound {
+				log.Warnw("got duplicate EVM event data")
+				return nil, nil, false
+			}
+
+			dataFound = true
+			data = entry.Value
+		} else {
+			// Skip entries we don't understand (makes it easier to extend things).
+			// But we warn for now because we don't expect them.
+			log.Warnw("unexpected event entry", "key", entry.Key)
+		}
+
+	}
+
+	// Drop events with skipped topics.
+	if len(topics) != topicsFoundCount {
+		log.Warnw("EVM event topic length mismatch", "expected", len(topics), "actual", topicsFoundCount)
+		return nil, nil, false
+	}
+	return data, topics, true
+}
+
 func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageStore, ca v1.IChain) (*types.EthFilterResult, error) {
 	res := &types.EthFilterResult{}
 	for _, ev := range evs {
@@ -553,19 +615,14 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageSt
 			TransactionIndex: types.EthUint64(ev.MsgIdx),
 			BlockNumber:      types.EthUint64(ev.Height),
 		}
+		var (
+			err error
+			ok  bool
+		)
 
-		var err error
-
-		for _, entry := range ev.Entries {
-			// Skip all events that aren't "raw" data.
-			if entry.Codec != cid.Raw {
-				continue
-			}
-			if entry.Key == types.EthTopic1 || entry.Key == types.EthTopic2 || entry.Key == types.EthTopic3 || entry.Key == types.EthTopic4 {
-				log.Topics = append(log.Topics, entry.Value)
-			} else {
-				log.Data = entry.Value
-			}
+		log.Data, log.Topics, ok = ethLogFromEvent(ev.Entries)
+		if !ok {
+			continue
 		}
 
 		log.Address, err = types.EthAddressFromFilecoinAddress(ev.EmitterAddr)
