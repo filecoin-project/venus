@@ -121,7 +121,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		blkValid,
 		chn.SystemCall,
 		circulatingSupplyCalculator,
-		config.Repo().Config().NetworkParams.ActorDebugging,
+		config.Repo().Config().NetworkParams,
 		config.Repo().Config().FevmConfig.EnableEthRPC,
 	)
 

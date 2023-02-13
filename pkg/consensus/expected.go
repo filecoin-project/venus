@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/ipfs/go-cid"
@@ -128,8 +129,8 @@ type Expected struct {
 	// block validator before process tipset
 	blockValidator *BlockValidator
 
-	actorDebugging bool
-	returnEvents   bool
+	netParamCfg  *config.NetworkParamsConfig
+	returnEvents bool
 }
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
@@ -143,10 +144,10 @@ func NewExpected(cs cbor.IpldStore,
 	blockValidator *BlockValidator,
 	syscalls vm.SyscallsImpl,
 	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
-	actorDebugging bool,
+	netParamCfg *config.NetworkParamsConfig,
 	returnEvents bool,
 ) *Expected {
-	processor := NewDefaultProcessor(syscalls, circulatingSupplyCalculator)
+	processor := NewDefaultProcessor(syscalls, circulatingSupplyCalculator, chainState, netParamCfg)
 	return &Expected{
 		processor:        processor,
 		syscallsImpl:     syscalls,
@@ -158,7 +159,7 @@ func NewExpected(cs cbor.IpldStore,
 		fork:             fork,
 		gasPirceSchedule: gasPirceSchedule,
 		blockValidator:   blockValidator,
-		actorDebugging:   actorDebugging,
+		netParamCfg:      netParamCfg,
 		returnEvents:     returnEvents,
 	}
 }
@@ -217,7 +218,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, cb 
 		SysCallsImpl:        c.syscallsImpl,
 		TipSetGetter:        vmcontext.TipSetGetterForTipset(c.chainState.GetTipSetByHeight, ts),
 		Tracing:             false,
-		ActorDebugging:      c.actorDebugging,
+		ActorDebugging:      c.netParamCfg.ActorDebugging,
 		ReturnEvents:        c.returnEvents,
 	}
 
