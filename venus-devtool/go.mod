@@ -126,7 +126,7 @@ require (
 	github.com/ipld/go-car v0.4.0 // indirect
 	github.com/ipld/go-car/v2 v2.4.1 // indirect
 	github.com/ipld/go-codec-dagpb v1.5.0 // indirect
-	github.com/ipld/go-ipld-prime v0.18.0 // indirect
+	github.com/ipld/go-ipld-prime v0.19.0 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
 	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
