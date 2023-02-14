@@ -31,7 +31,7 @@ import (
 type IStateManager interface {
 	ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
-	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*vm.Ret, error)
+	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.InvocResult, error)
 	GetMarketState(ctx context.Context, ts *types.TipSet) (market.State, error)
 }
 
@@ -43,6 +43,7 @@ var _ IStateManager = &Stmgr{}
 
 type Stmgr struct {
 	cs  *chain.Store
+	ms  *chain.MessageStore
 	cp  consensus.StateTransformer
 	rnd consensus.ChainRandomness
 
@@ -64,6 +65,7 @@ type Stmgr struct {
 }
 
 func NewStateManger(cs *chain.Store,
+	ms *chain.MessageStore,
 	cp consensus.StateTransformer,
 	rnd consensus.ChainRandomness,
 	fork fork.IFork,
@@ -71,17 +73,15 @@ func NewStateManger(cs *chain.Store,
 	syscallsImpl vm.SyscallsImpl,
 	actorDebugging bool,
 ) *Stmgr {
-	logName := "statemanager"
-
-	defer func() {
-		_ = logging.SetLogLevel(logName, "info")
-	}()
-
 	return &Stmgr{
-		cs: cs, fork: fork, cp: cp, rnd: rnd,
+		cs:             cs,
+		ms:             ms,
+		fork:           fork,
+		cp:             cp,
+		rnd:            rnd,
 		gasSchedule:    gasSchedule,
 		syscallsImpl:   syscallsImpl,
-		log:            logging.Logger(logName),
+		log:            logging.Logger("statemanager"),
 		stCache:        make(map[types.TipSetKey]stateComputeResult),
 		chsWorkingOn:   make(map[types.TipSetKey]chan struct{}, 1),
 		actorDebugging: actorDebugging,

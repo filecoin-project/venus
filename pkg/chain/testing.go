@@ -169,6 +169,10 @@ func (f *Builder) Store() *Store {
 	return f.store
 }
 
+func (f *Builder) MessageStore() *MessageStore {
+	return f.mstore
+}
+
 func (f *Builder) RemovePeer(peer peer.ID) {}
 
 var (
