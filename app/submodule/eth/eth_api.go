@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	types2 "github.com/filecoin-project/venus/venus-shared/actors/types"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -380,22 +381,6 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 		return nil, fmt.Errorf("cannot get Filecoin address: %w", err)
 	}
 
-	// use the system actor as the caller
-	from, err := address.NewIDAddress(0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
-	}
-	msg := &types.Message{
-		From:       from,
-		To:         to,
-		Value:      big.Zero(),
-		Method:     builtintypes.MethodsEVM.GetBytecode,
-		Params:     nil,
-		GasLimit:   constants.BlockGasLimit,
-		GasFeeCap:  big.Zero(),
-		GasPremium: big.Zero(),
-	}
-
 	ts, err := a.parseBlkParam(ctx, blkParam)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse block param: %s", blkParam)
@@ -404,6 +389,31 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 	// StateManager.Call will panic if there is no parent
 	if ts.Height() == 0 {
 		return nil, fmt.Errorf("block param must not specify genesis block")
+	}
+
+	actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, to, ts)
+	if err != nil {
+		if errors.Is(err, types.ErrActorNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to lookup contract %s: %w", ethAddr, err)
+	}
+
+	// Not a contract. We could try to distinguish between accounts and "native" contracts here,
+	// but it's not worth it.
+	if !builtinactors.IsEvmActor(actor.Code) {
+		return nil, nil
+	}
+
+	msg := &types.Message{
+		From:       builtinactors.SystemActorAddr,
+		To:         to,
+		Value:      big.Zero(),
+		Method:     builtintypes.MethodsEVM.GetBytecode,
+		Params:     nil,
+		GasLimit:   constants.BlockGasLimit,
+		GasFeeCap:  big.Zero(),
+		GasPremium: big.Zero(),
 	}
 
 	// Try calling until we find a height with no migration.
@@ -420,21 +430,24 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 	}
 
 	if err != nil {
-		// if the call resulted in error, this is not an EVM smart contract;
-		// return no bytecode.
-		return nil, nil
+		return nil, fmt.Errorf("failed to call GetBytecode: %w", err)
 	}
 
 	if res.Receipt.ExitCode.IsError() {
-		return nil, fmt.Errorf("message execution failed: exit %s, reason: %s", &res.Receipt.ExitCode, res.ActorErr)
+		return nil, fmt.Errorf("GetBytecode failed: %s", res.ActorErr)
 	}
 
-	var bytecodeCid cbg.CborCid
-	if err := bytecodeCid.UnmarshalCBOR(bytes.NewReader(res.Receipt.Return)); err != nil {
+	var getBytecodeReturn evm.GetBytecodeReturn
+	if err := getBytecodeReturn.UnmarshalCBOR(bytes.NewReader(res.Receipt.Return)); err != nil {
 		return nil, fmt.Errorf("failed to decode EVM bytecode CID: %w", err)
 	}
 
-	blk, err := a.em.chainModule.ChainReader.Blockstore().Get(ctx, cid.Cid(bytecodeCid))
+	// The contract has selfdestructed, so the code is "empty".
+	if getBytecodeReturn.Cid == nil {
+		return nil, nil
+	}
+
+	blk, err := a.em.chainModule.ChainReader.Blockstore().Get(ctx, *getBytecodeReturn.Cid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EVM bytecode: %w", err)
 	}

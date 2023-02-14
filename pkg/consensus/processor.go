@@ -93,7 +93,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		events        [][]types.Event
 	)
 
-	makeVm := func(base cid.Cid, e abi.ChainEpoch, timestamp uint64) (vm.Interface, error) {
+	makeVM := func(base cid.Cid, e abi.ChainEpoch, timestamp uint64) (vm.Interface, error) {
 		vmOpt := vm.VmOption{
 			CircSupplyCalculator: vmOpts.CircSupplyCalculator,
 			LookbackStateGetter:  vmOpts.LookbackStateGetter,
@@ -130,7 +130,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			}
 
 			timestamp := genesis.Timestamp + p.netParamCfg.BlockDelay*(uint64(i))
-			vmCron, err := makeVm(pstate, i, timestamp)
+			vmCron, err := makeVM(pstate, i, timestamp)
 			if err != nil {
 				return cid.Undef, nil, fmt.Errorf("making cron vm: %w", err)
 			}
@@ -160,7 +160,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		processLog.Debugf("after fork root: %s\n", pstate)
 	}
 
-	vm, err := makeVm(pstate, epoch, vmOpts.Timestamp)
+	vm, err := makeVM(pstate, epoch, vmOpts.Timestamp)
 	if err != nil {
 		return cid.Undef, nil, fmt.Errorf("making cron vm: %w", err)
 	}
