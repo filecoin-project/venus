@@ -15,7 +15,6 @@ import (
 	"github.com/multiformats/go-multihash"
 	"github.com/multiformats/go-varint"
 	"golang.org/x/crypto/sha3"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
@@ -38,18 +37,29 @@ func (e EthUint64) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.Hex())
 }
 
+// UnmarshalJSON should be able to parse these types of input:
+// 1. a JSON string containing a hex-encoded uint64 starting with 0x
+// 2. a JSON string containing an uint64 in decimal
+// 3. a string containing an uint64 in decimal
 func (e *EthUint64) UnmarshalJSON(b []byte) error {
 	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
+	if err := json.Unmarshal(b, &s); err == nil {
+		base := 10
+		if strings.HasPrefix(s, "0x") {
+			base = 16
+		}
+		parsedInt, err := strconv.ParseUint(strings.Replace(s, "0x", "", -1), base, 64)
+		if err != nil {
+			return err
+		}
+		eint := EthUint64(parsedInt)
+		*e = eint
+		return nil
+	} else if eint, err := strconv.ParseUint(string(b), 10, 64); err == nil {
+		*e = EthUint64(eint)
+		return nil
 	}
-	parsedInt, err := strconv.ParseUint(strings.Replace(s, "0x", "", -1), 16, 64)
-	if err != nil {
-		return err
-	}
-	eint := EthUint64(parsedInt)
-	*e = eint
-	return nil
+	return fmt.Errorf("cannot interpret %s as a hex-encoded uint64, or a number", string(b))
 }
 
 func EthUint64FromHex(s string) (EthUint64, error) {
@@ -288,7 +298,7 @@ func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 		payload := addr.Payload()
 		namespace, n, err := varint.FromUvarint(payload)
 		if err != nil {
-			return EthAddress{}, xerrors.Errorf("invalid delegated address namespace in: %s", addr)
+			return EthAddress{}, fmt.Errorf("invalid delegated address namespace in: %s", addr)
 		}
 		payload = payload[n:]
 		if namespace == builtintypes.EthereumAddressManagerActorID {
@@ -313,7 +323,7 @@ func ParseEthAddress(s string) (EthAddress, error) {
 func CastEthAddress(b []byte) (EthAddress, error) {
 	var a EthAddress
 	if len(b) != EthAddressLength {
-		return EthAddress{}, xerrors.Errorf("cannot parse bytes into an EthAddress: incorrect input length")
+		return EthAddress{}, fmt.Errorf("cannot parse bytes into an EthAddress: incorrect input length")
 	}
 	copy(a[:], b[:])
 	return a, nil
@@ -382,7 +392,7 @@ func TryEthAddressFromFilecoinAddress(addr address.Address, allowID bool) (EthAd
 		payload := addr.Payload()
 		namespace, n, err := varint.FromUvarint(payload)
 		if err != nil {
-			return EthAddress{}, false, xerrors.Errorf("invalid delegated address namespace in: %s", addr)
+			return EthAddress{}, false, fmt.Errorf("invalid delegated address namespace in: %s", addr)
 		}
 		payload = payload[n:]
 		if namespace == builtintypes.EthereumAddressManagerActorID {
@@ -427,11 +437,11 @@ func (h EthHash) ToCid() cid.Cid {
 func decodeHexString(s string, expectedLen int) ([]byte, error) {
 	s = handleHexStringPrefix(s)
 	if len(s) != expectedLen*2 {
-		return nil, xerrors.Errorf("expected hex string length sans prefix %d, got %d", expectedLen*2, len(s))
+		return nil, fmt.Errorf("expected hex string length sans prefix %d, got %d", expectedLen*2, len(s))
 	}
 	b, err := hex.DecodeString(s)
 	if err != nil {
-		return nil, xerrors.Errorf("cannot parse hex value: %w", err)
+		return nil, fmt.Errorf("cannot parse hex value: %w", err)
 	}
 	return b, nil
 }
@@ -440,7 +450,7 @@ func DecodeHexString(s string) ([]byte, error) {
 	s = handleHexStringPrefix(s)
 	b, err := hex.DecodeString(s)
 	if err != nil {
-		return nil, xerrors.Errorf("cannot parse hex value: %w", err)
+		return nil, fmt.Errorf("cannot parse hex value: %w", err)
 	}
 	return b, nil
 }
@@ -728,7 +738,7 @@ func (e *EthSubscribeParams) UnmarshalJSON(b []byte) error {
 			return err
 		}
 	default:
-		return xerrors.Errorf("expected 1 or 2 params, got %d", len(params))
+		return fmt.Errorf("expected 1 or 2 params, got %d", len(params))
 	}
 	return nil
 }
@@ -777,4 +787,46 @@ func GetContractEthAddressFromCode(sender EthAddress, salt [32]byte, initcode []
 	}
 
 	return ethAddr, nil
+}
+
+// EthFeeHistoryParams handles raw jsonrpc params for eth_feeHistory
+type EthFeeHistoryParams struct {
+	BlkCount          EthUint64
+	NewestBlkNum      string
+	RewardPercentiles *[]float64
+}
+
+func (e *EthFeeHistoryParams) UnmarshalJSON(b []byte) error {
+	var params []json.RawMessage
+	err := json.Unmarshal(b, &params)
+	if err != nil {
+		return err
+	}
+	switch len(params) {
+	case 3:
+		err = json.Unmarshal(params[2], &e.RewardPercentiles)
+		if err != nil {
+			return err
+		}
+		fallthrough
+	case 2:
+		err = json.Unmarshal(params[1], &e.NewestBlkNum)
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(params[0], &e.BlkCount)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("expected 2 or 3 params, got %d", len(params))
+	}
+	return nil
+}
+
+func (e EthFeeHistoryParams) MarshalJSON() ([]byte, error) {
+	if e.RewardPercentiles != nil {
+		return json.Marshal([]interface{}{e.BlkCount, e.NewestBlkNum, e.RewardPercentiles})
+	}
+	return json.Marshal([]interface{}{e.BlkCount, e.NewestBlkNum})
 }

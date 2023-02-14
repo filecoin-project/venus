@@ -6,6 +6,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-jsonrpc"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -78,7 +79,7 @@ func (e *ethAPIDummy) EthGetBalance(ctx context.Context, address types.EthAddres
 	return types.EthBigIntZero, ErrModuleDisabled
 }
 
-func (e *ethAPIDummy) EthFeeHistory(ctx context.Context, blkCount types.EthUint64, newestBlk string, rewardPercentiles []float64) (types.EthFeeHistory, error) {
+func (e *ethAPIDummy) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.EthFeeHistory, error) {
 	return types.EthFeeHistory{}, ErrModuleDisabled
 }
 

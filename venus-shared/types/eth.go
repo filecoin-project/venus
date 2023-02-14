@@ -31,6 +31,7 @@ type (
 	EthBytes                = types.EthBytes
 	EthCall                 = types.EthCall
 	EthFeeHistory           = types.EthFeeHistory
+	EthFeeHistoryParams     = types.EthFeeHistoryParams
 	EthFilterID             = types.EthFilterID
 	EthFilterResult         = types.EthFilterResult
 	EthFilterSpec           = types.EthFilterSpec
