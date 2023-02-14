@@ -125,7 +125,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		config.Repo().Config().FevmConfig.EnableEthRPC,
 	)
 
-	stmgr := statemanger.NewStateManger(chn.ChainReader, nodeConsensus, rnd,
+	stmgr := statemanger.NewStateManger(chn.ChainReader, chn.MessageStore, nodeConsensus, rnd,
 		chn.Fork, gasPriceSchedule, chn.SystemCall, config.Repo().Config().NetworkParams.ActorDebugging)
 
 	blkValid.Stmgr = stmgr

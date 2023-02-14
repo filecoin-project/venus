@@ -25,6 +25,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -769,25 +770,23 @@ func (cia *chainInfoAPI) StateActorManifestCID(ctx context.Context, nv network.V
 // message is not applied on-top-of the messages in the passed-in
 // tipset.
 func (cia *chainInfoAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) {
-	start := time.Now()
 	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("loading tipset %s: %v", tsk, err)
 	}
-	ret, err := cia.chain.Stmgr.Call(ctx, msg, ts)
-	if err != nil {
-		return nil, err
+	var res *types.InvocResult
+	for {
+		res, err = cia.chain.Stmgr.Call(ctx, msg, ts)
+		if err != fork.ErrExpensiveFork {
+			break
+		}
+		ts, err = cia.chain.ChainReader.GetTipSet(ctx, ts.Parents())
+		if err != nil {
+			return nil, fmt.Errorf("getting parent tipset: %w", err)
+		}
 	}
-	duration := time.Since(start)
 
-	mcid := msg.Cid()
-	return &types.InvocResult{
-		MsgCid:         mcid,
-		Msg:            msg,
-		MsgRct:         &ret.Receipt,
-		ExecutionTrace: types.ExecutionTrace{},
-		Duration:       duration,
-	}, nil
+	return res, nil
 }
 
 // StateReplay replays a given message, assuming it was included in a block in the specified tipset.

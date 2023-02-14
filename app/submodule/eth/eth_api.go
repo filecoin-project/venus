@@ -27,8 +27,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/statemanger"
-	"github.com/filecoin-project/venus/pkg/vm"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	builtinactors "github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	types2 "github.com/filecoin-project/venus/venus-shared/actors/types"
@@ -417,7 +415,7 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 	}
 
 	// Try calling until we find a height with no migration.
-	var res *vm.Ret
+	var res *types.InvocResult
 	for {
 		res, err = a.em.chainModule.Stmgr.Call(ctx, msg, ts)
 		if err != fork.ErrExpensiveFork {
@@ -433,12 +431,16 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 		return nil, fmt.Errorf("failed to call GetBytecode: %w", err)
 	}
 
-	if res.Receipt.ExitCode.IsError() {
-		return nil, fmt.Errorf("GetBytecode failed: %s", res.ActorErr)
+	if res.MsgRct == nil {
+		return nil, fmt.Errorf("no message receipt")
+	}
+
+	if res.MsgRct.ExitCode.IsError() {
+		return nil, fmt.Errorf("GetBytecode failed: %s", res.Error)
 	}
 
 	var getBytecodeReturn evm.GetBytecodeReturn
-	if err := getBytecodeReturn.UnmarshalCBOR(bytes.NewReader(res.Receipt.Return)); err != nil {
+	if err := getBytecodeReturn.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err != nil {
 		return nil, fmt.Errorf("failed to decode EVM bytecode CID: %w", err)
 	}
 
@@ -499,7 +501,7 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 	}
 
 	// Try calling until we find a height with no migration.
-	var res *vm.Ret
+	var res *types.InvocResult
 	for {
 		res, err = a.em.chainModule.Stmgr.Call(ctx, msg, ts)
 		if err != fork.ErrExpensiveFork {
@@ -515,7 +517,11 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 		return nil, fmt.Errorf("call failed: %w", err)
 	}
 
-	return res.Receipt.Return, nil
+	if res.MsgRct == nil {
+		return nil, fmt.Errorf("no message receipt")
+	}
+
+	return res.MsgRct.Return, nil
 }
 
 func (a *ethAPI) EthGetBalance(ctx context.Context, address types.EthAddress, blkParam string) (types.EthBigInt, error) {
@@ -752,7 +758,7 @@ func (a *ethAPI) applyMessage(ctx context.Context, msg *types.Message, tsk types
 	}
 
 	// Try calling until we find a height with no migration.
-	var res *vmcontext.Ret
+	var res *types.InvocResult
 	for {
 		res, err = a.em.chainModule.Stmgr.CallWithGas(ctx, msg, []types.ChainMsg{}, ts)
 		if err != fork.ErrExpensiveFork {
@@ -766,16 +772,14 @@ func (a *ethAPI) applyMessage(ctx context.Context, msg *types.Message, tsk types
 	if err != nil {
 		return nil, fmt.Errorf("CallWithGas failed: %w", err)
 	}
-	if res.Receipt.ExitCode.IsError() {
-		return nil, fmt.Errorf("message execution failed: exit %s, msg receipt return: %s, reason: %v", res.Receipt.ExitCode, res.Receipt.Return, res.ActorErr)
+	if res.MsgRct == nil {
+		return nil, fmt.Errorf("no message receipt")
 	}
-	return &types.InvocResult{
-		MsgCid:         msg.Cid(),
-		Msg:            msg,
-		MsgRct:         &res.Receipt,
-		ExecutionTrace: res.GasTracker.ExecutionTrace,
-		Duration:       res.Duration,
-	}, nil
+	if res.MsgRct.ExitCode.IsError() {
+		return nil, fmt.Errorf("message execution failed: exit %s, msg receipt return: %s, reason: %v", res.MsgRct.ExitCode, res.MsgRct.Return, res.Error)
+	}
+
+	return res, nil
 }
 
 func (a *ethAPI) EthEstimateGas(ctx context.Context, tx types.EthCall) (types.EthUint64, error) {
@@ -828,7 +832,7 @@ func gasSearch(
 			return false, fmt.Errorf("CallWithGas failed: %w", err)
 		}
 
-		if res.Receipt.ExitCode.IsSuccess() {
+		if res.MsgRct.ExitCode.IsSuccess() {
 			return true, nil
 		}
 

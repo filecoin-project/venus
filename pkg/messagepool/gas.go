@@ -18,8 +18,6 @@ import (
 	builtin2 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
-	"github.com/filecoin-project/venus/pkg/vm"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -245,7 +243,7 @@ func (mp *MessagePool) GasEstimateCallWithGas(
 	}
 
 	// Try calling until we find a height with no migration.
-	var res *vmcontext.Ret
+	var res *types.InvocResult
 	for {
 		res, err = mp.sm.CallWithGas(ctx, &msg, priorMsgs, ts)
 		if err != fork.ErrExpensiveFork {
@@ -260,13 +258,7 @@ func (mp *MessagePool) GasEstimateCallWithGas(
 		return nil, []types.ChainMsg{}, nil, fmt.Errorf("CallWithGas failed: %w", err)
 	}
 
-	return &types.InvocResult{
-		MsgCid:         msg.Cid(),
-		Msg:            &msg,
-		MsgRct:         &res.Receipt,
-		ExecutionTrace: res.GasTracker.ExecutionTrace,
-		Duration:       res.Duration,
-	}, priorMsgs, ts, nil
+	return res, priorMsgs, ts, nil
 }
 
 func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (int64, error) {
@@ -276,7 +268,7 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 	msg.GasPremium = big.Zero()
 
 	// Try calling until we find a height with no migration.
-	var res *vm.Ret
+	var res *types.InvocResult
 	var err error
 	for {
 		res, err = mp.sm.CallWithGas(ctx, &msg, priorMsgs, ts)
@@ -292,12 +284,12 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 	if err != nil {
 		return -1, fmt.Errorf("CallWithGas failed: %v", err)
 	}
-	if res.Receipt.ExitCode != exitcode.Ok {
-		log.Warnf("message execution failed: from %v, method %d, exit %s, reason: %v", msg.From, msg.Method, res.Receipt.ExitCode, res.ActorErr)
-		return -1, fmt.Errorf("message execution failed: exit %s, reason: %v", res.Receipt.ExitCode, res.ActorErr)
+	if res.MsgRct.ExitCode != exitcode.Ok {
+		log.Warnf("message execution failed: from %v, method %d, exit %s, reason: %v", msg.From, msg.Method, res.MsgRct.ExitCode, res.Error)
+		return -1, fmt.Errorf("message execution failed: exit %s, reason: %v", res.MsgRct.ExitCode, res.Error)
 	}
 
-	ret := res.Receipt.GasUsed
+	ret := res.MsgRct.GasUsed
 
 	transitionalMulti := 1.0
 	// Overestimate gas around the upgrade
