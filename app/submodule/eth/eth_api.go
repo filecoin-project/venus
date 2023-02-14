@@ -709,18 +709,20 @@ func (a *ethAPI) ethCallToFilecoinMessage(ctx context.Context, tx types.EthCall)
 	}
 
 	var params []byte
+	if len(tx.Data) > 0 {
+		initcode := abi.CborBytes(tx.Data)
+		params2, err := actors.SerializeParams(&initcode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize params: %w", err)
+		}
+		params = params2
+	}
+
 	var to address.Address
 	var method abi.MethodNum
 	if tx.To == nil {
 		// this is a contract creation
 		to = builtintypes.EthereumAddressManagerActorAddr
-
-		initcode := abi.CborBytes(tx.Data)
-		params2, err := actors.SerializeParams(&initcode)
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize Create params: %w", err)
-		}
-		params = params2
 		method = builtintypes.MethodsEAM.CreateExternal
 	} else {
 		addr, err := tx.To.ToFilecoinAddress()
@@ -729,13 +731,6 @@ func (a *ethAPI) ethCallToFilecoinMessage(ctx context.Context, tx types.EthCall)
 		}
 		to = addr
 
-		if len(tx.Data) > 0 {
-			var buf bytes.Buffer
-			if err := cbg.WriteByteArray(&buf, tx.Data); err != nil {
-				return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
-			}
-			params = buf.Bytes()
-		}
 		method = builtintypes.MethodsEVM.InvokeContract
 	}
 
