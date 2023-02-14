@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -550,39 +551,30 @@ func (a *ethAPI) EthChainId(ctx context.Context) (types.EthUint64, error) {
 	return types.EthUint64(types2.Eip155ChainID), nil
 }
 
-func (a *ethAPI) EthFeeHistory(ctx context.Context, blkCount types.EthUint64, newestBlkNum string, rewardPercentiles []float64) (types.EthFeeHistory, error) {
-	if blkCount > 1024 {
+func (a *ethAPI) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.EthFeeHistory, error) {
+	params, err := jsonrpc.DecodeParams[types.EthFeeHistoryParams](p)
+	if err != nil {
+		return types.EthFeeHistory{}, fmt.Errorf("decoding params: %w", err)
+	}
+	if params.BlkCount > 1024 {
 		return types.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
 	}
 
-	head, err := a.chain.ChainHead(ctx)
+	ts, err := a.parseBlkParam(ctx, params.NewestBlkNum)
 	if err != nil {
-		return types.EthFeeHistory{}, fmt.Errorf("failed to got head %v", err)
-	}
-	newestBlkHeight := uint64(head.Height())
-
-	// TODO https://github.com/filecoin-project/ref-fvm/issues/1016
-	var blkNum types.EthUint64
-	err = blkNum.UnmarshalJSON([]byte(`"` + newestBlkNum + `"`))
-	if err == nil && uint64(blkNum) < newestBlkHeight {
-		newestBlkHeight = uint64(blkNum)
+		return types.EthFeeHistory{}, fmt.Errorf("bad block parameter %s: %s", params.NewestBlkNum, err)
 	}
 
-	// Deal with the case that the chain is shorter than the number of
-	// requested blocks.
+	// Deal with the case that the chain is shorter than the number of requested blocks.
 	oldestBlkHeight := uint64(1)
-	if uint64(blkCount) <= newestBlkHeight {
-		oldestBlkHeight = newestBlkHeight - uint64(blkCount) + 1
+	if abi.ChainEpoch(params.BlkCount) <= ts.Height() {
+		oldestBlkHeight = uint64(ts.Height()) - uint64(params.BlkCount) + 1
 	}
 
-	ts, err := a.em.chainModule.ChainReader.GetTipSetByHeight(ctx, nil, abi.ChainEpoch(newestBlkHeight), false)
-	if err != nil {
-		return types.EthFeeHistory{}, fmt.Errorf("cannot load find block height: %v", newestBlkHeight)
-	}
-
-	// FIXME: baseFeePerGas should include the next block after the newest of the returned range, because this
-	// can be inferred from the newest block. we use the newest block's baseFeePerGas for now but need to fix it
-	// In other words, due to deferred execution, we might not be returning the most useful value here for the client.
+	// NOTE: baseFeePerGas should include the next block after the newest of the returned range,
+	//  because the next base fee can be inferred from the messages in the newest block.
+	//  However, this is NOT the case in Filecoin due to deferred execution, so the best
+	//  we can do is duplicate the last value.
 	baseFeeArray := []types.EthBigInt{types.EthBigInt(ts.Blocks()[0].ParentBaseFee)}
 	gasUsedRatioArray := []float64{}
 
@@ -606,7 +598,6 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, blkCount types.EthUint64, ne
 	}
 
 	// Reverse the arrays; we collected them newest to oldest; the client expects oldest to newest.
-
 	for i, j := 0, len(baseFeeArray)-1; i < j; i, j = i+1, j-1 {
 		baseFeeArray[i], baseFeeArray[j] = baseFeeArray[j], baseFeeArray[i]
 	}
@@ -614,11 +605,22 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, blkCount types.EthUint64, ne
 		gasUsedRatioArray[i], gasUsedRatioArray[j] = gasUsedRatioArray[j], gasUsedRatioArray[i]
 	}
 
-	return types.EthFeeHistory{
+	ret := types.EthFeeHistory{
 		OldestBlock:   types.EthUint64(oldestBlkHeight),
 		BaseFeePerGas: baseFeeArray,
 		GasUsedRatio:  gasUsedRatioArray,
-	}, nil
+	}
+	if params.RewardPercentiles != nil {
+		// TODO: Populate reward percentiles
+		//  https://github.com/filecoin-project/lotus/issues/10236
+		//  We need to calculate the requested percentiles of effective gas premium
+		//  based on the newest block (I presume it's the newest, we need to dig in
+		//  as it's underspecified). Effective means we're clamped at the gas_fee_cap - base_fee.
+		reward := make([][]types.EthBigInt, 0)
+		ret.Reward = &reward
+	}
+
+	return ret, nil
 }
 
 func (a *ethAPI) NetVersion(ctx context.Context) (string, error) {
