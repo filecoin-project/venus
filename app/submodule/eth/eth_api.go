@@ -480,7 +480,7 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 	}
 
 	params, err := actors.SerializeParams(&evm.GetStorageAtParams{
-		StorageKey: position,
+		StorageKey: *(*[32]byte)(position),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize parameters: %w", err)
