@@ -41,6 +41,10 @@ func TestMethodMap(t *testing.T) {
 
 func checkActorCode(t *testing.T, actorVersion actortypes.Version, actorCode cid.Cid, actorName, networkName string) {
 	actorKeysWithVersion := map[string]actortypes.Version{
+		// DatacapKey is only available from actor v9 and above
+		manifest.DatacapKey: actortypes.Version9,
+
+		// EamKey EvmKey PlaceholderKey EthAccountKey is only available from actor v10 and above
 		manifest.EamKey:         actortypes.Version10,
 		manifest.EvmKey:         actortypes.Version10,
 		manifest.PlaceholderKey: actortypes.Version10,
