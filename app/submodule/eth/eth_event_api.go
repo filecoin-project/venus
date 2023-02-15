@@ -416,8 +416,9 @@ func (e *ethEventAPI) uninstallFilter(ctx context.Context, f filter.Filter) erro
 }
 
 const (
-	EthSubscribeEventTypeHeads = "newHeads"
-	EthSubscribeEventTypeLogs  = "logs"
+	EthSubscribeEventTypeHeads               = "newHeads"
+	EthSubscribeEventTypeLogs                = "logs"
+	EthSubscribeEventTypePendingTransactions = "newPendingTransactions"
 )
 
 func (e *ethEventAPI) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (types.EthSubscriptionID, error) {
@@ -480,6 +481,16 @@ func (e *ethEventAPI) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ty
 			_, _ = e.EthUnsubscribe(ctx, sub.id)
 			return types.EthSubscriptionID{}, err
 		}
+		sub.addFilter(ctx, f)
+
+	case EthSubscribeEventTypePendingTransactions:
+		f, err := e.MemPoolFilterManager.Install(ctx)
+		if err != nil {
+			// clean up any previous filters added and stop the sub
+			_, _ = e.EthUnsubscribe(ctx, sub.id)
+			return types.EthSubscriptionID{}, err
+		}
+
 		sub.addFilter(ctx, f)
 	default:
 		return types.EthSubscriptionID{}, fmt.Errorf("unsupported event type: %s", params.EventType)
@@ -799,6 +810,15 @@ func (e *ethSubscription) start(ctx context.Context) {
 				}
 
 				e.send(ctx, ev)
+			case *types.SignedMessage: // mpool txid
+				evs, err := ethFilterResultFromMessages([]*types.SignedMessage{vt}, e.chainAPI)
+				if err != nil {
+					continue
+				}
+
+				for _, r := range evs.Results {
+					e.send(ctx, r)
+				}
 			default:
 				log.Warnf("unexpected subscription value type: %T", vt)
 			}
