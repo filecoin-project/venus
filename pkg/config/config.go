@@ -406,7 +406,7 @@ type EventConfig struct {
 
 type FevmConfig struct {
 	//EnableEthRPC enables eth_rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
-	EnableEthRPC bool `jsom:"enableEthRPC"`
+	EnableEthRPC bool `json:"enableEthRPC"`
 	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
 	// Set to 0 to keep all mappings
 	EthTxHashMappingLifetimeDays int `json:"ethTxHashMappingLifetimeDays"`
