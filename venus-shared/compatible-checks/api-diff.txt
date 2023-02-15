@@ -80,7 +80,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
-	+ StartTime
 	- StateAllMinerFaults
 	- StateChangedActors
 	- StateCompute
@@ -192,6 +191,8 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- NetSetLimit
 	- NetStat
 	+ ProtocolParameters
+	- RaftLeader
+	- RaftState
 	+ ResolveToKeyAddr
 	- Session
 	+ SetConcurrent
