@@ -172,6 +172,7 @@ func (tsk TipSetKey) ToStorageBlock() (block.Block, error) {
 	return block.NewBlockWithCid(buf.Bytes(), cid)
 }
 
+// todo: remove after nv18
 func (tsk *TipSetKey) V0UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
@@ -203,6 +204,7 @@ func (tsk *TipSetKey) V0UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
+// todo: remove after nv18
 func (tsk TipSetKey) V0MarshalCBOR(w io.Writer) error {
 	cids := tsk.Cids()
 	if len(cids) > cbg.MaxLength {
