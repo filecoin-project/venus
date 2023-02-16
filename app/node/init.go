@@ -4,12 +4,12 @@ import (
 	"context"
 
 	"github.com/filecoin-project/venus/pkg/repo/fskeystore"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	acrypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/repo"
 )
@@ -18,14 +18,14 @@ const defaultPeerKeyBits = 2048
 
 // initCfg contains configuration for initializing a node's repo.
 type initCfg struct {
-	initImports []*crypto.KeyInfo
+	initImports []*key.KeyInfo
 }
 
 // InitOpt is an option for initialization of a node's repo.
 type InitOpt func(*initCfg)
 
 // ImportKeyOpt imports the provided key during initialization.
-func ImportKeyOpt(ki *crypto.KeyInfo) InitOpt {
+func ImportKeyOpt(ki *key.KeyInfo) InitOpt {
 	return func(opts *initCfg) {
 		opts.initImports = append(opts.initImports, ki)
 	}

@@ -76,6 +76,7 @@ func (msa *minerStateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr ad
 // StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
 // NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 // expiration epoch
+// return nil if sector not found
 func (msa *minerStateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*types.SectorOnChainInfo, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {

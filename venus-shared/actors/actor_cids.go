@@ -6,6 +6,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
@@ -29,7 +30,7 @@ func GetActorCodeID(av actorstypes.Version, name string) (cid.Cid, bool) {
 	// Actors V7 and lower
 	switch name {
 
-	case AccountKey:
+	case manifest.AccountKey:
 		switch av {
 
 		case actorstypes.Version0:
@@ -54,7 +55,7 @@ func GetActorCodeID(av actorstypes.Version, name string) (cid.Cid, bool) {
 			return builtin7.AccountActorCodeID, true
 		}
 
-	case CronKey:
+	case manifest.CronKey:
 		switch av {
 
 		case actorstypes.Version0:
@@ -79,7 +80,7 @@ func GetActorCodeID(av actorstypes.Version, name string) (cid.Cid, bool) {
 			return builtin7.CronActorCodeID, true
 		}
 
-	case InitKey:
+	case manifest.InitKey:
 		switch av {
 
 		case actorstypes.Version0:
@@ -104,7 +105,7 @@ func GetActorCodeID(av actorstypes.Version, name string) (cid.Cid, bool) {
 			return builtin7.InitActorCodeID, true
 		}
 
-	case MarketKey:
+	case manifest.MarketKey:
 		switch av {
 
 		case actorstypes.Version0:
@@ -129,7 +130,7 @@ func GetActorCodeID(av actorstypes.Version, name string) (cid.Cid, bool) {
 			return builtin7.StorageMarketActorCodeID, true
 		}
 
-	case MinerKey:
+	case manifest.MinerKey:
 		switch av {
 
 		case actorstypes.Version0:
@@ -154,7 +155,7 @@ func GetActorCodeID(av actorstypes.Version, name string) (cid.Cid, bool) {
 			return builtin7.StorageMinerActorCodeID, true
 		}
 
-	case MultisigKey:
+	case manifest.MultisigKey:
 		switch av {
 
 		case actorstypes.Version0:
@@ -179,7 +180,7 @@ func GetActorCodeID(av actorstypes.Version, name string) (cid.Cid, bool) {
 			return builtin7.MultisigActorCodeID, true
 		}
 
-	case PaychKey:
+	case manifest.PaychKey:
 		switch av {
 
 		case actorstypes.Version0:
@@ -204,7 +205,7 @@ func GetActorCodeID(av actorstypes.Version, name string) (cid.Cid, bool) {
 			return builtin7.PaymentChannelActorCodeID, true
 		}
 
-	case PowerKey:
+	case manifest.PowerKey:
 		switch av {
 
 		case actorstypes.Version0:
@@ -229,7 +230,7 @@ func GetActorCodeID(av actorstypes.Version, name string) (cid.Cid, bool) {
 			return builtin7.StoragePowerActorCodeID, true
 		}
 
-	case RewardKey:
+	case manifest.RewardKey:
 		switch av {
 
 		case actorstypes.Version0:
@@ -254,7 +255,7 @@ func GetActorCodeID(av actorstypes.Version, name string) (cid.Cid, bool) {
 			return builtin7.RewardActorCodeID, true
 		}
 
-	case SystemKey:
+	case manifest.SystemKey:
 		switch av {
 
 		case actorstypes.Version0:
@@ -279,7 +280,7 @@ func GetActorCodeID(av actorstypes.Version, name string) (cid.Cid, bool) {
 			return builtin7.SystemActorCodeID, true
 		}
 
-	case VerifregKey:
+	case manifest.VerifregKey:
 		switch av {
 
 		case actorstypes.Version0:
@@ -315,7 +316,7 @@ func GetActorCodeIDs(av actorstypes.Version) (map[string]cid.Cid, error) {
 		return cids, nil
 	}
 
-	actorsKeys := GetBuiltinActorsKeys(av)
+	actorsKeys := manifest.GetBuiltinActorsKeys(av)
 	synthCids := make(map[string]cid.Cid)
 
 	for _, key := range actorsKeys {

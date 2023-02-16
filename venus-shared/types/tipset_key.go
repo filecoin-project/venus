@@ -8,9 +8,13 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
+
+var log = logging.Logger("types")
 
 // TipSetKey is an immutable set of CIDs forming a unique key for a TipSet.
 // Equal keys will have equivalent iteration order. CIDs are maintained in
@@ -146,7 +150,30 @@ func TipSetKeyFromBytes(encoded []byte) (TipSetKey, error) {
 	return TipSetKey{string(encoded)}, nil
 }
 
-func (tsk *TipSetKey) UnmarshalCBOR(r io.Reader) error {
+func (tsk TipSetKey) Cid() (cid.Cid, error) {
+	blk, err := tsk.ToStorageBlock()
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	return blk.Cid(), nil
+}
+
+func (tsk TipSetKey) ToStorageBlock() (block.Block, error) {
+	buf := new(bytes.Buffer)
+	if err := tsk.MarshalCBOR(buf); err != nil {
+		log.Errorf("failed to marshal ts key as CBOR: %s", tsk)
+	}
+
+	cid, err := abi.CidBuilder.Sum(buf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	return block.NewBlockWithCid(buf.Bytes(), cid)
+}
+
+// todo: remove after nv18
+func (tsk *TipSetKey) V0UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
@@ -177,7 +204,8 @@ func (tsk *TipSetKey) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (tsk TipSetKey) MarshalCBOR(w io.Writer) error {
+// todo: remove after nv18
+func (tsk TipSetKey) V0MarshalCBOR(w io.Writer) error {
 	cids := tsk.Cids()
 	if len(cids) > cbg.MaxLength {
 		return fmt.Errorf("slice value in field t.Parents was too long")
@@ -193,6 +221,45 @@ func (tsk TipSetKey) MarshalCBOR(w io.Writer) error {
 		}
 	}
 	return nil
+}
+
+func (tsk *TipSetKey) UnmarshalCBOR(reader io.Reader) error {
+	cr := cbg.NewCborReader(reader)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if extra > cbg.ByteArrayMaxLen {
+		return fmt.Errorf("t.Binary: byte array too large (%d)", extra)
+	}
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+
+	b := make([]uint8, extra)
+
+	if _, err := io.ReadFull(cr, b); err != nil {
+		return err
+	}
+
+	*tsk, err = TipSetKeyFromBytes(b)
+	return err
+}
+
+func (tsk TipSetKey) MarshalCBOR(writer io.Writer) error {
+	if err := cbg.WriteMajorTypeHeader(writer, cbg.MajByteString, uint64(len(tsk.Bytes()))); err != nil {
+		return err
+	}
+
+	_, err := writer.Write(tsk.Bytes())
+	return err
 }
 
 func encodeKey(cids []cid.Cid) []byte {

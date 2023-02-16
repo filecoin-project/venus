@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/fvm"
+	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
@@ -17,8 +18,9 @@ import (
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensusfault"
-	_ "github.com/filecoin-project/venus/pkg/crypto/bls"  // enable bls signatures
-	_ "github.com/filecoin-project/venus/pkg/crypto/secp" // enable secp signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"       // enable bls signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/delegated" // enable delegated signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"      // enable secp signatures
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm"
@@ -100,17 +102,6 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 	// chainstore
 	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) // load genesis from car
 
-	//drand
-	/*genBlk, err := chainStore.GetGenesisBlock(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-
-	drand, err := beacon.DrandConfigSchedule(genBlk.Timestamp, mainNetParams.Network.BlockDelay, mainNetParams.Network.DrandSchedule)
-	if err != nil {
-		return nil, err
-	}*/
-
 	// chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
 	faultChecker := consensusfault.NewFaultChecker(chainStore, chainFork)
@@ -135,7 +126,9 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 			PRoot:               preroot,
 			Bsstore:             bs,
 			SysCallsImpl:        syscalls,
+			TipSetGetter:        vmcontext.TipSetGetterForTipset(chainStore.GetTipSetByHeight, nil),
 			Tracing:             true,
+			ActorDebugging:      mainNetParams.Network.ActorDebugging,
 		}
 	)
 
@@ -168,14 +161,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 			default:
 				// sneak in messages originating from other addresses as both kinds.
 				// these should fail, as they are actually invalid senders.
-				/*sb.SECPMessages = append(sb.SECPMessages, &types.SignedMessage{
-					Message: *msg,
-					Signature: crypto.Signature{
-						Type: crypto.SigTypeSecp256k1,
-						Data: make([]byte, 65),
-					},
-				})*/
-				sb.BlsMessages = append(sb.BlsMessages, msg) // todo  use interface for message
+				sb.SecpkMessages = append(sb.SecpkMessages, msg) // todo  use interface for message
 				sb.BlsMessages = append(sb.BlsMessages, msg)
 			}
 		}
@@ -188,7 +174,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 	)
 
 	circulatingSupplyCalculator := chain.NewCirculatingSupplyCalculator(bs, preroot, mainNetParams.Network.ForkUpgradeParam)
-	processor := consensus.NewDefaultProcessor(syscalls, circulatingSupplyCalculator)
+	processor := consensus.NewDefaultProcessor(syscalls, circulatingSupplyCalculator, chainStore, &mainNetParams.Network)
 
 	postcid, receipt, err := processor.ApplyBlocks(ctx, blocks, nil, preroot, parentEpoch, execEpoch, vmOption, func(_ cid.Cid, msg *types.Message, ret *vm.Ret) error {
 		messages = append(messages, msg)
@@ -221,6 +207,12 @@ type ExecuteMessageParams struct {
 	NetworkVersion network.Version
 
 	Rand vmcontext.HeadChainRandomness
+
+	// Lookback is the LookbackStateGetter; returns the state tree at a given epoch.
+	Lookback vm.LookbackStateGetter
+
+	// TipSetGetter returns the tipset key at any given epoch.
+	TipSetGetter vm.TipSetGetter
 }
 
 // ExecuteMessage executes a conformance test vector message in a temporary LegacyVM.
@@ -237,6 +229,27 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	if params.Rand == nil {
 		params.Rand = NewFixedRand()
 	}
+	if params.TipSetGetter == nil {
+		// TODO: If/when we start writing conformance tests against the EVM, we'll need to
+		// actually implement this and (unfortunately) capture any tipsets looked up by
+		// messages.
+		params.TipSetGetter = func(context.Context, abi.ChainEpoch) (types.TipSetKey, error) {
+			return types.EmptyTSK, nil
+		}
+	}
+	if params.Lookback == nil {
+		// TODO: This lookback state returns the supplied precondition state tree, unconditionally.
+		//  This is obviously not correct, but the lookback state tree is only used to validate the
+		//  worker key when verifying a consensus fault. If the worker key hasn't changed in the
+		//  current finality window, this workaround is enough.
+		//  The correct solutions are documented in https://github.com/filecoin-project/ref-fvm/issues/381,
+		//  but they're much harder to implement, and the tradeoffs aren't clear.
+		params.Lookback = func(ctx context.Context, epoch abi.ChainEpoch) (*state.View, error) {
+			cst := cbor.NewCborStore(bs)
+			return state.NewView(cst, params.Preroot), nil
+		}
+	}
+
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
 	ipldStore := cbor.NewCborStore(bs)
@@ -257,7 +270,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 				return params.CircSupply, nil
 			},
-			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, chainStore, chainFork, nil),
+			LookbackStateGetter: params.Lookback,
 			NetworkVersion:      params.NetworkVersion,
 			Rnd:                 params.Rand,
 			BaseFee:             params.BaseFee,
@@ -267,6 +280,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 			GasPriceSchedule:    gas.NewPricesSchedule(mainNetParams.Network.ForkUpgradeParam),
 			PRoot:               params.Preroot,
 			Bsstore:             bs,
+			TipSetGetter:        params.TipSetGetter,
 			SysCallsImpl:        syscalls,
 		}
 	)

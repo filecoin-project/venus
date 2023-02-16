@@ -52,6 +52,11 @@ func TestGetNetworkFromName(t *testing.T) {
 			network: types.NetworkButterfly,
 			err:     nil,
 		},
+		// {
+		// 	name:    "hyperspacenet",
+		// 	network: types.NetworkHyperspace,
+		// 	err:     nil,
+		// },
 		{
 			name:    "unknown",
 			network: 0,
@@ -109,6 +114,11 @@ func TestGetNetworkConfig(t *testing.T) {
 			network: ButterflySnapNet(),
 			err:     nil,
 		},
+		// {
+		// 	name:    "hyperspacenet",
+		// 	network: HyperspaceNet(),
+		// 	err:     nil,
+		// },
 		{
 			name:    "unknown",
 			network: nil,
@@ -117,7 +127,7 @@ func TestGetNetworkConfig(t *testing.T) {
 	}
 
 	for _, test := range testCast {
-		network, err := GetNetworkConfig(test.name)
+		network, err := GetNetworkConfigFromName(test.name)
 		assert.Equal(t, test.network, network)
 		assert.Equal(t, test.err, err)
 	}

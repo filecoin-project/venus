@@ -101,7 +101,7 @@ func (sm *selectedMessages) tryToAdd(mc *msgChain) bool {
 		sm.msgs = append(sm.msgs, mc.msgs...)
 		sm.blsLimit -= l
 		sm.gasLimit -= mc.gasLimit
-	} else if mc.sigType == crypto.SigTypeSecp256k1 {
+	} else if mc.sigType == crypto.SigTypeSecp256k1 || mc.sigType == crypto.SigTypeDelegated {
 		if sm.secpLimit < l {
 			return false
 		}
@@ -127,7 +127,7 @@ func (sm *selectedMessages) tryToAddWithDeps(mc *msgChain, mp *MessagePool, base
 
 	if mc.sigType == crypto.SigTypeBLS {
 		smMsgLimit = sm.blsLimit
-	} else if mc.sigType == crypto.SigTypeSecp256k1 {
+	} else if mc.sigType == crypto.SigTypeSecp256k1 || mc.sigType == crypto.SigTypeDelegated {
 		smMsgLimit = sm.secpLimit
 	} else {
 		return false
@@ -178,7 +178,7 @@ func (sm *selectedMessages) tryToAddWithDeps(mc *msgChain, mp *MessagePool, base
 
 	if mc.sigType == crypto.SigTypeBLS {
 		sm.blsLimit -= chainMsgLimit
-	} else if mc.sigType == crypto.SigTypeSecp256k1 {
+	} else if mc.sigType == crypto.SigTypeSecp256k1 || mc.sigType == crypto.SigTypeDelegated {
 		sm.secpLimit -= chainMsgLimit
 	}
 
@@ -191,7 +191,7 @@ func (sm *selectedMessages) trimChain(mc *msgChain, mp *MessagePool, baseFee typ
 		if msgLimit > sm.blsLimit {
 			msgLimit = sm.blsLimit
 		}
-	} else if mc.sigType == crypto.SigTypeSecp256k1 {
+	} else if mc.sigType == crypto.SigTypeSecp256k1 || mc.sigType == crypto.SigTypeDelegated {
 		if msgLimit > sm.secpLimit {
 			msgLimit = sm.secpLimit
 		}

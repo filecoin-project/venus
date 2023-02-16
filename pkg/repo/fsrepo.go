@@ -25,7 +25,7 @@ import (
 )
 
 // Version is the version of repo schema that this code understands.
-const LatestVersion uint = 10
+const LatestVersion uint = 11
 
 const (
 	// apiFile is the filename containing the filecoin node's api address.
@@ -42,6 +42,7 @@ const (
 	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
 	dataTransfer           = "data-transfer"
+	fsSqlite               = "sqlite"
 )
 
 var log = logging.Logger("repo")
@@ -65,6 +66,10 @@ type FSRepo struct {
 	paychDs Datastore
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer
+
+	sqlPath string
+	sqlErr  error
+	sqlOnce sync.Once
 }
 
 var _ Repo = (*FSRepo)(nil)
@@ -620,6 +625,21 @@ func (r *FSRepo) Path() (string, error) {
 // JournalPath returns the path the journal is at.
 func (r *FSRepo) JournalPath() string {
 	return fmt.Sprintf("%s/journal.json", r.path)
+}
+
+func (r *FSRepo) SqlitePath() (string, error) {
+	r.sqlOnce.Do(func() {
+		path := filepath.Join(r.path, fsSqlite)
+
+		if err := os.MkdirAll(path, 0755); err != nil {
+			r.sqlErr = err
+			return
+		}
+
+		r.sqlPath = path
+	})
+
+	return r.sqlPath, r.sqlErr
 }
 
 // APIAddrFromRepoPath returns the api addr from the filecoin repo

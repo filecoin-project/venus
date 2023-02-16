@@ -140,17 +140,18 @@ v0api.FullNode:
 	PaychVoucherSubmit:	In=5,	Out=2,	CheckSum=03f7a7f3a90849ea5da8eedd01643a1c
 	Session:	In=1,	Out=2,	CheckSum=cdb04ef6a97114c8f24f456a2e70f1cd
 	Shutdown:	In=1,	Out=1,	CheckSum=c39be30cc5a8826024fcf4d23e7017d6
+	StartTime:	In=1,	Out=2,	CheckSum=7eaff8e9437521f47c2a8bf1be7a77c8
 	StateAccountKey:	In=3,	Out=2,	CheckSum=9b6f9fdaea5bb22c60772266c418d98f
 	StateActorCodeCIDs:	In=2,	Out=2,	CheckSum=d52881195cc100121739e6c85c45dd9f
 	StateActorManifestCID:	In=2,	Out=2,	CheckSum=e04ec685bb3d32a892d45c5215586589
 	StateAllMinerFaults:	In=3,	Out=2,	CheckSum=a17e05b21e1ecc8da867e2f76df6c46c
 	StateCall:	In=3,	Out=2,	CheckSum=b33ab6c7df31d805c256c8ab6691b085
-	StateChangedActors:	In=3,	Out=2,	CheckSum=cbc0cd36e495552a6672caab9f839468
+	StateChangedActors:	In=3,	Out=2,	CheckSum=ff54048645d1a682d994e995d0736f8d
 	StateCirculatingSupply:	In=2,	Out=2,	CheckSum=22ac180fa0c583b4036666bfc155fd63
 	StateCompute:	In=4,	Out=2,	CheckSum=1d429c389354255c7f865f00a59e3888
 	StateDealProviderCollateralBounds:	In=4,	Out=2,	CheckSum=5231e44843c0b74a04371e1e7170d4b2
 	StateDecodeParams:	In=5,	Out=2,	CheckSum=8c6311be4dc064a657368516c33e1307
-	StateGetActor:	In=3,	Out=2,	CheckSum=adcd0bbd36e3ab94f777c7cb3df1fb34
+	StateGetActor:	In=3,	Out=2,	CheckSum=5ca2405c99c6a03afc0ca0dedefd263b
 	StateGetAllocation:	In=4,	Out=2,	CheckSum=306a8d2eb65b1bd436f2230bb96666b5
 	StateGetAllocationForPendingDeal:	In=3,	Out=2,	CheckSum=3d2912f0c80606576bb697499140ae2f
 	StateGetAllocations:	In=3,	Out=2,	CheckSum=570266653b3643cf22e6b47609db7e55
@@ -231,6 +232,7 @@ api.FullNode:
 	ChainExport:	In=4,	Out=2,	CheckSum=aaf98926e0ba36ec808a96de76a3cd98
 	ChainGetBlock:	In=2,	Out=2,	CheckSum=0d2bba23d84a51413bbbebe218dcbcf9
 	ChainGetBlockMessages:	In=2,	Out=2,	CheckSum=944437b34bb952bf3d50aa6415c9e0d3
+	ChainGetEvents:	In=2,	Out=2,	CheckSum=bc5a40732c7568871ff76ba8359f39a7
 	ChainGetGenesis:	In=1,	Out=2,	CheckSum=6d1e4c4d8184dc8d645a56278f14cfad
 	ChainGetMessage:	In=2,	Out=2,	CheckSum=d1c0ae931458a2a7b07de152ca3de558
 	ChainGetMessagesInTipset:	In=2,	Out=2,	CheckSum=6c0bfa48ffcacdfa9dbed1b9e23ad88e
@@ -281,6 +283,39 @@ api.FullNode:
 	Closing:	In=1,	Out=2,	CheckSum=3e0dae65a2378c12be14cee8a60a3bfe
 	CreateBackup:	In=2,	Out=1,	CheckSum=7b0679c2c73ab9606a7da21c5251ad19
 	Discover:	In=1,	Out=2,	CheckSum=09640e20c6d71c3e96c7a56c8698acc9
+	EthAccounts:	In=1,	Out=2,	CheckSum=d2d1b2a1ffc7dc9b28e8c64c79147670
+	EthBlockNumber:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
+	EthCall:	In=3,	Out=2,	CheckSum=64610416ed5674a0c717908d51904008
+	EthChainId:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
+	EthEstimateGas:	In=2,	Out=2,	CheckSum=f4d63e320f2fb2778b210a925516a114
+	EthFeeHistory:	In=2,	Out=2,	CheckSum=6a4806cfbd9b939d6f7fc3fbe7dc1ff7
+	EthGasPrice:	In=1,	Out=2,	CheckSum=e2f5588dddfc36a9cdef0fad6f4db93e
+	EthGetBalance:	In=3,	Out=2,	CheckSum=a35a35a610cd3193c836ce7d61f5a05a
+	EthGetBlockByHash:	In=3,	Out=2,	CheckSum=606bca6c962d8e2d4e0b8bb14e8fa0a9
+	EthGetBlockByNumber:	In=3,	Out=2,	CheckSum=9d82b96bb03c2de85dc7a31e7d4c45d2
+	EthGetBlockTransactionCountByHash:	In=2,	Out=2,	CheckSum=aea75f99eaccb878b97512a29568c204
+	EthGetBlockTransactionCountByNumber:	In=2,	Out=2,	CheckSum=2c3bfb8fef7edce8563d84eab6e9bf4f
+	EthGetCode:	In=3,	Out=2,	CheckSum=cdfa3798431df16537bf990bfee6dbe1
+	EthGetFilterChanges:	In=2,	Out=2,	CheckSum=7900665c8164ddcc00b0b3934b35dc45
+	EthGetFilterLogs:	In=2,	Out=2,	CheckSum=7900665c8164ddcc00b0b3934b35dc45
+	EthGetLogs:	In=2,	Out=2,	CheckSum=e4d62fd3240fe04e452a06683a49cfe3
+	EthGetMessageCidByTransactionHash:	In=2,	Out=2,	CheckSum=aed16e041ddddc1fce0509d5f544feab
+	EthGetStorageAt:	In=4,	Out=2,	CheckSum=e505cd577c7257ac17fe6f48e5ebbd42
+	EthGetTransactionByBlockHashAndIndex:	In=3,	Out=2,	CheckSum=35fd0ffaa59afd599520dd3ed67a6527
+	EthGetTransactionByBlockNumberAndIndex:	In=3,	Out=2,	CheckSum=2c5c65acee5e71e01e46588db4a35bf9
+	EthGetTransactionByHash:	In=2,	Out=2,	CheckSum=755c3f781b7b3b6ee99da45260296c3f
+	EthGetTransactionCount:	In=3,	Out=2,	CheckSum=be1148526dd6b62c4f74ce21c9b6585e
+	EthGetTransactionHashByCid:	In=2,	Out=2,	CheckSum=89cd0fe449cbdd9630c413e6d0888da4
+	EthGetTransactionReceipt:	In=2,	Out=2,	CheckSum=af6d9dda90fdb0f9427498580b9481a6
+	EthMaxPriorityFeePerGas:	In=1,	Out=2,	CheckSum=e2f5588dddfc36a9cdef0fad6f4db93e
+	EthNewBlockFilter:	In=1,	Out=2,	CheckSum=0b236ca49b91eef3180d6b4082640f0f
+	EthNewFilter:	In=2,	Out=2,	CheckSum=bb78bd1380d703c64ed4573a220daea0
+	EthNewPendingTransactionFilter:	In=1,	Out=2,	CheckSum=0b236ca49b91eef3180d6b4082640f0f
+	EthProtocolVersion:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
+	EthSendRawTransaction:	In=2,	Out=2,	CheckSum=f63e0b205164d628bc8022b6d5a496f5
+	EthSubscribe:	In=2,	Out=2,	CheckSum=f63e0b205164d628bc8022b6d5a496f5
+	EthUninstallFilter:	In=2,	Out=2,	CheckSum=eaa6a477ffaae115413457bbdb11e339
+	EthUnsubscribe:	In=2,	Out=2,	CheckSum=eaa6a477ffaae115413457bbdb11e339
 	GasEstimateFeeCap:	In=4,	Out=2,	CheckSum=0fcac02de1d21c9ac6e10696a6499eba
 	GasEstimateGasLimit:	In=3,	Out=2,	CheckSum=4d1bd57eef0ee90d4c2e89f097d0604d
 	GasEstimateGasPremium:	In=5,	Out=2,	CheckSum=550724ed37e2fdaa64e55147e82214b1
@@ -343,6 +378,7 @@ api.FullNode:
 	NetDisconnect:	In=2,	Out=1,	CheckSum=5ac3aa2dccdc990c45ca8ef35b1bdb9f
 	NetFindPeer:	In=2,	Out=2,	CheckSum=9f9de93a69acd82e4195b253d17a9e8b
 	NetLimit:	In=2,	Out=2,	CheckSum=9a35d6e94508e633a1cc5c5dc3f983eb
+	NetListening:	In=1,	Out=2,	CheckSum=de305c848673f2b095e6cfdecdaf85c3
 	NetPeerInfo:	In=2,	Out=2,	CheckSum=2f530e3029ddebf897c3d3029ad763bf
 	NetPeers:	In=1,	Out=2,	CheckSum=165dfc6f0c55818a2e2be3fcacea8045
 	NetPing:	In=2,	Out=2,	CheckSum=31c80ab2bc55adad54a85e38b45430b7
@@ -352,6 +388,7 @@ api.FullNode:
 	NetPubsubScores:	In=1,	Out=2,	CheckSum=66c7a1061de3d6e11d39ce90692aa885
 	NetSetLimit:	In=3,	Out=1,	CheckSum=f591c226feead6f0c1d9442a2320cd1e
 	NetStat:	In=2,	Out=2,	CheckSum=82ea34376644e023a4314cde3fb1e4fc
+	NetVersion:	In=1,	Out=2,	CheckSum=be418036949143c75c2d83aed9a66229
 	NodeStatus:	In=2,	Out=2,	CheckSum=b46530b68171c85301db86c1b7c19824
 	PaychAllocateLane:	In=2,	Out=2,	CheckSum=2f0992ed1f0be8ff9bee0c3f0a39e1e1
 	PaychAvailableFunds:	In=2,	Out=2,	CheckSum=f40942f65ce181601e7bc49e6378a89c
@@ -370,21 +407,24 @@ api.FullNode:
 	PaychVoucherCreate:	In=4,	Out=2,	CheckSum=e5113a58d351abf5cadd77b46f690c2d
 	PaychVoucherList:	In=2,	Out=2,	CheckSum=c4a81e1915ceee53e3ecde9f1ae30b4c
 	PaychVoucherSubmit:	In=5,	Out=2,	CheckSum=03f7a7f3a90849ea5da8eedd01643a1c
+	RaftLeader:	In=1,	Out=2,	CheckSum=1635810444d2b13b381cbefece853ba7
+	RaftState:	In=1,	Out=2,	CheckSum=f5cfaa01ba547fa4fe060c9f5bc3e518
 	Session:	In=1,	Out=2,	CheckSum=cdb04ef6a97114c8f24f456a2e70f1cd
 	Shutdown:	In=1,	Out=1,	CheckSum=c39be30cc5a8826024fcf4d23e7017d6
+	StartTime:	In=1,	Out=2,	CheckSum=7eaff8e9437521f47c2a8bf1be7a77c8
 	StateAccountKey:	In=3,	Out=2,	CheckSum=9b6f9fdaea5bb22c60772266c418d98f
 	StateActorCodeCIDs:	In=2,	Out=2,	CheckSum=d52881195cc100121739e6c85c45dd9f
 	StateActorManifestCID:	In=2,	Out=2,	CheckSum=e04ec685bb3d32a892d45c5215586589
 	StateAllMinerFaults:	In=3,	Out=2,	CheckSum=a17e05b21e1ecc8da867e2f76df6c46c
 	StateCall:	In=3,	Out=2,	CheckSum=b33ab6c7df31d805c256c8ab6691b085
-	StateChangedActors:	In=3,	Out=2,	CheckSum=cbc0cd36e495552a6672caab9f839468
+	StateChangedActors:	In=3,	Out=2,	CheckSum=ff54048645d1a682d994e995d0736f8d
 	StateCirculatingSupply:	In=2,	Out=2,	CheckSum=22ac180fa0c583b4036666bfc155fd63
 	StateCompute:	In=4,	Out=2,	CheckSum=1d429c389354255c7f865f00a59e3888
 	StateComputeDataCID:	In=5,	Out=2,	CheckSum=83d963e02e49a6747b0f83daf1d249be
 	StateDealProviderCollateralBounds:	In=4,	Out=2,	CheckSum=5231e44843c0b74a04371e1e7170d4b2
 	StateDecodeParams:	In=5,	Out=2,	CheckSum=8c6311be4dc064a657368516c33e1307
 	StateEncodeParams:	In=4,	Out=2,	CheckSum=3e1a5390b92b1b69f9be038cd7400e38
-	StateGetActor:	In=3,	Out=2,	CheckSum=adcd0bbd36e3ab94f777c7cb3df1fb34
+	StateGetActor:	In=3,	Out=2,	CheckSum=5ca2405c99c6a03afc0ca0dedefd263b
 	StateGetAllocation:	In=4,	Out=2,	CheckSum=306a8d2eb65b1bd436f2230bb96666b5
 	StateGetAllocationForPendingDeal:	In=3,	Out=2,	CheckSum=3d2912f0c80606576bb697499140ae2f
 	StateGetAllocations:	In=3,	Out=2,	CheckSum=570266653b3643cf22e6b47609db7e55
@@ -455,4 +495,5 @@ api.FullNode:
 	WalletSignMessage:	In=3,	Out=2,	CheckSum=c9f0ea6123a189cfeab06ce6bdeda7b3
 	WalletValidateAddress:	In=2,	Out=2,	CheckSum=610b35f7aa87b32463e5c2a9b4bd3f55
 	WalletVerify:	In=4,	Out=2,	CheckSum=9b22231e95efdfb94d9d55038f500636
+	Web3ClientVersion:	In=1,	Out=2,	CheckSum=be418036949143c75c2d83aed9a66229
 

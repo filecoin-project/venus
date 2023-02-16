@@ -16,7 +16,7 @@ import (
 // immediate parent state.
 // This type isn't doing much that the state view doesn't already do, consider removing it.
 type PowerStateView interface {
-	ResolveToKeyAddr(ctx context.Context, maddr address.Address) (address.Address, error)
+	ResolveToDeterministicAddress(ctx context.Context, maddr address.Address) (address.Address, error)
 	GetMinerWorkerRaw(ctx context.Context, maddr address.Address) (address.Address, error)
 	MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error)
 	MinerSectorInfo(ctx context.Context, maddr address.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, error)
@@ -86,5 +86,5 @@ func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr address.Address, n
 
 // SignerAddress returns the public key address associated with the given address.
 func (v PowerTableView) SignerAddress(ctx context.Context, addr address.Address) (address.Address, error) {
-	return v.state.ResolveToKeyAddr(ctx, addr)
+	return v.state.ResolveToDeterministicAddress(ctx, addr)
 }

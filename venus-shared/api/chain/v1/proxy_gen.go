@@ -8,6 +8,7 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
+	jsonrpc "github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -262,6 +263,7 @@ type IChainInfoStruct struct {
 		ChainExport                   func(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)                                                                          `perm:"read"`
 		ChainGetBlock                 func(ctx context.Context, id cid.Cid) (*types.BlockHeader, error)                                                                                            `perm:"read"`
 		ChainGetBlockMessages         func(ctx context.Context, bid cid.Cid) (*types.BlockMessages, error)                                                                                         `perm:"read"`
+		ChainGetEvents                func(context.Context, cid.Cid) ([]types.Event, error)                                                                                                        `perm:"read"`
 		ChainGetGenesis               func(context.Context) (*types.TipSet, error)                                                                                                                 `perm:"read"`
 		ChainGetMessage               func(ctx context.Context, msgID cid.Cid) (*types.Message, error)                                                                                             `perm:"read"`
 		ChainGetMessagesInTipset      func(ctx context.Context, key types.TipSetKey) ([]types.MessageCID, error)                                                                                   `perm:"read"`
@@ -292,6 +294,7 @@ type IChainInfoStruct struct {
 		StateGetRandomnessFromTickets func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
 		StateNetworkName              func(ctx context.Context) (types.NetworkName, error)                                                                                                         `perm:"read"`
 		StateNetworkVersion           func(ctx context.Context, tsk types.TipSetKey) (network.Version, error)                                                                                      `perm:"read"`
+		StateReplay                   func(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error)                                                                                  `perm:"read"`
 		StateSearchMsg                func(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)                             `perm:"read"`
 		StateVerifiedRegistryRootKey  func(ctx context.Context, tsk types.TipSetKey) (address.Address, error)                                                                                      `perm:"read"`
 		StateVerifierStatus           func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)                                                              `perm:"read"`
@@ -311,6 +314,9 @@ func (s *IChainInfoStruct) ChainGetBlock(p0 context.Context, p1 cid.Cid) (*types
 }
 func (s *IChainInfoStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*types.BlockMessages, error) {
 	return s.Internal.ChainGetBlockMessages(p0, p1)
+}
+func (s *IChainInfoStruct) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.Event, error) {
+	return s.Internal.ChainGetEvents(p0, p1)
 }
 func (s *IChainInfoStruct) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
 	return s.Internal.ChainGetGenesis(p0)
@@ -401,6 +407,9 @@ func (s *IChainInfoStruct) StateNetworkName(p0 context.Context) (types.NetworkNa
 }
 func (s *IChainInfoStruct) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (network.Version, error) {
 	return s.Internal.StateNetworkVersion(p0, p1)
+}
+func (s *IChainInfoStruct) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*types.InvocResult, error) {
+	return s.Internal.StateReplay(p0, p1, p2)
 }
 func (s *IChainInfoStruct) StateSearchMsg(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*types.MsgLookup, error) {
 	return s.Internal.StateSearchMsg(p0, p1, p2, p3, p4)
@@ -889,6 +898,165 @@ func (s *ICommonStruct) Version(p0 context.Context) (types.Version, error) {
 	return s.Internal.Version(p0)
 }
 
+type IETHStruct struct {
+	Internal struct {
+		EthAccounts                            func(ctx context.Context) ([]types.EthAddress, error)                                                                 `perm:"read"`
+		EthBlockNumber                         func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
+		EthCall                                func(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error)                                  `perm:"read"`
+		EthChainId                             func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
+		EthEstimateGas                         func(ctx context.Context, tx types.EthCall) (types.EthUint64, error)                                                  `perm:"read"`
+		EthFeeHistory                          func(ctx context.Context, p jsonrpc.RawParams) (types.EthFeeHistory, error)                                           `perm:"read"`
+		EthGasPrice                            func(ctx context.Context) (types.EthBigInt, error)                                                                    `perm:"read"`
+		EthGetBalance                          func(ctx context.Context, address types.EthAddress, blkParam string) (types.EthBigInt, error)                         `perm:"read"`
+		EthGetBlockByHash                      func(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error)                             `perm:"read"`
+		EthGetBlockByNumber                    func(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error)                                     `perm:"read"`
+		EthGetBlockTransactionCountByHash      func(ctx context.Context, blkHash types.EthHash) (types.EthUint64, error)                                             `perm:"read"`
+		EthGetBlockTransactionCountByNumber    func(ctx context.Context, blkNum types.EthUint64) (types.EthUint64, error)                                            `perm:"read"`
+		EthGetCode                             func(ctx context.Context, address types.EthAddress, blkOpt string) (types.EthBytes, error)                            `perm:"read"`
+		EthGetMessageCidByTransactionHash      func(ctx context.Context, txHash *types.EthHash) (*cid.Cid, error)                                                    `perm:"read"`
+		EthGetStorageAt                        func(ctx context.Context, address types.EthAddress, position types.EthBytes, blkParam string) (types.EthBytes, error) `perm:"read"`
+		EthGetTransactionByBlockHashAndIndex   func(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error)                        `perm:"read"`
+		EthGetTransactionByBlockNumberAndIndex func(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error)                       `perm:"read"`
+		EthGetTransactionByHash                func(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error)                                                `perm:"read"`
+		EthGetTransactionCount                 func(ctx context.Context, sender types.EthAddress, blkOpt string) (types.EthUint64, error)                            `perm:"read"`
+		EthGetTransactionHashByCid             func(ctx context.Context, cid cid.Cid) (*types.EthHash, error)                                                        `perm:"read"`
+		EthGetTransactionReceipt               func(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error)                                          `perm:"read"`
+		EthMaxPriorityFeePerGas                func(ctx context.Context) (types.EthBigInt, error)                                                                    `perm:"read"`
+		EthProtocolVersion                     func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
+		EthSendRawTransaction                  func(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error)                                                `perm:"read"`
+		NetListening                           func(ctx context.Context) (bool, error)                                                                               `perm:"read"`
+		NetVersion                             func(ctx context.Context) (string, error)                                                                             `perm:"read"`
+		Web3ClientVersion                      func(ctx context.Context) (string, error)                                                                             `perm:"read"`
+	}
+}
+
+func (s *IETHStruct) EthAccounts(p0 context.Context) ([]types.EthAddress, error) {
+	return s.Internal.EthAccounts(p0)
+}
+func (s *IETHStruct) EthBlockNumber(p0 context.Context) (types.EthUint64, error) {
+	return s.Internal.EthBlockNumber(p0)
+}
+func (s *IETHStruct) EthCall(p0 context.Context, p1 types.EthCall, p2 string) (types.EthBytes, error) {
+	return s.Internal.EthCall(p0, p1, p2)
+}
+func (s *IETHStruct) EthChainId(p0 context.Context) (types.EthUint64, error) {
+	return s.Internal.EthChainId(p0)
+}
+func (s *IETHStruct) EthEstimateGas(p0 context.Context, p1 types.EthCall) (types.EthUint64, error) {
+	return s.Internal.EthEstimateGas(p0, p1)
+}
+func (s *IETHStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (types.EthFeeHistory, error) {
+	return s.Internal.EthFeeHistory(p0, p1)
+}
+func (s *IETHStruct) EthGasPrice(p0 context.Context) (types.EthBigInt, error) {
+	return s.Internal.EthGasPrice(p0)
+}
+func (s *IETHStruct) EthGetBalance(p0 context.Context, p1 types.EthAddress, p2 string) (types.EthBigInt, error) {
+	return s.Internal.EthGetBalance(p0, p1, p2)
+}
+func (s *IETHStruct) EthGetBlockByHash(p0 context.Context, p1 types.EthHash, p2 bool) (types.EthBlock, error) {
+	return s.Internal.EthGetBlockByHash(p0, p1, p2)
+}
+func (s *IETHStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (types.EthBlock, error) {
+	return s.Internal.EthGetBlockByNumber(p0, p1, p2)
+}
+func (s *IETHStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 types.EthHash) (types.EthUint64, error) {
+	return s.Internal.EthGetBlockTransactionCountByHash(p0, p1)
+}
+func (s *IETHStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 types.EthUint64) (types.EthUint64, error) {
+	return s.Internal.EthGetBlockTransactionCountByNumber(p0, p1)
+}
+func (s *IETHStruct) EthGetCode(p0 context.Context, p1 types.EthAddress, p2 string) (types.EthBytes, error) {
+	return s.Internal.EthGetCode(p0, p1, p2)
+}
+func (s *IETHStruct) EthGetMessageCidByTransactionHash(p0 context.Context, p1 *types.EthHash) (*cid.Cid, error) {
+	return s.Internal.EthGetMessageCidByTransactionHash(p0, p1)
+}
+func (s *IETHStruct) EthGetStorageAt(p0 context.Context, p1 types.EthAddress, p2 types.EthBytes, p3 string) (types.EthBytes, error) {
+	return s.Internal.EthGetStorageAt(p0, p1, p2, p3)
+}
+func (s *IETHStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 types.EthHash, p2 types.EthUint64) (types.EthTx, error) {
+	return s.Internal.EthGetTransactionByBlockHashAndIndex(p0, p1, p2)
+}
+func (s *IETHStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 types.EthUint64, p2 types.EthUint64) (types.EthTx, error) {
+	return s.Internal.EthGetTransactionByBlockNumberAndIndex(p0, p1, p2)
+}
+func (s *IETHStruct) EthGetTransactionByHash(p0 context.Context, p1 *types.EthHash) (*types.EthTx, error) {
+	return s.Internal.EthGetTransactionByHash(p0, p1)
+}
+func (s *IETHStruct) EthGetTransactionCount(p0 context.Context, p1 types.EthAddress, p2 string) (types.EthUint64, error) {
+	return s.Internal.EthGetTransactionCount(p0, p1, p2)
+}
+func (s *IETHStruct) EthGetTransactionHashByCid(p0 context.Context, p1 cid.Cid) (*types.EthHash, error) {
+	return s.Internal.EthGetTransactionHashByCid(p0, p1)
+}
+func (s *IETHStruct) EthGetTransactionReceipt(p0 context.Context, p1 types.EthHash) (*types.EthTxReceipt, error) {
+	return s.Internal.EthGetTransactionReceipt(p0, p1)
+}
+func (s *IETHStruct) EthMaxPriorityFeePerGas(p0 context.Context) (types.EthBigInt, error) {
+	return s.Internal.EthMaxPriorityFeePerGas(p0)
+}
+func (s *IETHStruct) EthProtocolVersion(p0 context.Context) (types.EthUint64, error) {
+	return s.Internal.EthProtocolVersion(p0)
+}
+func (s *IETHStruct) EthSendRawTransaction(p0 context.Context, p1 types.EthBytes) (types.EthHash, error) {
+	return s.Internal.EthSendRawTransaction(p0, p1)
+}
+func (s *IETHStruct) NetListening(p0 context.Context) (bool, error) {
+	return s.Internal.NetListening(p0)
+}
+func (s *IETHStruct) NetVersion(p0 context.Context) (string, error) { return s.Internal.NetVersion(p0) }
+func (s *IETHStruct) Web3ClientVersion(p0 context.Context) (string, error) {
+	return s.Internal.Web3ClientVersion(p0)
+}
+
+type IETHEventStruct struct {
+	Internal struct {
+		EthGetFilterChanges            func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)        `perm:"write"`
+		EthGetFilterLogs               func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)        `perm:"write"`
+		EthGetLogs                     func(ctx context.Context, filter *types.EthFilterSpec) (*types.EthFilterResult, error) `perm:"read"`
+		EthNewBlockFilter              func(ctx context.Context) (types.EthFilterID, error)                                   `perm:"write"`
+		EthNewFilter                   func(ctx context.Context, filter *types.EthFilterSpec) (types.EthFilterID, error)      `perm:"write"`
+		EthNewPendingTransactionFilter func(ctx context.Context) (types.EthFilterID, error)                                   `perm:"write"`
+		EthSubscribe                   func(ctx context.Context, params jsonrpc.RawParams) (types.EthSubscriptionID, error)   `perm:"write"`
+		EthUninstallFilter             func(ctx context.Context, id types.EthFilterID) (bool, error)                          `perm:"write"`
+		EthUnsubscribe                 func(ctx context.Context, id types.EthSubscriptionID) (bool, error)                    `perm:"write"`
+	}
+}
+
+func (s *IETHEventStruct) EthGetFilterChanges(p0 context.Context, p1 types.EthFilterID) (*types.EthFilterResult, error) {
+	return s.Internal.EthGetFilterChanges(p0, p1)
+}
+func (s *IETHEventStruct) EthGetFilterLogs(p0 context.Context, p1 types.EthFilterID) (*types.EthFilterResult, error) {
+	return s.Internal.EthGetFilterLogs(p0, p1)
+}
+func (s *IETHEventStruct) EthGetLogs(p0 context.Context, p1 *types.EthFilterSpec) (*types.EthFilterResult, error) {
+	return s.Internal.EthGetLogs(p0, p1)
+}
+func (s *IETHEventStruct) EthNewBlockFilter(p0 context.Context) (types.EthFilterID, error) {
+	return s.Internal.EthNewBlockFilter(p0)
+}
+func (s *IETHEventStruct) EthNewFilter(p0 context.Context, p1 *types.EthFilterSpec) (types.EthFilterID, error) {
+	return s.Internal.EthNewFilter(p0, p1)
+}
+func (s *IETHEventStruct) EthNewPendingTransactionFilter(p0 context.Context) (types.EthFilterID, error) {
+	return s.Internal.EthNewPendingTransactionFilter(p0)
+}
+func (s *IETHEventStruct) EthSubscribe(p0 context.Context, p1 jsonrpc.RawParams) (types.EthSubscriptionID, error) {
+	return s.Internal.EthSubscribe(p0, p1)
+}
+func (s *IETHEventStruct) EthUninstallFilter(p0 context.Context, p1 types.EthFilterID) (bool, error) {
+	return s.Internal.EthUninstallFilter(p0, p1)
+}
+func (s *IETHEventStruct) EthUnsubscribe(p0 context.Context, p1 types.EthSubscriptionID) (bool, error) {
+	return s.Internal.EthUnsubscribe(p0, p1)
+}
+
+type FullETHStruct struct {
+	IETHStruct
+	IETHEventStruct
+}
+
 type FullNodeStruct struct {
 	IBlockStoreStruct
 	IChainStruct
@@ -901,4 +1069,5 @@ type FullNodeStruct struct {
 	ISyncerStruct
 	IWalletStruct
 	ICommonStruct
+	FullETHStruct
 }

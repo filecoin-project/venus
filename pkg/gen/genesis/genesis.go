@@ -47,6 +47,7 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/system"
 
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
 	"github.com/ipfs/go-cid"
@@ -142,12 +143,7 @@ Genesis: {
 
 func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Template) (*tree.State, map[address.Address]address.Address, error) {
 	// Create empty state tree
-
 	cst := cbor.NewCborStore(bs)
-	_, err := cst.Put(context.TODO(), []struct{}{})
-	if err != nil {
-		return nil, nil, fmt.Errorf("putting empty object: %w", err)
-	}
 
 	sv, err := tree.VersionForNetwork(template.NetworkVersion)
 	if err != nil {
@@ -397,7 +393,7 @@ func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actorstypes.Ve
 		return nil, err
 	}
 
-	actcid, found := actors.GetActorCodeID(av, actors.AccountKey)
+	actcid, found := actors.GetActorCodeID(av, manifest.AccountKey)
 	if !found {
 		return nil, fmt.Errorf("failed to get account actor code ID for actors version %d", av)
 	}
@@ -406,6 +402,7 @@ func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actorstypes.Ve
 		Code:    actcid,
 		Head:    statecid,
 		Balance: bal,
+		Address: &addr,
 	}
 
 	return act, nil
@@ -479,7 +476,7 @@ func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *tree.
 		return err
 	}
 
-	actcid, found := actors.GetActorCodeID(av, actors.MultisigKey)
+	actcid, found := actors.GetActorCodeID(av, manifest.MultisigKey)
 	if !found {
 		return fmt.Errorf("failed to get multisig actor code ID for actors version %d", av)
 	}
@@ -582,6 +579,11 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 		return nil, fmt.Errorf("make initial state tree failed: %w", err)
 	}
 
+	// Set up the Ethereum Address Manager
+	if err = SetupEAM(ctx, st, template.NetworkVersion); err != nil {
+		return nil, fmt.Errorf("failed to setup EAM: %w", err)
+	}
+
 	stateroot, err := st.Flush(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("flush state tree failed: %w", err)
@@ -596,9 +598,24 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 		return nil, fmt.Errorf("failed to verify presealed data: %w", err)
 	}
 
+	// setup Storage Miners
 	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template.Miners, template.NetworkVersion, para)
 	if err != nil {
 		return nil, fmt.Errorf("setup miners failed: %w", err)
+	}
+
+	st, err = tree.LoadState(ctx, st.Store, stateroot)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load updated state tree: %w", err)
+	}
+	// Set up Eth null addresses.
+	if _, err := SetupEthNullAddresses(ctx, st, template.NetworkVersion); err != nil {
+		return nil, fmt.Errorf("failed to set up Eth null addresses: %w", err)
+	}
+
+	stateroot, err = st.Flush(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to flush state tree: %w", err)
 	}
 
 	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))

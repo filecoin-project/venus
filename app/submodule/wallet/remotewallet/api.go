@@ -1,24 +1,22 @@
-// Code from github.com/filecoin-project/venus-wallet/storage/wallet/wallet.go & api/api_wallet.go & api/remotecli/cli.go . DO NOT EDIT.
-
 package remotewallet
 
 import (
 	"context"
 	"net/http"
 
+	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-jsonrpc"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
 type IWallet interface {
 	WalletNew(context.Context, types.KeyType) (address.Address, error)
 	WalletHas(ctx context.Context, address address.Address) (bool, error)
 	WalletList(ctx context.Context) ([]address.Address, error)
-	WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta types.MsgMeta) (*wallet.Signature, error)
+	WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error)
 	WalletExport(ctx context.Context, addr address.Address) (*types.KeyInfo, error)
 	WalletImport(context.Context, *types.KeyInfo) (address.Address, error)
 	WalletDelete(context.Context, address.Address) error
@@ -32,7 +30,7 @@ type WalletAPIAdapter struct {
 		WalletNew    func(ctx context.Context, kt types.KeyType) (address.Address, error)                                            `perm:"admin"`
 		WalletHas    func(ctx context.Context, address address.Address) (bool, error)                                                `perm:"write"`
 		WalletList   func(ctx context.Context) ([]address.Address, error)                                                            `perm:"write"`
-		WalletSign   func(ctx context.Context, signer address.Address, toSign []byte, meta types.MsgMeta) (*wallet.Signature, error) `perm:"sign"`
+		WalletSign   func(ctx context.Context, signer address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
 		WalletExport func(ctx context.Context, addr address.Address) (*types.KeyInfo, error)                                         `perm:"admin"`
 		WalletImport func(ctx context.Context, ki *types.KeyInfo) (address.Address, error)                                           `perm:"admin"`
 		WalletDelete func(ctx context.Context, addr address.Address) error                                                           `perm:"admin"`
@@ -51,7 +49,7 @@ func (c *WalletAPIAdapter) WalletList(ctx context.Context) ([]address.Address, e
 	return c.Internal.WalletList(ctx)
 }
 
-func (c *WalletAPIAdapter) WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta types.MsgMeta) (*wallet.Signature, error) {
+func (c *WalletAPIAdapter) WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) {
 	return c.Internal.WalletSign(ctx, signer, toSign, meta)
 }
 

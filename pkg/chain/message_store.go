@@ -139,11 +139,11 @@ func (ms *MessageStore) LoadUnsignedMessage(ctx context.Context, mid cid.Cid) (*
 	return message, nil
 }
 
-// LoadUnsignedMessagesFromCids load unsigned messages of cid array
+// LoadSignedMessage load signed message of cid
 func (ms *MessageStore) LoadSignedMessage(ctx context.Context, mid cid.Cid) (*types.SignedMessage, error) {
 	messageBlock, err := ms.bs.Get(ctx, mid)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get bls message %s", mid)
+		return nil, errors.Wrapf(err, "failed to get secp message %s", mid)
 	}
 
 	message := &types.SignedMessage{}
@@ -476,6 +476,20 @@ func (ms *MessageStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, e
 	}
 
 	return out, nil
+}
+
+func (ms *MessageStore) SecpkMessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.SignedMessage, error) {
+	_, secpkcids, err := ms.ReadMsgMetaCids(ctx, b.Messages)
+	if err != nil {
+		return nil, err
+	}
+
+	secpkmsgs, err := ms.LoadSignedMessagesFromCids(ctx, secpkcids)
+	if err != nil {
+		return nil, fmt.Errorf("loading secpk messages for block: %w", err)
+	}
+
+	return secpkmsgs, nil
 }
 
 // StoreMessage put message(include signed message and unsigned message) to database

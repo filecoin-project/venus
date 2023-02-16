@@ -9,6 +9,7 @@ import (
 )
 
 ////////// market //////////
+
 const (
 	DealMaxLabelSize     = market.DealMaxLabelSize
 	EpochUndefined       = market.EpochUndefined
@@ -56,6 +57,7 @@ var (
 )
 
 ////////// miner //////////
+
 const (
 	AddressedPartitionsMax                       = miner.AddressedPartitionsMax
 	AddressedSectorsMax                          = miner.AddressedSectorsMax
@@ -113,6 +115,7 @@ type (
 	FaultDeclaration              = miner.FaultDeclaration
 	GetBeneficiaryReturn          = miner.GetBeneficiaryReturn
 	GetControlAddressesReturn     = miner.GetControlAddressesReturn
+	MinerConstructorParams        = miner.MinerConstructorParams
 	PartitionKey                  = miner.PartitionKey
 	PendingBeneficiaryChange      = miner.PendingBeneficiaryChange
 	PoStPartition                 = miner.PoStPartition
@@ -170,6 +173,7 @@ var (
 )
 
 ////////// paych //////////
+
 const (
 	LaneStatesAmtBitwidth = paych.LaneStatesAmtBitwidth
 	SettleDelay           = paych.SettleDelay
@@ -185,11 +189,11 @@ type (
 )
 
 ////////// verifreg //////////
+
 const (
 	EndOfLifeClaimDropPeriod                = verifreg.EndOfLifeClaimDropPeriod
 	MaximumVerifiedAllocationExpiration     = verifreg.MaximumVerifiedAllocationExpiration
 	MaximumVerifiedAllocationTerm           = verifreg.MaximumVerifiedAllocationTerm
-	MinimumVerifiedAllocationSize           = verifreg.MinimumVerifiedAllocationSize
 	MinimumVerifiedAllocationTerm           = verifreg.MinimumVerifiedAllocationTerm
 	NoAllocationID                          = verifreg.NoAllocationID
 	SignatureDomainSeparation_RemoveDataCap = verifreg.SignatureDomainSeparation_RemoveDataCap
@@ -210,6 +214,7 @@ type (
 	ClaimExtensionRequest          = verifreg.ClaimExtensionRequest
 	ClaimId                        = verifreg.ClaimId
 	ClaimTerm                      = verifreg.ClaimTerm
+	DataCap                        = verifreg.DataCap
 	ExtendClaimTermsParams         = verifreg.ExtendClaimTermsParams
 	ExtendClaimTermsReturn         = verifreg.ExtendClaimTermsReturn
 	FailCode                       = verifreg.FailCode

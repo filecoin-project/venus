@@ -33,6 +33,7 @@ var versionMap = []versionInfo{
 	{version: 8, upgrade: Version8Upgrade},
 	{version: 9, upgrade: Version9Upgrade},
 	{version: 10, upgrade: Version10Upgrade},
+	{version: 11, upgrade: Version11Upgrade},
 }
 
 // TryToMigrate used to migrate data(db,config,file,etc) in local repo
@@ -364,4 +365,45 @@ func Version10Upgrade(repoPath string) (err error) {
 	}
 
 	return repo.WriteVersion(repoPath, 10)
+}
+
+// Version11Upgrade will add actor event config
+func Version11Upgrade(repoPath string) (err error) {
+	var fsrRepo repo.Repo
+	if fsrRepo, err = repo.OpenFSRepo(repoPath, 10); err != nil {
+		return
+	}
+	cfg := fsrRepo.Config()
+
+	// add default actor event config
+	cfg.FevmConfig = config.NewDefaultConfig().FevmConfig
+
+	switch cfg.NetworkParams.NetworkType {
+	case types.NetworkMainnet:
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 99999999999999
+	case types.Network2k:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version17
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 30
+	case types.NetworkCalibnet:
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 322354
+	case types.NetworkForce:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version18
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = -21
+	case types.NetworkInterop:
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 99999999999999
+	case types.NetworkButterfly:
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 600
+	default:
+		return fsrRepo.Close()
+	}
+
+	if err = fsrRepo.ReplaceConfig(cfg); err != nil {
+		return
+	}
+
+	if err = fsrRepo.Close(); err != nil {
+		return
+	}
+
+	return repo.WriteVersion(repoPath, 11)
 }

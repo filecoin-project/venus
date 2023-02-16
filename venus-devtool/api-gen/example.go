@@ -266,6 +266,31 @@ func init() {
 
 	uuidTmp := auuid.MustParse("102334ec-35a3-4b36-be9f-02883844503a")
 	addExample(&uuidTmp)
+
+	// eth types
+	ethint := types.EthUint64(5)
+	addExample(ethint)
+	addExample(&ethint)
+	ethaddr, _ := types.ParseEthAddress("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
+	addExample(&ethaddr)
+	ethhash, _ := types.EthHashFromCid(c)
+	addExample(&ethhash)
+	ethFeeHistoryReward := [][]types.EthBigInt{}
+	addExample(&ethFeeHistoryReward)
+
+	filterid := types.EthFilterID(ethhash)
+	addExample(filterid)
+	addExample(&filterid)
+
+	subid := types.EthSubscriptionID(ethhash)
+	addExample(subid)
+	addExample(&subid)
+
+	pstring := func(s string) *string { return &s }
+	addExample(&types.EthFilterSpec{
+		FromBlock: pstring("2301220"),
+		Address:   []types.EthAddress{ethaddr},
+	})
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {
@@ -299,7 +324,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	case reflect.Ptr:
 		if t.Elem().Kind() == reflect.Struct {
 			es := exampleStruct(method, t.Elem(), t)
-			// ExampleValues[t] = es
+			ExampleValues[t] = es
 			return es
 		}
 

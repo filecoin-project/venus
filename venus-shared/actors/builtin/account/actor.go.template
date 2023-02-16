@@ -3,6 +3,7 @@
 package account
 
 import (
+	"github.com/ipfs/go-cid"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"fmt"
@@ -11,7 +12,8 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	types "github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/venus/venus-shared/actors/types"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 {{range .versions}}
     {{if (le . 7)}}
@@ -25,7 +27,7 @@ var Methods = builtin{{.latestVersion}}.MethodsAccount
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != actors.AccountKey {
+       if name != manifest.AccountKey {
           return nil, fmt.Errorf("actor code is not account: %s", name)
        }
 
@@ -64,6 +66,17 @@ func MakeState(store adt.Store, av actorstypes.Version, addr address.Address) (S
 type State interface {
 	cbor.Marshaler
 
+    Code() cid.Cid
+    ActorKey() string
+    ActorVersion() actorstypes.Version
+
 	PubkeyAddress() (address.Address, error)
 	GetState() interface{}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
 }

@@ -24,6 +24,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -35,6 +36,7 @@ import (
 var SystemActorAddr = builtin.SystemActorAddr
 var BurntFundsActorAddr = builtin.BurntFundsActorAddr
 var CronActorAddr = builtin.CronActorAddr
+var EthereumAddressManagerActorAddr = builtin.EthereumAddressManagerActorAddr
 var SaftAddress = makeAddress("t0122")
 var ReserveAddress = makeAddress("t090")
 var RootVerifierAddress = makeAddress("t080")
@@ -175,7 +177,7 @@ func IsAccountActor(c cid.Cid) bool {
 func IsStorageMinerActor(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
 	if ok {
-		return name == actors.MinerKey
+		return name == manifest.MinerKey
 	}
 
 	if c == builtin0.StorageMinerActorCodeID {
@@ -212,7 +214,7 @@ func IsStorageMinerActor(c cid.Cid) bool {
 func IsMultisigActor(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
 	if ok {
-		return name == actors.MultisigKey
+		return name == manifest.MultisigKey
 	}
 
 	if c == builtin0.MultisigActorCodeID {
@@ -278,6 +280,33 @@ func IsPaymentChannelActor(c cid.Cid) bool {
 
 	if c == builtin7.PaymentChannelActorCodeID {
 		return true
+	}
+
+	return false
+}
+
+func IsPlaceholderActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == manifest.PlaceholderKey
+	}
+
+	return false
+}
+
+func IsEvmActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == manifest.EvmKey
+	}
+
+	return false
+}
+
+func IsEthAccountActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == manifest.EthAccountKey
 	}
 
 	return false

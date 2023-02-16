@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/ipfs/go-cid"
 
 	"fmt"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/manifest"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
@@ -38,7 +40,7 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	types "github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/venus/venus-shared/actors/types"
 )
 
 var (
@@ -48,7 +50,7 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.MarketKey {
+		if name != manifest.MarketKey {
 			return nil, fmt.Errorf("actor code is not market: %s", name)
 		}
 
@@ -59,6 +61,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version9:
 			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
 
 		}
 	}
@@ -121,12 +126,20 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 	case actorstypes.Version9:
 		return make9(store)
 
+	case actorstypes.Version10:
+		return make10(store)
+
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 type State interface {
 	cbor.Marshaler
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
+
 	BalancesChanged(State) (bool, error)
 	EscrowTable() (BalanceTable, error)
 	LockedTable() (BalanceTable, error)
@@ -205,6 +218,9 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 	case actorstypes.Version9:
 		return decodePublishStorageDealsReturn9(b)
 
+	case actorstypes.Version10:
+		return decodePublishStorageDealsReturn10(b)
+
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)
 }
@@ -275,5 +291,20 @@ func labelFromGoString(s string) (markettypes.DealLabel, error) {
 		return markettypes.NewLabelFromString(s)
 	} else {
 		return markettypes.NewLabelFromBytes([]byte(s))
+	}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+		(&state10{}).Code(),
 	}
 }

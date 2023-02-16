@@ -59,10 +59,13 @@ func Calibration() *NetworkConf {
 				UpgradeOhSnapHeight:      480,
 				UpgradeSkyrHeight:        510,
 				UpgradeSharkHeight:       16800,
+				UpgradeHyggeHeight:       322354, // 2023-02-21T16:30:00Z
 			},
 			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:       address.Testnet,
 			PropagationDelaySecs: 10,
+			Eip155ChainID:        314159,
+			ActorDebugging:       false,
 		},
 	}
 }

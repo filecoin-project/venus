@@ -97,7 +97,7 @@ func (v *View) InitResolveAddress(ctx context.Context, a addr.Address) (addr.Add
 	return rAddr, nil
 }
 
-// ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
+// GetMinerWorkerRaw returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func (v *View) GetMinerWorkerRaw(ctx context.Context, maddr addr.Address) (addr.Address, error) {
 	minerState, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
@@ -108,7 +108,7 @@ func (v *View) GetMinerWorkerRaw(ctx context.Context, maddr addr.Address) (addr.
 	if err != nil {
 		return addr.Undef, err
 	}
-	return v.ResolveToKeyAddr(ctx, minerInfo.Worker)
+	return v.ResolveToDeterministicAddress(ctx, minerInfo.Worker)
 }
 
 // MinerInfo returns info about the indicated miner
@@ -694,16 +694,31 @@ func (v *View) LoadActor(ctx context.Context, address addr.Address) (*types.Acto
 	return v.loadActor(ctx, address)
 }
 
-// ResolveToKeyAddress is similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses.
+// ResolveToDeterministicAddress is similar to `vm.ResolveToDeterministicAddress` but does not allow `Actor` type of addresses.
 // Uses the `TipSet` `ts` to generate the VM state.
-func (v *View) ResolveToKeyAddr(ctx context.Context, address addr.Address) (addr.Address, error) {
-	if address.Protocol() == addr.BLS || address.Protocol() == addr.SECP256K1 {
+// todo: use pkg/vm/vm.go.ResolveToDeterministicAddress, avoid repetitive implementations
+func (v *View) ResolveToDeterministicAddress(ctx context.Context, address addr.Address) (addr.Address, error) {
+	if address.Protocol() == addr.BLS || address.Protocol() == addr.SECP256K1 || address.Protocol() == addr.Delegated {
 		return address, nil
 	}
 
-	act, err := v.LoadActor(context.TODO(), address)
+	tree, err := vmstate.LoadState(ctx, v.ipldStore, v.root)
 	if err != nil {
-		return addr.Undef, fmt.Errorf("failed to find actor: %s", address)
+		return addr.Undef, err
+	}
+	act, found, err := tree.GetActor(ctx, address)
+	if err != nil {
+		return addr.Undef, err
+	}
+	if !found {
+		return addr.Undef, errors.Wrapf(types.ErrActorNotFound, "address is :%s", address)
+	}
+
+	if tree.Version() >= vmstate.StateTreeVersion5 {
+		if act.Address != nil {
+			// If there _is_ an f4 address, return it as "key" address
+			return *act.Address, nil
+		}
 	}
 
 	aast, err := account.Load(adt.WrapStore(context.TODO(), v.ipldStore), act)

@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -174,7 +175,7 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 		return 0, nil, nil, err
 	}
 
-	actcid, found := actors.GetActorCodeID(av, actors.InitKey)
+	actcid, found := actors.GetActorCodeID(av, manifest.InitKey)
 	if !found {
 		return 0, nil, nil, fmt.Errorf("failed to get init actor code ID for actors version %d", av)
 	}

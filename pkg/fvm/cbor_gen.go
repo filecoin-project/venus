@@ -8,7 +8,8 @@ import (
 	"math"
 	"sort"
 
-	types "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/actors/types"
+	types1 "github.com/filecoin-project/venus/venus-shared/types"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
@@ -139,7 +140,7 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 			if err := cr.UnreadByte(); err != nil {
 				return err
 			}
-			t.MsgRct = new(types.MessageReceipt)
+			t.MsgRct = new(types1.MessageReceipt)
 			if err := t.MsgRct.UnmarshalCBOR(cr); err != nil {
 				return xerrors.Errorf("unmarshaling t.MsgRct pointer: %w", err)
 			}

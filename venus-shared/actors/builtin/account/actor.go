@@ -7,12 +7,14 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/cbor"
 
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	types "github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/venus/venus-shared/actors/types"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -28,14 +30,14 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	builtin9 "github.com/filecoin-project/go-state-types/builtin"
+	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 )
 
-var Methods = builtin9.MethodsAccount
+var Methods = builtin10.MethodsAccount
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.AccountKey {
+		if name != manifest.AccountKey {
 			return nil, fmt.Errorf("actor code is not account: %s", name)
 		}
 
@@ -46,6 +48,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version9:
 			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
 
 		}
 	}
@@ -108,6 +113,9 @@ func MakeState(store adt.Store, av actorstypes.Version, addr address.Address) (S
 	case actorstypes.Version9:
 		return make9(store, addr)
 
+	case actorstypes.Version10:
+		return make10(store, addr)
+
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)
 }
@@ -115,6 +123,25 @@ func MakeState(store adt.Store, av actorstypes.Version, addr address.Address) (S
 type State interface {
 	cbor.Marshaler
 
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
+
 	PubkeyAddress() (address.Address, error)
 	GetState() interface{}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+		(&state10{}).Code(),
+	}
 }

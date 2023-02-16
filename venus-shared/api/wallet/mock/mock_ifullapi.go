@@ -11,8 +11,8 @@ import (
 	address "github.com/filecoin-project/go-address"
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
-	internal "github.com/filecoin-project/venus/venus-shared/internal"
-	types "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/actors/types"
+	types0 "github.com/filecoin-project/venus/venus-shared/types"
 	wallet "github.com/filecoin-project/venus/venus-shared/types/wallet"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -608,7 +608,7 @@ func (mr *MockIFullAPIMockRecorder) Unlock(arg0, arg1 interface{}) *gomock.Call 
 }
 
 // Verify mocks base method.
-func (m *MockIFullAPI) Verify(arg0 context.Context, arg1 address.Address, arg2 types.MsgType, arg3 *internal.Message) error {
+func (m *MockIFullAPI) Verify(arg0 context.Context, arg1 address.Address, arg2 types0.MsgType, arg3 *types.Message) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Verify", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
@@ -636,10 +636,10 @@ func (mr *MockIFullAPIMockRecorder) VerifyPassword(arg0, arg1 interface{}) *gomo
 }
 
 // Version mocks base method.
-func (m *MockIFullAPI) Version(arg0 context.Context) (types.Version, error) {
+func (m *MockIFullAPI) Version(arg0 context.Context) (types0.Version, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Version", arg0)
-	ret0, _ := ret[0].(types.Version)
+	ret0, _ := ret[0].(types0.Version)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -665,10 +665,10 @@ func (mr *MockIFullAPIMockRecorder) WalletDelete(arg0, arg1 interface{}) *gomock
 }
 
 // WalletExport mocks base method.
-func (m *MockIFullAPI) WalletExport(arg0 context.Context, arg1 address.Address) (*types.KeyInfo, error) {
+func (m *MockIFullAPI) WalletExport(arg0 context.Context, arg1 address.Address) (*types0.KeyInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WalletExport", arg0, arg1)
-	ret0, _ := ret[0].(*types.KeyInfo)
+	ret0, _ := ret[0].(*types0.KeyInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -695,7 +695,7 @@ func (mr *MockIFullAPIMockRecorder) WalletHas(arg0, arg1 interface{}) *gomock.Ca
 }
 
 // WalletImport mocks base method.
-func (m *MockIFullAPI) WalletImport(arg0 context.Context, arg1 *types.KeyInfo) (address.Address, error) {
+func (m *MockIFullAPI) WalletImport(arg0 context.Context, arg1 *types0.KeyInfo) (address.Address, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WalletImport", arg0, arg1)
 	ret0, _ := ret[0].(address.Address)
@@ -725,7 +725,7 @@ func (mr *MockIFullAPIMockRecorder) WalletList(arg0 interface{}) *gomock.Call {
 }
 
 // WalletNew mocks base method.
-func (m *MockIFullAPI) WalletNew(arg0 context.Context, arg1 types.KeyType) (address.Address, error) {
+func (m *MockIFullAPI) WalletNew(arg0 context.Context, arg1 types0.KeyType) (address.Address, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WalletNew", arg0, arg1)
 	ret0, _ := ret[0].(address.Address)
@@ -740,7 +740,7 @@ func (mr *MockIFullAPIMockRecorder) WalletNew(arg0, arg1 interface{}) *gomock.Ca
 }
 
 // WalletSign mocks base method.
-func (m *MockIFullAPI) WalletSign(arg0 context.Context, arg1 address.Address, arg2 []byte, arg3 types.MsgMeta) (*crypto.Signature, error) {
+func (m *MockIFullAPI) WalletSign(arg0 context.Context, arg1 address.Address, arg2 []byte, arg3 types0.MsgMeta) (*crypto.Signature, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WalletSign", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*crypto.Signature)

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/venus/pkg/testhelpers"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/state"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -107,7 +107,7 @@ func TestTotalPowerUnaffectedBySlash(t *testing.T) {
 }
 
 // nolint
-func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64, ownerKeys []crypto.KeyInfo) (cbor.IpldStore, []address.Address, cid.Cid) {
+func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64, ownerKeys []key.KeyInfo) (cbor.IpldStore, []address.Address, cid.Cid) {
 	// todo think a way to mock power directly
 	r := repo.NewInMemoryRepo()
 	bs := r.Datastore()

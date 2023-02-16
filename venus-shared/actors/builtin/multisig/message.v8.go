@@ -9,13 +9,14 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
 	multisig8 "github.com/filecoin-project/go-state-types/builtin/v8/multisig"
-	init9 "github.com/filecoin-project/go-state-types/builtin/v9/init"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
-	types "github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/venus/venus-shared/actors/types"
 )
 
 type message8 struct{ message0 }
@@ -53,13 +54,13 @@ func (m message8) Create(
 		return nil, actErr
 	}
 
-	code, ok := actors.GetActorCodeID(actorstypes.Version8, actors.MultisigKey)
+	code, ok := actors.GetActorCodeID(actorstypes.Version8, manifest.MultisigKey)
 	if !ok {
 		return nil, fmt.Errorf("failed to get multisig code ID")
 	}
 
 	// new actors are created by invoking 'exec' on the init actor with the constructor params
-	execParams := &init9.ExecParams{
+	execParams := &init10.ExecParams{
 		CodeCID:           code,
 		ConstructorParams: enc,
 	}

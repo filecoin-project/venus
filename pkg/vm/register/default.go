@@ -14,6 +14,7 @@ import (
 	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
 	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -38,6 +39,7 @@ func GetDefaultActros() *dispatch.CodeLoader {
 		DefaultActorBuilder.AddMany(actorstypes.Version7, dispatch.ActorsVersionPredicate(actorstypes.Version7), builtin.MakeRegistryLegacy(exported7.BuiltinActors()))
 		DefaultActorBuilder.AddMany(actorstypes.Version8, dispatch.ActorsVersionPredicate(actorstypes.Version8), builtin.MakeRegistry(actorstypes.Version8))
 		DefaultActorBuilder.AddMany(actorstypes.Version9, dispatch.ActorsVersionPredicate(actorstypes.Version9), builtin.MakeRegistry(actorstypes.Version9))
+		DefaultActorBuilder.AddMany(actorstypes.Version10, dispatch.ActorsVersionPredicate(actorstypes.Version10), builtin.MakeRegistry(actorstypes.Version10))
 		defaultActors = DefaultActorBuilder.Build()
 	})
 
@@ -45,16 +47,18 @@ func GetDefaultActros() *dispatch.CodeLoader {
 }
 
 func DumpActorState(codeLoader *dispatch.CodeLoader, act *types.Actor, b []byte) (interface{}, error) {
-	if builtin.IsAccountActor(act.Code) { // Account code special case
-		return nil, nil
-	}
-
 	vmActor, err := codeLoader.GetVMActor(act.Code)
 	if err != nil {
 		return nil, fmt.Errorf("state type for actor %s not found", act.Code)
 	}
 
 	um := vmActor.State()
+	if um == nil {
+		if act.Head != vmcontext.EmptyObjectCid {
+			return nil, fmt.Errorf("actor with code %s should only have empty object (%s) as its Head, instead has %s", act.Code, vmcontext.EmptyObjectCid, act.Head)
+		}
+		return nil, nil
+	}
 	if err := um.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, fmt.Errorf("unmarshaling actor state: %w", err)
 	}

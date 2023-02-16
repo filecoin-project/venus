@@ -14,6 +14,8 @@ import (
 
 func TestNetworkNamtToNetworkType(t *testing.T) {
 	tf.UnitTest(t)
+	assert.Len(t, NetworkTypeWithNetworkName, 6)
+	assert.Len(t, NetworkNameWithNetworkType, 6)
 	for nt, nn := range NetworkTypeWithNetworkName {
 		got, err := NetworkNameToNetworkType(nn)
 		assert.Nil(t, err)
@@ -44,18 +46,12 @@ func TestLoadBuiltinActors(t *testing.T) {
 
 	for nn := range NetworkNameWithNetworkType {
 		full.EXPECT().StateNetworkName(ctx).Return(nn, nil)
-
 		assert.Nil(t, LoadBuiltinActors(ctx, full))
 
 		for _, actorsMetadata := range actors.EmbeddedBuiltinActorsMetadata {
 			if actorsMetadata.Network == string(nn) {
 				for name, actor := range actorsMetadata.Actors {
-					res, ok := actors.GetActorCodeID(actorsMetadata.Version, name)
-					assert.True(t, ok)
-					assert.Equal(t, actor, res)
-
-					_, ok2 := MethodsMap[actor]
-					assert.True(t, ok2)
+					checkActorCode(t, actorsMetadata.Version, actor, name, actorsMetadata.Network)
 				}
 			}
 		}

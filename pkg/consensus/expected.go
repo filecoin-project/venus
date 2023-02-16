@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/ipfs/go-cid"
@@ -127,6 +128,9 @@ type Expected struct {
 
 	// block validator before process tipset
 	blockValidator *BlockValidator
+
+	netParamCfg  *config.NetworkParamsConfig
+	returnEvents bool
 }
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
@@ -140,8 +144,10 @@ func NewExpected(cs cbor.IpldStore,
 	blockValidator *BlockValidator,
 	syscalls vm.SyscallsImpl,
 	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
+	netParamCfg *config.NetworkParamsConfig,
+	returnEvents bool,
 ) *Expected {
-	processor := NewDefaultProcessor(syscalls, circulatingSupplyCalculator)
+	processor := NewDefaultProcessor(syscalls, circulatingSupplyCalculator, chainState, netParamCfg)
 	return &Expected{
 		processor:        processor,
 		syscallsImpl:     syscalls,
@@ -153,13 +159,15 @@ func NewExpected(cs cbor.IpldStore,
 		fork:             fork,
 		gasPirceSchedule: gasPirceSchedule,
 		blockValidator:   blockValidator,
+		netParamCfg:      netParamCfg,
+		returnEvents:     returnEvents,
 	}
 }
 
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.ExecCallBack) (cid.Cid, cid.Cid, error) {
 	begin := time.Now()
 	defer func() {
 		logExpect.Infof("process ts height %d, blocks %d, took %.4f(s)", ts.Height(), ts.Len(), time.Since(begin).Seconds())
@@ -203,11 +211,15 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 		BaseFee:             ts.At(0).ParentBaseFee,
 		Fork:                c.fork,
 		Epoch:               ts.At(0).Height,
+		Timestamp:           ts.MinTimestamp(),
 		GasPriceSchedule:    c.gasPirceSchedule,
 		Bsstore:             c.bstore,
 		PRoot:               ts.At(0).ParentStateRoot,
 		SysCallsImpl:        c.syscallsImpl,
+		TipSetGetter:        vmcontext.TipSetGetterForTipset(c.chainState.GetTipSetByHeight, ts),
 		Tracing:             false,
+		ActorDebugging:      c.netParamCfg.ActorDebugging,
+		ReturnEvents:        c.returnEvents,
 	}
 
 	var parentEpoch abi.ChainEpoch
@@ -215,7 +227,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 		parentEpoch = pts.Height()
 	}
 
-	root, receipts, err := c.processor.ApplyBlocks(ctx, blockMessageInfo, ts, ts.ParentState(), parentEpoch, ts.Height(), vmOption, nil)
+	root, receipts, err := c.processor.ApplyBlocks(ctx, blockMessageInfo, ts, ts.ParentState(), parentEpoch, ts.Height(), vmOption, cb)
 	if err != nil {
 		return cid.Undef, cid.Undef, errors.Wrap(err, "error validating tipset")
 	}

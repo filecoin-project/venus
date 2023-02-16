@@ -194,7 +194,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "TipSetKey": [
     {
@@ -261,7 +262,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "TipSetKey": [
     {
@@ -326,7 +328,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "TipSetKey": [
     {
@@ -393,7 +396,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "TipSetKey": [
     {
@@ -574,7 +578,8 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": null
     },
     "TipSetKey": [
       {
@@ -636,7 +641,8 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": null
     },
     "TipSetKey": [
       {
@@ -698,7 +704,8 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": null
     },
     "TipSetKey": [
       {
@@ -765,7 +772,8 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": null
     },
     "TipSetKey": [
       {
@@ -836,7 +844,8 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": null
     },
     "TipSetKey": [
       {
@@ -1344,7 +1353,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "TipSetKey": [
     {

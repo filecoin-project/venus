@@ -7,13 +7,12 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	cbg "github.com/whyrusleeping/cbor-gen"
-
-	"github.com/filecoin-project/go-address"
 )
 
 const dsKeyActorNonce = "ActorNextNonce"
@@ -56,12 +55,17 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb
 	// Sign the message with the nonce
 	msg.Nonce = nonce
 
+	sb, err := msg.SigningBytes(types.AddressProtocol2SignType(msg.From.Protocol()))
+	if err != nil {
+		return nil, err
+	}
+
 	mb, err := msg.ToStorageBlock()
 	if err != nil {
 		return nil, fmt.Errorf("serializing message: %w", err)
 	}
 
-	sig, err := ms.wallet.WalletSign(ctx, msg.From, mb.Cid().Bytes(), types.MsgMeta{
+	sig, err := ms.wallet.WalletSign(ctx, msg.From, sb, types.MsgMeta{
 		Type:  types.MTChainMsg,
 		Extra: mb.RawData(),
 	})

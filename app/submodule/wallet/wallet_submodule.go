@@ -55,7 +55,7 @@ func NewWalletSubmodule(ctx context.Context,
 
 	var adapter wallet.WalletIntersection
 	if repo.Config().Wallet.RemoteEnable {
-		if repo.Config().Wallet.RemoteBackend == wallet.StringEmpty {
+		if len(repo.Config().Wallet.RemoteBackend) == 0 {
 			return nil, errors.New("remote backend is empty")
 		}
 		adapter, err = remotewallet.SetupRemoteWallet(repo.Config().Wallet.RemoteBackend)

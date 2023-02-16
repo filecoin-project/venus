@@ -252,7 +252,11 @@ func (store *Store) loadHead(ctx context.Context) (*types.TipSet, error) {
 	var tsk types.TipSetKey
 	err = tsk.UnmarshalCBOR(bytes.NewReader(tskBytes))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to cast headCids")
+		// todo: remove after nv18
+		err = tsk.V0UnmarshalCBOR(bytes.NewReader(tskBytes))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to cast headCids")
+		}
 	}
 
 	return store.GetTipSet(ctx, tsk)
@@ -385,6 +389,24 @@ func (store *Store) GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h a
 	}
 
 	return store.GetTipSet(ctx, lbts.Parents())
+}
+
+func (store *Store) GetTipSetByCid(ctx context.Context, c cid.Cid) (*types.TipSet, error) {
+	blk, err := store.bsstore.Get(ctx, c)
+	if err != nil {
+		return nil, fmt.Errorf("cannot find tipset with cid %s: %w", c, err)
+	}
+
+	tsk := new(types.TipSetKey)
+	if err := tsk.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal block into tipset key: %w", err)
+	}
+
+	ts, err := store.GetTipSet(ctx, *tsk)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get tipset from key: %w", err)
+	}
+	return ts, nil
 }
 
 // GetTipSetState returns the aggregate state of the tipset identified by `key`.
@@ -548,7 +570,19 @@ func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
 		old: dropped,
 		new: added,
 	}
+
+	store.persistTipSetKey(ctx, newTS.Key())
+
 	return nil
+}
+
+func (store *Store) persistTipSetKey(ctx context.Context, key types.TipSetKey) {
+	tskBlk, err := key.ToStorageBlock()
+	if err != nil {
+		log.Errorf("failed to create a block from tsk: %s", key)
+	}
+
+	_ = store.bsstore.Put(ctx, tskBlk)
 }
 
 func (store *Store) reorgWorker(ctx context.Context) chan reorg {
@@ -679,10 +713,10 @@ func (store *Store) ReadOnlyStateStore() util.ReadOnlyIpldStore {
 }
 
 // writeHead writes the given cid set as head to disk.
-func (store *Store) writeHead(ctx context.Context, cids types.TipSetKey) error {
-	log.Debugf("WriteHead %s", cids.String())
+func (store *Store) writeHead(ctx context.Context, tsk types.TipSetKey) error {
+	log.Debugf("WriteHead %s", tsk.String())
 	buf := new(bytes.Buffer)
-	err := cids.MarshalCBOR(buf)
+	err := tsk.MarshalCBOR(buf)
 	if err != nil {
 		return err
 	}
@@ -1015,6 +1049,10 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 		if err != nil {
 			return nil, err
 		}
+
+		// save tipsetkey
+		store.persistTipSetKey(ctx, curParentTipset.Key())
+
 		curTipset = curParentTipset
 	}
 
@@ -1083,7 +1121,8 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 			a == builtin.CronActorAddr ||
 			a == builtin.BurntFundsActorAddr ||
 			a == builtin.SaftAddress ||
-			a == builtin.ReserveAddress:
+			a == builtin.ReserveAddress ||
+			a == builtin.EthereumAddressManagerActorAddr:
 
 			unCirc = big.Add(unCirc, actor.Balance)
 
@@ -1101,7 +1140,12 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 			circ = big.Add(circ, big.Sub(actor.Balance, lb))
 			unCirc = big.Add(unCirc, lb)
 
-		case builtin.IsAccountActor(actor.Code) || builtin.IsPaymentChannelActor(actor.Code):
+		case builtin.IsAccountActor(actor.Code) ||
+			builtin.IsPaymentChannelActor(actor.Code) ||
+			builtin.IsEthAccountActor(actor.Code) ||
+			builtin.IsEvmActor(actor.Code) ||
+			builtin.IsPlaceholderActor(actor.Code):
+
 			circ = big.Add(circ, actor.Balance)
 
 		case builtin.IsStorageMinerActor(actor.Code):
@@ -1330,15 +1374,15 @@ func (store *Store) LookupID(ctx context.Context, ts *types.TipSet, addr address
 	return st.LookupID(addr)
 }
 
-// ResolveToKeyAddr get key address of specify address.
+// ResolveToDeterministicAddress get key address of specify address.
 // if ths addr is bls/secpk address, return directly, other get the pubkey and generate address
-func (store *Store) ResolveToKeyAddr(ctx context.Context, ts *types.TipSet, addr address.Address) (address.Address, error) {
+func (store *Store) ResolveToDeterministicAddress(ctx context.Context, ts *types.TipSet, addr address.Address) (address.Address, error) {
 	st, err := store.StateView(ctx, ts)
 	if err != nil {
 		return address.Undef, errors.Wrap(err, "failed to load latest state")
 	}
 
-	return st.ResolveToKeyAddr(ctx, addr)
+	return st.ResolveToDeterministicAddress(ctx, addr)
 }
 
 // StateView return state view at ts epoch

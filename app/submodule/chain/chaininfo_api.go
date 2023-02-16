@@ -2,24 +2,35 @@ package chain
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"math"
+	"reflect"
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/utils"
 )
 
 var _ v1api.IChainInfo = &chainInfoAPI{}
@@ -309,7 +320,7 @@ func (cia *chainInfoAPI) ResolveToKeyAddr(ctx context.Context, addr address.Addr
 	if ts == nil {
 		ts = cia.chain.ChainReader.GetHead()
 	}
-	return cia.chain.Stmgr.ResolveToKeyAddress(ctx, addr, ts)
+	return cia.chain.Stmgr.ResolveToDeterministicAddress(ctx, addr, ts)
 }
 
 // ************Drand****************//
@@ -512,6 +523,27 @@ func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, from types.TipSetKe
 	return nil, nil
 }
 
+var ErrMetadataNotFound = errors.New("actor metadata not found")
+
+func (cia *chainInfoAPI) getReturnType(ctx context.Context, to address.Address, method abi.MethodNum) (cbg.CBORUnmarshaler, error) {
+	ts, err := cia.ChainHead(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to got head %v", err)
+	}
+	act, err := cia.chain.Stmgr.GetActorAt(ctx, to, ts)
+	if err != nil {
+		return nil, fmt.Errorf("(get sset) failed to load actor: %w", err)
+	}
+
+	m, found := utils.MethodsMap[act.Code][method]
+
+	if !found {
+		return nil, fmt.Errorf("unknown method %d for actor %s: %w", method, act.Code, ErrMetadataNotFound)
+	}
+
+	return reflect.New(m.Ret.Elem()).Interface().(cbg.CBORUnmarshaler), nil
+}
+
 // StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
 // message arrives on chain, and gets to the indicated confidence depth.
 func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
@@ -524,11 +556,34 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 		return nil, err
 	}
 	if msgResult != nil {
+		var returndec interface{}
+		recpt := msgResult.Receipt
+		if recpt.ExitCode == 0 && len(recpt.Return) > 0 {
+			vmsg := chainMsg.VMMessage()
+			switch t, err := cia.getReturnType(ctx, vmsg.To, vmsg.Method); {
+			case errors.Is(err, ErrMetadataNotFound):
+				// This is not necessarily an error -- EVM methods (and in the future native actors) may
+				// return just bytes, and in the not so distant future we'll have native wasm actors
+				// that are by definition not in the registry.
+				// So in this case, log a debug message and retun the raw bytes.
+				log.Debugf("failed to get return type: %s", err)
+				returndec = recpt.Return
+			case err != nil:
+				return nil, fmt.Errorf("failed to get return type: %w", err)
+			default:
+				if err := t.UnmarshalCBOR(bytes.NewReader(recpt.Return)); err != nil {
+					return nil, err
+				}
+				returndec = t
+			}
+		}
+
 		return &types.MsgLookup{
-			Message: mCid,
-			Receipt: *msgResult.Receipt,
-			TipSet:  msgResult.TS.Key(),
-			Height:  msgResult.TS.Height(),
+			Message:   mCid,
+			Receipt:   *msgResult.Receipt,
+			ReturnDec: returndec,
+			TipSet:    msgResult.TS.Key(),
+			Height:    msgResult.TS.Height(),
 		}, nil
 	}
 	return nil, nil
@@ -662,6 +717,7 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 			UpgradeOhSnapHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight,
 			UpgradeSkyrHeight:        cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight,
 			UpgradeSharkHeight:       cfg.NetworkParams.ForkUpgradeParam.UpgradeSharkHeight,
+			UpgradeHyggeHeight:       cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight,
 		},
 	}
 
@@ -672,27 +728,14 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 func (cia *chainInfoAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (map[string]cid.Cid, error) {
 	actorVersion, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
-		return nil, fmt.Errorf("invalid network version")
+		return nil, fmt.Errorf("invalid network version %d: %w", nv, err)
 	}
 
-	cids := make(map[string]cid.Cid)
-
-	manifestCid, ok := actors.GetManifest(actorVersion)
-	if !ok {
-		return nil, fmt.Errorf("cannot get manifest CID")
+	cids, err := actors.GetActorCodeIDs(actorVersion)
+	if err != nil {
+		return nil, fmt.Errorf("could not find cids for network version %d, actors version %d: %w", nv, actorVersion, err)
 	}
 
-	cids["_manifest"] = manifestCid
-
-	actorKeys := actors.GetBuiltinActorsKeys(actorVersion)
-	for _, name := range actorKeys {
-		actorCID, ok := actors.GetActorCodeID(actorVersion, name)
-		if !ok {
-			return nil, fmt.Errorf("didn't find actor %v code id for actor version %d", name,
-				actorVersion)
-		}
-		cids[name] = actorCID
-	}
 	return cids, nil
 }
 
@@ -727,23 +770,115 @@ func (cia *chainInfoAPI) StateActorManifestCID(ctx context.Context, nv network.V
 // message is not applied on-top-of the messages in the passed-in
 // tipset.
 func (cia *chainInfoAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) {
-	start := time.Now()
 	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("loading tipset %s: %v", tsk, err)
 	}
-	ret, err := cia.chain.Stmgr.Call(ctx, msg, ts)
+	var res *types.InvocResult
+	for {
+		res, err = cia.chain.Stmgr.Call(ctx, msg, ts)
+		if err != fork.ErrExpensiveFork {
+			break
+		}
+		ts, err = cia.chain.ChainReader.GetTipSet(ctx, ts.Parents())
+		if err != nil {
+			return nil, fmt.Errorf("getting parent tipset: %w", err)
+		}
+	}
+
+	return res, nil
+}
+
+// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
+//
+// If a tipset key is provided, and a replacing message is not found on chain,
+// the method will return an error saying that the message wasn't found
+//
+// If no tipset key is provided, the appropriate tipset is looked up, and if
+// the message was gas-repriced, the on-chain message will be replayed - in
+// that case the returned InvocResult.MsgCid will not match the Cid param
+//
+// If the caller wants to ensure that exactly the requested message was executed,
+// they MUST check that InvocResult.MsgCid is equal to the provided Cid.
+// Without this check both the requested and original message may appear as
+// successfully executed on-chain, which may look like a double-spend.
+//
+// A replacing message is a message with a different CID, any of Gas values, and
+// different signature, but with all other parameters matching (source/destination,
+// nonce, params, etc.)
+func (cia *chainInfoAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*types.InvocResult, error) {
+	msgToReplay := mc
+	var ts *types.TipSet
+	var err error
+	if tsk == types.EmptyTSK {
+		mlkp, err := cia.StateSearchMsg(ctx, types.EmptyTSK, mc, constants.LookbackNoLimit, true)
+		if err != nil {
+			return nil, fmt.Errorf("searching for msg %s: %w", mc, err)
+		}
+		if mlkp == nil {
+			return nil, fmt.Errorf("didn't find msg %s", mc)
+		}
+
+		msgToReplay = mlkp.Message
+
+		executionTS, err := cia.ChainGetTipSet(ctx, mlkp.TipSet)
+		if err != nil {
+			return nil, fmt.Errorf("loading tipset %s: %w", mlkp.TipSet, err)
+		}
+
+		ts, err = cia.ChainGetTipSet(ctx, executionTS.Parents())
+		if err != nil {
+			return nil, fmt.Errorf("loading parent tipset %s: %w", mlkp.TipSet, err)
+		}
+	} else {
+		ts, err = cia.ChainGetTipSet(ctx, tsk)
+		if err != nil {
+			return nil, fmt.Errorf("loading specified tipset %s: %w", tsk, err)
+		}
+	}
+
+	m, r, err := cia.chain.Stmgr.Replay(ctx, ts, msgToReplay)
 	if err != nil {
 		return nil, err
 	}
-	duration := time.Since(start)
 
-	mcid := msg.Cid()
+	var errstr string
+	if r.ActorErr != nil {
+		errstr = r.ActorErr.Error()
+	}
+
 	return &types.InvocResult{
-		MsgCid:         mcid,
-		Msg:            msg,
-		MsgRct:         &ret.Receipt,
-		ExecutionTrace: types.ExecutionTrace{},
-		Duration:       duration,
+		MsgCid:         msgToReplay,
+		Msg:            m,
+		MsgRct:         &r.Receipt,
+		GasCost:        statemanger.MakeMsgGasCost(m, r),
+		ExecutionTrace: r.GasTracker.ExecutionTrace,
+		Error:          errstr,
+		Duration:       r.Duration,
 	}, nil
+}
+
+// ChainGetEvents returns the events under an event AMT root CID.
+func (cia *chainInfoAPI) ChainGetEvents(ctx context.Context, root cid.Cid) ([]types.Event, error) {
+	store := cbor.NewCborStore(cia.chain.ChainReader.Blockstore())
+	evtArr, err := amt4.LoadAMT(ctx, store, root, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
+	if err != nil {
+		return nil, fmt.Errorf("load events amt: %w", err)
+	}
+
+	ret := make([]types.Event, 0, evtArr.Len())
+	var evt types.Event
+	err = evtArr.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
+		if u > math.MaxInt {
+			return fmt.Errorf("too many events")
+		}
+		if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
+			return err
+		}
+
+		ret = append(ret, evt)
+		return nil
+	})
+
+	return ret, err
 }

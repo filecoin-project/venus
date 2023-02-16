@@ -114,7 +114,7 @@ func (walletAPI *WalletAPI) WalletDelete(ctx context.Context, addr address.Addre
 
 // WalletSign signs the given bytes using the given address.
 func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) {
-	keyAddr, err := walletAPI.walletModule.Chain.Stmgr.ResolveToKeyAddress(ctx, k, nil)
+	keyAddr, err := walletAPI.walletModule.Chain.Stmgr.ResolveToDeterministicAddress(ctx, k, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ResolveTokeyAddress failed:%v", err)
 	}
@@ -123,12 +123,16 @@ func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, m
 
 // WalletSignMessage signs the given message using the given address.
 func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
+	sb, err := msg.SigningBytes(types.AddressProtocol2SignType(k.Protocol()))
+	if err != nil {
+		return nil, err
+	}
 	mb, err := msg.ToStorageBlock()
 	if err != nil {
 		return nil, fmt.Errorf("serializing message: %w", err)
 	}
 
-	sign, err := walletAPI.WalletSign(ctx, k, mb.Cid().Bytes(), types.MsgMeta{Type: types.MTChainMsg})
+	sign, err := walletAPI.WalletSign(ctx, k, sb, types.MsgMeta{Type: types.MTChainMsg, Extra: mb.RawData()})
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign message: %w", err)
 	}

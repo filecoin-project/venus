@@ -7,13 +7,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/venus/pkg/crypto"
-	_ "github.com/filecoin-project/venus/pkg/crypto/bls"  // enable bls signatures
-	_ "github.com/filecoin-project/venus/pkg/crypto/secp" // enable secp signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"       // enable bls signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/delegated" // enable delegated signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"      // enable secp signatures
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
-func writeKey(ki *crypto.KeyInfo, name string, jsonout bool) error {
+func writeKey(ki *key.KeyInfo, name string, jsonout bool) error {
 	addr, err := ki.Address()
 	if err != nil {
 		return err

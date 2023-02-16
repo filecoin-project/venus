@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/venus/fixtures/assets"
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/venus-shared/actors"
+	types2 "github.com/filecoin-project/venus/venus-shared/actors/types"
 	"github.com/filecoin-project/venus/venus-shared/utils"
 
 	"github.com/filecoin-project/venus/pkg/util/ulimit"
@@ -121,7 +122,7 @@ func initRun(req *cmds.Request) error {
 	cfg := rep.Config()
 	network, _ := req.Options[Network].(string)
 	if err := networks.SetConfigFromOptions(cfg, network); err != nil {
-		return fmt.Errorf("setting config %v", err)
+		return fmt.Errorf("setting config: %v", err)
 	}
 	// genesis node
 	if mkGen, ok := req.Options[makeGenFlag].(string); ok {
@@ -179,6 +180,8 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 		return err
 	}
 	utils.ReloadMethodsMap()
+	types2.SetEip155ChainID(config.NetworkParams.Eip155ChainID)
+	log.Infof("Eip155ChainId %v", types2.Eip155ChainID)
 
 	// second highest precedence is env vars.
 	if envAPI := os.Getenv("VENUS_API"); envAPI != "" {

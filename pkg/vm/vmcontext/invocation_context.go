@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/ipfs/go-cid"
@@ -21,7 +22,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
@@ -328,7 +328,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 		if err != nil {
 			panic(err)
 		}
-		actorCode, found := actors.GetActorCodeID(ver, actors.AccountKey)
+		actorCode, found := actors.GetActorCodeID(ver, manifest.AccountKey)
 		if !found {
 			panic(fmt.Errorf("failed to get account actor code ID for actors version %d", ver))
 		}
@@ -383,22 +383,8 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 	}
 }
 
-func (ctx *invocationContext) resolveToKeyAddr(addr address.Address) (address.Address, error) {
-	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
-		return addr, nil
-	}
-
-	act, found, err := ctx.vm.State.GetActor(ctx.vm.context, addr)
-	if !found || err != nil {
-		return address.Undef, fmt.Errorf("failed to find actor: %s", addr)
-	}
-
-	aast, err := account.Load(adt.WrapStore(ctx.vm.context, ctx.vm.store), act)
-	if err != nil {
-		return address.Undef, fmt.Errorf("failed to get account actor State for %s: %v", addr, err)
-	}
-
-	return aast.PubkeyAddress()
+func (ctx *invocationContext) resolveToDeterministicAddress(addr address.Address) (address.Address, error) {
+	return ResolveToDeterministicAddress(ctx.vm.context, ctx.vm.State, addr, ctx.vm.store)
 }
 
 // implement runtime.InvocationContext for invocationContext
@@ -487,7 +473,7 @@ var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 // Code is adapted from vm.Runtime#NewActorAddress()
 func (ctx *invocationContext) NewActorAddress() address.Address {
 	buf := new(bytes.Buffer)
-	origin, err := ctx.resolveToKeyAddr(ctx.topLevel.originatorStableAddress)
+	origin, err := ctx.resolveToDeterministicAddress(ctx.topLevel.originatorStableAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -538,6 +524,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 		Balance: abi.NewTokenAmount(0),
 		Head:    EmptyObjectCid,
 		Nonce:   0,
+		Address: &addr,
 	}
 	if err := ctx.vm.State.SetActor(ctx.vm.context, addr, newActor); err != nil {
 		panic(err)

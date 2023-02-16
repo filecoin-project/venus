@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/venus/venus-shared/actors/types"
 )
 
-type RawMessage = internal.RawMessage
+type RawMessage = types.RawMessage

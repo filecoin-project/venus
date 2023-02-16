@@ -252,14 +252,14 @@ func (tma *testMpoolAPI) GetActorAfter(ctx context.Context, addr address.Address
 	}
 
 	return &types.Actor{
-		Code:    builtin2.StorageMarketActorCodeID,
+		Code:    builtin2.AccountActorCodeID,
 		Nonce:   nonce,
 		Balance: balance,
 	}, nil
 }
 
 func (tma *testMpoolAPI) StateAccountKeyAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	if addr.Protocol() != address.BLS && addr.Protocol() != address.SECP256K1 {
+	if addr.Protocol() != address.BLS && addr.Protocol() != address.SECP256K1 && addr.Protocol() != address.Delegated {
 		return address.Undef, fmt.Errorf("given address was not a key addr")
 	}
 	return addr, nil
@@ -344,7 +344,7 @@ func newWalletAndMpool(t *testing.T, tma *testMpoolAPI) (*wallet.Wallet, *Messag
 
 	builder := chain.NewBuilder(t, address.Undef)
 	eval := builder.FakeStateEvaluator()
-	stmgr := statemanger.NewStateManger(builder.Store(), eval, nil, fork.NewMockFork(), nil, nil)
+	stmgr := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), eval, nil, fork.NewMockFork(), nil, nil, false)
 
 	mp, err := New(context.Background(), tma, stmgr, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
@@ -491,11 +491,12 @@ func TestCheckMessageBig(t *testing.T) {
 			GasPremium: types.NewInt(1),
 			Params:     make([]byte, 41<<10), // 41KiB payload
 		}
+		sb, err := msg.SigningBytes(types.AddressProtocol2SignType(from.Protocol()))
+		assert.NoError(t, err)
 
-		sig, err := w.WalletSign(context.Background(), from, msg.Cid().Bytes(), types.MsgMeta{})
-		if err != nil {
-			panic(err)
-		}
+		sig, err := w.WalletSign(context.Background(), from, sb, types.MsgMeta{})
+		assert.NoError(t, err)
+
 		sm := &types.SignedMessage{
 			Message:   *msg,
 			Signature: *sig,
@@ -515,7 +516,10 @@ func TestCheckMessageBig(t *testing.T) {
 			Params:     make([]byte, 64<<10), // 64KiB payload
 		}
 
-		sig, err := w.WalletSign(context.Background(), from, msg.Cid().Bytes(), types.MsgMeta{})
+		sb, err := msg.SigningBytes(types.AddressProtocol2SignType(from.Protocol()))
+		assert.NoError(t, err)
+
+		sig, err := w.WalletSign(context.Background(), from, sb, types.MsgMeta{})
 		if err != nil {
 			panic(err)
 		}

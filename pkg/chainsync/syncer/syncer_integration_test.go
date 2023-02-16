@@ -40,7 +40,7 @@ func TestLoadFork(t *testing.T) {
 	sel := &chain.FakeChainSelector{}
 
 	blockValidator := builder.FakeStateEvaluator()
-	stmgr := statemanger.NewStateManger(builder.Store(), blockValidator, nil, nil, nil, nil)
+	stmgr := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), blockValidator, nil, nil, nil, nil, false)
 
 	s, err := syncer.NewSyncer(stmgr, blockValidator, sel, builder.Store(),
 		builder.Mstore(), builder.BlockStore(), builder, clock.NewFake(time.Unix(1234567890, 0)), nil)
@@ -73,7 +73,7 @@ func TestLoadFork(t *testing.T) {
 	assert.Error(t, s.HandleNewTipSet(ctx, rightTarget))
 	verifyHead(t, builder.Store(), left)
 
-	_, _, err = blockValidator.RunStateTransition(ctx, blockValidator.ChainStore.GetHead())
+	_, _, err = blockValidator.RunStateTransition(ctx, blockValidator.ChainStore.GetHead(), nil)
 	require.NoError(t, err)
 
 	// The syncer/bsstore assume that the fetcher populates the underlying block bsstore such that

@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/common"
 	configModule "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
+	"github.com/filecoin-project/venus/app/submodule/eth"
 	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
@@ -30,8 +31,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
-	_ "github.com/filecoin-project/venus/pkg/crypto/bls"  // enable bls signatures
-	_ "github.com/filecoin-project/venus/pkg/crypto/secp" // enable secp signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"       // enable bls signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/delegated" // enable delegated signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"      // enable secp signatures
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/repo"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -94,6 +96,8 @@ type Node struct {
 	paychan *paych.PaychSubmodule
 
 	common *common.CommonModule
+
+	eth *eth.EthSubModule
 
 	//
 	// Jsonrpc
@@ -190,11 +194,21 @@ func (node *Node) Start(ctx context.Context) error {
 		return err
 	}
 
+	if err := node.eth.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start eth module %v", err)
+	}
+
 	return nil
 }
 
 // Stop initiates the shutdown of the node.
 func (node *Node) Stop(ctx context.Context) {
+	// stop eth submodule
+	log.Infof("closing eth ...")
+	if err := node.eth.Close(ctx); err != nil {
+		log.Warnf("error closing eth: %s", err)
+	}
+
 	// stop mpool submodule
 	log.Infof("shutting down mpool...")
 	node.mpool.Stop(ctx)
@@ -358,6 +372,7 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		MarketAPI:            node.market.API(),
 		MultiSigAPI:          &apiwrapper.WrapperV1IMultiSig{IMultiSig: node.multiSig.API(), IMessagePool: node.mpool.API()},
 		CommonAPI:            node.common,
+		EthAPI:               node.eth.API(),
 	}
 
 	return &env

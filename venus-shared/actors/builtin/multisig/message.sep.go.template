@@ -16,12 +16,13 @@ import (
         actorstypes "github.com/filecoin-project/go-state-types/actors"
         multisig{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}multisig"
         init{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin/v{{.latestVersion}}/init"
+	    "github.com/filecoin-project/go-state-types/manifest"
     {{end}}
 
     builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
-	types "github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/venus/venus-shared/actors/types"
 )
 
 type message{{.v}} struct{ {{if (ge .v 2)}}message0{{else}}from address.Address{{end}} }
@@ -70,7 +71,7 @@ func (m message{{.v}}) Create(
             ConstructorParams: enc,
         }
 	{{else}}
-        code, ok := actors.GetActorCodeID(actorstypes.Version{{.v}}, actors.MultisigKey)
+        code, ok := actors.GetActorCodeID(actorstypes.Version{{.v}}, manifest.MultisigKey)
         if !ok {
             return nil, fmt.Errorf("failed to get multisig code ID")
         }

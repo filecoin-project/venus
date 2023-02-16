@@ -70,10 +70,13 @@ func Mainnet() *NetworkConf {
 				UpgradeOhSnapHeight:     1594680, // 2022-03-01T15:00:00Z
 				UpgradeSkyrHeight:       1960320, // 2022-07-06T14:00:00Z
 				UpgradeSharkHeight:      2383680, // 2022-11-30T14:00:00Z
+				UpgradeHyggeHeight:      99999999999999,
 			},
 			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:       address.Mainnet,
 			PropagationDelaySecs: 10,
+			Eip155ChainID:        314,
+			ActorDebugging:       false,
 		},
 	}
 }
