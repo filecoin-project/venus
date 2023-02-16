@@ -11,6 +11,7 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [AuthVerify](#authverify)
   * [LogList](#loglist)
   * [LogSetLevel](#logsetlevel)
+  * [QuerySignRecord](#querysignrecord)
   * [Version](#version)
 * [Wallet](#wallet)
   * [WalletDelete](#walletdelete)
@@ -96,6 +97,41 @@ Inputs:
 ```
 
 Response: `{}`
+
+### QuerySignRecord
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "ID": "string value",
+    "Type": "message",
+    "Signer": "f01234",
+    "IsError": true,
+    "Skip": 123,
+    "Limit": 123,
+    "After": "0001-01-01T00:00:00Z",
+    "Before": "0001-01-01T00:00:00Z"
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": "string value",
+    "Type": "message",
+    "Signer": "f01234",
+    "Err": {},
+    "Msg": "Ynl0ZSBhcnJheQ==",
+    "CreateAt": "0001-01-01T00:00:00Z"
+  }
+]
+```
 
 ### Version
 Version provides information about API provider

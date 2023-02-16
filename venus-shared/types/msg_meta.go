@@ -1,5 +1,11 @@
 package types
 
+import (
+	"time"
+
+	"github.com/filecoin-project/go-address"
+)
+
 type MsgType string
 
 const (
@@ -39,4 +45,24 @@ type MsgMeta struct {
 	// Additional data related to what is signed. Should be verifiable with the
 	// signed bytes (e.g. CID(Extra).Bytes() == toSign)
 	Extra []byte
+}
+
+type QuerySignRecordParams struct {
+	ID      string
+	Type    MsgType
+	Signer  address.Address
+	IsError bool
+	Skip    int
+	Limit   int
+	After   time.Time
+	Before  time.Time
+}
+
+type SignRecord struct {
+	ID       string
+	Type     MsgType
+	Signer   address.Address
+	Err      error
+	Msg      []byte
+	CreateAt time.Time
 }
