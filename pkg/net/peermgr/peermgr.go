@@ -11,6 +11,8 @@ import (
 	host "github.com/libp2p/go-libp2p/core/host"
 	net "github.com/libp2p/go-libp2p/core/network"
 	peer "github.com/libp2p/go-libp2p/core/peer"
+	swarm "github.com/libp2p/go-libp2p/p2p/net/swarm"
+	ma "github.com/multiformats/go-multiaddr"
 
 	logging "github.com/ipfs/go-log/v2"
 )
@@ -18,8 +20,8 @@ import (
 var log = logging.Logger("peermgr")
 
 const (
-	MaxFilPeers = 320
-	MinFilPeers = 128
+	MaxFilPeers = 4200
+	MinFilPeers = 4000
 )
 
 type IPeerMgr interface {
@@ -59,6 +61,8 @@ type PeerMgr struct {
 
 	period time.Duration
 	done   chan struct{}
+
+	sender chan *PeerInfo
 }
 
 type FilPeerEvt struct {
@@ -87,6 +91,8 @@ func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, period time.Duration, bootstrap [
 
 		done:   make(chan struct{}),
 		period: period,
+
+		sender: make(chan *PeerInfo, 100),
 	}
 	emitter, err := h.EventBus().Emitter(new(FilPeerEvt))
 	if err != nil {
@@ -94,9 +100,37 @@ func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, period time.Duration, bootstrap [
 	}
 	pm.filPeerEmitter = emitter
 
+	s := newStat(pm.sender, func(id peer.ID) {
+		pm.connect(id)
+	})
+	s.start(context.Background())
+
+	go func() {
+		ticker := time.NewTicker(3 * time.Minute)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			l := len(h.Network().Conns())
+			seen := make(map[peer.ID]struct{}, l)
+
+			for _, conn := range h.Network().Conns() {
+				if _, ok := seen[conn.RemotePeer()]; ok {
+					continue
+				}
+				seen[conn.RemotePeer()] = struct{}{}
+				pm.send(conn.RemotePeer(), conn.RemoteMultiaddr().String())
+			}
+
+			log.Infof("connected peers len %d")
+		}
+	}()
+
 	pm.notifee = &net.NotifyBundle{
 		DisconnectedF: func(_ net.Network, c net.Conn) {
 			pm.Disconnect(c.RemotePeer())
+		},
+		ConnectedF: func(n net.Network, c net.Conn) {
+			pm.send(c.RemotePeer(), c.RemoteMultiaddr().String())
 		},
 	}
 
@@ -107,6 +141,10 @@ func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, period time.Duration, bootstrap [
 
 func (pmgr *PeerMgr) AddFilecoinPeer(p peer.ID) {
 	_ = pmgr.filPeerEmitter.Emit(FilPeerEvt{Type: AddFilPeerEvt, ID: p}) //nolint:errcheck
+
+	pi := pmgr.h.Peerstore().PeerInfo(p)
+	pmgr.send(p, firstAddr(pi.Addrs))
+
 	pmgr.peersLk.Lock()
 	defer pmgr.peersLk.Unlock()
 	pmgr.peers[p] = time.Duration(0)
@@ -217,6 +255,57 @@ func (pmgr *PeerMgr) doExpand(ctx context.Context) {
 	if err := pmgr.dht.Bootstrap(ctx); err != nil {
 		log.Warnf("dht bootstrapping failed: %s", err)
 	}
+}
+
+func (pmgr *PeerMgr) send(id peer.ID, addr string) {
+	agent, _ := pmgr.getAgent(id)
+
+	pi := &PeerInfo{
+		ID:    id,
+		Addr:  addr,
+		Agent: agent,
+	}
+
+	if len(pi.Agent) == 0 {
+		pmgr.connect(id)
+	}
+
+	go func() {
+		pmgr.sender <- pi
+	}()
+}
+
+func (pmgr *PeerMgr) connect(id peer.ID) {
+	pi := pmgr.h.Peerstore().PeerInfo(id)
+	if swarm, ok := pmgr.h.Network().(*swarm.Swarm); ok {
+		swarm.Backoff().Clear(pi.ID)
+	}
+	if err := pmgr.h.Connect(context.Background(), pi); err != nil {
+		log.Warnf("connect %v failed %v", pi.ID, err)
+	} else {
+		log.Infof("connect %v success", pi.ID)
+	}
+}
+
+func (pmgr *PeerMgr) getAgent(id peer.ID) (string, error) {
+	var agent string
+	agentI, err := pmgr.h.Peerstore().Get(id, "AgentVersion")
+	if err != nil {
+		log.Infof("get agent version failed %v %v", id, err)
+	} else {
+		agent, _ = agentI.(string)
+	}
+
+	return agent, err
+}
+
+func firstAddr(addrs []ma.Multiaddr) string {
+	var addr string
+	if len(addrs) > 0 {
+		addr = addrs[0].String()
+	}
+
+	return addr
 }
 
 type MockPeerMgr struct{}

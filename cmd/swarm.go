@@ -87,10 +87,10 @@ var swarmPeersCmd = &cmds.Command{
 		buf := &bytes.Buffer{}
 		writer := NewSilentWriter(buf)
 
-		if extended {
-			// deduplicate
-			seen := make(map[peer.ID]struct{})
+		// deduplicate
+		seen := make(map[peer.ID]struct{})
 
+		if extended {
 			for _, peer := range peers {
 				_, dup := seen[peer.ID]
 				if dup {
@@ -112,6 +112,12 @@ var swarmPeersCmd = &cmds.Command{
 			}
 		} else {
 			for _, peer := range peers {
+				_, dup := seen[peer.ID]
+				if dup {
+					continue
+				}
+				seen[peer.ID] = struct{}{}
+
 				var agent string
 				if needAgent {
 					agent, err = env.(*node.Env).NetworkAPI.NetAgentVersion(ctx, peer.ID)

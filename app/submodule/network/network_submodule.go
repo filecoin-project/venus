@@ -144,6 +144,12 @@ func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
 		return nil, err
 	}
 
+	cmgr, err := net.NewConnectMgr(2000, 4000)
+	if err != nil {
+		return nil, err
+	}
+	libP2pOpts = append(libP2pOpts, libp2p.ConnectionManager(cmgr))
+
 	// set up host
 	rawHost, err := buildHost(ctx, config, libP2pOpts, config.Repo().Config())
 	if err != nil {
