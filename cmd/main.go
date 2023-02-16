@@ -77,6 +77,8 @@ const (
 	Password = "password"
 
 	AuthServiceURL = "auth-url"
+
+	BootstrapPeers = "bootstrap-peers"
 )
 
 func init() {
