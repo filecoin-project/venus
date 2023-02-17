@@ -37,7 +37,10 @@ func SetConfigFromNetworkType(cfg *config.Config, networkType types.NetworkType)
 	if err != nil {
 		return err
 	}
+	oldAllowableClockDriftSecs := cfg.NetworkParams.AllowableClockDriftSecs
 	cfg.NetworkParams = &netcfg.Network
+	// not change, expect to adjust the value through the configuration file
+	cfg.NetworkParams.AllowableClockDriftSecs = oldAllowableClockDriftSecs
 	return nil
 }
 
