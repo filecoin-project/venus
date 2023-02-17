@@ -377,6 +377,7 @@ func Version11Upgrade(repoPath string) (err error) {
 
 	// add default actor event config
 	cfg.FevmConfig = config.NewDefaultConfig().FevmConfig
+	cfg.NetworkParams.AllowableClockDriftSecs = 1
 
 	switch cfg.NetworkParams.NetworkType {
 	case types.NetworkMainnet:

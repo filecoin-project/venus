@@ -123,6 +123,38 @@ type MessageMatch struct {
 	From address.Address
 }
 
+type MsigTransaction struct {
+	ID     int64
+	To     address.Address
+	Value  abi.TokenAmount
+	Method abi.MethodNum
+	Params []byte
+
+	Approved []address.Address
+}
+
+type MsigVesting struct {
+	InitialBalance abi.TokenAmount
+	StartEpoch     abi.ChainEpoch
+	UnlockDuration abi.ChainEpoch
+}
+
+var EmptyVesting = MsigVesting{
+	InitialBalance: EmptyInt,
+	StartEpoch:     -1,
+	UnlockDuration: -1,
+}
+
+type MsigInfo struct {
+	ApprovalsThreshold uint64
+	Signers            []address.Address
+	InitialBalance     abi.TokenAmount
+	CurrentBalance     abi.TokenAmount
+	LockBalance        abi.TokenAmount
+	StartEpoch         abi.ChainEpoch
+	UnlockDuration     abi.ChainEpoch
+}
+
 // SectorInfo provides information about a sector construction
 type SectorInfo struct {
 	Size         abi.SectorSize

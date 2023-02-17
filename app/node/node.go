@@ -21,8 +21,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
-	"github.com/filecoin-project/venus/app/submodule/multisig"
-	apiwrapper "github.com/filecoin-project/venus/app/submodule/multisig/v0api"
 	network2 "github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
@@ -87,7 +85,6 @@ type Node struct {
 	// Supporting services
 	//
 	wallet            *wallet.WalletSubmodule
-	multiSig          *multisig.MultiSigSubmodule
 	mpool             *mpool.MessagePoolSubmodule
 	storageNetworking *storagenetworking.StorageNetworkingSubmodule
 
@@ -122,10 +119,6 @@ func (node *Node) Mpool() *mpool.MessagePoolSubmodule {
 
 func (node *Node) Wallet() *wallet.WalletSubmodule {
 	return node.wallet
-}
-
-func (node *Node) MultiSig() *multisig.MultiSigSubmodule {
-	return node.multiSig
 }
 
 func (node *Node) Network() *network2.NetworkSubmodule {
@@ -370,7 +363,6 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		MessagePoolAPI:       node.mpool.API(),
 		PaychAPI:             node.paychan.API(),
 		MarketAPI:            node.market.API(),
-		MultiSigAPI:          &apiwrapper.WrapperV1IMultiSig{IMultiSig: node.multiSig.API(), IMessagePool: node.mpool.API()},
 		CommonAPI:            node.common,
 		EthAPI:               node.eth.API(),
 	}

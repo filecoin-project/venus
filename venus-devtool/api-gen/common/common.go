@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"bytes"
@@ -20,10 +20,10 @@ import (
 
 func init() {
 	for _, capi := range util.ChainAPIPairs {
-		apiTargets = append(apiTargets, capi.Venus)
+		ApiTargets = append(ApiTargets, capi.Venus)
 	}
 
-	apiTargets = append(apiTargets,
+	ApiTargets = append(ApiTargets,
 		util.APIMeta{
 			Type: reflect.TypeOf((*messager.IMessager)(nil)).Elem(),
 			ParseOpt: util.InterfaceParseOption{
@@ -103,13 +103,13 @@ func init() {
 	)
 }
 
-var apiTargets []util.APIMeta
+var ApiTargets []util.APIMeta
 
-func structName(ifaceName string) string {
+func StructName(ifaceName string) string {
 	return ifaceName + "Struct"
 }
 
-func outputSourceFile(location, fname string, buf *bytes.Buffer) error {
+func OutputSourceFile(location, fname string, buf *bytes.Buffer) error {
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
 		return fmt.Errorf("format source content: %w", err)

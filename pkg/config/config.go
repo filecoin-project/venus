@@ -263,6 +263,7 @@ type NetworkParamsConfig struct {
 	ForkUpgradeParam        *ForkUpgradeConfig           `json:"-"`
 	PreCommitChallengeDelay abi.ChainEpoch               `json:"-"`
 	PropagationDelaySecs    uint64                       `json:"-"`
+	AllowableClockDriftSecs uint64                       `json:"allowableClockDriftSecs"`
 	// ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
 	// As per https://github.com/ethereum-lists/chains
 	Eip155ChainID int `json:"-"`
@@ -337,10 +338,11 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 			abi.RegisteredSealProof_StackedDrg32GiBV1,
 			abi.RegisteredSealProof_StackedDrg64GiBV1,
 		},
-		DrandSchedule:        map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
-		ForkUpgradeParam:     &defaultParams,
-		PropagationDelaySecs: 10,
-		Eip155ChainID:        314,
+		DrandSchedule:           map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
+		ForkUpgradeParam:        &defaultParams,
+		PropagationDelaySecs:    10,
+		AllowableClockDriftSecs: 1,
+		Eip155ChainID:           314,
 	}
 }
 

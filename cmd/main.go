@@ -98,7 +98,6 @@ var RootCmd = &cmds.Command{
 START RUNNING VENUS
   daemon                 - Start a venus daemon process
   wallet                 - Manage wallet
-  msig                   - Interact with a multisig wallet
   info                   - Print node info
 
 VIEW DATA STRUCTURES
@@ -176,7 +175,6 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"state":   stateCmd,
 	"miner":   minerCmd,
 	"paych":   paychCmd,
-	"msig":    multisigCmd,
 	"info":    infoCmd,
 	"evm":     evmCmd,
 }

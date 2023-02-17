@@ -38,8 +38,6 @@ var (
 
 var logExpect = logging.Logger("consensus")
 
-const AllowableClockDriftSecs = uint64(1)
-
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ApplyBlocks processes all messages in a tip set.
