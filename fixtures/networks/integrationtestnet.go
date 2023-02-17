@@ -50,11 +50,12 @@ func IntegrationNet() *NetworkConf {
 				UpgradeSharkHeight:       2383680,
 				UpgradeHyggeHeight:       99999999999999,
 			},
-			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
-			AddressNetwork:       address.Testnet,
-			PropagationDelaySecs: 10,
-			Eip155ChainID:        314,
-			ActorDebugging:       false,
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
+			AddressNetwork:          address.Testnet,
+			PropagationDelaySecs:    10,
+			AllowableClockDriftSecs: 1,
+			Eip155ChainID:           314,
+			ActorDebugging:          false,
 		},
 	}
 }

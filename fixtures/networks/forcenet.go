@@ -19,7 +19,7 @@ func ForceNet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.NetworkForce,
-			GenesisNetworkVersion: network.Version18,
+			GenesisNetworkVersion: network.Version17,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg8MiBV1,
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
@@ -55,13 +55,14 @@ func ForceNet() *NetworkConf {
 				UpgradeOhSnapHeight:     -18,
 				UpgradeSkyrHeight:       -19,
 				UpgradeSharkHeight:      -20,
-				UpgradeHyggeHeight:      -21,
+				UpgradeHyggeHeight:      30,
 			},
-			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
-			AddressNetwork:       address.Testnet,
-			PropagationDelaySecs: 1,
-			Eip155ChainID:        31415926,
-			ActorDebugging:       true,
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
+			AddressNetwork:          address.Testnet,
+			PropagationDelaySecs:    1,
+			AllowableClockDriftSecs: 1,
+			Eip155ChainID:           31415926,
+			ActorDebugging:          true,
 		},
 	}
 }
