@@ -266,7 +266,7 @@ type NetworkParamsConfig struct {
 	AllowableClockDriftSecs uint64                       `json:"allowableClockDriftSecs"`
 	// ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
 	// As per https://github.com/ethereum-lists/chains
-	Eip155ChainID int `json:"-"`
+	Eip155ChainID int `json:"eip155ChainID"`
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
 	ActorDebugging bool `json:"-"`
 }
