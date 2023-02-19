@@ -55,11 +55,12 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeSharkHeight:       -20,
 				UpgradeHyggeHeight:       600,
 			},
-			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 1},
-			AddressNetwork:       address.Testnet,
-			PropagationDelaySecs: 6,
-			Eip155ChainID:        3141592,
-			ActorDebugging:       false,
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AddressNetwork:          address.Testnet,
+			PropagationDelaySecs:    6,
+			AllowableClockDriftSecs: 1,
+			Eip155ChainID:           3141592,
+			ActorDebugging:          false,
 		},
 	}
 }
