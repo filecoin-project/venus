@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -76,16 +77,22 @@ var evmGetInfoCmd = &cmds.Command{
 		}
 
 		actor, err := chainAPI.StateGetActor(ctx, faddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
 
 		buf := new(bytes.Buffer)
 		writer := NewSilentWriter(buf)
 
 		writer.Println("Filecoin address: ", faddr)
 		writer.Println("Eth address: ", eaddr)
-		writer.Println("Code cid: ", actor.Code.String())
+		if err != nil {
+			writer.Printf("Actor lookup failed for faddr %s with error: %s\n", faddr, err)
+		} else {
+			idAddr, err := chainAPI.StateLookupID(ctx, faddr, types.EmptyTSK)
+			if err == nil {
+				fmt.Println("ID address: ", idAddr)
+				fmt.Println("Code cid: ", actor.Code.String())
+				fmt.Println("Actor Type: ", builtin.ActorNameByCode(actor.Code))
+			}
+		}
 
 		return re.Emit(buf)
 	},
