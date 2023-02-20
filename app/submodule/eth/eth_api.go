@@ -854,12 +854,25 @@ func (a *ethAPI) EthEstimateGas(ctx context.Context, tx types.EthCall) (types.Et
 	if err != nil {
 		return types.EthUint64(0), err
 	}
-	msg, err = a.mpool.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
+	gassedMsg, err := a.mpool.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
 	if err != nil {
 		return types.EthUint64(0), fmt.Errorf("failed to estimate gas: %w", err)
 	}
+	if err != nil {
+		// On failure, GasEstimateMessageGas doesn't actually return the invocation result,
+		// it just returns an error. That means we can't get the revert reason.
+		//
+		// So we re-execute the message with EthCall (well, applyMessage which contains the
+		// guts of EthCall). This will give us an ethereum specific error with revert
+		// information.
+		msg.GasLimit = constants.BlockGasLimit
+		if _, err2 := a.applyMessage(ctx, msg, ts.Key()); err2 != nil {
+			err = err2
+		}
+		return types.EthUint64(0), fmt.Errorf("failed to estimate gas: %w", err)
+	}
 
-	expectedGas, err := ethGasSearch(ctx, a.em.chainModule.Stmgr, a.em.mpoolModule.MPool, msg, ts)
+	expectedGas, err := ethGasSearch(ctx, a.em.chainModule.Stmgr, a.em.mpoolModule.MPool, gassedMsg, ts)
 	if err != nil {
 		log.Errorw("expected gas", "err", err)
 	}
