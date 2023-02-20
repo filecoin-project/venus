@@ -48,6 +48,7 @@ var daemonCmd = &cmds.Command{
 		cmds.BoolOption(ELStdout),
 		cmds.BoolOption(ULimit, "manage open file limit").WithDefault(true),
 		cmds.StringOption(AuthServiceURL, "venus auth service URL"),
+		cmds.StringsOption(BootstrapPeers, "set the bootstrap peers"),
 		cmds.BoolOption(IsRelay, "advertise and allow venus network traffic to be relayed through this node"),
 		cmds.StringOption(ImportSnapshot, "import chain state from a given chain export file or url"),
 		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
@@ -205,6 +206,10 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 		config.API.VenusAuthURL = authURL
 	}
 
+	if bootPeers, ok := req.Options[BootstrapPeers].([]string); ok && len(bootPeers) > 0 {
+		config.Bootstrap.Addresses = MergePeers(config.Bootstrap.Addresses, bootPeers)
+	}
+
 	opts, err := node.OptionsFromRepo(rep)
 	if err != nil {
 		return err
@@ -289,4 +294,23 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 		return nil, err
 	}
 	return repo.OpenFSRepo(repoDir, repo.LatestVersion)
+}
+
+func MergePeers(peerSet1 []string, peerSet2 []string) []string {
+
+	filter := map[string]struct{}{}
+	for _, peer := range peerSet1 {
+		filter[peer] = struct{}{}
+	}
+
+	notInclude := []string{}
+	for _, peer := range peerSet2 {
+		_, has := filter[peer]
+		if has {
+			continue
+		}
+		filter[peer] = struct{}{}
+		notInclude = append(notInclude, peer)
+	}
+	return append(peerSet1, notInclude...)
 }
