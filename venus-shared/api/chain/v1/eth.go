@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
@@ -18,6 +19,8 @@ type IETH interface {
 	//
 	// EthAccounts will always return [] since we don't expect Lotus to manage private keys
 	EthAccounts(ctx context.Context) ([]types.EthAddress, error) //perm:read
+	// EthAddressToFilecoinAddress converts an EthAddress into an f410 Filecoin Address
+	EthAddressToFilecoinAddress(ctx context.Context, ethAddress types.EthAddress) (address.Address, error) //perm:read
 	// EthBlockNumber returns the height of the latest (heaviest) TipSet
 	EthBlockNumber(ctx context.Context) (types.EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet

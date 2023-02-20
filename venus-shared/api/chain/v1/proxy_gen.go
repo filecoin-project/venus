@@ -839,6 +839,7 @@ func (s *ICommonStruct) Version(p0 context.Context) (types.Version, error) {
 type IETHStruct struct {
 	Internal struct {
 		EthAccounts                            func(ctx context.Context) ([]types.EthAddress, error)                                                                 `perm:"read"`
+		EthAddressToFilecoinAddress            func(ctx context.Context, ethAddress types.EthAddress) (address.Address, error)                                       `perm:"read"`
 		EthBlockNumber                         func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
 		EthCall                                func(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error)                                  `perm:"read"`
 		EthChainId                             func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
@@ -870,6 +871,9 @@ type IETHStruct struct {
 
 func (s *IETHStruct) EthAccounts(p0 context.Context) ([]types.EthAddress, error) {
 	return s.Internal.EthAccounts(p0)
+}
+func (s *IETHStruct) EthAddressToFilecoinAddress(p0 context.Context, p1 types.EthAddress) (address.Address, error) {
+	return s.Internal.EthAddressToFilecoinAddress(p0, p1)
 }
 func (s *IETHStruct) EthBlockNumber(p0 context.Context) (types.EthUint64, error) {
 	return s.Internal.EthBlockNumber(p0)
