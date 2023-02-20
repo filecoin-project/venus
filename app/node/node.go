@@ -10,6 +10,7 @@ import (
 
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"github.com/awnumar/memguard"
+	"github.com/etherlabsio/healthcheck/v2"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
@@ -277,21 +278,20 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 
 	authMux := jwtclient.NewAuthMux(localVerifer, node.remoteAuth, mux)
 	authMux.TrustHandle("/debug/pprof/", http.DefaultServeMux)
+	authMux.TrustHandle("/healthcheck", healthcheck.Handler())
 
-	// todo:
-	apikey, _ := tag.NewKey("api")
-
-	apiserv := &http.Server{
+	apiKey, _ := tag.NewKey("api")
+	apiServ := &http.Server{
 		Handler: authMux,
 		BaseContext: func(listener net.Listener) context.Context {
 			ctx, _ := tag.New(context.Background(),
-				tag.Upsert(apikey, "venus"))
+				tag.Upsert(apiKey, "venus"))
 			return ctx
 		},
 	}
 
 	go func() {
-		err := apiserv.Serve(netListener) // nolint
+		err := apiServ.Serve(netListener) // nolint
 		if err != nil && err != http.ErrServerClosed {
 			return
 		}
@@ -310,7 +310,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	memguard.CatchSignal(func(signal os.Signal) {
 		log.Infof("received signal(%s), venus will shutdown...", signal.String())
 		log.Infof("shutting down server...")
-		if err := apiserv.Shutdown(ctx); err != nil {
+		if err := apiServ.Shutdown(ctx); err != nil {
 			log.Warnf("failed to shutdown server: %v", err)
 		}
 		node.Stop(ctx)
