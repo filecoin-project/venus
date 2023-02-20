@@ -25,8 +25,8 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/actors/types"
 	types0 "github.com/filecoin-project/venus/venus-shared/types"
 	gomock "github.com/golang/mock/gomock"
-	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	metrics "github.com/libp2p/go-libp2p/core/metrics"
 	network0 "github.com/libp2p/go-libp2p/core/network"
 	peer "github.com/libp2p/go-libp2p/core/peer"
@@ -468,6 +468,21 @@ func (m *MockFullNode) EthAccounts(arg0 context.Context) ([]types.EthAddress, er
 func (mr *MockFullNodeMockRecorder) EthAccounts(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthAccounts", reflect.TypeOf((*MockFullNode)(nil).EthAccounts), arg0)
+}
+
+// EthAddressToFilecoinAddress mocks base method.
+func (m *MockFullNode) EthAddressToFilecoinAddress(arg0 context.Context, arg1 types.EthAddress) (address.Address, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthAddressToFilecoinAddress", arg0, arg1)
+	ret0, _ := ret[0].(address.Address)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthAddressToFilecoinAddress indicates an expected call of EthAddressToFilecoinAddress.
+func (mr *MockFullNodeMockRecorder) EthAddressToFilecoinAddress(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthAddressToFilecoinAddress", reflect.TypeOf((*MockFullNode)(nil).EthAddressToFilecoinAddress), arg0, arg1)
 }
 
 // EthBlockNumber mocks base method.

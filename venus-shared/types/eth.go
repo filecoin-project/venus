@@ -57,6 +57,7 @@ var (
 	EthBloomSet                      = types.EthBloomSet
 	EthHashFromCid                   = types.EthHashFromCid
 	EthHashFromTxBytes               = types.EthHashFromTxBytes
+	EthUint64FromBytes               = types.EthUint64FromBytes
 	EthUint64FromHex                 = types.EthUint64FromHex
 	GetContractEthAddressFromCode    = types.GetContractEthAddressFromCode
 	NewEthBlock                      = types.NewEthBlock

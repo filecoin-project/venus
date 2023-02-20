@@ -24,10 +24,10 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
 	gstStore "github.com/filecoin-project/go-state-types/store"
-	ipfsblock "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	ipfsblock "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -364,8 +364,8 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			Migration: cf.UpgradeActorsV10,
 			PreMigrations: []PreMigration{{
 				PreMigration:    cf.PreUpgradeActorsV10,
-				StartWithin:     180,
-				DontStartWithin: 60,
+				StartWithin:     60,
+				DontStartWithin: 10,
 				StopWithin:      5,
 			}},
 			Expensive: true,

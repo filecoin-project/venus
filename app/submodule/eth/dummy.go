@@ -6,6 +6,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -29,6 +30,10 @@ func (e *ethAPIDummy) EthBlockNumber(ctx context.Context) (types.EthUint64, erro
 
 func (e *ethAPIDummy) EthAccounts(ctx context.Context) ([]types.EthAddress, error) {
 	return nil, ErrModuleDisabled
+}
+
+func (e *ethAPIDummy) EthAddressToFilecoinAddress(ctx context.Context, ethAddress types.EthAddress) (address.Address, error) {
+	return address.Undef, ErrModuleDisabled
 }
 
 func (e *ethAPIDummy) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum types.EthUint64) (types.EthUint64, error) {

@@ -65,6 +65,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [Version](#version)
 * [ETH](#eth)
   * [EthAccounts](#ethaccounts)
+  * [EthAddressToFilecoinAddress](#ethaddresstofilecoinaddress)
   * [EthBlockNumber](#ethblocknumber)
   * [EthCall](#ethcall)
   * [EthChainId](#ethchainid)
@@ -2115,6 +2116,21 @@ Response:
   "0x0707070707070707070707070707070707070707"
 ]
 ```
+
+### EthAddressToFilecoinAddress
+EthAddressToFilecoinAddress converts an EthAddress into an f410 Filecoin Address
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707"
+]
+```
+
+Response: `"f01234"`
 
 ### EthBlockNumber
 EthBlockNumber returns the height of the latest (heaviest) TipSet

@@ -20,7 +20,7 @@ v0api.FullNode:
 	ChainHasObj:	In=2,	Out=2,	CheckSum=7fe71bcffa1b110db106e0104e98a32f
 	ChainHead:	In=1,	Out=2,	CheckSum=6d1e4c4d8184dc8d645a56278f14cfad
 	ChainNotify:	In=1,	Out=2,	CheckSum=9525148e93a5b83600ebfbde4d24f3e9
-	ChainPutObj:	In=2,	Out=1,	CheckSum=8f14a26d66dd2a48d50d58af2ff7d722
+	ChainPutObj:	In=2,	Out=1,	CheckSum=7a4402108142bfbc03ebb507ad09aa1d
 	ChainReadObj:	In=2,	Out=2,	CheckSum=6fd9244d87bf5d14fb5e79b0dbc0940d
 	ChainSetHead:	In=2,	Out=1,	CheckSum=cdfe593ac791e823186abb77bfad49a0
 	ChainStatObj:	In=3,	Out=2,	CheckSum=9db2a0d97998daaf9c15e7c3d6ffe82d
@@ -247,7 +247,7 @@ api.FullNode:
 	ChainHead:	In=1,	Out=2,	CheckSum=6d1e4c4d8184dc8d645a56278f14cfad
 	ChainNotify:	In=1,	Out=2,	CheckSum=9525148e93a5b83600ebfbde4d24f3e9
 	ChainPrune:	In=2,	Out=1,	CheckSum=af574df2ee0daa338f8d54b5f5da15a3
-	ChainPutObj:	In=2,	Out=1,	CheckSum=8f14a26d66dd2a48d50d58af2ff7d722
+	ChainPutObj:	In=2,	Out=1,	CheckSum=7a4402108142bfbc03ebb507ad09aa1d
 	ChainReadObj:	In=2,	Out=2,	CheckSum=6fd9244d87bf5d14fb5e79b0dbc0940d
 	ChainSetHead:	In=2,	Out=1,	CheckSum=cdfe593ac791e823186abb77bfad49a0
 	ChainStatObj:	In=3,	Out=2,	CheckSum=9db2a0d97998daaf9c15e7c3d6ffe82d
@@ -284,6 +284,7 @@ api.FullNode:
 	CreateBackup:	In=2,	Out=1,	CheckSum=7b0679c2c73ab9606a7da21c5251ad19
 	Discover:	In=1,	Out=2,	CheckSum=09640e20c6d71c3e96c7a56c8698acc9
 	EthAccounts:	In=1,	Out=2,	CheckSum=d2d1b2a1ffc7dc9b28e8c64c79147670
+	EthAddressToFilecoinAddress:	In=2,	Out=2,	CheckSum=d1ca5904502264aa05b428089d46d660
 	EthBlockNumber:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
 	EthCall:	In=3,	Out=2,	CheckSum=64610416ed5674a0c717908d51904008
 	EthChainId:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
