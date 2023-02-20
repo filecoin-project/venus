@@ -88,9 +88,9 @@ var evmGetInfoCmd = &cmds.Command{
 		} else {
 			idAddr, err := chainAPI.StateLookupID(ctx, faddr, types.EmptyTSK)
 			if err == nil {
-				fmt.Println("ID address: ", idAddr)
-				fmt.Println("Code cid: ", actor.Code.String())
-				fmt.Println("Actor Type: ", builtin.ActorNameByCode(actor.Code))
+				writer.Println("ID address: ", idAddr)
+				writer.Println("Code cid: ", actor.Code.String())
+				writer.Println("Actor Type: ", builtin.ActorNameByCode(actor.Code))
 			}
 		}
 
