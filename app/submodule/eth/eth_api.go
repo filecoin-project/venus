@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	builtinactors "github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	builtinevm "github.com/filecoin-project/venus/venus-shared/actors/builtin/evm"
 	types2 "github.com/filecoin-project/venus/venus-shared/actors/types"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -321,6 +322,27 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 	if err != nil {
 		return types.EthUint64(0), fmt.Errorf("cannot parse block param: %s", blkParam)
 	}
+
+	// First, handle the case where the "sender" is an EVM actor.
+	if actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, addr, ts); err != nil {
+		if errors.Is(err, types.ErrActorNotFound) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("failed to lookup contract %s: %w", sender, err)
+	} else if builtinactors.IsEvmActor(actor.Code) {
+		evmState, err := builtinevm.Load(a.em.chainModule.ChainReader.Store(ctx), actor)
+		if err != nil {
+			return 0, fmt.Errorf("failed to load evm state: %w", err)
+		}
+		if alive, err := evmState.IsAlive(); err != nil {
+			return 0, err
+		} else if !alive {
+			return 0, nil
+		}
+		nonce, err := evmState.Nonce()
+		return types.EthUint64(nonce), err
+	}
+
 	nonce, err := a.em.mpoolModule.MPool.GetNonce(ctx, addr, ts.Key())
 	if err != nil {
 		return types.EthUint64(0), err
