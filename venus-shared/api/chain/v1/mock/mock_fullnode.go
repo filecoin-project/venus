@@ -25,7 +25,7 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/actors/types"
 	types0 "github.com/filecoin-project/venus/venus-shared/types"
 	gomock "github.com/golang/mock/gomock"
-	blocks "github.com/ipfs/go-block-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	cid "github.com/ipfs/go-cid"
 	metrics "github.com/libp2p/go-libp2p/core/metrics"
 	network0 "github.com/libp2p/go-libp2p/core/network"

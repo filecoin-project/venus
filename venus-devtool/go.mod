@@ -12,9 +12,9 @@ require (
 	github.com/filecoin-project/lotus v1.20.0-rc1
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
 	github.com/google/uuid v1.3.0
-	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-graphsync v0.13.2
+	github.com/ipfs/go-libipfs v0.4.1
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/libp2p/go-libp2p v0.23.4
 	github.com/libp2p/go-libp2p-pubsub v0.8.2
@@ -101,6 +101,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/icza/backscanner v0.0.0-20210726202459-ac2ffc679f94 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
+	github.com/ipfs/go-block-format v0.1.1 // indirect
 	github.com/ipfs/go-blockservice v0.4.0 // indirect
 	github.com/ipfs/go-datastore v0.6.0 // indirect
 	github.com/ipfs/go-ds-badger2 v0.1.2 // indirect

@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	blocks "github.com/ipfs/go-block-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	cid "github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/metrics"
 	network2 "github.com/libp2p/go-libp2p/core/network"

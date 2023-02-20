@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 )
 
 type ChainIO interface {

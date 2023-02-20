@@ -10,7 +10,7 @@ import (
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	"github.com/filecoin-project/venus/venus-shared/types/params"
-	blocks "github.com/ipfs/go-block-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/stretchr/testify/require"
 )
 
