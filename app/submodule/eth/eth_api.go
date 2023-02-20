@@ -464,13 +464,18 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 }
 
 func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, position types.EthBytes, blkParam string) (types.EthBytes, error) {
+	ts, err := a.parseBlkParam(ctx, blkParam)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse block param: %s", blkParam)
+	}
+
 	l := len(position)
 	if l > 32 {
 		return nil, fmt.Errorf("supplied storage key is too long")
 	}
 
 	// pad with zero bytes if smaller than 32 bytes
-	position = append(make([]byte, 32-l), position...)
+	position = append(make([]byte, 32-l, 32), position...)
 
 	to, err := ethAddr.ToFilecoinAddress()
 	if err != nil {
@@ -481,6 +486,18 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 	from, err := address.NewIDAddress(0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
+	}
+
+	actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, to, ts)
+	if err != nil {
+		if errors.Is(err, types.ErrActorNotFound) {
+			return types.EthBytes(make([]byte, 32)), nil
+		}
+		return nil, fmt.Errorf("failed to lookup contract %s: %w", ethAddr, err)
+	}
+
+	if !builtinactors.IsEvmActor(actor.Code) {
+		return types.EthBytes(make([]byte, 32)), nil
 	}
 
 	params, err := actors.SerializeParams(&evm.GetStorageAtParams{
@@ -499,11 +516,6 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 		GasLimit:   constants.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
 		GasPremium: big.Zero(),
-	}
-
-	ts, err := a.chain.ChainHead(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to got head %v", err)
 	}
 
 	// Try calling until we find a height with no migration.
@@ -527,7 +539,19 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 		return nil, fmt.Errorf("no message receipt")
 	}
 
-	return res.MsgRct.Return, nil
+	if res.MsgRct.ExitCode.IsError() {
+		return nil, fmt.Errorf("failed to lookup storage slot: %s", res.Error)
+	}
+
+	var ret abi.CborBytes
+	if err := ret.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal storage slot: %w", err)
+	}
+
+	// pad with zero bytes if smaller than 32 bytes
+	ret = append(make([]byte, 32-len(ret), 32), ret...)
+
+	return types.EthBytes(ret), nil
 }
 
 func (a *ethAPI) EthGetBalance(ctx context.Context, address types.EthAddress, blkParam string) (types.EthBigInt, error) {
