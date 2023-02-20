@@ -896,7 +896,7 @@ func (a *ethAPI) EthEstimateGas(ctx context.Context, tx types.EthCall) (types.Et
 
 	expectedGas, err := ethGasSearch(ctx, a.em.chainModule.Stmgr, a.em.mpoolModule.MPool, gassedMsg, ts)
 	if err != nil {
-		log.Errorw("expected gas", "err", err)
+		return 0, fmt.Errorf("gas search failed: %w", err)
 	}
 
 	return types.EthUint64(expectedGas), nil
@@ -1488,11 +1488,13 @@ func (m *ethTxHashManager) ProcessSignedMessage(ctx context.Context, msg *types.
 	ethTx, err := newEthTxFromSignedMessage(ctx, msg, m.chainAPI)
 	if err != nil {
 		log.Errorf("error converting filecoin message to eth tx: %s", err)
+		return
 	}
 
 	err = m.TransactionHashLookup.UpsertHash(ethTx.Hash, msg.Cid())
 	if err != nil {
 		log.Errorf("error inserting tx mapping to db: %s", err)
+		return
 	}
 }
 
