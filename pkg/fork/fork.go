@@ -364,8 +364,8 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			Migration: cf.UpgradeActorsV10,
 			PreMigrations: []PreMigration{{
 				PreMigration:    cf.PreUpgradeActorsV10,
-				StartWithin:     180,
-				DontStartWithin: 60,
+				StartWithin:     60,
+				DontStartWithin: 10,
 				StopWithin:      5,
 			}},
 			Expensive: true,
