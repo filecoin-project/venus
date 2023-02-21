@@ -18,6 +18,7 @@ require (
 	github.com/drand/drand v1.3.0
 	github.com/drand/kyber v1.1.7
 	github.com/dustin/go-humanize v1.0.0
+	github.com/etherlabsio/healthcheck/v2 v2.0.0
 	github.com/fatih/color v1.13.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v1.1.0
