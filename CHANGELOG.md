@@ -1,5 +1,15 @@
 # venus changelog
 
+
+## v1.10.0-rc3
+
+* 调整 force 网络的 Hygge 升级高度
+* 增加 bootstrap peers flag
+* 增加 RPC接口：EthAddressToFilecoinAddress
+* 升级 go-libipfs 版本到 v0.4.1
+* 修复 EthGetTransactionCount 接口返回不正确的 nonce
+* 调整预迁移开始高度和结束高度
+
 ## v1.10.0-rc1
 
 这是 venus v1.10.0 版本（**强制性**）的第一个候选版本，此版本将提供 Hygge 网络升级，并引入 Filecoin 网络版本18。
