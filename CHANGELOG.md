@@ -1,5 +1,8 @@
 # venus changelog
 
+## v1.10.0-rc4
+
+* 修复保存 MessageReceipt 失败问题 [[#5743](https://github.com/filecoin-project/venus/pull/5743)]
 
 ## v1.10.0-rc3
 
