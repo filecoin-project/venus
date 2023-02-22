@@ -268,6 +268,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 		return errors.New("do not sync to a target with less weight")
 	}
 
+	syncer.exchangeClient.AddPeer(target.Sender)
 	if syncer.chainStore.HasTipSetAndState(ctx, target.Head) || target.Head.Key().Equals(head.Key()) {
 		return errors.New("do not sync to a target has synced before")
 	}
