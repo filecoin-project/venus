@@ -329,23 +329,12 @@ func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]types.Me
 // StoreReceipts puts the input signed messages to a collection and then writes
 // this collection to ipld storage.  The cid of the collection is returned.
 func (ms *MessageStore) StoreReceipts(ctx context.Context, receipts []types.MessageReceipt) (cid.Cid, error) {
-	tmp := blockstoreutil.NewTemporary()
-	rectarr := adt.MakeEmptyArray(adt.WrapStore(ctx, cbor.NewCborStore(tmp)))
+	rectarr := adt.MakeEmptyArray(adt.WrapStore(ctx, cbor.NewCborStore(ms.bs)))
 
 	for i, receipt := range receipts {
 		if err := rectarr.Set(uint64(i), &receipt); err != nil {
 			return cid.Undef, errors.Wrap(err, "failed to build receipts amt")
 		}
-	}
-
-	root, err := rectarr.Root()
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	err = blockstoreutil.CopyParticial(ctx, tmp, ms.bs, root)
-	if err != nil {
-		return cid.Undef, err
 	}
 
 	return rectarr.Root()
