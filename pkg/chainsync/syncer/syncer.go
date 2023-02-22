@@ -272,6 +272,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 		return errors.New("do not sync to a target has synced before")
 	}
 
+	syncer.exchangeClient.AddPeer(target.Sender)
 	tipsets, err := syncer.fetchChainBlocks(ctx, head, target.Head)
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
