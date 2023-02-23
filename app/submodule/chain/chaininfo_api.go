@@ -514,7 +514,7 @@ func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, from types.TipSetKe
 
 	if found {
 		return &types.MsgLookup{
-			Message: mCid,
+			Message: msgResult.Message.Cid(),
 			Receipt: *msgResult.Receipt,
 			TipSet:  msgResult.TS.Key(),
 			Height:  msgResult.TS.Height(),
@@ -579,7 +579,7 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 		}
 
 		return &types.MsgLookup{
-			Message:   mCid,
+			Message:   msgResult.Message.Cid(),
 			Receipt:   *msgResult.Receipt,
 			ReturnDec: returndec,
 			TipSet:    msgResult.TS.Key(),

@@ -45,7 +45,7 @@ type ObjStat struct {
 // ChainMessage is an on-chain message with its block and receipt.
 type ChainMessage struct { //nolint
 	TS      *TipSet
-	Message *Message
+	Message ChainMsg
 	Block   *BlockHeader
 	Receipt *MessageReceipt
 }

@@ -309,7 +309,7 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg typ
 					if err != nil {
 						return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
 					}
-					return &types.ChainMessage{TS: ts, Message: msg.VMMessage(), Block: bms.Block, Receipt: recpt}, true, nil
+					return &types.ChainMessage{TS: ts, Message: msg, Block: bms.Block, Receipt: recpt}, true, nil
 				}
 			}
 		}
