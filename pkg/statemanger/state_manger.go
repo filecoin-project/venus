@@ -150,7 +150,7 @@ func (s *Stmgr) ParentState(ctx context.Context, ts *types.TipSet) (*types.TipSe
 			ts.Key().String(), err)
 	}
 
-	if stateRoot, _, err := s.RunStateTransition(ctx, parent, nil); err != nil {
+	if stateRoot, _, err := s.RunStateTransition(ctx, parent, nil, false); err != nil {
 		return nil, nil, fmt.Errorf("runstateTransition failed:%w", err)
 	} else if !stateRoot.Equals(ts.At(0).ParentStateRoot) {
 		return nil, nil, fmt.Errorf("runstateTransition error, %w", consensus.ErrStateRootMismatch)
@@ -175,7 +175,7 @@ func (s *Stmgr) TipsetStateTsk(ctx context.Context, tsk types.TipSetKey) (*types
 }
 
 func (s *Stmgr) TipsetState(ctx context.Context, ts *types.TipSet) (*tree.State, error) {
-	root, _, err := s.RunStateTransition(ctx, ts, nil)
+	root, _, err := s.RunStateTransition(ctx, ts, nil, false)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ redo:
 	}
 	s.stLk.Unlock()
 
-	if root, _, err := s.RunStateTransition(ctx, pts, nil); err != nil {
+	if root, _, err := s.RunStateTransition(ctx, pts, nil, false); err != nil {
 		return err
 	} else if !root.Equals(cts.At(0).ParentStateRoot) {
 		cts = pts
@@ -209,7 +209,7 @@ redo:
 	return nil
 }
 
-func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.ExecCallBack) (root cid.Cid, receipts cid.Cid, err error) {
+func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.ExecCallBack, vmTracing bool) (root cid.Cid, receipts cid.Cid, err error) {
 	if nil != s.stopFlag(false) {
 		return cid.Undef, cid.Undef, fmt.Errorf("state manager is stopping")
 	}
@@ -266,7 +266,7 @@ func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	}
 
-	if root, receipts, err = s.cp.RunStateTransition(ctx, ts, cb); err != nil {
+	if root, receipts, err = s.cp.RunStateTransition(ctx, ts, cb, vmTracing); err != nil {
 		return cid.Undef, cid.Undef, err
 	}
 
@@ -353,7 +353,7 @@ func (s *Stmgr) RunStateTransitionV2(ctx context.Context, ts *types.TipSet) (cid
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	}
 
-	if state.stateRoot, state.receipt, err = s.cp.RunStateTransition(ctx, ts, nil); err != nil {
+	if state.stateRoot, state.receipt, err = s.cp.RunStateTransition(ctx, ts, nil, false); err != nil {
 		return cid.Undef, cid.Undef, err
 	} else if err = s.cs.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
@@ -400,7 +400,7 @@ func (s *Stmgr) StateViewTsk(ctx context.Context, tsk types.TipSetKey) (*types.T
 }
 
 func (s *Stmgr) StateView(ctx context.Context, ts *types.TipSet) (cid.Cid, *appstate.View, error) {
-	stateCid, _, err := s.RunStateTransition(ctx, ts, nil)
+	stateCid, _, err := s.RunStateTransition(ctx, ts, nil, false)
 	if err != nil {
 		return cid.Undef, nil, err
 	}
@@ -431,7 +431,7 @@ func (s *Stmgr) Replay(ctx context.Context, ts *types.TipSet, msgCID cid.Cid) (*
 		return nil
 	}
 
-	_, _, err := s.cp.RunStateTransition(ctx, ts, cb)
+	_, _, err := s.cp.RunStateTransition(ctx, ts, cb, true)
 	if err != nil && !errors.Is(err, errHaltExecution) {
 		return nil, nil, fmt.Errorf("unexpected error during execution: %w", err)
 	}
@@ -458,7 +458,7 @@ func MakeMsgGasCost(msg *types.Message, ret *vm.Ret) types.MsgGasCost {
 
 func (s *Stmgr) FlushChainHead() (*types.TipSet, error) {
 	head := s.cs.GetHead()
-	_, _, err := s.RunStateTransition(context.TODO(), head, nil)
+	_, _, err := s.RunStateTransition(context.TODO(), head, nil, false)
 	return head, err
 }
 
