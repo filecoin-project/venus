@@ -4,6 +4,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -48,7 +49,7 @@ func Calibration() *NetworkConf {
 				UpgradeLiftoffHeight:     -5,
 				UpgradeKumquatHeight:     90,
 				UpgradeCalicoHeight:      120,
-				UpgradePersianHeight:     100 + (120 * 1),
+				UpgradePersianHeight:     120 + (builtin2.EpochsInHour * 1),
 				UpgradeClausHeight:       270,
 				UpgradeOrangeHeight:      300,
 				UpgradeTrustHeight:       330,
