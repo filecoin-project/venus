@@ -446,7 +446,7 @@ func (s *Stmgr) Replay(ctx context.Context, ts *types.TipSet, msgCID cid.Cid) (*
 func MakeMsgGasCost(msg *types.Message, ret *vm.Ret) types.MsgGasCost {
 	return types.MsgGasCost{
 		Message:            msg.Cid(),
-		GasUsed:            big.NewInt(ret.GasTracker.GasUsed),
+		GasUsed:            big.NewInt(ret.Receipt.GasUsed),
 		BaseFeeBurn:        ret.OutPuts.BaseFeeBurn,
 		OverEstimationBurn: ret.OutPuts.OverEstimationBurn,
 		MinerPenalty:       ret.OutPuts.MinerPenalty,
