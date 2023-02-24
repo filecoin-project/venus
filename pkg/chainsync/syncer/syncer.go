@@ -233,6 +233,8 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 		}
 	}
 
+	syncer.chainStore.PersistTipSetKey(ctx, next.Key())
+
 	return nil
 }
 
