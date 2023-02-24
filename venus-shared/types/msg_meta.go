@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/crypto"
 )
 
 type MsgType string
@@ -59,10 +60,11 @@ type QuerySignRecordParams struct {
 }
 
 type SignRecord struct {
-	ID       string
-	Type     MsgType
-	Signer   address.Address
-	Err      error
-	Msg      []byte
-	CreateAt time.Time
+	ID        string
+	Type      MsgType
+	Signer    address.Address
+	Err       error
+	RawMsg    []byte
+	Signature *crypto.Signature
+	CreateAt  time.Time
 }

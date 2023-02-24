@@ -96,6 +96,21 @@ func (mr *MockIFullAPIMockRecorder) AuthVerify(arg0, arg1 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AuthVerify", reflect.TypeOf((*MockIFullAPI)(nil).AuthVerify), arg0, arg1)
 }
 
+// ListSignedRecord mocks base method.
+func (m *MockIFullAPI) ListSignedRecord(arg0 context.Context, arg1 *types.QuerySignRecordParams) ([]types.SignRecord, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListSignedRecord", arg0, arg1)
+	ret0, _ := ret[0].([]types.SignRecord)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListSignedRecord indicates an expected call of ListSignedRecord.
+func (mr *MockIFullAPIMockRecorder) ListSignedRecord(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSignedRecord", reflect.TypeOf((*MockIFullAPI)(nil).ListSignedRecord), arg0, arg1)
+}
+
 // Lock mocks base method.
 func (m *MockIFullAPI) Lock(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
@@ -151,21 +166,6 @@ func (m *MockIFullAPI) LogSetLevel(arg0 context.Context, arg1, arg2 string) erro
 func (mr *MockIFullAPIMockRecorder) LogSetLevel(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LogSetLevel", reflect.TypeOf((*MockIFullAPI)(nil).LogSetLevel), arg0, arg1, arg2)
-}
-
-// QuerySignRecord mocks base method.
-func (m *MockIFullAPI) QuerySignRecord(arg0 context.Context, arg1 *types.QuerySignRecordParams) ([]types.SignRecord, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QuerySignRecord", arg0, arg1)
-	ret0, _ := ret[0].([]types.SignRecord)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QuerySignRecord indicates an expected call of QuerySignRecord.
-func (mr *MockIFullAPIMockRecorder) QuerySignRecord(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QuerySignRecord", reflect.TypeOf((*MockIFullAPI)(nil).QuerySignRecord), arg0, arg1)
 }
 
 // SetPassword mocks base method.

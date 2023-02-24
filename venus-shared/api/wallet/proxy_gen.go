@@ -74,12 +74,12 @@ type ILocalWalletStruct struct {
 
 type ICommonStruct struct {
 	Internal struct {
-		AuthNew         func(ctx context.Context, perms []auth.Permission) ([]byte, error)                        `perm:"admin"`
-		AuthVerify      func(ctx context.Context, token string) ([]auth.Permission, error)                        `perm:"read"`
-		LogList         func(context.Context) ([]string, error)                                                   `perm:"read"`
-		LogSetLevel     func(context.Context, string, string) error                                               `perm:"write"`
-		QuerySignRecord func(ctx context.Context, param *types.QuerySignRecordParams) ([]types.SignRecord, error) `perm:"read"`
-		Version         func(ctx context.Context) (types.Version, error)                                          `perm:"read"`
+		AuthNew          func(ctx context.Context, perms []auth.Permission) ([]byte, error)                        `perm:"admin"`
+		AuthVerify       func(ctx context.Context, token string) ([]auth.Permission, error)                        `perm:"read"`
+		ListSignedRecord func(ctx context.Context, param *types.QuerySignRecordParams) ([]types.SignRecord, error) `perm:"read"`
+		LogList          func(context.Context) ([]string, error)                                                   `perm:"read"`
+		LogSetLevel      func(context.Context, string, string) error                                               `perm:"write"`
+		Version          func(ctx context.Context) (types.Version, error)                                          `perm:"read"`
 	}
 }
 
@@ -89,12 +89,12 @@ func (s *ICommonStruct) AuthNew(p0 context.Context, p1 []auth.Permission) ([]byt
 func (s *ICommonStruct) AuthVerify(p0 context.Context, p1 string) ([]auth.Permission, error) {
 	return s.Internal.AuthVerify(p0, p1)
 }
+func (s *ICommonStruct) ListSignedRecord(p0 context.Context, p1 *types.QuerySignRecordParams) ([]types.SignRecord, error) {
+	return s.Internal.ListSignedRecord(p0, p1)
+}
 func (s *ICommonStruct) LogList(p0 context.Context) ([]string, error) { return s.Internal.LogList(p0) }
 func (s *ICommonStruct) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
 	return s.Internal.LogSetLevel(p0, p1, p2)
-}
-func (s *ICommonStruct) QuerySignRecord(p0 context.Context, p1 *types.QuerySignRecordParams) ([]types.SignRecord, error) {
-	return s.Internal.QuerySignRecord(p0, p1)
 }
 func (s *ICommonStruct) Version(p0 context.Context) (types.Version, error) {
 	return s.Internal.Version(p0)

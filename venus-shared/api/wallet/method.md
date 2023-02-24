@@ -9,9 +9,9 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
 * [Common](#common)
   * [AuthNew](#authnew)
   * [AuthVerify](#authverify)
+  * [ListSignedRecord](#listsignedrecord)
   * [LogList](#loglist)
   * [LogSetLevel](#logsetlevel)
-  * [QuerySignRecord](#querysignrecord)
   * [Version](#version)
 * [Wallet](#wallet)
   * [WalletDelete](#walletdelete)
@@ -69,36 +69,7 @@ Response:
 ]
 ```
 
-### LogList
-
-
-Perms: read
-
-Inputs: `[]`
-
-Response:
-```json
-[
-  "string value"
-]
-```
-
-### LogSetLevel
-
-
-Perms: write
-
-Inputs:
-```json
-[
-  "string value",
-  "string value"
-]
-```
-
-Response: `{}`
-
-### QuerySignRecord
+### ListSignedRecord
 
 
 Perms: read
@@ -127,11 +98,44 @@ Response:
     "Type": "message",
     "Signer": "f01234",
     "Err": {},
-    "Msg": "Ynl0ZSBhcnJheQ==",
+    "RawMsg": "Ynl0ZSBhcnJheQ==",
+    "Signature": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    },
     "CreateAt": "0001-01-01T00:00:00Z"
   }
 ]
 ```
+
+### LogList
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  "string value"
+]
+```
+
+### LogSetLevel
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "string value",
+  "string value"
+]
+```
+
+Response: `{}`
 
 ### Version
 Version provides information about API provider

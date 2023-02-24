@@ -16,7 +16,7 @@ type ICommon interface {
 	LogList(context.Context) ([]string, error)         //perm:read
 	LogSetLevel(context.Context, string, string) error //perm:write
 
-	QuerySignRecord(ctx context.Context, param *types.QuerySignRecordParams) ([]types.SignRecord, error) //perm:read
+	ListSignedRecord(ctx context.Context, param *types.QuerySignRecordParams) ([]types.SignRecord, error) //perm:read
 
 	api.Version
 }
