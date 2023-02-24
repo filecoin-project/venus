@@ -786,7 +786,7 @@ func (cia *chainInfoAPI) StateCall(ctx context.Context, msg *types.Message, tsk 
 		}
 	}
 
-	return res, nil
+	return res, err
 }
 
 // StateReplay replays a given message, assuming it was included in a block in the specified tipset.
