@@ -47,6 +47,7 @@ var daemonCmd = &cmds.Command{
 		cmds.BoolOption(ELStdout),
 		cmds.BoolOption(ULimit, "manage open file limit").WithDefault(true),
 		cmds.StringOption(AuthServiceURL, "venus auth service URL"),
+		cmds.StringOption(AuthServiceToken, "venus auth service token"),
 		cmds.BoolOption(IsRelay, "advertise and allow venus network traffic to be relayed through this node"),
 		cmds.StringOption(ImportSnapshot, "import chain state from a given chain export file or url"),
 		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
@@ -146,6 +147,11 @@ func initRun(req *cmds.Request) error {
 	}
 	if authServiceURL, ok := req.Options[AuthServiceURL].(string); ok && len(authServiceURL) > 0 {
 		cfg.API.VenusAuthURL = authServiceURL
+		if authServiceToken, ok := req.Options[AuthServiceToken].(string); ok && len(authServiceToken) > 0 {
+			cfg.API.VenusAuthToken = authServiceToken
+		} else {
+			return fmt.Errorf("must also pass token with venus auth service to `--%s`", AuthServiceToken)
+		}
 	}
 
 	if err := rep.ReplaceConfig(cfg); err != nil {
@@ -200,6 +206,12 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	if authURL, ok := req.Options[AuthServiceURL].(string); ok && len(authURL) > 0 {
 		config.API.VenusAuthURL = authURL
+	}
+	if authServiceToken, ok := req.Options[AuthServiceToken].(string); ok && len(authServiceToken) > 0 {
+		config.API.VenusAuthToken = authServiceToken
+	}
+	if len(config.API.VenusAuthURL)+len(config.API.VenusAuthToken) > 0 && len(config.API.VenusAuthToken)*len(config.API.VenusAuthURL) == 0 {
+		return fmt.Errorf("must set both venus auth service url and token at the same time")
 	}
 
 	opts, err := node.OptionsFromRepo(rep)
