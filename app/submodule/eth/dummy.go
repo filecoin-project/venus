@@ -36,6 +36,10 @@ func (e *ethAPIDummy) EthAddressToFilecoinAddress(ctx context.Context, ethAddres
 	return address.Undef, ErrModuleDisabled
 }
 
+func (e *ethAPIDummy) FilecoinAddressToEthAddress(ctx context.Context, filecoinAddress address.Address) (types.EthAddress, error) {
+	return types.EthAddress{}, ErrModuleDisabled
+}
+
 func (e *ethAPIDummy) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum types.EthUint64) (types.EthUint64, error) {
 	return 0, ErrModuleDisabled
 }
