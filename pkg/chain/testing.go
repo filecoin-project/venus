@@ -24,9 +24,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 
 	"github.com/filecoin-project/venus/fixtures/assets"
 	"github.com/filecoin-project/venus/pkg/clock"
