@@ -112,6 +112,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.18
+          cache: true
 
       - name: install deps
         if: ${{ !inputs.has_ffi }}
@@ -123,7 +124,7 @@ jobs:
         if: ${{ inputs.has_ffi }}
         run: |
           sudo apt-get update
-          sudo apt-get -o Acquire::Retries=3 install make ncftp mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
+          sudo apt-get -o Acquire::Retries=3 install make ncftp mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y
 
       - name: Build
         run: |
@@ -248,6 +249,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.18
+          cache: true
 
       - name: install more deps
         if: ${{ inputs.has_ffi }}
