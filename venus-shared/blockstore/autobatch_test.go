@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	blocks "github.com/ipfs/go-block-format"
 	ipld "github.com/ipfs/go-ipld-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/stretchr/testify/require"
 )
 

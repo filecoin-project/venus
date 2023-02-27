@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
 
 	"github.com/dchest/blake2b"
-	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -23,6 +22,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipfs/go-libipfs/bitswap"
 	bsnet "github.com/ipfs/go-libipfs/bitswap/network"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
