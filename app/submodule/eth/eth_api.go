@@ -591,7 +591,12 @@ func (a *ethAPI) EthGetBalance(ctx context.Context, address types.EthAddress, bl
 		return types.EthBigInt{}, fmt.Errorf("cannot parse block param: %s", blkParam)
 	}
 
-	actor, err := a.chain.StateGetActor(ctx, filAddr, ts.Key())
+	_, view, err := a.em.chainModule.Stmgr.StateView(ctx, ts)
+	if err != nil {
+		return types.EthBigInt{}, fmt.Errorf("failed to compute tipset state: %w", err)
+	}
+
+	actor, err := view.LoadActor(ctx, filAddr)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return types.EthBigIntZero, nil
