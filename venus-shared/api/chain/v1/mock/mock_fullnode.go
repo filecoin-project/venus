@@ -965,6 +965,21 @@ func (mr *MockFullNodeMockRecorder) EthUnsubscribe(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthUnsubscribe", reflect.TypeOf((*MockFullNode)(nil).EthUnsubscribe), arg0, arg1)
 }
 
+// FilecoinAddressToEthAddress mocks base method.
+func (m *MockFullNode) FilecoinAddressToEthAddress(arg0 context.Context, arg1 address.Address) (types.EthAddress, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FilecoinAddressToEthAddress", arg0, arg1)
+	ret0, _ := ret[0].(types.EthAddress)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FilecoinAddressToEthAddress indicates an expected call of FilecoinAddressToEthAddress.
+func (mr *MockFullNodeMockRecorder) FilecoinAddressToEthAddress(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilecoinAddressToEthAddress", reflect.TypeOf((*MockFullNode)(nil).FilecoinAddressToEthAddress), arg0, arg1)
+}
+
 // GasBatchEstimateMessageGas mocks base method.
 func (m *MockFullNode) GasBatchEstimateMessageGas(arg0 context.Context, arg1 []*types0.EstimateMessage, arg2 uint64, arg3 types0.TipSetKey) ([]*types0.EstimateResult, error) {
 	m.ctrl.T.Helper()
