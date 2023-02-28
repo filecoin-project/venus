@@ -236,7 +236,9 @@ Response:
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9,
-    "EventsRoot": null
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "TipSetKey": [
     {
@@ -304,7 +306,9 @@ Response:
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9,
-    "EventsRoot": null
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "TipSetKey": [
     {
@@ -370,7 +374,9 @@ Response:
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9,
-    "EventsRoot": null
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "TipSetKey": [
     {
@@ -438,7 +444,9 @@ Response:
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9,
-    "EventsRoot": null
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "TipSetKey": [
     {
@@ -650,7 +658,9 @@ Response:
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
       "GasUsed": 9,
-      "EventsRoot": null
+      "EventsRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "TipSetKey": [
       {
@@ -713,7 +723,9 @@ Response:
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
       "GasUsed": 9,
-      "EventsRoot": null
+      "EventsRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "TipSetKey": [
       {
@@ -790,7 +802,9 @@ Response:
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
       "GasUsed": 9,
-      "EventsRoot": null
+      "EventsRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "TipSetKey": [
       {
@@ -858,7 +872,9 @@ Response:
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
       "GasUsed": 9,
-      "EventsRoot": null
+      "EventsRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "TipSetKey": [
       {
@@ -930,7 +946,9 @@ Response:
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
       "GasUsed": 9,
-      "EventsRoot": null
+      "EventsRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "TipSetKey": [
       {
@@ -1492,7 +1510,9 @@ Response:
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9,
-    "EventsRoot": null
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "TipSetKey": [
     {

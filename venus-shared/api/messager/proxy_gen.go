@@ -19,9 +19,9 @@ type IMessagerStruct struct {
 		ClearUnFillMessage       func(ctx context.Context, addr address.Address) (int, error)                                                                               `perm:"write"`
 		DeleteAddress            func(ctx context.Context, addr address.Address) error                                                                                      `perm:"write"`
 		DeleteNode               func(ctx context.Context, name string) error                                                                                               `perm:"admin"`
-		ForbiddenAddress         func(ctx context.Context, addr address.Address) error                                                                                      `perm:"admin"`
+		ForbiddenAddress         func(ctx context.Context, addr address.Address) error                                                                                      `perm:"write"`
 		GetActorCfgByID          func(ctx context.Context, id types.UUID) (*mtypes.ActorCfg, error)                                                                         `perm:"read"`
-		GetAddress               func(ctx context.Context, addr address.Address) (*mtypes.Address, error)                                                                   `perm:"admin"`
+		GetAddress               func(ctx context.Context, addr address.Address) (*mtypes.Address, error)                                                                   `perm:"read"`
 		GetMessageByFromAndNonce func(ctx context.Context, from address.Address, nonce uint64) (*mtypes.Message, error)                                                     `perm:"read"`
 		GetMessageBySignedCid    func(ctx context.Context, cid cid.Cid) (*mtypes.Message, error)                                                                            `perm:"read"`
 		GetMessageByUid          func(ctx context.Context, id string) (*mtypes.Message, error)                                                                              `perm:"read"`
@@ -32,10 +32,10 @@ type IMessagerStruct struct {
 		HasMessageByUid          func(ctx context.Context, id string) (bool, error)                                                                                         `perm:"read"`
 		HasNode                  func(ctx context.Context, name string) (bool, error)                                                                                       `perm:"admin"`
 		ListActorCfg             func(ctx context.Context) ([]*mtypes.ActorCfg, error)                                                                                      `perm:"read"`
-		ListAddress              func(ctx context.Context) ([]*mtypes.Address, error)                                                                                       `perm:"admin"`
-		ListBlockedMessage       func(ctx context.Context, addr address.Address, d time.Duration) ([]*mtypes.Message, error)                                                `perm:"admin"`
-		ListFailedMessage        func(ctx context.Context) ([]*mtypes.Message, error)                                                                                       `perm:"admin"`
-		ListMessage              func(ctx context.Context) ([]*mtypes.Message, error)                                                                                       `perm:"admin"`
+		ListAddress              func(ctx context.Context) ([]*mtypes.Address, error)                                                                                       `perm:"read"`
+		ListBlockedMessage       func(ctx context.Context, addr address.Address, d time.Duration) ([]*mtypes.Message, error)                                                `perm:"read"`
+		ListFailedMessage        func(ctx context.Context) ([]*mtypes.Message, error)                                                                                       `perm:"read"`
+		ListMessage              func(ctx context.Context, p *mtypes.MsgQueryParams) ([]*mtypes.Message, error)                                                             `perm:"read"`
 		ListMessageByAddress     func(ctx context.Context, addr address.Address) ([]*mtypes.Message, error)                                                                 `perm:"admin"`
 		ListMessageByFromState   func(ctx context.Context, from address.Address, state mtypes.MessageState, isAsc bool, pageIndex, pageSize int) ([]*mtypes.Message, error) `perm:"admin"`
 		ListNode                 func(ctx context.Context) ([]*mtypes.Node, error)                                                                                          `perm:"admin"`

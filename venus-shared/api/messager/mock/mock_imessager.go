@@ -113,7 +113,7 @@ func (mr *MockIMessagerMockRecorder) ForbiddenAddress(arg0, arg1 interface{}) *g
 }
 
 // GetActorCfgByID mocks base method.
-func (m *MockIMessager) GetActorCfgByID(arg0 context.Context, arg1 types.UUID) (*messager.ActorCfg, error) {
+func (m *MockIMessager) GetActorCfgByID(arg0 context.Context, arg1 types0.UUID) (*messager.ActorCfg, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetActorCfgByID", arg0, arg1)
 	ret0, _ := ret[0].(*messager.ActorCfg)
@@ -659,7 +659,7 @@ func (mr *MockIMessagerMockRecorder) SetSharedParams(arg0, arg1 interface{}) *go
 }
 
 // UpdateActorCfg mocks base method.
-func (m *MockIMessager) UpdateActorCfg(arg0 context.Context, arg1 types.UUID, arg2 *messager.ChangeGasSpecParams) error {
+func (m *MockIMessager) UpdateActorCfg(arg0 context.Context, arg1 types0.UUID, arg2 *messager.ChangeGasSpecParams) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateActorCfg", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

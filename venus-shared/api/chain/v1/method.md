@@ -308,7 +308,7 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0",
-  "Address": "\u003cempty\u003e"
+  "Address": "f01234"
 }
 ```
 
@@ -759,7 +759,9 @@ Response:
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9,
-    "EventsRoot": null
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   }
 ]
 ```
@@ -826,7 +828,9 @@ Response:
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9,
-    "EventsRoot": null
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   }
 ]
 ```
@@ -1032,7 +1036,7 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0",
-  "Address": "\u003cempty\u003e"
+  "Address": "f01234"
 }
 ```
 
@@ -1197,7 +1201,7 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0",
-  "Address": "\u003cempty\u003e"
+  "Address": "f01234"
 }
 ```
 
@@ -1293,7 +1297,9 @@ Response:
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9,
-    "EventsRoot": null
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   }
 }
 ```
@@ -1432,7 +1438,9 @@ Response:
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9,
-    "EventsRoot": null
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "GasCost": {
     "Message": {
@@ -1466,7 +1474,9 @@ Response:
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
       "GasUsed": 9,
-      "EventsRoot": null
+      "EventsRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "Error": "string value",
     "Duration": 60000000000,
@@ -1511,7 +1521,9 @@ Response:
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
           "GasUsed": 9,
-          "EventsRoot": null
+          "EventsRoot": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "Error": "string value",
         "Duration": 60000000000,
@@ -1737,7 +1749,9 @@ Response:
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9,
-    "EventsRoot": null
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "GasCost": {
     "Message": {
@@ -1771,7 +1785,9 @@ Response:
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
       "GasUsed": 9,
-      "EventsRoot": null
+      "EventsRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "Error": "string value",
     "Duration": 60000000000,
@@ -1816,7 +1832,9 @@ Response:
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
           "GasUsed": 9,
-          "EventsRoot": null
+          "EventsRoot": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "Error": "string value",
         "Duration": 60000000000,
@@ -1899,7 +1917,9 @@ Response:
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9,
-    "EventsRoot": null
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "ReturnDec": {},
   "TipSet": [
@@ -2002,7 +2022,9 @@ Response:
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
     "GasUsed": 9,
-    "EventsRoot": null
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "ReturnDec": {},
   "TipSet": [
@@ -2373,7 +2395,12 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
 
 ### EthGetStorageAt
 
@@ -3881,7 +3908,7 @@ Response:
     },
     "Nonce": 42,
     "Balance": "0",
-    "Address": "\u003cempty\u003e"
+    "Address": "f01234"
   }
 }
 ```
@@ -3905,34 +3932,7 @@ Inputs:
 ]
 ```
 
-Response:
-```json
-[
-  {
-    "SectorNumber": 9,
-    "SealProof": 8,
-    "SealedCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "DealIDs": [
-      5432
-    ],
-    "Activation": 10101,
-    "Expiration": 10101,
-    "DealWeight": "0",
-    "VerifiedDealWeight": "0",
-    "InitialPledge": "0",
-    "ExpectedDayReward": "0",
-    "ExpectedStoragePledge": "0",
-    "ReplacedSectorAge": 10101,
-    "ReplacedDayReward": "0",
-    "SectorKeyCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "SimpleQAPower": true
-  }
-]
-```
+Response: `"0"`
 
 ### StateComputeDataCID
 StateComputeDataCID computes DataCID from a set of on-chain deals
@@ -3961,10 +3961,9 @@ Inputs:
 
 Response:
 ```json
-[
-  5,
-  1
-]
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
 ```
 
 ### StateDealProviderCollateralBounds
@@ -4112,44 +4111,8 @@ Response:
 }
 ```
 
-### StateMinerInitialPledgeCollateral
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "f01234",
-  {
-    "SealProof": 8,
-    "SectorNumber": 9,
-    "SealedCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "SealRandEpoch": 10101,
-    "DealIDs": [
-      5432
-    ],
-    "Expiration": 10101,
-    "UnsealedCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    }
-  },
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
-```
-
-Response: `"0"`
-
-### StateMinerPartitions
+### StateGetAllocations
+StateGetAllocations returns the all the allocations for a given client.
 
 
 Perms: read
@@ -4219,21 +4182,6 @@ Inputs:
 ```json
 [
   "f01234",
-  {
-    "SealProof": 8,
-    "SectorNumber": 9,
-    "SealedCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "SealRandEpoch": 10101,
-    "DealIDs": [
-      5432
-    ],
-    "Expiration": 10101,
-    "UnsealedCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    }
-  },
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -4387,10 +4335,6 @@ Inputs:
 [
   "f01234",
   [
-    5,
-    1
-  ],
-  [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
@@ -4403,31 +4347,10 @@ Inputs:
 
 Response:
 ```json
-[
-  {
-    "SectorNumber": 9,
-    "SealProof": 8,
-    "SealedCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "DealIDs": [
-      5432
-    ],
-    "Activation": 10101,
-    "Expiration": 10101,
-    "DealWeight": "0",
-    "VerifiedDealWeight": "0",
-    "InitialPledge": "0",
-    "ExpectedDayReward": "0",
-    "ExpectedStoragePledge": "0",
-    "ReplacedSectorAge": 10101,
-    "ReplacedDayReward": "0",
-    "SectorKeyCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "SimpleQAPower": true
-  }
-]
+{
+  "Escrow": "0",
+  "Locked": "0"
+}
 ```
 
 ### StateMarketDeals
@@ -4566,7 +4489,9 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null,
+    "SectorKeyCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "SimpleQAPower": true
   }
 ]
@@ -4595,29 +4520,10 @@ Inputs:
 
 Response:
 ```json
-{
-  "SectorNumber": 9,
-  "SealProof": 8,
-  "SealedCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "DealIDs": [
-    5432
-  ],
-  "Activation": 10101,
-  "Expiration": 10101,
-  "DealWeight": "0",
-  "VerifiedDealWeight": "0",
-  "InitialPledge": "0",
-  "ExpectedDayReward": "0",
-  "ExpectedStoragePledge": "0",
-  "ReplacedSectorAge": 10101,
-  "ReplacedDayReward": "0",
-  "SectorKeyCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "SimpleQAPower": true
-}
+[
+  5,
+  1
+]
 ```
 
 ### StateMinerAvailableBalance
@@ -4697,25 +4603,10 @@ Inputs:
 
 Response:
 ```json
-{
-  "Info": {
-    "SealProof": 8,
-    "SectorNumber": 9,
-    "SealedCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "SealRandEpoch": 10101,
-    "DealIDs": [
-      5432
-    ],
-    "Expiration": 10101,
-    "UnsealedCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    }
-  },
-  "PreCommitDeposit": "0",
-  "PreCommitEpoch": 10101
-}
+[
+  5,
+  1
+]
 ```
 
 ### StateMinerInfo
@@ -4792,7 +4683,9 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "UnsealedCid": null
+    "UnsealedCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   [
     {
@@ -4879,25 +4772,9 @@ Inputs:
 Response:
 ```json
 {
-  "MinerPower": "0",
-  "NetworkPower": "0",
-  "Sectors": [
-    {
-      "SealProof": 8,
-      "SectorNumber": 9,
-      "SectorKey": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "SealedCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      }
-    }
-  ],
-  "WorkerKey": "f01234",
-  "SectorSize": 34359738368,
-  "PrevBeaconEntry": {
-    "Round": 42,
-    "Data": "Ynl0ZSBhcnJheQ=="
+  "MinerPower": {
+    "RawBytePower": "0",
+    "QualityAdjPower": "0"
   },
   "TotalPower": {
     "RawBytePower": "0",
@@ -4927,7 +4804,9 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "UnsealedCid": null
+    "UnsealedCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   [
     {
@@ -5092,7 +4971,8 @@ Inputs:
 [
   "f01234",
   [
-    0
+    5,
+    1
   ],
   [
     {
@@ -5126,7 +5006,9 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null,
+    "SectorKeyCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "SimpleQAPower": true
   }
 ]
@@ -5255,7 +5137,9 @@ Response:
   "ExpectedStoragePledge": "0",
   "ReplacedSectorAge": 10101,
   "ReplacedDayReward": "0",
-  "SectorKeyCID": null,
+  "SectorKeyCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "SimpleQAPower": true
 }
 ```
@@ -5330,7 +5214,9 @@ Response:
       5432
     ],
     "Expiration": 10101,
-    "UnsealedCid": null
+    "UnsealedCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "PreCommitDeposit": "0",
   "PreCommitEpoch": 10101
@@ -5556,7 +5442,9 @@ Response:
     {
       "SealProof": 8,
       "SectorNumber": 9,
-      "SectorKey": null,
+      "SectorKey": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
       "SealedCID": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       }
@@ -7051,3 +6939,4 @@ Perms: admin
 Inputs: `[]`
 
 Response: `123`
+

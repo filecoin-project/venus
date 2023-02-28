@@ -325,11 +325,9 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 		out.SetMapIndex(reflect.ValueOf(ExampleValue(method, t.Key(), parent)), reflect.ValueOf(ExampleValue(method, t.Elem(), parent)))
 		return out.Interface()
 	case reflect.Ptr:
-		if t.Elem().Kind() == reflect.Struct {
-			es := exampleStruct(method, t.Elem(), t)
-			ExampleValues[t] = es
-			return es
-		}
+		out := reflect.New(t.Elem())
+		out.Elem().Set(reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
+		return out.Interface()
 
 	case reflect.Interface:
 		if t.Implements(reflect.TypeOf((*error)(nil)).Elem()) {
