@@ -1,9 +1,17 @@
 package types
 
+import (
+	"time"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/crypto"
+)
+
 type MsgType string
 
 const (
-	MTUnknown = MsgType("unknown")
+	MTUndefined = MsgType("")
+	MTUnknown   = MsgType("unknown")
 
 	// Signing message CID. MsgMeta.Extra contains raw cbor message bytes
 	MTChainMsg = MsgType("message")
@@ -38,4 +46,25 @@ type MsgMeta struct {
 	// Additional data related to what is signed. Should be verifiable with the
 	// signed bytes (e.g. CID(Extra).Bytes() == toSign)
 	Extra []byte
+}
+
+type QuerySignRecordParams struct {
+	ID      string
+	Type    MsgType
+	Signer  address.Address
+	IsError bool
+	Skip    int
+	Limit   int
+	After   time.Time
+	Before  time.Time
+}
+
+type SignRecord struct {
+	ID        string
+	Type      MsgType
+	Signer    address.Address
+	Err       error
+	RawMsg    []byte
+	Signature *crypto.Signature
+	CreateAt  time.Time
 }
