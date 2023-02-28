@@ -115,6 +115,7 @@ func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
 			verifySignature: map[crypto.SigType]int64{
 				crypto.SigTypeBLS:       16598605,
 				crypto.SigTypeSecp256k1: 1637292,
+				crypto.SigTypeDelegated: 1637292,
 			},
 
 			hashingBase:                  31355,
@@ -214,6 +215,16 @@ func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
 			verifyPostDiscount:   false,
 			verifyConsensusFault: 495422,
 			verifyReplicaUpdate:  36316136,
+		},
+		forkParams.UpgradeHyggeHeight: &pricelistV0{
+			computeGasMulti: 1,
+			storageGasMulti: 1300, // only applies to messages/return values.
+
+			onChainMessageComputeBase:    38863 + 475000, // includes the actor update cost
+			onChainMessageStorageBase:    36,
+			onChainMessageStoragePerByte: 1,
+
+			onChainReturnValuePerByte: 1,
 		},
 	}
 	return &PricesSchedule{prices: prices}

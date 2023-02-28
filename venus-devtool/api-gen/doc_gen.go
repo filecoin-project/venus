@@ -11,8 +11,10 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"text/template"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/venus-devtool/api-gen/common"
 	"github.com/filecoin-project/venus/venus-devtool/util"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/urfave/cli/v2"
@@ -26,7 +28,7 @@ var docGenCmd = &cli.Command{
 		if err := util.LoadExtraInterfaceMeta(); err != nil {
 			return err
 		}
-		for _, t := range apiTargets {
+		for _, t := range common.ApiTargets {
 			if err := genDocForAPI(t); err != nil {
 				return err
 			}
@@ -86,7 +88,7 @@ func genDocForAPI(t util.APIMeta) error {
 		groups = append(groups, mg)
 	}
 
-	return writeAPIInfo(astMeta, groups)
+	return writeAPIInfo(astMeta, t.RPCMeta, groups)
 }
 
 func simpleGroupName(groupName string) string {
@@ -147,8 +149,33 @@ func getComment(comments []*ast.CommentGroup) string {
 	return cmt
 }
 
-func writeAPIInfo(astMeta *util.ASTMeta, groups []MethodGroup) error {
+func writeAPIInfo(astMeta *util.ASTMeta, rpcMeta util.RPCMeta, groups []MethodGroup) error {
 	buf := &bytes.Buffer{}
+
+	methNs := rpcMeta.MethodNamespace
+	if methNs == "" {
+		methNs = "Filecoin"
+	}
+	tmpl, err := template.New("curl").Parse(`# Sample code of curl
+
+{{ .StartBash }}
+# <Inputs> corresponding to the value of Inputs Tag of each API
+curl http://<ip>:<port>/rpc/v{{ .APIVersion }} -X POST -H "Content-Type: application/json"  -H "Authorization: Bearer <token>"  -d '{"method": "{{ .Namespace }}.<method>", "params": <Inputs>, "id": 0}'
+{{ .EndBash }}
+`)
+	if err != nil {
+		return fmt.Errorf("parse template: %w", err)
+	}
+	err = tmpl.Execute(buf, map[string]interface{}{
+		"APIVersion": rpcMeta.Version,
+		"Namespace":  methNs,
+		"StartBash":  "```bash",
+		"EndBash":    "```",
+	})
+	if err != nil {
+		return fmt.Errorf("exec curl template: %w", err)
+	}
+
 	fmt.Fprint(buf, "# Groups\n\n")
 
 	sort.Slice(groups, func(i, j int) bool {

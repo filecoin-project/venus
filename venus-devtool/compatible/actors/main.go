@@ -102,6 +102,10 @@ var renderCmd = &cli.Command{
 			if strings.Contains(tpath, "builtin/datacap") {
 				versions = actors.Versions[8:]
 			}
+			// evm actor available since version v10
+			if strings.Contains(tpath, "builtin/evm") {
+				versions = actors.Versions[9:]
+			}
 			err = render(filepath.Join(abs, tpath), versions)
 			if err != nil {
 				return fmt.Errorf("for %s: %w", tpath, err)
@@ -212,7 +216,7 @@ var replicaCmd = &cli.Command{
 			{"github.com/filecoin-project/lotus/chain/actors/aerrors", "github.com/filecoin-project/venus/venus-shared/actors/aerrors"},
 			{"dtypes.NetworkName", "string"},
 			{"\"github.com/filecoin-project/lotus/node/modules/dtypes\"", ""},
-			{"\"github.com/filecoin-project/lotus/chain/types\"", "types \"github.com/filecoin-project/venus/venus-shared/internal\""},
+			{"\"github.com/filecoin-project/lotus/chain/types\"", "\"github.com/filecoin-project/venus/venus-shared/actors/types\""},
 			{"\"github.com/filecoin-project/lotus/blockstore\"", "blockstore \"github.com/filecoin-project/venus/pkg/util/blockstoreutil\""},
 			{"golang.org/x/xerrors", "fmt"},
 		}

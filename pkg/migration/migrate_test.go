@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -24,27 +25,25 @@ func TestMigration(t *testing.T) {
 		types.NetworkButterfly: &networks.ButterflySnapNet().Network,
 		types.NetworkCalibnet:  &networks.Calibration().Network,
 		types.NetworkMainnet:   &networks.Mainnet().Network,
-		types.Integrationnet:   &networks.IntegrationNet().Network,
 	}
 
 	for nt, paramsCfg := range cfgs {
 		cfg := config.NewDefaultConfig()
 		cfg.NetworkParams.NetworkType = nt
-		repoPath := t.TempDir()
-		assert.Nil(t, os.RemoveAll(repoPath))
-		t.Log(repoPath)
+		cfg.NetworkParams.AllowableClockDriftSecs = 10
+		repoPath := filepath.Join(os.TempDir(), fmt.Sprintf("TestMigration%d", time.Now().UnixNano()))
+
 		assert.Nil(t, repo.InitFSRepo(repoPath, 0, cfg))
 
 		assert.Nil(t, TryToMigrate(repoPath))
 		fsRepo, err := repo.OpenFSRepo(repoPath, repo.LatestVersion)
 		assert.Nil(t, err)
 		newCfg := fsRepo.Config()
-		assert.Equal(t, paramsCfg.NetworkType, newCfg.NetworkParams.NetworkType)
-		assert.EqualValuesf(t, config.NewDefaultConfig().NetworkParams.ForkUpgradeParam, newCfg.NetworkParams.ForkUpgradeParam, fmt.Sprintf("current network type %d", paramsCfg.NetworkType))
-
-		cfgTmp, err := config.ReadFile(filepath.Join(repoPath, "config.json"))
-		assert.NoError(t, err)
-		assert.Equal(t, uint64(0), cfgTmp.NetworkParams.BlockDelay)
-		assert.Equal(t, paramsCfg.NetworkType, cfgTmp.NetworkParams.NetworkType)
+		errStr := fmt.Sprintf("current network type %d", paramsCfg.NetworkType)
+		assert.Equalf(t, paramsCfg.NetworkType, newCfg.NetworkParams.NetworkType, errStr)
+		assert.Equalf(t, uint64(0), newCfg.NetworkParams.BlockDelay, errStr)
+		assert.Equalf(t, paramsCfg.AllowableClockDriftSecs, newCfg.NetworkParams.AllowableClockDriftSecs, errStr)
+		assert.EqualValuesf(t, config.NewDefaultConfig().NetworkParams.ForkUpgradeParam, newCfg.NetworkParams.ForkUpgradeParam, errStr)
+		assert.NoError(t, fsRepo.Close())
 	}
 }

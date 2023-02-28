@@ -48,10 +48,14 @@ func IntegrationNet() *NetworkConf {
 				UpgradeOhSnapHeight:      1594680,
 				UpgradeSkyrHeight:        1960320,
 				UpgradeSharkHeight:       2383680,
+				UpgradeHyggeHeight:       99999999999999,
 			},
-			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
-			AddressNetwork:       address.Testnet,
-			PropagationDelaySecs: 10,
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
+			AddressNetwork:          address.Testnet,
+			PropagationDelaySecs:    10,
+			AllowableClockDriftSecs: 1,
+			Eip155ChainID:           314,
+			ActorDebugging:          false,
 		},
 	}
 }

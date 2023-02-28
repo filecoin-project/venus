@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fvm"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 
 	"github.com/filecoin-project/go-address"
+	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin"
@@ -19,7 +21,9 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/cron"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 var processLog = logging.Logger("process block")
@@ -44,21 +48,32 @@ type DefaultProcessor struct {
 	actors                      vm.ActorCodeLoader
 	syscalls                    vm.SyscallsImpl
 	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor
+	cs                          *chain.Store
+	netParamCfg                 *config.NetworkParamsConfig
 }
 
 var _ Processor = (*DefaultProcessor)(nil)
 
 // NewDefaultProcessor creates a default processor from the given state tree and vms.
-func NewDefaultProcessor(syscalls vm.SyscallsImpl, circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor) *DefaultProcessor {
-	return NewConfiguredProcessor(*vm.GetDefaultActors(), syscalls, circulatingSupplyCalculator)
+func NewDefaultProcessor(syscalls vm.SyscallsImpl,
+	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
+	cs *chain.Store,
+	netParamCfg *config.NetworkParamsConfig) *DefaultProcessor {
+	return NewConfiguredProcessor(*vm.GetDefaultActors(), syscalls, circulatingSupplyCalculator, cs, netParamCfg)
 }
 
 // NewConfiguredProcessor creates a default processor with custom validation and rewards.
-func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl, circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor) *DefaultProcessor {
+func NewConfiguredProcessor(actors vm.ActorCodeLoader,
+	syscalls vm.SyscallsImpl,
+	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
+	cs *chain.Store,
+	netParamCfg *config.NetworkParamsConfig) *DefaultProcessor {
 	return &DefaultProcessor{
 		actors:                      actors,
 		syscalls:                    syscalls,
 		circulatingSupplyCalculator: circulatingSupplyCalculator,
+		cs:                          cs,
+		netParamCfg:                 netParamCfg,
 	}
 }
 
@@ -71,10 +86,14 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 	cb vm.ExecCallBack,
 ) (cid.Cid, []types.MessageReceipt, error) {
 	toProcessTipset := time.Now()
-	var receipts []types.MessageReceipt
-	var err error
+	var (
+		receipts      []types.MessageReceipt
+		err           error
+		storingEvents = vmOpts.ReturnEvents
+		events        [][]types.Event
+	)
 
-	makeVMWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.Interface, error) {
+	makeVM := func(base cid.Cid, e abi.ChainEpoch, timestamp uint64) (vm.Interface, error) {
 		vmOpt := vm.VmOption{
 			CircSupplyCalculator: vmOpts.CircSupplyCalculator,
 			LookbackStateGetter:  vmOpts.LookbackStateGetter,
@@ -84,19 +103,34 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			Fork:                 vmOpts.Fork,
 			ActorCodeLoader:      vmOpts.ActorCodeLoader,
 			Epoch:                e,
+			Timestamp:            timestamp,
 			GasPriceSchedule:     vmOpts.GasPriceSchedule,
 			PRoot:                base,
 			Bsstore:              vmOpts.Bsstore,
 			SysCallsImpl:         vmOpts.SysCallsImpl,
+			TipSetGetter:         vmOpts.TipSetGetter,
 			Tracing:              vmOpts.Tracing,
+			ActorDebugging:       vmOpts.ActorDebugging,
 		}
 
 		return fvm.NewVM(ctx, vmOpt)
 	}
 
+	// May get filled with the genesis block header if there are null rounds
+	// for which to backfill cron execution.
+	var genesis *types.BlockHeader
+
+	// There were null rounds in between the current epoch and the parent epoch.
 	for i := parentEpoch; i < epoch; i++ {
 		if i > parentEpoch {
-			vmCron, err := makeVMWithBaseStateAndEpoch(pstate, i)
+			if genesis == nil {
+				if genesis, err = p.cs.GetGenesisBlock(ctx); err != nil {
+					return cid.Undef, nil, fmt.Errorf("failed to get genesis when backfilling null rounds: %w", err)
+				}
+			}
+
+			timestamp := genesis.Timestamp + p.netParamCfg.BlockDelay*(uint64(i))
+			vmCron, err := makeVM(pstate, i, timestamp)
 			if err != nil {
 				return cid.Undef, nil, fmt.Errorf("making cron vm: %w", err)
 			}
@@ -112,7 +146,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 				return cid.Undef, nil, fmt.Errorf("can not Flush vm State To db %vs", err)
 			}
 			if cb != nil {
-				if err := cb(cid.Undef, cronMessage, ret); err != nil {
+				if err := cb(cronMessage.Cid(), cronMessage, ret); err != nil {
 					return cid.Undef, nil, fmt.Errorf("callback failed on cron message: %w", err)
 				}
 			}
@@ -126,7 +160,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		processLog.Debugf("after fork root: %s\n", pstate)
 	}
 
-	vm, err := makeVMWithBaseStateAndEpoch(pstate, epoch)
+	vm, err := makeVM(pstate, epoch, vmOpts.Timestamp)
 	if err != nil {
 		return cid.Undef, nil, fmt.Errorf("making cron vm: %w", err)
 	}
@@ -165,6 +199,12 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
 			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
 			receipts = append(receipts, ret.Receipt)
+
+			if storingEvents {
+				// Appends nil when no events are returned to preserve positional alignment.
+				events = append(events, ret.Events)
+			}
+
 			if cb != nil {
 				if err := cb(mcid, m.VMMessage(), ret); err != nil {
 					return cid.Undef, nil, err
@@ -181,13 +221,13 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			return cid.Undef, nil, err
 		}
 		if cb != nil {
-			if err := cb(cid.Undef, rewardMessage, ret); err != nil {
+			if err := cb(rewardMessage.Cid(), rewardMessage, ret); err != nil {
 				return cid.Undef, nil, fmt.Errorf("callback failed on reward message: %w", err)
 			}
 		}
 
 		if ret.Receipt.ExitCode != 0 {
-			return cid.Undef, nil, fmt.Errorf("reward application message failed exit: %d, reason: %v", ret.Receipt, ret.ActorErr)
+			return cid.Undef, nil, fmt.Errorf("reward application message failed exit: %d, reason: %v", ret.Receipt.ExitCode, ret.ActorErr)
 		}
 
 		processLog.Debugf("process block %v time %v", index, time.Since(toProcessBlock).Milliseconds())
@@ -202,8 +242,25 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		return cid.Undef, nil, err
 	}
 	if cb != nil {
-		if err := cb(cid.Undef, cronMessage, ret); err != nil {
+		if err := cb(cronMessage.Cid(), cronMessage, ret); err != nil {
 			return cid.Undef, nil, fmt.Errorf("callback failed on cron message: %w", err)
+		}
+	}
+
+	// Slice will be empty if not storing events.
+	for i, evs := range events {
+		if len(evs) == 0 {
+			continue
+		}
+		switch root, err := storeEventsAMT(ctx, vmOpts.Bsstore, evs); {
+		case err != nil:
+			return cid.Undef, nil, fmt.Errorf("failed to store events amt: %w", err)
+		case i >= len(receipts):
+			return cid.Undef, nil, fmt.Errorf("assertion failed: receipt and events array lengths inconsistent")
+		case receipts[i].EventsRoot == nil:
+			return cid.Undef, nil, fmt.Errorf("assertion failed: VM returned events with no events root")
+		case root != *receipts[i].EventsRoot:
+			return cid.Undef, nil, fmt.Errorf("assertion failed: returned events AMT root does not match derived")
 		}
 	}
 
@@ -259,4 +316,13 @@ func makeBlockRewardMessage(blockMiner address.Address,
 		Method:     reward.Methods.AwardBlockReward,
 		Params:     buf.Bytes(),
 	}
+}
+
+func storeEventsAMT(ctx context.Context, bs cbor.IpldBlockstore, events []types.Event) (cid.Cid, error) {
+	cst := cbor.NewCborStore(bs)
+	objs := make([]cbg.CBORMarshaler, len(events))
+	for i := 0; i < len(events); i++ {
+		objs[i] = &events[i]
+	}
+	return amt4.FromArray(ctx, cst, objs, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 }

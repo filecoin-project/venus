@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/venus/fixtures/assets"
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/venus-shared/actors"
+	types2 "github.com/filecoin-project/venus/venus-shared/actors/types"
 	"github.com/filecoin-project/venus/venus-shared/utils"
 
 	"github.com/filecoin-project/venus/pkg/util/ulimit"
@@ -48,6 +49,7 @@ var daemonCmd = &cmds.Command{
 		cmds.BoolOption(ULimit, "manage open file limit").WithDefault(true),
 		cmds.StringOption(AuthServiceURL, "venus auth service URL"),
 		cmds.StringOption(AuthServiceToken, "venus auth service token"),
+		cmds.StringsOption(BootstrapPeers, "set the bootstrap peers"),
 		cmds.BoolOption(IsRelay, "advertise and allow venus network traffic to be relayed through this node"),
 		cmds.StringOption(ImportSnapshot, "import chain state from a given chain export file or url"),
 		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
@@ -122,7 +124,7 @@ func initRun(req *cmds.Request) error {
 	cfg := rep.Config()
 	network, _ := req.Options[Network].(string)
 	if err := networks.SetConfigFromOptions(cfg, network); err != nil {
-		return fmt.Errorf("setting config %v", err)
+		return fmt.Errorf("setting config: %v", err)
 	}
 	// genesis node
 	if mkGen, ok := req.Options[makeGenFlag].(string); ok {
@@ -185,6 +187,8 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 		return err
 	}
 	utils.ReloadMethodsMap()
+	types2.SetEip155ChainID(config.NetworkParams.Eip155ChainID)
+	log.Infof("Eip155ChainId %v", types2.Eip155ChainID)
 
 	// second highest precedence is env vars.
 	if envAPI := os.Getenv("VENUS_API"); envAPI != "" {
@@ -212,6 +216,10 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 	if len(config.API.VenusAuthURL)+len(config.API.VenusAuthToken) > 0 && len(config.API.VenusAuthToken)*len(config.API.VenusAuthURL) == 0 {
 		return fmt.Errorf("must set both venus auth service url and token at the same time")
+	}
+
+	if bootPeers, ok := req.Options[BootstrapPeers].([]string); ok && len(bootPeers) > 0 {
+		config.Bootstrap.Addresses = MergePeers(config.Bootstrap.Addresses, bootPeers)
 	}
 
 	opts, err := node.OptionsFromRepo(rep)
@@ -298,4 +306,23 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 		return nil, err
 	}
 	return repo.OpenFSRepo(repoDir, repo.LatestVersion)
+}
+
+func MergePeers(peerSet1 []string, peerSet2 []string) []string {
+
+	filter := map[string]struct{}{}
+	for _, peer := range peerSet1 {
+		filter[peer] = struct{}{}
+	}
+
+	notInclude := []string{}
+	for _, peer := range peerSet2 {
+		_, has := filter[peer]
+		if has {
+			continue
+		}
+		filter[peer] = struct{}{}
+		notInclude = append(notInclude, peer)
+	}
+	return append(peerSet1, notInclude...)
 }

@@ -8,8 +8,8 @@ import (
 	"math"
 	"sort"
 
-	internal "github.com/filecoin-project/venus/venus-shared/internal"
-	types "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/actors/types"
+	types1 "github.com/filecoin-project/venus/venus-shared/types"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
@@ -286,7 +286,7 @@ func (t *CompactedMessages) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Bls ([]*internal.Message) (slice)
+	// t.Bls ([]*types.Message) (slice)
 	if len(t.Bls) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.Bls was too long")
 	}
@@ -385,7 +385,7 @@ func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Bls ([]*internal.Message) (slice)
+	// t.Bls ([]*types.Message) (slice)
 
 	maj, extra, err = cr.ReadHeader()
 	if err != nil {
@@ -401,12 +401,12 @@ func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	if extra > 0 {
-		t.Bls = make([]*internal.Message, extra)
+		t.Bls = make([]*types.Message, extra)
 	}
 
 	for i := 0; i < int(extra); i++ {
 
-		var v internal.Message
+		var v types.Message
 		if err := v.UnmarshalCBOR(cr); err != nil {
 			return err
 		}
@@ -638,12 +638,12 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	if extra > 0 {
-		t.Blocks = make([]*types.BlockHeader, extra)
+		t.Blocks = make([]*types1.BlockHeader, extra)
 	}
 
 	for i := 0; i < int(extra); i++ {
 
-		var v types.BlockHeader
+		var v types1.BlockHeader
 		if err := v.UnmarshalCBOR(cr); err != nil {
 			return err
 		}

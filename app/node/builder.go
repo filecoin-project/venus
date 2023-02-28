@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
+	"github.com/filecoin-project/venus/app/submodule/eth"
 	"github.com/filecoin-project/venus/app/submodule/network"
 
 	logging "github.com/ipfs/go-log"
@@ -20,7 +21,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
-	"github.com/filecoin-project/venus/app/submodule/multisig"
 	"github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
@@ -149,8 +149,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 	nd.mining = mining.NewMiningModule(nd.syncer.Stmgr, (*builder)(b), nd.chain, nd.blockstore, nd.network, nd.syncer, *nd.wallet)
 
-	nd.multiSig = multisig.NewMultiSigSubmodule(nd.chain.API(), nd.mpool.API(), nd.chain.ChainReader)
-
 	mgrps := &paychmgr.ManagerParams{
 		MPoolAPI:     nd.mpool.API(),
 		ChainInfoAPI: nd.chain.API(),
@@ -164,6 +162,14 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	blockDelay := b.repo.Config().NetworkParams.BlockDelay
 	nd.common = common.NewCommonModule(nd.chain, nd.network, blockDelay)
+
+	sqlitePath, err := b.repo.SqlitePath()
+	if err != nil {
+		return nil, err
+	}
+	if nd.eth, err = eth.NewEthSubModule(ctx, b.repo.Config(), nd.chain, nd.mpool, sqlitePath); err != nil {
+		return nil, err
+	}
 
 	apiBuilder := NewBuilder()
 	apiBuilder.NameSpace("Filecoin")
@@ -181,6 +187,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.paychan,
 		nd.market,
 		nd.common,
+		nd.eth,
 	)
 
 	if err != nil {

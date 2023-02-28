@@ -15,7 +15,7 @@ import (
 type mockAccountView struct {
 }
 
-func (mac *mockAccountView) ResolveToKeyAddr(_ context.Context, addr address.Address) (address.Address, error) {
+func (mac *mockAccountView) ResolveToDeterministicAddress(_ context.Context, addr address.Address) (address.Address, error) {
 	return addr, nil
 }
 

@@ -3,9 +3,15 @@
 package system
 
 import (
-	"github.com/ipfs/go-cid"
+	"fmt"
+
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"golang.org/x/xerrors"
 
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
 	system6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/system"
@@ -47,4 +53,21 @@ func (s *state6) SetBuiltinActors(c cid.Cid) error {
 
 	return xerrors.New("cannot set manifest cid before v8")
 
+}
+
+func (s *state6) ActorKey() string {
+	return manifest.SystemKey
+}
+
+func (s *state6) ActorVersion() actorstypes.Version {
+	return actorstypes.Version6
+}
+
+func (s *state6) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

@@ -35,7 +35,7 @@ var (
 
 // HelloMessage is the data structure of a single message in the hello protocol.
 type HelloMessage struct {
-	HeaviestTipSetCids   types.TipSetKey
+	HeaviestTipSetCids   []cid.Cid
 	HeaviestTipSetHeight abi.ChainEpoch
 	HeaviestTipSetWeight fbig.Int
 	GenesisHash          cid.Cid
@@ -152,9 +152,11 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 		time.Sleep(time.Millisecond * 300)
 	}
 
-	fullTipSet, err := h.loadLocalFullTipset(ctx, hello.HeaviestTipSetCids)
+	h.peerMgr.AddFilecoinPeer(from) //must add peer before get tipset, because have issue on 2k network
+
+	fullTipSet, err := h.loadLocalFullTipset(ctx, types.NewTipSetKey(hello.HeaviestTipSetCids...))
 	if err != nil {
-		fullTipSet, err = h.exchange.GetFullTipSet(ctx, []peer.ID{from}, hello.HeaviestTipSetCids) //nolint
+		fullTipSet, err = h.exchange.GetFullTipSet(ctx, []peer.ID{from}, types.NewTipSetKey(hello.HeaviestTipSetCids...)) //nolint
 		if err == nil {
 			for _, b := range fullTipSet.Blocks {
 				_, err = h.chainStore.PutObject(ctx, b.Header)
@@ -181,7 +183,6 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	}
 
 	// notify the local node of the new `block.ChainInfo`
-	h.peerMgr.AddFilecoinPeer(from)
 	ci := types.NewChainInfo(from, from, fullTipSet.TipSet())
 	h.peerDiscovered(ci)
 }
@@ -220,7 +221,7 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 
 	return &HelloMessage{
 		GenesisHash:          h.genesis,
-		HeaviestTipSetCids:   heaviest.Key(),
+		HeaviestTipSetCids:   heaviest.Cids(),
 		HeaviestTipSetHeight: height,
 		HeaviestTipSetWeight: weight,
 	}, nil
@@ -309,6 +310,8 @@ func (hn *helloProtocolNotifiee) Connected(n net.Network, c net.Conn) {
 			return
 		}
 		defer func() { _ = s.Close() }()
+
+		t0 := time.Now()
 		// send out the hello message
 		err = hn.asHandler().sendHello(s)
 		if err != nil {
@@ -318,10 +321,27 @@ func (hn *helloProtocolNotifiee) Connected(n net.Network, c net.Conn) {
 		}
 
 		// now receive latency message
-		_, err = hn.asHandler().receiveLatency(ctx, s)
+		lmsg, err := hn.asHandler().receiveLatency(ctx, s)
 		if err != nil {
 			log.Debugf("failed to receive hello latency msg from peer %s: %s", c.RemotePeer(), err)
 			return
+		}
+
+		t3 := time.Now()
+		lat := t3.Sub(t0)
+		// add to peer tracker
+		hn.peerMgr.SetPeerLatency(s.Conn().RemotePeer(), lat)
+
+		if err == nil {
+			if lmsg.TArrival != 0 && lmsg.TSent != 0 {
+				t1 := time.Unix(0, lmsg.TArrival)
+				t2 := time.Unix(0, lmsg.TSent)
+				offset := t0.Sub(t1) + t3.Sub(t2)
+				offset /= 2
+				if offset > 5*time.Second || offset < -5*time.Second {
+					log.Infow("time offset", "offset", offset.Seconds(), "peerid", c.RemotePeer().String())
+				}
+			}
 		}
 	}()
 }

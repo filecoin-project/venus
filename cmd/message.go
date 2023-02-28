@@ -84,6 +84,7 @@ var msgSendCmd = &cmds.Command{
 	Options: []cmds.Option{
 		cmds.StringOption("value", "Value to send with message in FIL"),
 		cmds.StringOption("from", "address to send message from"),
+		cmds.StringOption("from-eth-addr", "optionally specify the eth addr to send funds from"),
 		feecapOption,
 		premiumOption,
 		limitOption,
@@ -93,6 +94,8 @@ var msgSendCmd = &cmds.Command{
 		cmds.Uint64Option("method", "The method to invoke on the target actor"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		ctx := req.Context
+
 		toAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			return err
@@ -109,9 +112,27 @@ var msgSendCmd = &cmds.Command{
 			methodID = abi.MethodNum(method.(uint64))
 		}
 
-		fromAddr, err := fromAddrOrDefault(req, env)
-		if err != nil {
-			return err
+		var fromAddr address.Address
+		if addrStr, _ := req.Options["from-eth-addr"].(string); len(addrStr) != 0 {
+			fromAddr, err = address.NewFromString(addrStr)
+			if err != nil {
+				return err
+			}
+		} else {
+			fromAddr, err = fromAddrOrDefault(req, env)
+			if err != nil {
+				return err
+			}
+		}
+
+		if fromAddr.Protocol() == address.Delegated {
+			if !(toAddr.Protocol() == address.ID || toAddr.Protocol() == address.Delegated) {
+				// Resolve id addr if possible.
+				toAddr, err = env.(*node.Env).ChainAPI.StateLookupID(ctx, toAddr, types.EmptyTSK)
+				if err != nil {
+					return fmt.Errorf("f4 addresses can only send to other f4 or id addresses. could not find id address for %s", toAddr.String())
+				}
+			}
 		}
 
 		if methodID == builtin.MethodSend && fromAddr.String() == toAddr.String() {
@@ -123,14 +144,14 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		if err := utils.LoadBuiltinActors(req.Context, env.(*node.Env).ChainAPI); err != nil {
+		if err := utils.LoadBuiltinActors(ctx, env.(*node.Env).ChainAPI); err != nil {
 			return err
 		}
 
 		var params []byte
 		rawPJ := req.Options["params-json"]
 		if rawPJ != nil {
-			decparams, err := decodeTypedParams(req.Context, env.(*node.Env), toAddr, methodID, rawPJ.(string))
+			decparams, err := decodeTypedParams(ctx, env.(*node.Env), toAddr, methodID, rawPJ.(string))
 			if err != nil {
 				return fmt.Errorf("failed to decode json params: %s", err)
 			}
@@ -169,18 +190,18 @@ var msgSendCmd = &cmds.Command{
 			}
 			msg.Nonce = nonce
 
-			sm, err := env.(*node.Env).WalletAPI.WalletSignMessage(req.Context, msg.From, msg)
+			sm, err := env.(*node.Env).WalletAPI.WalletSignMessage(ctx, msg.From, msg)
 			if err != nil {
 				return err
 			}
 
-			_, err = env.(*node.Env).MessagePoolAPI.MpoolPush(req.Context, sm)
+			_, err = env.(*node.Env).MessagePoolAPI.MpoolPush(ctx, sm)
 			if err != nil {
 				return err
 			}
 			c = sm.Cid()
 		} else {
-			sm, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(req.Context, msg, nil)
+			sm, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, msg, nil)
 			if err != nil {
 				return err
 			}

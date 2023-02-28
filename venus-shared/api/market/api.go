@@ -26,11 +26,11 @@ type IMarket interface {
 	ActorExist(ctx context.Context, addr address.Address) (bool, error)       //perm:read
 	ActorSectorSize(context.Context, address.Address) (abi.SectorSize, error) //perm:read
 
-	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                                               //perm:write
+	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                                               //perm:admin
 	MarketImportPublishedDeal(ctx context.Context, deal market.MinerDeal) error                                                                                                                                 //perm:write
 	MarketListDeals(ctx context.Context, addrs []address.Address) ([]*types.MarketDeal, error)                                                                                                                  //perm:read
 	MarketListRetrievalDeals(ctx context.Context) ([]market.ProviderDealState, error)                                                                                                                           //perm:read
-	MarketGetDealUpdates(ctx context.Context) (<-chan market.MinerDeal, error)                                                                                                                                  //perm:read
+	MarketGetDealUpdates(ctx context.Context) (<-chan market.MinerDeal, error)                                                                                                                                  //perm:admin
 	MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]market.MinerDeal, error)                                                                                                           //perm:read
 	MarketSetAsk(ctx context.Context, mAddr address.Address, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error //perm:admin
 	MarketGetAsk(ctx context.Context, mAddr address.Address) (*market.SignedStorageAsk, error)                                                                                                                  //perm:read
@@ -38,12 +38,12 @@ type IMarket interface {
 	MarketSetRetrievalAsk(ctx context.Context, mAddr address.Address, rask *retrievalmarket.Ask) error                                                                                                          //perm:admin
 	MarketGetRetrievalAsk(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error)                                                                                                             //perm:read
 	MarketListRetrievalAsk(ctx context.Context) ([]*market.RetrievalAsk, error)                                                                                                                                 //perm:read
-	MarketListDataTransfers(ctx context.Context) ([]market.DataTransferChannel, error)                                                                                                                          //perm:write
-	MarketDataTransferUpdates(ctx context.Context) (<-chan market.DataTransferChannel, error)                                                                                                                   //perm:write
+	MarketListDataTransfers(ctx context.Context) ([]market.DataTransferChannel, error)                                                                                                                          //perm:admin
+	MarketDataTransferUpdates(ctx context.Context) (<-chan market.DataTransferChannel, error)                                                                                                                   //perm:admin
 	// MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
-	MarketRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
+	MarketRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:admin
 	// MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
-	MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
+	MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:admin
 	MarketPendingDeals(ctx context.Context) ([]market.PendingDealInfo, error)                                                    //perm:write
 	MarketPublishPendingDeals(ctx context.Context) error                                                                         //perm:admin
 

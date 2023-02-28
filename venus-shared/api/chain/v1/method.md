@@ -1,3 +1,9 @@
+# Sample code of curl
+
+```bash
+# <Inputs> corresponding to the value of Inputs Tag of each API
+curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "Authorization: Bearer <token>"  -d '{"method": "Filecoin.<method>", "params": <Inputs>, "id": 0}'
+```
 # Groups
 
 * [Account](#account)
@@ -16,6 +22,7 @@
   * [ChainExport](#chainexport)
   * [ChainGetBlock](#chaingetblock)
   * [ChainGetBlockMessages](#chaingetblockmessages)
+  * [ChainGetEvents](#chaingetevents)
   * [ChainGetGenesis](#chaingetgenesis)
   * [ChainGetMessage](#chaingetmessage)
   * [ChainGetMessagesInTipset](#chaingetmessagesintipset)
@@ -46,6 +53,7 @@
   * [StateGetRandomnessFromTickets](#stategetrandomnessfromtickets)
   * [StateNetworkName](#statenetworkname)
   * [StateNetworkVersion](#statenetworkversion)
+  * [StateReplay](#statereplay)
   * [StateSearchMsg](#statesearchmsg)
   * [StateVerifiedRegistryRootKey](#stateverifiedregistryrootkey)
   * [StateVerifierStatus](#stateverifierstatus)
@@ -55,6 +63,44 @@
   * [NodeStatus](#nodestatus)
   * [StartTime](#starttime)
   * [Version](#version)
+* [ETH](#eth)
+  * [EthAccounts](#ethaccounts)
+  * [EthBlockNumber](#ethblocknumber)
+  * [EthCall](#ethcall)
+  * [EthChainId](#ethchainid)
+  * [EthEstimateGas](#ethestimategas)
+  * [EthFeeHistory](#ethfeehistory)
+  * [EthGasPrice](#ethgasprice)
+  * [EthGetBalance](#ethgetbalance)
+  * [EthGetBlockByHash](#ethgetblockbyhash)
+  * [EthGetBlockByNumber](#ethgetblockbynumber)
+  * [EthGetBlockTransactionCountByHash](#ethgetblocktransactioncountbyhash)
+  * [EthGetBlockTransactionCountByNumber](#ethgetblocktransactioncountbynumber)
+  * [EthGetCode](#ethgetcode)
+  * [EthGetMessageCidByTransactionHash](#ethgetmessagecidbytransactionhash)
+  * [EthGetStorageAt](#ethgetstorageat)
+  * [EthGetTransactionByBlockHashAndIndex](#ethgettransactionbyblockhashandindex)
+  * [EthGetTransactionByBlockNumberAndIndex](#ethgettransactionbyblocknumberandindex)
+  * [EthGetTransactionByHash](#ethgettransactionbyhash)
+  * [EthGetTransactionCount](#ethgettransactioncount)
+  * [EthGetTransactionHashByCid](#ethgettransactionhashbycid)
+  * [EthGetTransactionReceipt](#ethgettransactionreceipt)
+  * [EthMaxPriorityFeePerGas](#ethmaxpriorityfeepergas)
+  * [EthProtocolVersion](#ethprotocolversion)
+  * [EthSendRawTransaction](#ethsendrawtransaction)
+  * [NetListening](#netlistening)
+  * [NetVersion](#netversion)
+  * [Web3ClientVersion](#web3clientversion)
+* [ETHEvent](#ethevent)
+  * [EthGetFilterChanges](#ethgetfilterchanges)
+  * [EthGetFilterLogs](#ethgetfilterlogs)
+  * [EthGetLogs](#ethgetlogs)
+  * [EthNewBlockFilter](#ethnewblockfilter)
+  * [EthNewFilter](#ethnewfilter)
+  * [EthNewPendingTransactionFilter](#ethnewpendingtransactionfilter)
+  * [EthSubscribe](#ethsubscribe)
+  * [EthUninstallFilter](#ethuninstallfilter)
+  * [EthUnsubscribe](#ethunsubscribe)
 * [Market](#market)
   * [StateMarketParticipants](#statemarketparticipants)
 * [MessagePool](#messagepool)
@@ -131,21 +177,6 @@
 * [Mining](#mining)
   * [MinerCreateBlock](#minercreateblock)
   * [MinerGetBaseInfo](#minergetbaseinfo)
-* [MultiSig](#multisig)
-  * [MsigAddApprove](#msigaddapprove)
-  * [MsigAddCancel](#msigaddcancel)
-  * [MsigAddPropose](#msigaddpropose)
-  * [MsigApprove](#msigapprove)
-  * [MsigApproveTxnHash](#msigapprovetxnhash)
-  * [MsigCancel](#msigcancel)
-  * [MsigCancelTxnHash](#msigcanceltxnhash)
-  * [MsigCreate](#msigcreate)
-  * [MsigGetVested](#msiggetvested)
-  * [MsigPropose](#msigpropose)
-  * [MsigRemoveSigner](#msigremovesigner)
-  * [MsigSwapApprove](#msigswapapprove)
-  * [MsigSwapCancel](#msigswapcancel)
-  * [MsigSwapPropose](#msigswappropose)
 * [Network](#network)
   * [ID](#id)
   * [NetAddrsListen](#netaddrslisten)
@@ -276,7 +307,8 @@ Response:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "Nonce": 42,
-  "Balance": "0"
+  "Balance": "0",
+  "Address": "\u003cempty\u003e"
 }
 ```
 
@@ -539,6 +571,38 @@ Response:
 }
 ```
 
+### ChainGetEvents
+ChainGetEvents returns the events under an event AMT root CID.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "Emitter": 1000,
+    "Entries": [
+      {
+        "Flags": 7,
+        "Key": "string value",
+        "Codec": 42,
+        "Value": "Ynl0ZSBhcnJheQ=="
+      }
+    ]
+  }
+]
+```
+
 ### ChainGetGenesis
 ChainGetGenesis returns the genesis tipset.
 
@@ -694,7 +758,8 @@ Response:
   {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   }
 ]
 ```
@@ -760,7 +825,8 @@ Response:
   {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   }
 ]
 ```
@@ -965,7 +1031,8 @@ Response:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "Nonce": 42,
-  "Balance": "0"
+  "Balance": "0",
+  "Address": "\u003cempty\u003e"
 }
 ```
 
@@ -1129,7 +1196,8 @@ Response:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "Nonce": 42,
-  "Balance": "0"
+  "Balance": "0",
+  "Address": "\u003cempty\u003e"
 }
 ```
 
@@ -1224,7 +1292,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   }
 }
 ```
@@ -1278,7 +1347,7 @@ Perms: read
 Inputs:
 ```json
 [
-  17
+  18
 ]
 ```
 
@@ -1293,7 +1362,7 @@ Perms: read
 Inputs:
 ```json
 [
-  17
+  18
 ]
 ```
 
@@ -1362,7 +1431,8 @@ Response:
   "MsgRct": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "GasCost": {
     "Message": {
@@ -1395,7 +1465,8 @@ Response:
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": null
     },
     "Error": "string value",
     "Duration": 60000000000,
@@ -1439,7 +1510,8 @@ Response:
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "GasUsed": 9
+          "GasUsed": 9,
+          "EventsRoot": null
         },
         "Error": "string value",
         "Duration": 60000000000,
@@ -1534,7 +1606,8 @@ Response:
     "UpgradeChocolateHeight": 10101,
     "UpgradeOhSnapHeight": 10101,
     "UpgradeSkyrHeight": 10101,
-    "UpgradeSharkHeight": 10101
+    "UpgradeSharkHeight": 10101,
+    "UpgradeHyggeHeight": 10101
   }
 }
 ```
@@ -1615,7 +1688,166 @@ Inputs:
 ]
 ```
 
-Response: `17`
+Response: `18`
+
+### StateReplay
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "MsgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Msg": {
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    },
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ=="
+  },
+  "MsgRct": {
+    "ExitCode": 0,
+    "Return": "Ynl0ZSBhcnJheQ==",
+    "GasUsed": 9,
+    "EventsRoot": null
+  },
+  "GasCost": {
+    "Message": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "GasUsed": "0",
+    "BaseFeeBurn": "0",
+    "OverEstimationBurn": "0",
+    "MinerPenalty": "0",
+    "MinerTip": "0",
+    "Refund": "0",
+    "TotalCost": "0"
+  },
+  "ExecutionTrace": {
+    "Msg": {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "f01234",
+      "From": "f01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    },
+    "MsgRct": {
+      "ExitCode": 0,
+      "Return": "Ynl0ZSBhcnJheQ==",
+      "GasUsed": 9,
+      "EventsRoot": null
+    },
+    "Error": "string value",
+    "Duration": 60000000000,
+    "GasCharges": [
+      {
+        "Name": "string value",
+        "loc": [
+          {
+            "File": "string value",
+            "Line": 123,
+            "Function": "string value"
+          }
+        ],
+        "tg": 9,
+        "cg": 9,
+        "sg": 9,
+        "vtg": 9,
+        "vcg": 9,
+        "vsg": 9,
+        "tt": 60000000000,
+        "ex": {}
+      }
+    ],
+    "Subcalls": [
+      {
+        "Msg": {
+          "CID": {
+            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          },
+          "Version": 42,
+          "To": "f01234",
+          "From": "f01234",
+          "Nonce": 42,
+          "Value": "0",
+          "GasLimit": 9,
+          "GasFeeCap": "0",
+          "GasPremium": "0",
+          "Method": 1,
+          "Params": "Ynl0ZSBhcnJheQ=="
+        },
+        "MsgRct": {
+          "ExitCode": 0,
+          "Return": "Ynl0ZSBhcnJheQ==",
+          "GasUsed": 9,
+          "EventsRoot": null
+        },
+        "Error": "string value",
+        "Duration": 60000000000,
+        "GasCharges": [
+          {
+            "Name": "string value",
+            "loc": [
+              {
+                "File": "string value",
+                "Line": 123,
+                "Function": "string value"
+              }
+            ],
+            "tg": 9,
+            "cg": 9,
+            "sg": 9,
+            "vtg": 9,
+            "vcg": 9,
+            "vsg": 9,
+            "tt": 60000000000,
+            "ex": {}
+          }
+        ],
+        "Subcalls": null
+      }
+    ]
+  },
+  "Error": "string value",
+  "Duration": 60000000000
+}
+```
 
 ### StateSearchMsg
 StateSearchMsg looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
@@ -1666,7 +1898,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "ReturnDec": {},
   "TipSet": [
@@ -1768,7 +2001,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "ReturnDec": {},
   "TipSet": [
@@ -1862,6 +2096,716 @@ Response:
   "APIVersion": 131840
 }
 ```
+
+## ETH
+
+### EthAccounts
+These methods are used for Ethereum-compatible JSON-RPC calls
+
+EthAccounts will always return [] since we don't expect Lotus to manage private keys
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  "0x0707070707070707070707070707070707070707"
+]
+```
+
+### EthBlockNumber
+EthBlockNumber returns the height of the latest (heaviest) TipSet
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"0x5"`
+
+### EthCall
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "gas": "0x5",
+    "gasPrice": "0x0",
+    "value": "0x0",
+    "data": "0x07"
+  },
+  "string value"
+]
+```
+
+Response: `"0x07"`
+
+### EthChainId
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"0x5"`
+
+### EthEstimateGas
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "gas": "0x5",
+    "gasPrice": "0x0",
+    "value": "0x0",
+    "data": "0x07"
+  }
+]
+```
+
+Response: `"0x5"`
+
+### EthFeeHistory
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "Bw=="
+]
+```
+
+Response:
+```json
+{
+  "oldestBlock": "0x5",
+  "baseFeePerGas": [
+    "0x0"
+  ],
+  "gasUsedRatio": [
+    12.3
+  ],
+  "reward": []
+}
+```
+
+### EthGasPrice
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"0x0"`
+
+### EthGetBalance
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707",
+  "string value"
+]
+```
+
+Response: `"0x0"`
+
+### EthGetBlockByHash
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707070707070707070707070707",
+  true
+]
+```
+
+Response:
+```json
+{
+  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "parentHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "sha3Uncles": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "miner": "0x0707070707070707070707070707070707070707",
+  "stateRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "transactionsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "receiptsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "logsBloom": "0x07",
+  "difficulty": "0x5",
+  "totalDifficulty": "0x5",
+  "number": "0x5",
+  "gasLimit": "0x5",
+  "gasUsed": "0x5",
+  "timestamp": "0x5",
+  "extraData": "0x07",
+  "mixHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "nonce": "0x0707070707070707",
+  "baseFeePerGas": "0x0",
+  "size": "0x5",
+  "transactions": [
+    {}
+  ],
+  "uncles": [
+    "0x0707070707070707070707070707070707070707070707070707070707070707"
+  ]
+}
+```
+
+### EthGetBlockByNumber
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value",
+  true
+]
+```
+
+Response:
+```json
+{
+  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "parentHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "sha3Uncles": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "miner": "0x0707070707070707070707070707070707070707",
+  "stateRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "transactionsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "receiptsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "logsBloom": "0x07",
+  "difficulty": "0x5",
+  "totalDifficulty": "0x5",
+  "number": "0x5",
+  "gasLimit": "0x5",
+  "gasUsed": "0x5",
+  "timestamp": "0x5",
+  "extraData": "0x07",
+  "mixHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "nonce": "0x0707070707070707",
+  "baseFeePerGas": "0x0",
+  "size": "0x5",
+  "transactions": [
+    {}
+  ],
+  "uncles": [
+    "0x0707070707070707070707070707070707070707070707070707070707070707"
+  ]
+}
+```
+
+### EthGetBlockTransactionCountByHash
+EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707070707070707070707070707"
+]
+```
+
+Response: `"0x5"`
+
+### EthGetBlockTransactionCountByNumber
+EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x5"
+]
+```
+
+Response: `"0x5"`
+
+### EthGetCode
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707",
+  "string value"
+]
+```
+
+Response: `"0x07"`
+
+### EthGetMessageCidByTransactionHash
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+]
+```
+
+Response: `null`
+
+### EthGetStorageAt
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707",
+  "0x07",
+  "string value"
+]
+```
+
+Response: `"0x07"`
+
+### EthGetTransactionByBlockHashAndIndex
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "0x5"
+]
+```
+
+Response:
+```json
+{
+  "chainId": "0x5",
+  "nonce": "0x5",
+  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+  "blockNumber": "0x5",
+  "transactionIndex": "0x5",
+  "from": "0x0707070707070707070707070707070707070707",
+  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+  "value": "0x0",
+  "type": "0x5",
+  "input": "0x07",
+  "gas": "0x5",
+  "maxFeePerGas": "0x0",
+  "maxPriorityFeePerGas": "0x0",
+  "accessList": [
+    "0x0707070707070707070707070707070707070707070707070707070707070707"
+  ],
+  "v": "0x0",
+  "r": "0x0",
+  "s": "0x0"
+}
+```
+
+### EthGetTransactionByBlockNumberAndIndex
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x5",
+  "0x5"
+]
+```
+
+Response:
+```json
+{
+  "chainId": "0x5",
+  "nonce": "0x5",
+  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+  "blockNumber": "0x5",
+  "transactionIndex": "0x5",
+  "from": "0x0707070707070707070707070707070707070707",
+  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+  "value": "0x0",
+  "type": "0x5",
+  "input": "0x07",
+  "gas": "0x5",
+  "maxFeePerGas": "0x0",
+  "maxPriorityFeePerGas": "0x0",
+  "accessList": [
+    "0x0707070707070707070707070707070707070707070707070707070707070707"
+  ],
+  "v": "0x0",
+  "r": "0x0",
+  "s": "0x0"
+}
+```
+
+### EthGetTransactionByHash
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+]
+```
+
+Response:
+```json
+{
+  "chainId": "0x5",
+  "nonce": "0x5",
+  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+  "blockNumber": "0x5",
+  "transactionIndex": "0x5",
+  "from": "0x0707070707070707070707070707070707070707",
+  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+  "value": "0x0",
+  "type": "0x5",
+  "input": "0x07",
+  "gas": "0x5",
+  "maxFeePerGas": "0x0",
+  "maxPriorityFeePerGas": "0x0",
+  "accessList": [
+    "0x0707070707070707070707070707070707070707070707070707070707070707"
+  ],
+  "v": "0x0",
+  "r": "0x0",
+  "s": "0x0"
+}
+```
+
+### EthGetTransactionCount
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707",
+  "string value"
+]
+```
+
+Response: `"0x5"`
+
+### EthGetTransactionHashByCid
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
+
+### EthGetTransactionReceipt
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707070707070707070707070707"
+]
+```
+
+Response:
+```json
+{
+  "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "transactionIndex": "0x5",
+  "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockNumber": "0x5",
+  "from": "0x0707070707070707070707070707070707070707",
+  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+  "root": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "status": "0x5",
+  "contractAddress": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+  "cumulativeGasUsed": "0x5",
+  "gasUsed": "0x5",
+  "effectiveGasPrice": "0x0",
+  "logsBloom": "0x07",
+  "logs": [
+    {
+      "address": "0x0707070707070707070707070707070707070707",
+      "data": "0x07",
+      "topics": [
+        "0x0707070707070707070707070707070707070707070707070707070707070707"
+      ],
+      "removed": true,
+      "logIndex": "0x5",
+      "transactionIndex": "0x5",
+      "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+      "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+      "blockNumber": "0x5"
+    }
+  ],
+  "type": "0x5"
+}
+```
+
+### EthMaxPriorityFeePerGas
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"0x0"`
+
+### EthProtocolVersion
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"0x5"`
+
+### EthSendRawTransaction
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x07"
+]
+```
+
+Response: `"0x0707070707070707070707070707070707070707070707070707070707070707"`
+
+### NetListening
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `true`
+
+### NetVersion
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"string value"`
+
+### Web3ClientVersion
+Returns the client version
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"string value"`
+
+## ETHEvent
+
+### EthGetFilterChanges
+Polling method for a filter, returns event logs which occurred since last poll.
+(requires write perm since timestamp of last filter execution will be written)
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+]
+```
+
+Response:
+```json
+[
+  {}
+]
+```
+
+### EthGetFilterLogs
+Returns event logs matching filter with given id.
+(requires write perm since timestamp of last filter execution will be written)
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+]
+```
+
+Response:
+```json
+[
+  {}
+]
+```
+
+### EthGetLogs
+Returns event logs matching given filter spec.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "fromBlock": "2301220",
+    "address": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ],
+    "topics": null
+  }
+]
+```
+
+Response:
+```json
+[
+  {}
+]
+```
+
+### EthNewBlockFilter
+Installs a persistent filter to notify when a new block arrives.
+
+
+Perms: write
+
+Inputs: `[]`
+
+Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
+
+### EthNewFilter
+Installs a persistent filter based on given filter spec.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  {
+    "fromBlock": "2301220",
+    "address": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ],
+    "topics": null
+  }
+]
+```
+
+Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
+
+### EthNewPendingTransactionFilter
+Installs a persistent filter to notify when new messages arrive in the message pool.
+
+
+Perms: write
+
+Inputs: `[]`
+
+Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
+
+### EthSubscribe
+Subscribe to different event types using websockets
+eventTypes is one or more of:
+- newHeads: notify when new blocks arrive.
+- pendingTransactions: notify when new messages arrive in the message pool.
+- logs: notify new event logs that match a criteria
+params contains additional parameters used with the log event type
+The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "Bw=="
+]
+```
+
+Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
+
+### EthUninstallFilter
+Uninstalls a filter with given id.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+]
+```
+
+Response: `true`
+
+### EthUnsubscribe
+Unsubscribe from a websocket subscription
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+]
+```
+
+Response: `true`
 
 ## Market
 
@@ -2936,7 +3880,8 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "Nonce": 42,
-    "Balance": "0"
+    "Balance": "0",
+    "Address": "\u003cempty\u003e"
   }
 }
 ```
@@ -2960,7 +3905,34 @@ Inputs:
 ]
 ```
 
-Response: `"0"`
+Response:
+```json
+[
+  {
+    "SectorNumber": 9,
+    "SealProof": 8,
+    "SealedCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "DealIDs": [
+      5432
+    ],
+    "Activation": 10101,
+    "Expiration": 10101,
+    "DealWeight": "0",
+    "VerifiedDealWeight": "0",
+    "InitialPledge": "0",
+    "ExpectedDayReward": "0",
+    "ExpectedStoragePledge": "0",
+    "ReplacedSectorAge": 10101,
+    "ReplacedDayReward": "0",
+    "SectorKeyCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "SimpleQAPower": true
+  }
+]
+```
 
 ### StateComputeDataCID
 StateComputeDataCID computes DataCID from a set of on-chain deals
@@ -2989,9 +3961,10 @@ Inputs:
 
 Response:
 ```json
-{
-  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-}
+[
+  5,
+  1
+]
 ```
 
 ### StateDealProviderCollateralBounds
@@ -3139,8 +4112,44 @@ Response:
 }
 ```
 
-### StateGetAllocations
-StateGetAllocations returns the all the allocations for a given client.
+### StateMinerInitialPledgeCollateral
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  {
+    "SealProof": 8,
+    "SectorNumber": 9,
+    "SealedCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "SealRandEpoch": 10101,
+    "DealIDs": [
+      5432
+    ],
+    "Expiration": 10101,
+    "UnsealedCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"0"`
+
+### StateMinerPartitions
 
 
 Perms: read
@@ -3210,6 +4219,21 @@ Inputs:
 ```json
 [
   "f01234",
+  {
+    "SealProof": 8,
+    "SectorNumber": 9,
+    "SealedCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "SealRandEpoch": 10101,
+    "DealIDs": [
+      5432
+    ],
+    "Expiration": 10101,
+    "UnsealedCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  },
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -3363,6 +4387,10 @@ Inputs:
 [
   "f01234",
   [
+    5,
+    1
+  ],
+  [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
@@ -3375,10 +4403,31 @@ Inputs:
 
 Response:
 ```json
-{
-  "Escrow": "0",
-  "Locked": "0"
-}
+[
+  {
+    "SectorNumber": 9,
+    "SealProof": 8,
+    "SealedCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "DealIDs": [
+      5432
+    ],
+    "Activation": 10101,
+    "Expiration": 10101,
+    "DealWeight": "0",
+    "VerifiedDealWeight": "0",
+    "InitialPledge": "0",
+    "ExpectedDayReward": "0",
+    "ExpectedStoragePledge": "0",
+    "ReplacedSectorAge": 10101,
+    "ReplacedDayReward": "0",
+    "SectorKeyCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "SimpleQAPower": true
+  }
+]
 ```
 
 ### StateMarketDeals
@@ -3517,9 +4566,7 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
+    "SectorKeyCID": null,
     "SimpleQAPower": true
   }
 ]
@@ -3548,10 +4595,29 @@ Inputs:
 
 Response:
 ```json
-[
-  5,
-  1
-]
+{
+  "SectorNumber": 9,
+  "SealProof": 8,
+  "SealedCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "DealIDs": [
+    5432
+  ],
+  "Activation": 10101,
+  "Expiration": 10101,
+  "DealWeight": "0",
+  "VerifiedDealWeight": "0",
+  "InitialPledge": "0",
+  "ExpectedDayReward": "0",
+  "ExpectedStoragePledge": "0",
+  "ReplacedSectorAge": 10101,
+  "ReplacedDayReward": "0",
+  "SectorKeyCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "SimpleQAPower": true
+}
 ```
 
 ### StateMinerAvailableBalance
@@ -3631,10 +4697,25 @@ Inputs:
 
 Response:
 ```json
-[
-  5,
-  1
-]
+{
+  "Info": {
+    "SealProof": 8,
+    "SectorNumber": 9,
+    "SealedCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "SealRandEpoch": 10101,
+    "DealIDs": [
+      5432
+    ],
+    "Expiration": 10101,
+    "UnsealedCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  },
+  "PreCommitDeposit": "0",
+  "PreCommitEpoch": 10101
+}
 ```
 
 ### StateMinerInfo
@@ -3711,9 +4792,7 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "UnsealedCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    }
+    "UnsealedCid": null
   },
   [
     {
@@ -3800,9 +4879,25 @@ Inputs:
 Response:
 ```json
 {
-  "MinerPower": {
-    "RawBytePower": "0",
-    "QualityAdjPower": "0"
+  "MinerPower": "0",
+  "NetworkPower": "0",
+  "Sectors": [
+    {
+      "SealProof": 8,
+      "SectorNumber": 9,
+      "SectorKey": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "SealedCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ],
+  "WorkerKey": "f01234",
+  "SectorSize": 34359738368,
+  "PrevBeaconEntry": {
+    "Round": 42,
+    "Data": "Ynl0ZSBhcnJheQ=="
   },
   "TotalPower": {
     "RawBytePower": "0",
@@ -3832,9 +4927,7 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "UnsealedCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    }
+    "UnsealedCid": null
   },
   [
     {
@@ -3999,8 +5092,7 @@ Inputs:
 [
   "f01234",
   [
-    5,
-    1
+    0
   ],
   [
     {
@@ -4034,9 +5126,7 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
+    "SectorKeyCID": null,
     "SimpleQAPower": true
   }
 ]
@@ -4165,9 +5255,7 @@ Response:
   "ExpectedStoragePledge": "0",
   "ReplacedSectorAge": 10101,
   "ReplacedDayReward": "0",
-  "SectorKeyCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "SectorKeyCID": null,
   "SimpleQAPower": true
 }
 ```
@@ -4242,9 +5330,7 @@ Response:
       5432
     ],
     "Expiration": 10101,
-    "UnsealedCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    }
+    "UnsealedCid": null
   },
   "PreCommitDeposit": "0",
   "PreCommitEpoch": 10101
@@ -4470,9 +5556,7 @@ Response:
     {
       "SealProof": 8,
       "SectorNumber": 9,
-      "SectorKey": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
+      "SectorKey": null,
       "SealedCID": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       }
@@ -4491,539 +5575,6 @@ Response:
     }
   ],
   "EligibleForMining": true
-}
-```
-
-## MultiSig
-
-### MsigAddApprove
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  "f01234",
-  "f01234",
-  42,
-  "f01234",
-  "f01234",
-  true
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
-}
-```
-
-### MsigAddCancel
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  "f01234",
-  "f01234",
-  42,
-  "f01234",
-  true
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
-}
-```
-
-### MsigAddPropose
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  "f01234",
-  "f01234",
-  "f01234",
-  true
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
-}
-```
-
-### MsigApprove
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  "f01234",
-  42,
-  "f01234"
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
-}
-```
-
-### MsigApproveTxnHash
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  "f01234",
-  42,
-  "f01234",
-  "f01234",
-  "0",
-  "f01234",
-  42,
-  "Ynl0ZSBhcnJheQ=="
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
-}
-```
-
-### MsigCancel
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  "f01234",
-  42,
-  "f01234"
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
-}
-```
-
-### MsigCancelTxnHash
-MsigCancel cancels a previously-proposed multisig message
-It takes the following params: \<multisig address>, \<proposed transaction ID>, \<recipient address>, \<value to transfer>,
-\<sender address of the cancel msg>, \<method to call in the proposed message>, \<params to include in the proposed message>
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  "f01234",
-  42,
-  "f01234",
-  "0",
-  "f01234",
-  42,
-  "Ynl0ZSBhcnJheQ=="
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
-}
-```
-
-### MsigCreate
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  42,
-  [
-    "f01234"
-  ],
-  10101,
-  "0",
-  "f01234",
-  "0"
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
-}
-```
-
-### MsigGetVested
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "f01234",
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ],
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
-```
-
-Response: `"0"`
-
-### MsigPropose
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  "f01234",
-  "f01234",
-  "0",
-  "f01234",
-  42,
-  "Ynl0ZSBhcnJheQ=="
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
-}
-```
-
-### MsigRemoveSigner
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  "f01234",
-  "f01234",
-  "f01234",
-  true
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
-}
-```
-
-### MsigSwapApprove
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  "f01234",
-  "f01234",
-  42,
-  "f01234",
-  "f01234",
-  "f01234"
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
-}
-```
-
-### MsigSwapCancel
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  "f01234",
-  "f01234",
-  42,
-  "f01234",
-  "f01234"
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
-}
-```
-
-### MsigSwapPropose
-
-
-Perms: sign
-
-Inputs:
-```json
-[
-  "f01234",
-  "f01234",
-  "f01234",
-  "f01234"
-]
-```
-
-Response:
-```json
-{
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
 }
 ```
 
@@ -6500,4 +7051,3 @@ Perms: admin
 Inputs: `[]`
 
 Response: `123`
-

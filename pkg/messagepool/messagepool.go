@@ -31,6 +31,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/constants"
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
@@ -835,7 +836,7 @@ func sigCacheKey(m *types.SignedMessage) (string, error) {
 
 		hashCache := blake2b.Sum256(append(m.Cid().Bytes(), m.Signature.Data...))
 		return string(hashCache[:]), nil
-	case crypto.SigTypeSecp256k1:
+	case crypto.SigTypeSecp256k1, crypto.SigTypeDelegated:
 		return string(m.Cid().Bytes()), nil
 	default:
 		return "", fmt.Errorf("unrecognized signature type: %d", m.Signature.Type)
@@ -854,9 +855,8 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	c := m.Message.Cid()
-	if err := crypto2.Verify(&m.Signature, m.Message.From, c.Bytes()); err != nil {
-		return err
+	if err := chain.AuthenticateMessage(m, m.Message.From); err != nil {
+		return fmt.Errorf("failed to validate signature: %w", err)
 	}
 
 	mp.sigValCache.Add(sck, struct{}{})
@@ -910,18 +910,32 @@ func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
+	senderAct, err := mp.api.GetActorAfter(ctx, m.Message.From, curTS)
+	if err != nil {
+		return false, fmt.Errorf("failed to get sender actor: %w", err)
+	}
+
+	// This message can only be included in the _next_ epoch and beyond, hence the +1.
+	epoch := curTS.Height() + 1
+	nv := mp.api.StateNetworkVersion(ctx, epoch)
+
+	// TODO: I'm not thrilled about depending on filcns here, but I prefer this to duplicating logic
+	if !consensus.IsValidForSending(nv, senderAct) {
+		return false, fmt.Errorf("sender actor %s is not a valid top-level sender", m.Message.From)
+	}
+
 	publish, err := mp.verifyMsgBeforeAdd(ctx, m, curTS, local)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("verify msg failed: %w", err)
 	}
 
 	if err := mp.checkBalance(ctx, m, curTS); err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to check balance: %w", err)
 	}
 
 	err = mp.addLocked(ctx, m, !local, untrusted)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to add locked: %w", err)
 	}
 
 	if local {

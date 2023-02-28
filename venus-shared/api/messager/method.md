@@ -1,3 +1,9 @@
+# Sample code of curl
+
+```bash
+# <Inputs> corresponding to the value of Inputs Tag of each API
+curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "Authorization: Bearer <token>"  -d '{"method": "Message.<method>", "params": <Inputs>, "id": 0}'
+```
 # Groups
 
 * [Messager](#messager)
@@ -57,7 +63,7 @@
 ### ActiveAddress
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -71,7 +77,7 @@ Response: `{}`
 ### ClearUnFillMessage
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -85,7 +91,7 @@ Response: `123`
 ### DeleteAddress
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -113,7 +119,7 @@ Response: `{}`
 ### ForbiddenAddress
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -158,7 +164,7 @@ Response:
 ### GetAddress
 
 
-Perms: admin
+Perms: read
 
 Inputs:
 ```json
@@ -229,7 +235,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "TipSetKey": [
     {
@@ -296,7 +303,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "TipSetKey": [
     {
@@ -361,7 +369,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "TipSetKey": [
     {
@@ -428,7 +437,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "TipSetKey": [
     {
@@ -480,7 +490,7 @@ Response:
 ### GetSharedParams
 
 
-Perms: admin
+Perms: read
 
 Inputs: `[]`
 
@@ -570,7 +580,7 @@ Response:
 ### ListAddress
 
 
-Perms: admin
+Perms: read
 
 Inputs: `[]`
 
@@ -599,7 +609,7 @@ Response:
 ### ListBlockedMessage
 
 
-Perms: admin
+Perms: read
 
 Inputs:
 ```json
@@ -639,7 +649,8 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": null
     },
     "TipSetKey": [
       {
@@ -667,7 +678,7 @@ Response:
 ### ListFailedMessage
 
 
-Perms: admin
+Perms: read
 
 Inputs: `[]`
 
@@ -701,7 +712,8 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": null
     },
     "TipSetKey": [
       {
@@ -729,9 +741,23 @@ Response:
 ### ListMessage
 
 
-Perms: admin
+Perms: read
 
-Inputs: `[]`
+Inputs:
+```json
+[
+  {
+    "State": [
+      3
+    ],
+    "From": [
+      "f01234"
+    ],
+    "PageIndex": 123,
+    "PageSize": 123
+  }
+]
+```
 
 Response:
 ```json
@@ -763,7 +789,8 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": null
     },
     "TipSetKey": [
       {
@@ -830,7 +857,8 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": null
     },
     "TipSetKey": [
       {
@@ -901,7 +929,8 @@ Response:
     "Receipt": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": null
     },
     "TipSetKey": [
       {
@@ -951,7 +980,7 @@ Response:
 ### LogList
 
 
-Perms: write
+Perms: admin
 
 Inputs: `[]`
 
@@ -965,7 +994,7 @@ Response:
 ### MarkBadMessage
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -979,7 +1008,7 @@ Response: `{}`
 ### NetAddrsListen
 
 
-Perms: read
+Perms: admin
 
 Inputs: `[]`
 
@@ -1015,7 +1044,7 @@ Response: `{}`
 ### NetFindPeer
 
 
-Perms: read
+Perms: admin
 
 Inputs:
 ```json
@@ -1037,7 +1066,7 @@ Response:
 ### NetPeers
 
 
-Perms: read
+Perms: admin
 
 Inputs: `[]`
 
@@ -1125,7 +1154,7 @@ Response: `"string value"`
 ### RecoverFailedMsg
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -1144,7 +1173,7 @@ Response:
 ### ReplaceMessage
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -1235,7 +1264,7 @@ Response: `{}`
 ### Send
 
 
-Perms: admin
+Perms: sign
 
 Inputs:
 ```json
@@ -1260,7 +1289,7 @@ Response: `"string value"`
 ### SetFeeParams
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -1296,7 +1325,7 @@ Response: `{}`
 ### SetSelectMsgNum
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -1363,7 +1392,7 @@ Response: `123`
 ### UpdateFilledMessageByID
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -1377,7 +1406,7 @@ Response: `"string value"`
 ### UpdateMessageStateByID
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -1462,7 +1491,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "TipSetKey": [
     {

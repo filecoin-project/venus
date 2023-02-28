@@ -39,7 +39,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tipset for mining base: %v", err)
 	}
-	pt, _, err := miningAPI.Ming.Stmgr.RunStateTransition(ctx, ts)
+	pt, _, err := miningAPI.Ming.Stmgr.RunStateTransition(ctx, ts, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tipset root for mining base: %v", err)
 	}
@@ -123,7 +123,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	if err != nil {
 		return nil, fmt.Errorf("failed to load latest state: %v", err)
 	}
-	worker, err := st.ResolveToKeyAddr(ctx, info.Worker)
+	worker, err := st.ResolveToDeterministicAddress(ctx, info.Worker)
 	if err != nil {
 		return nil, fmt.Errorf("resolving worker address: %v", err)
 	}
@@ -174,7 +174,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *types.Bloc
 		return nil, fmt.Errorf("failed to load parent tipset: %v", err)
 	}
 
-	st, receiptCid, err := miningAPI.Ming.Stmgr.RunStateTransition(ctx, pts)
+	st, receiptCid, err := miningAPI.Ming.Stmgr.RunStateTransition(ctx, pts, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tipset state: %v", err)
 	}
@@ -210,6 +210,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *types.Bloc
 
 	var blsMsgCids, secpkMsgCids []cid.Cid
 	var blsSigs []crypto.Signature
+	nv := miningAPI.Ming.ChainModule.Fork.GetNetworkVersion(ctx, bt.Epoch)
 	for _, msg := range bt.Messages {
 		if msg.Signature.Type == crypto.SigTypeBLS {
 			blsSigs = append(blsSigs, msg.Signature)
@@ -220,7 +221,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *types.Bloc
 			}
 
 			blsMsgCids = append(blsMsgCids, c)
-		} else {
+		} else if chain.IsValidSecpkSigType(nv, msg.Signature.Type) {
 			c, err := messageStore.StoreMessage(msg)
 			if err != nil {
 				return nil, err
@@ -229,6 +230,8 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *types.Bloc
 			secpkMsgCids = append(secpkMsgCids, c)
 			secpkMessages = append(secpkMessages, msg)
 
+		} else {
+			return nil, fmt.Errorf("unknown sig type: %d", msg.Signature.Type)
 		}
 	}
 	store := miningAPI.Ming.BlockStore.Blockstore

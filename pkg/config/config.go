@@ -39,6 +39,7 @@ type Config struct {
 	Wallet        *WalletConfig        `json:"walletModule"`
 	SlashFilterDs *SlashFilterDsConfig `json:"slashFilter"`
 	RateLimitCfg  *RateLimitCfg        `json:"rateLimit"`
+	FevmConfig    *FevmConfig          `json:"fevm"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -263,6 +264,12 @@ type NetworkParamsConfig struct {
 	ForkUpgradeParam        *ForkUpgradeConfig           `json:"-"`
 	PreCommitChallengeDelay abi.ChainEpoch               `json:"-"`
 	PropagationDelaySecs    uint64                       `json:"-"`
+	AllowableClockDriftSecs uint64                       `json:"allowableClockDriftSecs"`
+	// ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
+	// As per https://github.com/ethereum-lists/chains
+	Eip155ChainID int `json:"-"`
+	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
+	ActorDebugging bool `json:"-"`
 }
 
 // ForkUpgradeConfig record upgrade parameters
@@ -289,6 +296,7 @@ type ForkUpgradeConfig struct {
 	UpgradeOhSnapHeight        abi.ChainEpoch `json:"upgradeOhSnapHeight"`
 	UpgradeSkyrHeight          abi.ChainEpoch `json:"upgradeSkyrHeight"`
 	UpgradeSharkHeight         abi.ChainEpoch `json:"upgradeSharkHeight"`
+	UpgradeHyggeHeight         abi.ChainEpoch `json:"upgradeHyggeHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -317,6 +325,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeOhSnapHeight:      1594680,
 	UpgradeSkyrHeight:        1960320,
 	UpgradeSharkHeight:       2383680,
+	UpgradeHyggeHeight:       99999999999999,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
@@ -330,9 +339,11 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 			abi.RegisteredSealProof_StackedDrg32GiBV1,
 			abi.RegisteredSealProof_StackedDrg64GiBV1,
 		},
-		DrandSchedule:        map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
-		ForkUpgradeParam:     &defaultParams,
-		PropagationDelaySecs: 10,
+		DrandSchedule:           map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
+		ForkUpgradeParam:        &defaultParams,
+		PropagationDelaySecs:    10,
+		AllowableClockDriftSecs: 1,
+		Eip155ChainID:           314,
 	}
 }
 
@@ -362,6 +373,65 @@ func newRateLimitConfig() *RateLimitCfg {
 	}
 }
 
+type EventConfig struct {
+	// EnableRealTimeFilterAPI enables APIs that can create and query filters for actor events as they are emitted.
+	EnableRealTimeFilterAPI bool `json:"enableRealTimeFilterAPI"`
+
+	// EnableHistoricFilterAPI enables APIs that can create and query filters for actor events that occurred in the past.
+	// A queryable index of events will be maintained.
+	EnableHistoricFilterAPI bool `json:"enableHistoricFilterAPI"`
+
+	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
+	// this time become eligible for automatic deletion.
+	FilterTTL Duration `json:"filterTTL"`
+
+	// MaxFilters specifies the maximum number of filters that may exist at any one time.
+	MaxFilters int `json:"maxFilters"`
+
+	// MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
+	MaxFilterResults int `json:"maxFilterResults"`
+
+	// MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+	// the entire chain)
+	MaxFilterHeightRange uint64 `json:"maxFilterHeightRange"`
+
+	// DatabasePath is the full path to a sqlite database that will be used to index actor events to
+	// support the historic filter APIs. If the database does not exist it will be created. The directory containing
+	// the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
+	// relative to the CWD (current working directory).
+	DatabasePath string `json:"databasePath"`
+
+	// Others, not implemented yet:
+	// Set a limit on the number of active websocket subscriptions (may be zero)
+	// Set a timeout for subscription clients
+	// Set upper bound on index size
+}
+
+type FevmConfig struct {
+	//EnableEthRPC enables eth_rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
+	EnableEthRPC bool `json:"enableEthRPC"`
+	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
+	// Set to 0 to keep all mappings
+	EthTxHashMappingLifetimeDays int `json:"ethTxHashMappingLifetimeDays"`
+
+	Event EventConfig `json:"event"`
+}
+
+func newFevmConfig() *FevmConfig {
+	return &FevmConfig{
+		EnableEthRPC:                 false,
+		EthTxHashMappingLifetimeDays: 0,
+		Event: EventConfig{
+			EnableRealTimeFilterAPI: false,
+			EnableHistoricFilterAPI: false,
+			FilterTTL:               Duration(time.Hour * 24),
+			MaxFilters:              100,
+			MaxFilterResults:        10000,
+			MaxFilterHeightRange:    2880, // conservative limit of one day
+		},
+	}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -376,6 +446,7 @@ func NewDefaultConfig() *Config {
 		Wallet:        newDefaultWalletConfig(),
 		SlashFilterDs: newDefaultSlashFilterDsConfig(),
 		RateLimitCfg:  newRateLimitConfig(),
+		FevmConfig:    newFevmConfig(),
 	}
 }
 
@@ -507,4 +578,28 @@ func validateLettersOnly(key string, value string) error {
 		return errors.Errorf(`"%s" must only contain letters`, key)
 	}
 	return nil
+}
+
+var (
+	_ json.Marshaler   = (*Duration)(nil)
+	_ json.Unmarshaler = (*Duration)(nil)
+)
+
+// Duration is a wrapper type for time.Duration
+// for decoding and encoding from/to JSON
+type Duration time.Duration
+
+// UnmarshalJSON implements interface for json decoding
+func (dur *Duration) UnmarshalJSON(data []byte) error {
+	d, err := time.ParseDuration(strings.Trim(string(data), "\""))
+	if err != nil {
+		return err
+	}
+	*dur = Duration(d)
+	return err
+}
+
+func (dur Duration) MarshalJSON() ([]byte, error) {
+	d := time.Duration(dur)
+	return []byte(fmt.Sprintf("\"%s\"", d.String())), nil
 }

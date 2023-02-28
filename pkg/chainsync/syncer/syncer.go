@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/hashicorp/go-multierror"
 
@@ -271,6 +272,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 		return errors.New("do not sync to a target has synced before")
 	}
 
+	syncer.exchangeClient.AddPeer(target.Sender)
 	tipsets, err := syncer.fetchChainBlocks(ctx, head, target.Head)
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
@@ -553,6 +555,9 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.Ti
 		}
 
 		for _, m := range messages[index].Secpk {
+			if m.Signature.Type != crypto.SigTypeSecp256k1 && m.Signature.Type != crypto.SigTypeDelegated {
+				return nil, fmt.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.Type)
+			}
 			if _, err := cborStore.Put(ctx, m); err != nil {
 				return nil, fmt.Errorf("SECP message processing failed: %w", err)
 			}
@@ -819,7 +824,7 @@ func (d *delayRunTsTransition) listenUpdate() {
 				if atomic.LoadInt64(&d.runningCount) < maxProcessLen {
 					atomic.AddInt64(&d.runningCount, 1)
 					go func(ts *types.TipSet) {
-						_, _, err := d.syncer.stmgr.RunStateTransition(context.TODO(), ts)
+						_, _, err := d.syncer.stmgr.RunStateTransition(context.TODO(), ts, nil)
 						if err != nil {
 							logSyncer.Errorf("stmgr.runStateTransaction failed:%s", err.Error())
 						}

@@ -76,6 +76,13 @@ func TestMessageValidForBlockInclusion(t *testing.T) {
 			ip := testutil.IntRangedProvider(0, int(params.FilBase))
 			return FromFil(uint64(ip(t)))
 		},
+		func(t *testing.T) address.Address {
+			for {
+				if addr := testutil.AddressProvider()(t); addr.Protocol() != address.Delegated {
+					return addr
+				}
+			}
+		},
 	)
 
 	// ensure that random assignments won't break the validation
@@ -202,6 +209,65 @@ func TestMessageValidForBlockInclusion(t *testing.T) {
 
 		onReset := func() {
 			err := msg.ValidForBlockInclusion(c.minGas, c.version)
+			require.NoErrorf(t, err, "after values reset for %s", c.name)
+		}
+
+		testutil.ValueSetNReset(t, c.name, onSet, onReset, c.sets...)
+	}
+
+	delegateAddr := testutil.DelegatedAddressProvider(32)(t)
+	addrCases := []struct {
+		name      string
+		sets      []interface{}
+		from      address.Address
+		to        address.Address
+		version   network.Version
+		expectErr bool
+	}{
+		{
+			name: "from is delegate address, version < Version18",
+			sets: []interface{}{
+				&msg.From,
+				delegateAddr,
+			},
+			version:   17,
+			expectErr: true,
+		},
+		{
+			name: "from is delegate address, version >= Version18",
+			sets: []interface{}{
+				&msg.From,
+				delegateAddr,
+			},
+			version: 18,
+		},
+		{
+			name: "to is delegate address, version < Version18",
+			sets: []interface{}{
+				&msg.To,
+				delegateAddr,
+			},
+			version:   17,
+			expectErr: true,
+		},
+		{
+			name: "to is delegate address, version >= Version18",
+			sets: []interface{}{
+				&msg.To,
+				delegateAddr,
+			},
+			version: 18,
+		},
+	}
+	for _, c := range addrCases {
+		onSet := func() {
+			if err := msg.ValidForBlockInclusion(0, c.version); err != nil && !c.expectErr {
+				require.Errorf(t, err, "after invalid values set for %s", c.name)
+			}
+		}
+
+		onReset := func() {
+			err := msg.ValidForBlockInclusion(0, c.version)
 			require.NoErrorf(t, err, "after values reset for %s", c.name)
 		}
 

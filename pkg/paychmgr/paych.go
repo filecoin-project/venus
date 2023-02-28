@@ -209,7 +209,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 		return nil, err
 	}
 
-	from, err := ca.api.ResolveToKeyAddress(ctx, f, nil)
+	from, err := ca.api.ResolveToDeterministicAddress(ctx, f, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +325,7 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 		return false, err
 	}
 
-	if ret.Receipt.ExitCode != 0 {
+	if ret.MsgRct.ExitCode != 0 {
 		return false, nil
 	}
 

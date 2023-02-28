@@ -3,6 +3,7 @@
 package init
 
 import (
+	"crypto/sha256"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
@@ -10,7 +11,11 @@ import (
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
@@ -105,10 +110,38 @@ func (s *state2) SetAddressMap(mcid cid.Cid) error {
 	return nil
 }
 
+func (s *state2) GetState() interface{} {
+	return &s.State
+}
+
 func (s *state2) AddressMap() (adt.Map, error) {
 	return adt2.AsMap(s.store, s.State.AddressMap)
 }
 
-func (s *state2) GetState() interface{} {
-	return &s.State
+func (s *state2) AddressMapBitWidth() int {
+	return 5
+}
+
+func (s *state2) AddressMapHashFunction() func(input []byte) []byte {
+	return func(input []byte) []byte {
+		res := sha256.Sum256(input)
+		return res[:]
+	}
+}
+
+func (s *state2) ActorKey() string {
+	return manifest.InitKey
+}
+
+func (s *state2) ActorVersion() actorstypes.Version {
+	return actorstypes.Version2
+}
+
+func (s *state2) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

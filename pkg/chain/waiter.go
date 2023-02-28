@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -34,7 +35,7 @@ type waiterChainReader interface {
 
 type IStmgr interface {
 	GetActorAt(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
-	RunStateTransition(context.Context, *types.TipSet) (root cid.Cid, receipts cid.Cid, err error)
+	RunStateTransition(context.Context, *types.TipSet, vm.ExecCallBack) (root cid.Cid, receipts cid.Cid, err error)
 }
 
 // Waiter waits for a message to appear on chain.
@@ -289,21 +290,26 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg typ
 			msgCid := msg.Cid()
 			if msg.VMMessage().From == expectedFrom { // cheaper to just check origin first
 				if msg.VMMessage().Nonce == expectedNonce {
-					if allowReplaced && msg.VMMessage().EqualCall(expectedMsg) {
-						if expectedCid != msgCid {
-							log.Warnw("found message with equal nonce and call params but different CID",
-								"wanted", expectedCid, "found", msgCid, "nonce", expectedNonce, "from", expectedFrom)
-						}
-						recpt, err := w.receiptByIndex(ctx, pts, msgCid, blockMessageInfos)
-						if err != nil {
-							return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
-						}
-						return &types.ChainMessage{TS: ts, Message: msg.VMMessage(), Block: bms.Block, Receipt: recpt}, true, nil
+					if !msg.VMMessage().EqualCall(expectedMsg) {
+						// this is an entirely different message, fail
+						return nil, false, fmt.Errorf("found message with equal nonce as the one we are looking for that is NOT a valid replacement message (F:%s n %d, TS: %s n%d)",
+							expectedMsg.Cid(), expectedMsg.Nonce, msg.Cid(), msg.VMMessage().Nonce)
 					}
 
-					// this should be that message
-					return nil, false, fmt.Errorf("found message with equal nonce as the one we are looking for (F: n %d, TS: %s n%d)",
-						expectedMsg.Nonce, msg.Cid(), msg.VMMessage().Nonce)
+					if msgCid != expectedCid {
+						if !allowReplaced {
+							log.Warnw("found message with equal nonce and call params but different CID",
+								"wanted", expectedCid, "found", msgCid, "nonce", expectedNonce, "from", expectedFrom)
+							return nil, false, fmt.Errorf("found message with equal nonce as the one we are looking for (F:%s n %d, TS: %s n%d)",
+								expectedCid, expectedNonce, msgCid, msg.VMMessage().Nonce)
+						}
+					}
+
+					recpt, err := w.receiptByIndex(ctx, pts, msgCid, blockMessageInfos)
+					if err != nil {
+						return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
+					}
+					return &types.ChainMessage{TS: ts, Message: msg.VMMessage(), Block: bms.Block, Receipt: recpt}, true, nil
 				}
 			}
 		}
@@ -315,7 +321,7 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg typ
 func (w *Waiter) receiptByIndex(ctx context.Context, ts *types.TipSet, targetCid cid.Cid, blockMsgs []types.BlockMessagesInfo) (*types.MessageReceipt, error) {
 	var receiptCid cid.Cid
 	var err error
-	if _, receiptCid, err = w.Stmgr.RunStateTransition(ctx, ts); err != nil {
+	if _, receiptCid, err = w.Stmgr.RunStateTransition(ctx, ts, nil); err != nil {
 		return nil, fmt.Errorf("RunStateTransition failed:%w", err)
 	}
 

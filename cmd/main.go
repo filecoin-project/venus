@@ -78,6 +78,8 @@ const (
 
 	AuthServiceURL   = "auth-url"
 	AuthServiceToken = "auth-token"
+
+	BootstrapPeers = "bootstrap-peers"
 )
 
 func init() {
@@ -99,7 +101,6 @@ var RootCmd = &cmds.Command{
 START RUNNING VENUS
   daemon                 - Start a venus daemon process
   wallet                 - Manage wallet
-  msig                   - Interact with a multisig wallet
   info                   - Print node info
 
 VIEW DATA STRUCTURES
@@ -125,6 +126,9 @@ Paych COMMANDS
 
 Cid COMMANDS
   manifest-cid-from-car  - Get the manifest CID from a car file
+
+Evm COMMANDS
+  evm                    - Commands related to the Filecoin EVM runtime
 
 TOOL COMMANDS
   inspect                - Show info about the venus node
@@ -174,8 +178,8 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"state":   stateCmd,
 	"miner":   minerCmd,
 	"paych":   paychCmd,
-	"msig":    multisigCmd,
 	"info":    infoCmd,
+	"evm":     evmCmd,
 }
 
 func init() {

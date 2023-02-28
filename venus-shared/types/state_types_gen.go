@@ -5,10 +5,12 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/multisig"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 )
 
 ////////// market //////////
+
 const (
 	DealMaxLabelSize     = market.DealMaxLabelSize
 	EpochUndefined       = market.EpochUndefined
@@ -56,6 +58,7 @@ var (
 )
 
 ////////// miner //////////
+
 const (
 	AddressedPartitionsMax                       = miner.AddressedPartitionsMax
 	AddressedSectorsMax                          = miner.AddressedSectorsMax
@@ -113,6 +116,7 @@ type (
 	FaultDeclaration              = miner.FaultDeclaration
 	GetBeneficiaryReturn          = miner.GetBeneficiaryReturn
 	GetControlAddressesReturn     = miner.GetControlAddressesReturn
+	MinerConstructorParams        = miner.MinerConstructorParams
 	PartitionKey                  = miner.PartitionKey
 	PendingBeneficiaryChange      = miner.PendingBeneficiaryChange
 	PoStPartition                 = miner.PoStPartition
@@ -169,14 +173,37 @@ var (
 	SectorKey                              = miner.SectorKey
 )
 
+////////// multisig //////////
+
+const (
+	SignersMax = multisig.SignersMax
+)
+
+type (
+	AddSignerParams                   = multisig.AddSignerParams
+	ApproveReturn                     = multisig.ApproveReturn
+	ChangeNumApprovalsThresholdParams = multisig.ChangeNumApprovalsThresholdParams
+	MultisigConstructorParams         = multisig.ConstructorParams
+	LockBalanceParams                 = multisig.LockBalanceParams
+	ProposalHashData                  = multisig.ProposalHashData
+	ProposeParams                     = multisig.ProposeParams
+	ProposeReturn                     = multisig.ProposeReturn
+	RemoveSignerParams                = multisig.RemoveSignerParams
+	SwapSignerParams                  = multisig.SwapSignerParams
+	Transaction                       = multisig.Transaction
+	TxnID                             = multisig.TxnID
+	TxnIDParams                       = multisig.TxnIDParams
+)
+
 ////////// paych //////////
+
 const (
 	LaneStatesAmtBitwidth = paych.LaneStatesAmtBitwidth
 	SettleDelay           = paych.SettleDelay
 )
 
 type (
-	ConstructorParams        = paych.ConstructorParams
+	PaychConstructorParams   = paych.ConstructorParams
 	LaneState                = paych.LaneState
 	Merge                    = paych.Merge
 	ModVerifyParams          = paych.ModVerifyParams
@@ -185,11 +212,11 @@ type (
 )
 
 ////////// verifreg //////////
+
 const (
 	EndOfLifeClaimDropPeriod                = verifreg.EndOfLifeClaimDropPeriod
 	MaximumVerifiedAllocationExpiration     = verifreg.MaximumVerifiedAllocationExpiration
 	MaximumVerifiedAllocationTerm           = verifreg.MaximumVerifiedAllocationTerm
-	MinimumVerifiedAllocationSize           = verifreg.MinimumVerifiedAllocationSize
 	MinimumVerifiedAllocationTerm           = verifreg.MinimumVerifiedAllocationTerm
 	NoAllocationID                          = verifreg.NoAllocationID
 	SignatureDomainSeparation_RemoveDataCap = verifreg.SignatureDomainSeparation_RemoveDataCap
@@ -210,6 +237,7 @@ type (
 	ClaimExtensionRequest          = verifreg.ClaimExtensionRequest
 	ClaimId                        = verifreg.ClaimId
 	ClaimTerm                      = verifreg.ClaimTerm
+	DataCap                        = verifreg.DataCap
 	ExtendClaimTermsParams         = verifreg.ExtendClaimTermsParams
 	ExtendClaimTermsReturn         = verifreg.ExtendClaimTermsReturn
 	FailCode                       = verifreg.FailCode

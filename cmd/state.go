@@ -56,6 +56,7 @@ var stateCmd = &cmds.Command{
 		"network-version": stateNtwkVersionCmd,
 		"list-actor":      stateListActorCmd,
 		"actor-cids":      stateSysActorCIDsCmd,
+		"replay":          stateReplayCmd,
 	},
 }
 
@@ -326,14 +327,6 @@ func blockDelay(req *cmds.Request) (uint64, error) {
 	return cfg.NetworkParams.BlockDelay, nil
 }
 
-type ActorInfo struct {
-	Address string
-	Balance string
-	Nonce   uint64
-	Code    string
-	Head    string
-}
-
 var stateGetActorCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Print actor information",
@@ -357,17 +350,19 @@ var stateGetActorCmd = &cmds.Command{
 			return err
 		}
 
+		buf := &bytes.Buffer{}
+		writer := NewSilentWriter(buf)
 		strtype := builtin.ActorNameByCode(a.Code)
 
-		return re.Emit(ActorInfo{
-			Address: addr.String(),
-			Balance: fmt.Sprintf("%s", types.FIL(a.Balance)),
-			Nonce:   a.Nonce,
-			Code:    fmt.Sprintf("%s (%s)", a.Code, strtype),
-			Head:    a.Head.String(),
-		})
+		writer.Printf("Address:\t%s\n", addr)
+		writer.Printf("Balance:\t%s\n", types.FIL(a.Balance))
+		writer.Printf("Nonce:\t\t%d\n", a.Nonce)
+		writer.Printf("Code:\t\t%s (%s)\n", a.Code, strtype)
+		writer.Printf("Head:\t\t%s\n", a.Head)
+		writer.Printf("Delegated address:\t\t%s\n", a.Address)
+
+		return re.Emit(buf)
 	},
-	Type: ActorInfo{},
 }
 
 var stateLookupIDCmd = &cmds.Command{
@@ -656,6 +651,71 @@ var stateSysActorCIDsCmd = &cmds.Command{
 
 		return re.Emit(buf)
 	},
+}
+
+var stateReplayCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Replay a particular message",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("messageCid", true, false, "message cid"),
+	},
+	Options: []cmds.Option{
+		cmds.BoolOption("show-trace", "print out full execution trace for given message"),
+		cmds.BoolOption("detailed-gas", "print out detailed gas costs for given message"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if len(req.Arguments) != 1 {
+			return fmt.Errorf("incorrect number of arguments, got %d", len(req.Arguments))
+		}
+
+		mcid, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return fmt.Errorf("message cid was invalid: %s", err)
+		}
+
+		ctx := req.Context
+
+		res, err := env.(*node.Env).ChainAPI.StateReplay(ctx, types.EmptyTSK, mcid)
+		if err != nil {
+			return fmt.Errorf("replay call failed: %w", err)
+		}
+
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
+
+		writer.Println("Replay receipt:")
+		writer.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
+		writer.Printf("Return: %x\n", res.MsgRct.Return)
+		writer.Printf("Gas Used: %d\n", res.MsgRct.GasUsed)
+
+		if detailedGas, _ := req.Options["detailed-gas"].(bool); detailedGas {
+			writer.Printf("Base Fee Burn: %d\n", res.GasCost.BaseFeeBurn)
+			writer.Printf("Overestimaton Burn: %d\n", res.GasCost.OverEstimationBurn)
+			writer.Printf("Miner Penalty: %d\n", res.GasCost.MinerPenalty)
+			writer.Printf("Miner Tip: %d\n", res.GasCost.MinerTip)
+			writer.Printf("Refund: %d\n", res.GasCost.Refund)
+		}
+		writer.Printf("Total Message Cost: %d\n", res.GasCost.TotalCost)
+
+		if res.MsgRct.ExitCode != 0 {
+			writer.Printf("Error message: %q\n", res.Error)
+		}
+
+		if showTrace, _ := req.Options["show-trace"].(bool); showTrace {
+			writer.Printf("%s\t%s\t%s\t%d\t%x\t%d\t%x\n", res.Msg.From, res.Msg.To, res.Msg.Value, res.Msg.Method, res.Msg.Params, res.MsgRct.ExitCode, res.MsgRct.Return)
+			printInternalExecutions(writer, "\t", res.ExecutionTrace.Subcalls)
+		}
+
+		return re.Emit(buf)
+	},
+}
+
+func printInternalExecutions(writer *SilentWriter, prefix string, trace []types.ExecutionTrace) {
+	for _, im := range trace {
+		writer.Printf("%s%s\t%s\t%s\t%d\t%x\t%d\t%x\n", prefix, im.Msg.From, im.Msg.To, im.Msg.Value, im.Msg.Method, im.Msg.Params, im.MsgRct.ExitCode, im.MsgRct.Return)
+		printInternalExecutions(writer, prefix+"\t", im.Subcalls)
+	}
 }
 
 func makeActorView(act *types.Actor, addr address.Address) *ActorView {

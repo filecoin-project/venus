@@ -8,20 +8,21 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 )
 
 // MockSigner implements the Signer interface
 type MockSigner struct {
-	AddrKeyInfo map[address.Address]crypto.KeyInfo
+	AddrKeyInfo map[address.Address]key.KeyInfo
 	Addresses   []address.Address
 	PubKeys     [][]byte
 }
 
 // NewMockSigner returns a new mock signer, capable of signing data with
 // keys (addresses derived from) in keyinfo
-func NewMockSigner(kis []crypto.KeyInfo) MockSigner {
+func NewMockSigner(kis []key.KeyInfo) MockSigner {
 	var ms MockSigner
-	ms.AddrKeyInfo = make(map[address.Address]crypto.KeyInfo)
+	ms.AddrKeyInfo = make(map[address.Address]key.KeyInfo)
 	for _, k := range kis {
 		// extract public key
 		pub, err := k.PublicKey()
@@ -47,7 +48,7 @@ func NewMockSigner(kis []crypto.KeyInfo) MockSigner {
 
 // NewMockSignersAndKeyInfo is a convenience function to generate a mock
 // signers with some keys.
-func NewMockSignersAndKeyInfo(numSigners int) (MockSigner, []crypto.KeyInfo) {
+func NewMockSignersAndKeyInfo(numSigners int) (MockSigner, []key.KeyInfo) {
 	ki := MustGenerateKeyInfo(numSigners, 42)
 	signer := NewMockSigner(ki)
 	return signer, ki
@@ -55,11 +56,11 @@ func NewMockSignersAndKeyInfo(numSigners int) (MockSigner, []crypto.KeyInfo) {
 
 // MustGenerateMixedKeyInfo produces m bls keys and n secp keys.
 // BLS and Secp will be interleaved. The keys will be valid, but not deterministic.
-func MustGenerateMixedKeyInfo(m int, n int) []crypto.KeyInfo {
-	info := []crypto.KeyInfo{}
+func MustGenerateMixedKeyInfo(m int, n int) []key.KeyInfo {
+	info := []key.KeyInfo{}
 	for m > 0 && n > 0 {
 		if m > 0 {
-			ki, err := crypto.NewBLSKeyFromSeed(rand.Reader)
+			ki, err := key.NewBLSKeyFromSeed(rand.Reader)
 			if err != nil {
 				panic(err)
 			}
@@ -68,7 +69,7 @@ func MustGenerateMixedKeyInfo(m int, n int) []crypto.KeyInfo {
 		}
 
 		if n > 0 {
-			ki, err := crypto.NewSecpKeyFromSeed(rand.Reader)
+			ki, err := key.NewSecpKeyFromSeed(rand.Reader)
 			if err != nil {
 				panic(err)
 			}
@@ -80,12 +81,12 @@ func MustGenerateMixedKeyInfo(m int, n int) []crypto.KeyInfo {
 }
 
 // MustGenerateBLSKeyInfo produces n distinct BLS keyinfos.
-func MustGenerateBLSKeyInfo(n int, seed byte) []crypto.KeyInfo {
+func MustGenerateBLSKeyInfo(n int, seed byte) []key.KeyInfo {
 	token := bytes.Repeat([]byte{seed}, 512)
-	var keyinfos []crypto.KeyInfo
+	var keyinfos []key.KeyInfo
 	for i := 0; i < n; i++ {
 		token[0] = byte(i)
-		ki, err := crypto.NewBLSKeyFromSeed(bytes.NewReader(token))
+		ki, err := key.NewBLSKeyFromSeed(bytes.NewReader(token))
 		if err != nil {
 			panic(err)
 		}
@@ -96,12 +97,12 @@ func MustGenerateBLSKeyInfo(n int, seed byte) []crypto.KeyInfo {
 
 // MustGenerateKeyInfo generates `n` distinct keyinfos using seed `seed`.
 // The result is deterministic (for stable tests), don't use this for real keys!
-func MustGenerateKeyInfo(n int, seed byte) []crypto.KeyInfo {
+func MustGenerateKeyInfo(n int, seed byte) []key.KeyInfo {
 	token := bytes.Repeat([]byte{seed}, 512)
-	var keyinfos []crypto.KeyInfo
+	var keyinfos []key.KeyInfo
 	for i := 0; i < n; i++ {
 		token[0] = byte(i)
-		ki, err := crypto.NewSecpKeyFromSeed(bytes.NewReader(token))
+		ki, err := key.NewSecpKeyFromSeed(bytes.NewReader(token))
 		if err != nil {
 			panic(err)
 		}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/testhelpers"
+	"github.com/filecoin-project/venus/pkg/vm"
 
 	"github.com/filecoin-project/venus/pkg/statemanger"
 
@@ -316,7 +317,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
 	// in the bsstore and linked to genesis.
 	eval := builder.FakeStateEvaluator()
-	stmgr := statemanger.NewStateManger(builder.Store(), eval, nil, nil, nil, nil)
+	stmgr := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false)
 	newSyncer, err := syncer.NewSyncer(stmgr,
 		eval,
 		&chain.FakeChainSelector{},
@@ -460,7 +461,11 @@ type poisonValidator struct {
 	fullFailureTS   uint64
 }
 
-func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poisonValidator {
+	return &poisonValidator{headerFailureTS: headerFailure, fullFailureTS: fullFailure}
+}
+
+func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.ExecCallBack) (cid.Cid, cid.Cid, error) {
 	stamp := ts.At(0).Timestamp
 	if pv.fullFailureTS == stamp {
 		return testhelpers.EmptyTxMetaCID, testhelpers.EmptyTxMetaCID, errors.New("run state transition fails on poison timestamp")
@@ -473,10 +478,6 @@ func (pv *poisonValidator) ValidateFullBlock(ctx context.Context, blk *types.Blo
 		return errors.New("val semantic fails on poison timestamp")
 	}
 	return nil
-}
-
-func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poisonValidator {
-	return &poisonValidator{headerFailureTS: headerFailure, fullFailureTS: fullFailure}
 }
 
 func (pv *poisonValidator) ValidateHeaderSemantic(_ context.Context, header *types.BlockHeader, _ *types.TipSet) error {
@@ -497,7 +498,7 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 	eval := newPoisonValidator(t, 98, 99)
 	builder := chain.NewBuilder(t, address.Undef)
 
-	stmgr := statemanger.NewStateManger(builder.Store(), eval, nil, nil, nil, nil)
+	stmgr := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false)
 	builder, syncer := setupWithValidator(ctx, t, builder, stmgr, eval)
 
 	genesis := builder.Store().GetHead()
@@ -576,7 +577,7 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *syncer.Syncer) {
 	builder := chain.NewBuilder(t, address.Undef)
 	eval := builder.FakeStateEvaluator()
 
-	stmgr := statemanger.NewStateManger(builder.Store(), eval, nil, nil, nil, nil)
+	stmgr := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false)
 
 	return setupWithValidator(ctx, t, builder, stmgr, eval)
 }

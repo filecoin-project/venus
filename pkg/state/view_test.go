@@ -12,19 +12,19 @@ import (
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTestMinerView(t *testing.T, numMiners int) (*state.View, map[address.Address]*crypto.KeyInfo) {
+func setupTestMinerView(t *testing.T, numMiners int) (*state.View, map[address.Address]*key.KeyInfo) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	numCommittedSectors := uint64(19)
 	kis := testhelpers.MustGenerateBLSKeyInfo(numMiners, 0)
 
-	kiMap := make(map[address.Address]*crypto.KeyInfo)
+	kiMap := make(map[address.Address]*key.KeyInfo)
 	for _, k := range kis {
 		addr, err := k.Address()
 		assert.NoError(t, err)
@@ -54,7 +54,7 @@ func TestView(t *testing.T) {
 		minerInfo, err := view.MinerInfo(ctx, m, network.Version17)
 		assert.NoError(t, err)
 
-		ownerPkAddress, err := view.ResolveToKeyAddr(ctx, minerInfo.Owner)
+		ownerPkAddress, err := view.ResolveToDeterministicAddress(ctx, minerInfo.Owner)
 		assert.NoError(t, err)
 		_, find := keyMap[ownerPkAddress]
 		assert.True(t, find)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
@@ -28,9 +29,9 @@ import (
 // stateManagerAPI defines the methods needed from StateManager
 // todo remove this code and add private interface in market and paychanel package
 type IStateManager interface {
-	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
+	ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
-	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*vm.Ret, error)
+	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.InvocResult, error)
 	GetMarketState(ctx context.Context, ts *types.TipSet) (market.State, error)
 }
 
@@ -42,12 +43,15 @@ var _ IStateManager = &Stmgr{}
 
 type Stmgr struct {
 	cs  *chain.Store
+	ms  *chain.MessageStore
 	cp  consensus.StateTransformer
 	rnd consensus.ChainRandomness
 
 	fork         fork.IFork
 	gasSchedule  *gas.PricesSchedule
 	syscallsImpl vm.SyscallsImpl
+
+	actorDebugging bool
 
 	// Compute StateRoot parallel safe
 	stCache      map[types.TipSetKey]stateComputeResult
@@ -60,42 +64,44 @@ type Stmgr struct {
 	log *logging.ZapEventLogger
 }
 
-func NewStateManger(cs *chain.Store, cp consensus.StateTransformer,
-	rnd consensus.ChainRandomness, fork fork.IFork, gasSchedule *gas.PricesSchedule,
+func NewStateManger(cs *chain.Store,
+	ms *chain.MessageStore,
+	cp consensus.StateTransformer,
+	rnd consensus.ChainRandomness,
+	fork fork.IFork,
+	gasSchedule *gas.PricesSchedule,
 	syscallsImpl vm.SyscallsImpl,
+	actorDebugging bool,
 ) *Stmgr {
-	logName := "statemanager"
-
-	defer func() {
-		_ = logging.SetLogLevel(logName, "info")
-	}()
-
 	return &Stmgr{
-		cs: cs, fork: fork, cp: cp, rnd: rnd,
-		gasSchedule:  gasSchedule,
-		syscallsImpl: syscallsImpl,
-		log:          logging.Logger(logName),
-		stCache:      make(map[types.TipSetKey]stateComputeResult),
-		chsWorkingOn: make(map[types.TipSetKey]chan struct{}, 1),
+		cs:             cs,
+		ms:             ms,
+		fork:           fork,
+		cp:             cp,
+		rnd:            rnd,
+		gasSchedule:    gasSchedule,
+		syscallsImpl:   syscallsImpl,
+		log:            logging.Logger("statemanager"),
+		stCache:        make(map[types.TipSetKey]stateComputeResult),
+		chsWorkingOn:   make(map[types.TipSetKey]chan struct{}, 1),
+		actorDebugging: actorDebugging,
 	}
 }
 
-func (s *Stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (s *Stmgr) ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
-	case address.BLS, address.SECP256K1:
+	case address.BLS, address.SECP256K1, address.Delegated:
 		return addr, nil
 	case address.Actor:
 		return address.Undef, errors.New("cannot resolve actor address to key address")
 	default:
 	}
-	if ts == nil {
-		ts = s.cs.GetHead()
-	}
+
 	_, view, err := s.ParentStateView(ctx, ts)
 	if err != nil {
 		return address.Undef, err
 	}
-	return view.ResolveToKeyAddr(ctx, addr)
+	return view.ResolveToDeterministicAddress(ctx, addr)
 }
 
 func (s *Stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {
@@ -144,7 +150,7 @@ func (s *Stmgr) ParentState(ctx context.Context, ts *types.TipSet) (*types.TipSe
 			ts.Key().String(), err)
 	}
 
-	if stateRoot, _, err := s.RunStateTransition(ctx, parent); err != nil {
+	if stateRoot, _, err := s.RunStateTransition(ctx, parent, nil); err != nil {
 		return nil, nil, fmt.Errorf("runstateTransition failed:%w", err)
 	} else if !stateRoot.Equals(ts.At(0).ParentStateRoot) {
 		return nil, nil, fmt.Errorf("runstateTransition error, %w", consensus.ErrStateRootMismatch)
@@ -169,7 +175,7 @@ func (s *Stmgr) TipsetStateTsk(ctx context.Context, tsk types.TipSetKey) (*types
 }
 
 func (s *Stmgr) TipsetState(ctx context.Context, ts *types.TipSet) (*tree.State, error) {
-	root, _, err := s.RunStateTransition(ctx, ts)
+	root, _, err := s.RunStateTransition(ctx, ts, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +197,7 @@ redo:
 	}
 	s.stLk.Unlock()
 
-	if root, _, err := s.RunStateTransition(ctx, pts); err != nil {
+	if root, _, err := s.RunStateTransition(ctx, pts, nil); err != nil {
 		return err
 	} else if !root.Equals(cts.At(0).ParentStateRoot) {
 		cts = pts
@@ -203,7 +209,7 @@ redo:
 	return nil
 }
 
-func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet) (root cid.Cid, receipts cid.Cid, err error) {
+func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.ExecCallBack) (root cid.Cid, receipts cid.Cid, err error) {
 	if nil != s.stopFlag(false) {
 		return cid.Undef, cid.Undef, fmt.Errorf("state manager is stopping")
 	}
@@ -260,7 +266,7 @@ func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet) (root 
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	}
 
-	if root, receipts, err = s.cp.RunStateTransition(ctx, ts); err != nil {
+	if root, receipts, err = s.cp.RunStateTransition(ctx, ts, cb); err != nil {
 		return cid.Undef, cid.Undef, err
 	}
 
@@ -347,7 +353,7 @@ func (s *Stmgr) RunStateTransitionV2(ctx context.Context, ts *types.TipSet) (cid
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	}
 
-	if state.stateRoot, state.receipt, err = s.cp.RunStateTransition(ctx, ts); err != nil {
+	if state.stateRoot, state.receipt, err = s.cp.RunStateTransition(ctx, ts, nil); err != nil {
 		return cid.Undef, cid.Undef, err
 	} else if err = s.cs.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
@@ -394,7 +400,7 @@ func (s *Stmgr) StateViewTsk(ctx context.Context, tsk types.TipSetKey) (*types.T
 }
 
 func (s *Stmgr) StateView(ctx context.Context, ts *types.TipSet) (cid.Cid, *appstate.View, error) {
-	stateCid, _, err := s.RunStateTransition(ctx, ts)
+	stateCid, _, err := s.RunStateTransition(ctx, ts, nil)
 	if err != nil {
 		return cid.Undef, nil, err
 	}
@@ -410,9 +416,49 @@ func (s *Stmgr) GetNetworkVersion(ctx context.Context, h abi.ChainEpoch) network
 	return s.fork.GetNetworkVersion(ctx, h)
 }
 
+var errHaltExecution = fmt.Errorf("halt")
+
+func (s *Stmgr) Replay(ctx context.Context, ts *types.TipSet, msgCID cid.Cid) (*types.Message, *vm.Ret, error) {
+	var outm *types.Message
+	var outr *vm.Ret
+
+	cb := func(mcid cid.Cid, msg *types.Message, ret *vm.Ret) error {
+		if msgCID.Equals(mcid) {
+			outm = msg
+			outr = ret
+			return errHaltExecution
+		}
+		return nil
+	}
+
+	_, _, err := s.cp.RunStateTransition(ctx, ts, cb)
+	if err != nil && !errors.Is(err, errHaltExecution) {
+		return nil, nil, fmt.Errorf("unexpected error during execution: %w", err)
+	}
+
+	if outr == nil {
+		return nil, nil, fmt.Errorf("given message not found in tipset")
+	}
+
+	return outm, outr, nil
+}
+
+func MakeMsgGasCost(msg *types.Message, ret *vm.Ret) types.MsgGasCost {
+	return types.MsgGasCost{
+		Message:            msg.Cid(),
+		GasUsed:            big.NewInt(ret.GasTracker.GasUsed),
+		BaseFeeBurn:        ret.OutPuts.BaseFeeBurn,
+		OverEstimationBurn: ret.OutPuts.OverEstimationBurn,
+		MinerPenalty:       ret.OutPuts.MinerPenalty,
+		MinerTip:           ret.OutPuts.MinerTip,
+		Refund:             ret.OutPuts.Refund,
+		TotalCost:          big.Sub(msg.RequiredFunds(), ret.OutPuts.Refund),
+	}
+}
+
 func (s *Stmgr) FlushChainHead() (*types.TipSet, error) {
 	head := s.cs.GetHead()
-	_, _, err := s.RunStateTransition(context.TODO(), head)
+	_, _, err := s.RunStateTransition(context.TODO(), head, nil)
 	return head, err
 }
 

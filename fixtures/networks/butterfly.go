@@ -12,8 +12,8 @@ func ButterflySnapNet() *NetworkConf {
 	return &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWKeDMuJbouvypr1nL2qRruhNVXzv4QiLsZRh6gnvLkc7p",
-				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWSsACNHLGoJbPqeitNY7tom19Nxq8x5ag36eTwmgcAeLo",
+				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWCa1wgMMBB9JjA2kYqaN1v5uh7xvcsc2gQJBHzPp7G57H",
+				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWD6fCvo1dyci6wsjTLyv7eJK73pCVz6RCQjbtPvbc8LYw",
 			},
 			MinPeerThreshold: 0,
 			Period:           "30s",
@@ -21,7 +21,7 @@ func ButterflySnapNet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.NetworkButterfly,
-			GenesisNetworkVersion: network.Version16,
+			GenesisNetworkVersion: network.Version17,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -52,11 +52,15 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeChocolateHeight:   -17,
 				UpgradeOhSnapHeight:      -18,
 				UpgradeSkyrHeight:        -19,
-				UpgradeSharkHeight:       600,
+				UpgradeSharkHeight:       -20,
+				UpgradeHyggeHeight:       600,
 			},
-			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 1},
-			AddressNetwork:       address.Testnet,
-			PropagationDelaySecs: 6,
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AddressNetwork:          address.Testnet,
+			PropagationDelaySecs:    6,
+			AllowableClockDriftSecs: 1,
+			Eip155ChainID:           3141592,
+			ActorDebugging:          false,
 		},
 	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 )
 
 var _ wallet.WalletIntersection = &remoteWallet{}
@@ -66,11 +67,11 @@ func (w *remoteWallet) DeleteAddress(ctx context.Context, addr address.Address) 
 	return w.IWallet.WalletDelete(ctx, addr)
 }
 
-func (w *remoteWallet) Import(ctx context.Context, key *crypto.KeyInfo) (address.Address, error) {
+func (w *remoteWallet) Import(ctx context.Context, key *key.KeyInfo) (address.Address, error) {
 	return w.IWallet.WalletImport(ctx, ConvertRemoteKeyInfo(key))
 }
 
-func (w *remoteWallet) Export(ctx context.Context, addr address.Address, password string) (*crypto.KeyInfo, error) {
+func (w *remoteWallet) Export(ctx context.Context, addr address.Address, password string) (*key.KeyInfo, error) {
 	key, err := w.IWallet.WalletExport(ctx, addr)
 	if err != nil {
 		return nil, err

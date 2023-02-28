@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 )
 
 var TestPassword = []byte("test-password")
@@ -31,8 +32,8 @@ type WalletIntersection interface {
 	Addresses(ctx context.Context) []address.Address
 	NewAddress(ctx context.Context, protocol address.Protocol) (address.Address, error)
 	DeleteAddress(ctx context.Context, addr address.Address) error
-	Import(ctx context.Context, ki *crypto.KeyInfo) (address.Address, error)
-	Export(ctx context.Context, addr address.Address, password string) (*crypto.KeyInfo, error)
+	Import(ctx context.Context, ki *key.KeyInfo) (address.Address, error)
+	Export(ctx context.Context, addr address.Address, password string) (*key.KeyInfo, error)
 	WalletSign(ctx context.Context, keyAddr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error)
 	HasPassword(ctx context.Context) bool
 }
@@ -167,30 +168,30 @@ func (w *Wallet) GetPubKeyForAddress(ctx context.Context, addr address.Address) 
 }
 
 // NewKeyInfo creates a new KeyInfo struct in the wallet backend and returns it
-func (w *Wallet) NewKeyInfo(ctx context.Context) (*crypto.KeyInfo, error) {
+func (w *Wallet) NewKeyInfo(ctx context.Context) (*key.KeyInfo, error) {
 	newAddr, err := w.NewAddress(ctx, address.BLS)
 	if err != nil {
-		return &crypto.KeyInfo{}, err
+		return &key.KeyInfo{}, err
 	}
 
 	return w.keyInfoForAddr(ctx, newAddr)
 }
 
-func (w *Wallet) keyInfoForAddr(ctx context.Context, addr address.Address) (*crypto.KeyInfo, error) {
+func (w *Wallet) keyInfoForAddr(ctx context.Context, addr address.Address) (*key.KeyInfo, error) {
 	backend, err := w.Find(ctx, addr)
 	if err != nil {
-		return &crypto.KeyInfo{}, err
+		return &key.KeyInfo{}, err
 	}
 
 	info, err := backend.GetKeyInfo(ctx, addr)
 	if err != nil {
-		return &crypto.KeyInfo{}, err
+		return &key.KeyInfo{}, err
 	}
 	return info, nil
 }
 
 // Import adds the given keyinfo to the wallet
-func (w *Wallet) Import(ctx context.Context, ki *crypto.KeyInfo) (address.Address, error) {
+func (w *Wallet) Import(ctx context.Context, ki *key.KeyInfo) (address.Address, error) {
 	dsb := w.Backends(DSBackendType)
 	if len(dsb) != 1 {
 		return address.Undef, fmt.Errorf("expected exactly one datastore wallet backend")
@@ -213,7 +214,7 @@ func (w *Wallet) Import(ctx context.Context, ki *crypto.KeyInfo) (address.Addres
 }
 
 // Export returns the KeyInfos for the given wallet addresses
-func (w *Wallet) Export(ctx context.Context, addr address.Address, password string) (*crypto.KeyInfo, error) {
+func (w *Wallet) Export(ctx context.Context, addr address.Address, password string) (*key.KeyInfo, error) {
 	bck, err := w.Find(ctx, addr)
 	if err != nil {
 		return nil, err

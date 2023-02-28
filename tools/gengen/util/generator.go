@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 
 	"github.com/filecoin-project/go-address"
 	ds "github.com/ipfs/go-datastore"
@@ -61,8 +62,8 @@ type GenesisGenerator struct {
 	cst       cbor.IpldStore
 	vm        vm.Interpreter
 	vmOption  vm.VmOption
-	keys      []*crypto.KeyInfo // Keys for pre-alloc accounts
-	vrkey     *crypto.KeyInfo   // Key for verified registry root
+	keys      []*key.KeyInfo // Keys for pre-alloc accounts
+	vrkey     *key.KeyInfo   // Key for verified registry root
 	pnrg      *mrand.Rand
 	cfg       *GenesisCfg
 }
@@ -93,6 +94,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 		Bsstore:              bs,
 		PRoot:                cid.Undef,
 		SysCallsImpl:         syscallImpl,
+		TipSetGetter:         vmcontext.TipSetGetterForTipset(chainStore.GetTipSetByHeight, nil),
 		Fork:                 chainFork,
 	}
 	vm, err := vm.NewLegacyVM(context.Background(), vmOption)
@@ -117,7 +119,7 @@ func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 	}
 	keys = append(keys, cfg.ImportKeys...)
 	g.keys = keys
-	vrKey, err := crypto.NewSecpKeyFromSeed(g.pnrg)
+	vrKey, err := key.NewSecpKeyFromSeed(g.pnrg)
 	if err != nil {
 		return err
 	}
@@ -358,10 +360,10 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 	return g.cst.Put(ctx, geneblk)
 }
 
-func genKeys(cfgkeys int, pnrg io.Reader) ([]*crypto.KeyInfo, error) {
-	keys := make([]*crypto.KeyInfo, cfgkeys)
+func genKeys(cfgkeys int, pnrg io.Reader) ([]*key.KeyInfo, error) {
+	keys := make([]*key.KeyInfo, cfgkeys)
 	for i := 0; i < cfgkeys; i++ {
-		ki, err := crypto.NewBLSKeyFromSeed(pnrg)
+		ki, err := key.NewBLSKeyFromSeed(pnrg)
 		if err != nil {
 			return nil, err
 		}
@@ -633,7 +635,7 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 	return ownerAddr, createMinerReturn.IDAddress, nil
 }
 
-func (g *GenesisGenerator) publishDeals(ctx context.Context, actorAddr, clientAddr address.Address, clientkey *crypto.KeyInfo, comms []*CommitConfig, marketBalance abi.TokenAmount) ([]abi.DealID, error) {
+func (g *GenesisGenerator) publishDeals(ctx context.Context, actorAddr, clientAddr address.Address, clientkey *key.KeyInfo, comms []*CommitConfig, marketBalance abi.TokenAmount) ([]abi.DealID, error) {
 	// Add 0 balance to escrow and locked table
 	if marketBalance.GreaterThan(big.Zero()) {
 		params := mustEnc(&clientAddr)

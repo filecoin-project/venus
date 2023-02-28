@@ -10,9 +10,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
+	"github.com/filecoin-project/venus/pkg/wallet/key"
 	cid "github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/crypto"
 	gen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
@@ -41,7 +41,7 @@ var TestMiners []address.Address
 var TestGenGenConfig gen.GenesisCfg
 
 type detailsStruct struct {
-	Keys   []*crypto.KeyInfo
+	Keys   []*key.KeyInfo
 	Miners []struct {
 		Owner               int
 		Address             address.Address

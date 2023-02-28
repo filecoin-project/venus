@@ -10,18 +10,13 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 )
 
-// /////
-// Consensus / Network
-
-const AllowableClockDriftSecs = uint64(1)
-
 /* inline-gen template
 
 const TestNetworkVersion = network.Version{{.latestNetworkVersion}}
 
 /* inline-gen start */
 
-const TestNetworkVersion = network.Version17
+const TestNetworkVersion = network.Version18
 
 /* inline-gen end */
 
