@@ -43,7 +43,6 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [GetEntry](#getentry)
   * [GetFullBlock](#getfullblock)
   * [GetParentStateRootActor](#getparentstaterootactor)
-  * [MessageWait](#messagewait)
   * [ProtocolParameters](#protocolparameters)
   * [ResolveToKeyAddr](#resolvetokeyaddr)
   * [StateActorCodeCIDs](#stateactorcodecids)
@@ -1157,103 +1156,6 @@ Response:
   "Nonce": 42,
   "Balance": "0",
   "Address": "\u003cempty\u003e"
-}
-```
-
-### MessageWait
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  10101,
-  10101
-]
-```
-
-Response:
-```json
-{
-  "TS": {
-    "Cids": null,
-    "Blocks": null,
-    "Height": 0
-  },
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "Block": {
-    "Miner": "f01234",
-    "Ticket": {
-      "VRFProof": "Bw=="
-    },
-    "ElectionProof": {
-      "WinCount": 9,
-      "VRFProof": "Bw=="
-    },
-    "BeaconEntries": [
-      {
-        "Round": 42,
-        "Data": "Ynl0ZSBhcnJheQ=="
-      }
-    ],
-    "WinPoStProof": [
-      {
-        "PoStProof": 8,
-        "ProofBytes": "Ynl0ZSBhcnJheQ=="
-      }
-    ],
-    "Parents": [
-      {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      }
-    ],
-    "ParentWeight": "0",
-    "Height": 10101,
-    "ParentStateRoot": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "ParentMessageReceipts": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "Messages": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "BLSAggregate": {
-      "Type": 2,
-      "Data": "Ynl0ZSBhcnJheQ=="
-    },
-    "Timestamp": 42,
-    "BlockSig": {
-      "Type": 2,
-      "Data": "Ynl0ZSBhcnJheQ=="
-    },
-    "ForkSignaling": 42,
-    "ParentBaseFee": "0"
-  },
-  "Receipt": {
-    "ExitCode": 0,
-    "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9,
-    "EventsRoot": null
-  }
 }
 ```
 
