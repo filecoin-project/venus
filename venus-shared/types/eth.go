@@ -60,6 +60,7 @@ var (
 	EthUint64FromBytes               = types.EthUint64FromBytes
 	EthUint64FromHex                 = types.EthUint64FromHex
 	GetContractEthAddressFromCode    = types.GetContractEthAddressFromCode
+	IsEthAddress                     = types.IsEthAddress
 	NewEthBlock                      = types.NewEthBlock
 	ParseEthAddress                  = types.ParseEthAddress
 	ParseEthHash                     = types.ParseEthHash
