@@ -307,7 +307,6 @@ func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *types.TipSe
 // storage and returns the slice implied by the collection
 func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]types.MessageReceipt, error) {
 	as := cbor.NewCborStore(ms.bs)
-	fmt.Println(c.String())
 	a, err := adt.AsArray(adt.WrapStore(ctx, as), c)
 	if err != nil {
 		return nil, err

@@ -70,8 +70,7 @@ func (s *server) handleStream(stream inet.Stream) {
 		exchangeServerLog.Warnf("failed to read block sync request: %s", err)
 		return
 	}
-	fmt.Println(stream.Conn().RemotePeer())
-	exchangeServerLog.Infow("block sync request", "start", req.Head, "len", req.Length)
+	exchangeServerLog.Infow("block sync request", "start", req.Head, "len", req.Length, "remote peer", stream.Conn().RemotePeer())
 
 	resp, err := s.processRequest(ctx, &req)
 	if err != nil {

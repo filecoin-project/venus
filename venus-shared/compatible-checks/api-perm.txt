@@ -8,7 +8,6 @@ v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/fi
 	- IChainInfo.GetEntry
 	- IChainInfo.GetFullBlock
 	- IChainInfo.GetParentStateRootActor
-	- IChainInfo.MessageWait
 	- IChainInfo.ProtocolParameters
 	- IChainInfo.ResolveToKeyAddr
 	- IChainInfo.VerifyEntry
@@ -62,7 +61,6 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- IChainInfo.GetEntry
 	- IChainInfo.GetFullBlock
 	- IChainInfo.GetParentStateRootActor
-	- IChainInfo.MessageWait
 	- IChainInfo.ProtocolParameters
 	- IChainInfo.ResolveToKeyAddr
 	- IChainInfo.VerifyEntry

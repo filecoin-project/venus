@@ -661,21 +661,6 @@ func (mr *MockFullNodeMockRecorder) LockWallet(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockWallet", reflect.TypeOf((*MockFullNode)(nil).LockWallet), arg0)
 }
 
-// MessageWait mocks base method.
-func (m *MockFullNode) MessageWait(arg0 context.Context, arg1 cid.Cid, arg2, arg3 abi.ChainEpoch) (*types0.ChainMessage, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MessageWait", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*types0.ChainMessage)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// MessageWait indicates an expected call of MessageWait.
-func (mr *MockFullNodeMockRecorder) MessageWait(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MessageWait", reflect.TypeOf((*MockFullNode)(nil).MessageWait), arg0, arg1, arg2, arg3)
-}
-
 // MinerCreateBlock mocks base method.
 func (m *MockFullNode) MinerCreateBlock(arg0 context.Context, arg1 *types0.BlockTemplate) (*types0.BlockMsg, error) {
 	m.ctrl.T.Helper()

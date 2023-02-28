@@ -233,6 +233,8 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 		}
 	}
 
+	syncer.chainStore.PersistTipSetKey(ctx, next.Key())
+
 	return nil
 }
 
@@ -823,7 +825,7 @@ func (d *delayRunTsTransition) listenUpdate() {
 				if atomic.LoadInt64(&d.runningCount) < maxProcessLen {
 					atomic.AddInt64(&d.runningCount, 1)
 					go func(ts *types.TipSet) {
-						_, _, err := d.syncer.stmgr.RunStateTransition(context.TODO(), ts, nil)
+						_, _, err := d.syncer.stmgr.RunStateTransition(context.TODO(), ts, nil, false)
 						if err != nil {
 							logSyncer.Errorf("stmgr.runStateTransaction failed:%s", err.Error())
 						}

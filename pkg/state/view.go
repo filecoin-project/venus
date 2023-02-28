@@ -91,7 +91,7 @@ func (v *View) InitResolveAddress(ctx context.Context, a addr.Address) (addr.Add
 	}
 
 	if !found {
-		return addr.Undef, fmt.Errorf("not found resolve address")
+		return addr.Undef, fmt.Errorf("not found resolve address %v", a)
 	}
 
 	return rAddr, nil

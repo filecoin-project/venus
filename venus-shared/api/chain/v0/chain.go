@@ -61,7 +61,6 @@ type IChainInfo interface {
 	GetActor(ctx context.Context, addr address.Address) (*types.Actor, error)                                                                                                             //perm:read
 	GetParentStateRootActor(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error)                                                                            //perm:read
 	GetEntry(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)                                                                                        //perm:read
-	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*types.ChainMessage, error)                                                                    //perm:read
 	ProtocolParameters(ctx context.Context) (*types.ProtocolParams, error)                                                                                                                //perm:read
 	ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)                                                                                //perm:read
 	StateNetworkName(ctx context.Context) (types.NetworkName, error)                                                                                                                      //perm:read

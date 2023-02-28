@@ -282,7 +282,6 @@ type IChainInfoStruct struct {
 		GetEntry                      func(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)                                                                   `perm:"read"`
 		GetFullBlock                  func(ctx context.Context, id cid.Cid) (*types.FullBlock, error)                                                                                              `perm:"read"`
 		GetParentStateRootActor       func(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error)                                                                      `perm:"read"`
-		MessageWait                   func(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*types.ChainMessage, error)                                                  `perm:"read"`
 		ProtocolParameters            func(ctx context.Context) (*types.ProtocolParams, error)                                                                                                     `perm:"read"`
 		ResolveToKeyAddr              func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)                                                                   `perm:"read"`
 		StateActorCodeCIDs            func(context.Context, network.Version) (map[string]cid.Cid, error)                                                                                           `perm:"read"`
@@ -371,9 +370,6 @@ func (s *IChainInfoStruct) GetFullBlock(p0 context.Context, p1 cid.Cid) (*types.
 }
 func (s *IChainInfoStruct) GetParentStateRootActor(p0 context.Context, p1 *types.TipSet, p2 address.Address) (*types.Actor, error) {
 	return s.Internal.GetParentStateRootActor(p0, p1, p2)
-}
-func (s *IChainInfoStruct) MessageWait(p0 context.Context, p1 cid.Cid, p2, p3 abi.ChainEpoch) (*types.ChainMessage, error) {
-	return s.Internal.MessageWait(p0, p1, p2, p3)
 }
 func (s *IChainInfoStruct) ProtocolParameters(p0 context.Context) (*types.ProtocolParams, error) {
 	return s.Internal.ProtocolParameters(p0)

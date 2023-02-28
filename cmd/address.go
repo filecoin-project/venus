@@ -60,7 +60,7 @@ type AddressLsResult struct {
 
 var addrsNewCmd = &cmds.Command{
 	Options: []cmds.Option{
-		cmds.StringOption("type", "The type of address to create: bls (default) or secp256k1").WithDefault("bls"),
+		cmds.StringOption("type", "The type of address to create: bls (default) or secp256k1 or delegated").WithDefault("bls"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		protocolName := req.Options["type"].(string)
@@ -70,6 +70,8 @@ var addrsNewCmd = &cmds.Command{
 			protocol = address.SECP256K1
 		case "bls":
 			protocol = address.BLS
+		case "delegated":
+			protocol = address.Delegated
 		default:
 			return fmt.Errorf("unrecognized address protocol %s", protocolName)
 		}
