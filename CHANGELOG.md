@@ -1,5 +1,11 @@
 # venus changelog
 
+## v1.10.0
+
+* 把实际的 vmTracing 传递给 VM [[#5757](https://github.com/filecoin-project/venus/pull/5757)]
+* 增加接口 FilecoinAddressToEthAddress [[#5772]](https://github.com/filecoin-project/venus/pull/5772)
+* 重构 market 接口 updatedealstatus [[#5778](https://github.com/filecoin-project/venus/pull/5778)]
+
 ## v1.10.0-rc4
 
 * 修复保存 MessageReceipt 失败问题 [[#5743](https://github.com/filecoin-project/venus/pull/5743)]
