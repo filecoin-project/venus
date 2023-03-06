@@ -18,6 +18,16 @@ var (
 
 func init() {
 	flag.StringVar(&logLevel, "log-level", "", "Set log level (default: info)")
+	// read logger configuration file if present
+if _, err := os.Stat("logger.json"); !os.IsNotExist(err) {
+    file, err := ioutil.ReadFile("logger.json")
+    if err != nil {
+        log.Fatalf("Error reading logger configuration file: %v", err)
+    }
+    if err := logging.SetLogLevelConfigString(string(file)); err != nil {
+        log.Fatalf("Error setting logger configuration: %v", err)
+    }
+}
 }
 
 func main() {
