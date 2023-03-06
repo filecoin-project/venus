@@ -25,6 +25,7 @@ type IMarketStruct struct {
 		ActorExist                              func(ctx context.Context, addr address.Address) (bool, error)                                                                                                                                       `perm:"read"`
 		ActorList                               func(context.Context) ([]market.User, error)                                                                                                                                                        `perm:"read"`
 		ActorSectorSize                         func(context.Context, address.Address) (abi.SectorSize, error)                                                                                                                                      `perm:"read"`
+		ActorUpsert                             func(context.Context, market.User) (bool, error)                                                                                                                                                    `perm:"admin"`
 		AddFsPieceStorage                       func(ctx context.Context, name string, path string, readonly bool) error                                                                                                                            `perm:"admin"`
 		AddS3PieceStorage                       func(ctx context.Context, name, endpoit, bucket, subdir, accessKey, secretKey, token string, readonly bool) error                                                                                   `perm:"admin"`
 		AssignUnPackedDeals                     func(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                  `perm:"write"`
@@ -123,6 +124,9 @@ func (s *IMarketStruct) ActorList(p0 context.Context) ([]market.User, error) {
 }
 func (s *IMarketStruct) ActorSectorSize(p0 context.Context, p1 address.Address) (abi.SectorSize, error) {
 	return s.Internal.ActorSectorSize(p0, p1)
+}
+func (s *IMarketStruct) ActorUpsert(p0 context.Context, p1 market.User) (bool, error) {
+	return s.Internal.ActorUpsert(p0, p1)
 }
 func (s *IMarketStruct) AddFsPieceStorage(p0 context.Context, p1 string, p2 string, p3 bool) error {
 	return s.Internal.AddFsPieceStorage(p0, p1, p2, p3)

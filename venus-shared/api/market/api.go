@@ -22,6 +22,7 @@ import (
 )
 
 type IMarket interface {
+	ActorUpsert(context.Context, market.User) (bool, error)                   //perm:admin
 	ActorList(context.Context) ([]market.User, error)                         //perm:read
 	ActorExist(ctx context.Context, addr address.Address) (bool, error)       //perm:read
 	ActorSectorSize(context.Context, address.Address) (abi.SectorSize, error) //perm:read
