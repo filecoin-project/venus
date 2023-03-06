@@ -195,3 +195,7 @@ func isController(mi types.MinerInfo, addr address.Address) bool {
 
 	return false
 }
+
+func getEnv(env cmds.Environment) *node.Env {
+	return env.(*node.Env)
+}
