@@ -14,12 +14,15 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/fvm"
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -443,7 +446,39 @@ func (s *Stmgr) Replay(ctx context.Context, ts *types.TipSet, msgCID cid.Cid) (*
 	return outm, outr, nil
 }
 
+func (s *Stmgr) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*types.InvocResult, error) {
+	var invocTrace []*types.InvocResult
+
+	cb := func(mcid cid.Cid, msg *types.Message, ret *vm.Ret) error {
+		ir := &types.InvocResult{
+			MsgCid:         mcid,
+			Msg:            msg,
+			MsgRct:         &ret.Receipt,
+			ExecutionTrace: ret.GasTracker.ExecutionTrace,
+			Duration:       ret.Duration,
+		}
+		if ret.ActorErr != nil {
+			ir.Error = ret.ActorErr.Error()
+		}
+		if !ret.OutPuts.Refund.Nil() {
+			ir.GasCost = MakeMsgGasCost(msg, ret)
+		}
+
+		invocTrace = append(invocTrace, ir)
+
+		return nil
+	}
+
+	st, _, err := s.cp.RunStateTransition(ctx, ts, cb, true)
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	return st, invocTrace, nil
+}
+
 func MakeMsgGasCost(msg *types.Message, ret *vm.Ret) types.MsgGasCost {
+	fmt.Println(msg.RequiredFunds(), ret.OutPuts.Refund)
 	return types.MsgGasCost{
 		Message:            msg.Cid(),
 		GasUsed:            big.NewInt(ret.Receipt.GasUsed),
@@ -454,6 +489,76 @@ func MakeMsgGasCost(msg *types.Message, ret *vm.Ret) types.MsgGasCost {
 		Refund:             ret.OutPuts.Refund,
 		TotalCost:          big.Sub(msg.RequiredFunds(), ret.OutPuts.Refund),
 	}
+}
+
+func ComputeState(ctx context.Context, s *Stmgr, height abi.ChainEpoch, msgs []*types.Message, ts *types.TipSet) (cid.Cid, []*types.InvocResult, error) {
+	if ts == nil {
+		ts = s.cs.GetHead()
+	}
+
+	base, trace, err := s.ExecutionTrace(ctx, ts)
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	for i := ts.Height(); i < height; i++ {
+		// Technically, the tipset we're passing in here should be ts+1, but that may not exist.
+		base, err = s.fork.HandleStateForks(ctx, base, i, ts)
+		if err != nil {
+			return cid.Undef, nil, fmt.Errorf("error handling state forks: %w", err)
+		}
+
+		// We intentionally don't run cron here, as we may be trying to look into the
+		// future. It's not guaranteed to be accurate... but that's fine.
+	}
+
+	buffStore := blockstoreutil.NewTieredBstore(s.cs.Blockstore(), blockstoreutil.NewTemporarySync())
+	vmopt := vm.VmOption{
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
+			cs, err := s.cs.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			if err != nil {
+				return abi.TokenAmount{}, err
+			}
+			return cs.FilCirculating, nil
+		},
+		PRoot:               base,
+		Epoch:               ts.Height(),
+		Timestamp:           ts.MinTimestamp(),
+		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
+		Bsstore:             buffStore,
+		SysCallsImpl:        s.syscallsImpl,
+		GasPriceSchedule:    s.gasSchedule,
+		NetworkVersion:      s.GetNetworkVersion(ctx, height),
+		BaseFee:             ts.Blocks()[0].ParentBaseFee,
+		Fork:                s.fork,
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
+		TipSetGetter:        vmcontext.TipSetGetterForTipset(s.cs.GetTipSetByHeight, ts),
+		Tracing:             true,
+		ActorDebugging:      s.actorDebugging,
+	}
+
+	vmi, err := fvm.NewVM(ctx, vmopt)
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	for i, msg := range msgs {
+		// TODO: Use the signed message length for secp messages
+		ret, err := vmi.ApplyMessage(ctx, msg)
+		if err != nil {
+			return cid.Undef, nil, fmt.Errorf("applying message %s: %w", msg.Cid(), err)
+		}
+		if ret.Receipt.ExitCode != 0 {
+			s.log.Infof("compute state apply message %d failed (exit: %d): %s", i, ret.Receipt.ExitCode, ret.ActorErr)
+		}
+	}
+
+	root, err := vmi.Flush(ctx)
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	return root, trace, nil
 }
 
 func (s *Stmgr) FlushChainHead() (*types.TipSet, error) {

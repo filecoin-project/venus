@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 
 	"github.com/filecoin-project/venus/cmd/tablewriter"
@@ -53,6 +54,7 @@ var stateCmd = &cmds.Command{
 		"list-actor":      stateListActorCmd,
 		"actor-cids":      stateSysActorCIDsCmd,
 		"replay":          stateReplayCmd,
+		"compute-state":   StateComputeStateCmd,
 	},
 }
 
@@ -708,4 +710,87 @@ func makeActorView(act *types.Actor, addr address.Address) *ActorView {
 		Balance: act.Balance,
 		Head:    act.Head,
 	}
+}
+
+var StateComputeStateCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Perform state computations",
+	},
+	Options: []cmds.Option{
+		cmds.Uint64Option("vm-height", "set the height that the vm will see"),
+		cmds.BoolOption("apply-mpool-messages", "apply messages from the mempool to the computed state"),
+		cmds.BoolOption("show-trace", "print out full execution trace for given tipset"),
+		cmds.BoolOption("json", "generate json output"),
+		cmds.StringOption("compute-state-output", "a json file containing pre-existing compute-state output, to generate html reports without rerunning state changes"),
+		cmds.BoolOption("no-timing", "don't show timing information in html traces"),
+		cmds.StringOption("tipset", ""),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		ctx := req.Context
+
+		ts, err := LoadTipSet(ctx, req, getEnv(env).ChainAPI)
+		if err != nil {
+			return err
+		}
+		h, _ := req.Options["vm-height"].(uint64)
+		if h == 0 {
+			h = uint64(ts.Height())
+		}
+
+		var msgs []*types.Message
+		if applyMsg, _ := req.Options["apply-mpool-messages"].(bool); applyMsg {
+			pmsgs, err := getEnv(env).MessagePoolAPI.MpoolSelect(ctx, ts.Key(), 1)
+			if err != nil {
+				return err
+			}
+
+			for _, sm := range pmsgs {
+				msgs = append(msgs, &sm.Message)
+			}
+		}
+
+		var stout *types.ComputeStateOutput
+		if csofile, _ := req.Options["compute-state-output"].(string); len(csofile) != 0 {
+			data, err := os.ReadFile(csofile)
+			if err != nil {
+				return err
+			}
+
+			var o types.ComputeStateOutput
+			if err := json.Unmarshal(data, &o); err != nil {
+				return err
+			}
+
+			stout = &o
+		} else {
+			o, err := getEnv(env).ChainAPI.StateCompute(ctx, abi.ChainEpoch(h), msgs, ts.Key())
+			if err != nil {
+				return err
+			}
+
+			stout = o
+		}
+
+		buf := &bytes.Buffer{}
+		writer := NewSilentWriter(buf)
+
+		if ok, _ := req.Options["json"].(bool); ok {
+			out, err := json.Marshal(stout)
+			if err != nil {
+				return err
+			}
+			writer.Println(string(out))
+			return re.Emit(buf)
+		}
+
+		writer.Println("computed state cid: ", stout.Root)
+		if showTrace, _ := req.Options["show-trace"].(bool); showTrace {
+			for _, ir := range stout.Trace {
+				writer.Printf("%s\t%s\t%s\t%d\t%x\t%d\t%x\n", ir.Msg.From, ir.Msg.To, ir.Msg.Value, ir.Msg.Method, ir.Msg.Params, ir.MsgRct.ExitCode, ir.MsgRct.Return)
+				printInternalExecutions(writer, "\t", ir.ExecutionTrace.Subcalls)
+			}
+		}
+
+		return re.Emit(buf)
+	},
 }
