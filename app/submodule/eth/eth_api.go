@@ -1058,11 +1058,7 @@ func (a *ethAPI) Web3ClientVersion(ctx context.Context) (string, error) {
 }
 
 func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, ms *chain.MessageStore, ca v1.IChain) (types.EthBlock, error) {
-	parent, err := ca.ChainGetTipSet(ctx, ts.Parents())
-	if err != nil {
-		return types.EthBlock{}, err
-	}
-	parentKeyCid, err := parent.Key().Cid()
+	parentKeyCid, err := ts.Parents().Cid()
 	if err != nil {
 		return types.EthBlock{}, err
 	}
@@ -1070,6 +1066,8 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 	if err != nil {
 		return types.EthBlock{}, err
 	}
+
+	bn := types.EthUint64(ts.Height())
 
 	blkCid, err := ts.Key().Cid()
 	if err != nil {
@@ -1087,19 +1085,34 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 
 	block := types.NewEthBlock(len(msgs) > 0)
 
-	// this seems to be a very expensive way to get gasUsed of the block. may need to find an efficient way to do it
 	gasUsed := int64(0)
-	for txIdx, msg := range msgs {
-		msgLookup, err := ca.StateSearchMsg(ctx, types.EmptyTSK, msg.Cid(), constants.LookbackNoLimit, false)
-		if err != nil || msgLookup == nil {
-			return types.EthBlock{}, nil
-		}
-		gasUsed += msgLookup.Receipt.GasUsed
+	compOutput, err := ca.StateCompute(ctx, ts.Height(), nil, ts.Key())
+	if err != nil {
+		return types.EthBlock{}, fmt.Errorf("failed to compute state: %w", err)
+	}
 
-		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, txIdx, ms, ca)
-		if err != nil {
-			return types.EthBlock{}, nil
+	for txIdx, msg := range compOutput.Trace {
+		// skip system messages like reward application and cron
+		if msg.Msg.From == builtintypes.SystemActorAddr {
+			continue
 		}
+
+		gasUsed += msg.MsgRct.GasUsed
+		smsgCid, err := getSignedMessage(ctx, ms, msg.MsgCid)
+		if err != nil {
+			return types.EthBlock{}, fmt.Errorf("failed to get signed msg %s: %w", msg.MsgCid, err)
+		}
+		tx, err := newEthTxFromSignedMessage(ctx, smsgCid, ca)
+		if err != nil {
+			return types.EthBlock{}, fmt.Errorf("failed to convert msg to ethTx: %w", err)
+		}
+
+		ti := types.EthUint64(txIdx)
+
+		tx.ChainID = types.EthUint64(types2.Eip155ChainID)
+		tx.BlockHash = &blkHash
+		tx.BlockNumber = &bn
+		tx.TransactionIndex = &ti
 
 		if fullTxInfo {
 			block.Transactions = append(block.Transactions, tx)
@@ -1109,7 +1122,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 	}
 
 	block.Hash = blkHash
-	block.Number = types.EthUint64(ts.Height())
+	block.Number = bn
 	block.ParentHash = parentBlkHash
 	block.Timestamp = types.EthUint64(ts.Blocks()[0].Timestamp)
 	block.BaseFeePerGas = types.EthBigInt{Int: ts.Blocks()[0].ParentBaseFee.Int}
@@ -1290,20 +1303,9 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *types.MsgLookup, 
 		return types.EthTx{}, err
 	}
 
-	smsg, err := ms.LoadSignedMessage(ctx, msgLookup.Message)
+	smsg, err := getSignedMessage(ctx, ms, msgLookup.Message)
 	if err != nil {
-		// We couldn't find the signed message, it might be a BLS message, so search for a regular message.
-		msg, err := ms.LoadUnsignedMessage(ctx, msgLookup.Message)
-		if err != nil {
-			return types.EthTx{}, err
-		}
-		smsg = &types.SignedMessage{
-			Message: *msg,
-			Signature: crypto.Signature{
-				Type: crypto.SigTypeUnknown,
-				Data: nil,
-			},
-		}
+		return types.EthTx{}, fmt.Errorf("failed to get signed msg: %w", err)
 	}
 
 	tx, err := newEthTxFromSignedMessage(ctx, smsg, ca)
@@ -1662,6 +1664,25 @@ func calculateRewardsAndGasUsed(rewardPercentiles []float64, txGasRewards gasRew
 	}
 
 	return rewards, totalGasUsed
+}
+
+func getSignedMessage(ctx context.Context, ms *chain.MessageStore, msgCid cid.Cid) (*types.SignedMessage, error) {
+	smsg, err := ms.LoadSignedMessage(ctx, msgCid)
+	if err != nil {
+		// We couldn't find the signed message, it might be a BLS message, so search for a regular message.
+		msg, err := ms.LoadUnsignedMessage(ctx, msgCid)
+		if err != nil {
+			return nil, fmt.Errorf("failed to find msg %s: %w", msgCid, err)
+		}
+		smsg = &types.SignedMessage{
+			Message: *msg,
+			Signature: crypto.Signature{
+				Type: crypto.SigTypeBLS,
+			},
+		}
+	}
+
+	return smsg, nil
 }
 
 type gasRewardTuple struct {
