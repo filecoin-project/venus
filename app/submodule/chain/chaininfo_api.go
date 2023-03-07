@@ -869,3 +869,19 @@ func (cia *chainInfoAPI) ChainGetEvents(ctx context.Context, root cid.Cid) ([]ty
 
 	return ret, err
 }
+
+func (cia *chainInfoAPI) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs []*types.Message, tsk types.TipSetKey) (*types.ComputeStateOutput, error) {
+	ts, err := cia.ChainGetTipSet(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	st, t, err := statemanger.ComputeState(ctx, cia.chain.Stmgr, height, msgs, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.ComputeStateOutput{
+		Root:  st,
+		Trace: t,
+	}, nil
+}

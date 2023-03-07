@@ -1608,6 +1608,21 @@ func (mr *MockFullNodeMockRecorder) StateCirculatingSupply(arg0, arg1 interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateCirculatingSupply", reflect.TypeOf((*MockFullNode)(nil).StateCirculatingSupply), arg0, arg1)
 }
 
+// StateCompute mocks base method.
+func (m *MockFullNode) StateCompute(arg0 context.Context, arg1 abi.ChainEpoch, arg2 []*types.Message, arg3 types0.TipSetKey) (*types0.ComputeStateOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateCompute", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*types0.ComputeStateOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateCompute indicates an expected call of StateCompute.
+func (mr *MockFullNodeMockRecorder) StateCompute(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateCompute", reflect.TypeOf((*MockFullNode)(nil).StateCompute), arg0, arg1, arg2, arg3)
+}
+
 // StateDealProviderCollateralBounds mocks base method.
 func (m *MockFullNode) StateDealProviderCollateralBounds(arg0 context.Context, arg1 abi.PaddedPieceSize, arg2 bool, arg3 types0.TipSetKey) (types0.DealCollateralBounds, error) {
 	m.ctrl.T.Helper()

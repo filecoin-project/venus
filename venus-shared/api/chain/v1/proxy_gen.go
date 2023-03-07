@@ -287,6 +287,7 @@ type IChainInfoStruct struct {
 		StateActorCodeCIDs            func(context.Context, network.Version) (map[string]cid.Cid, error)                                                                                           `perm:"read"`
 		StateActorManifestCID         func(context.Context, network.Version) (cid.Cid, error)                                                                                                      `perm:"read"`
 		StateCall                     func(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error)                                                               `perm:"read"`
+		StateCompute                  func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*types.ComputeStateOutput, error)                                                  `perm:"read"`
 		StateGetBeaconEntry           func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)                                                                                  `perm:"read"`
 		StateGetNetworkParams         func(ctx context.Context) (*types.NetworkParams, error)                                                                                                      `perm:"read"`
 		StateGetRandomnessFromBeacon  func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
@@ -385,6 +386,9 @@ func (s *IChainInfoStruct) StateActorManifestCID(p0 context.Context, p1 network.
 }
 func (s *IChainInfoStruct) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*types.InvocResult, error) {
 	return s.Internal.StateCall(p0, p1, p2)
+}
+func (s *IChainInfoStruct) StateCompute(p0 context.Context, p1 abi.ChainEpoch, p2 []*types.Message, p3 types.TipSetKey) (*types.ComputeStateOutput, error) {
+	return s.Internal.StateCompute(p0, p1, p2, p3)
 }
 func (s *IChainInfoStruct) StateGetBeaconEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
 	return s.Internal.StateGetBeaconEntry(p0, p1)
