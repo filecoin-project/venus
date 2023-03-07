@@ -229,7 +229,7 @@ var minerInfoCmd = &cmds.Command{
 		blockstoreAPI := env.(*node.Env).BlockStoreAPI
 		api := env.(*node.Env).ChainAPI
 
-		blockDelay, err := blockDelay(req)
+		blockDelay, err := getBlockDelay(ctx, env)
 		if err != nil {
 			return err
 		}

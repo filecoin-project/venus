@@ -5,13 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"path/filepath"
 	"strconv"
 
-	"github.com/filecoin-project/venus/app/paths"
 	"github.com/filecoin-project/venus/cmd/tablewriter"
-
-	"github.com/filecoin-project/venus/pkg/config"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -257,7 +253,8 @@ var stateSectorCmd = &cmds.Command{
 			return err
 		}
 
-		ts, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
+		ctx := req.Context
+		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
 		if err != nil {
 			return err
 		}
@@ -267,12 +264,12 @@ var stateSectorCmd = &cmds.Command{
 			return err
 		}
 
-		blockDelay, err := blockDelay(req)
+		blockDelay, err := getBlockDelay(ctx, env)
 		if err != nil {
 			return err
 		}
 
-		si, err := env.(*node.Env).ChainAPI.StateSectorGetInfo(req.Context, maddr, abi.SectorNumber(sid), ts.Key())
+		si, err := env.(*node.Env).ChainAPI.StateSectorGetInfo(ctx, maddr, abi.SectorNumber(sid), ts.Key())
 		if err != nil {
 			return err
 		}
@@ -289,8 +286,8 @@ var stateSectorCmd = &cmds.Command{
 		writer.Println("SealedCID: ", si.SealedCID)
 		writer.Println("DealIDs: ", si.DealIDs)
 		writer.Println()
-		writer.Println("Activation: ", EpochTime(height, si.Activation, blockDelay))
-		writer.Println("Expiration: ", EpochTime(height, si.Expiration, blockDelay))
+		writer.Println("Activation: ", EpochTimeTs(height, si.Activation, blockDelay, ts))
+		writer.Println("Expiration: ", EpochTimeTs(height, si.Expiration, blockDelay, ts))
 		writer.Println()
 		writer.Println("DealWeight: ", si.DealWeight)
 		writer.Println("VerifiedDealWeight: ", si.VerifiedDealWeight)
@@ -309,22 +306,6 @@ var stateSectorCmd = &cmds.Command{
 
 		return re.Emit(buf)
 	},
-}
-
-func blockDelay(req *cmds.Request) (uint64, error) {
-	var err error
-	repoDir, _ := req.Options[OptionRepoDir].(string)
-	repoDir, err = paths.GetRepoPath(repoDir)
-	if err != nil {
-		return 0, err
-	}
-	cfgPath := filepath.Join(repoDir, "config.json")
-	cfg, err := config.ReadFile(cfgPath)
-	if err != nil {
-		return 0, err
-	}
-
-	return cfg.NetworkParams.BlockDelay, nil
 }
 
 var stateGetActorCmd = &cmds.Command{
@@ -471,22 +452,23 @@ var stateMinerInfo = &cmds.Command{
 			return err
 		}
 
-		blockDelay, err := blockDelay(req)
+		ctx := req.Context
+		blockDelay, err := getBlockDelay(ctx, env)
 		if err != nil {
 			return err
 		}
 
-		ts, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
+		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
 		if err != nil {
 			return err
 		}
 
-		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(req.Context, addr, ts.Key())
+		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(ctx, addr, ts.Key())
 		if err != nil {
 			return err
 		}
 
-		availableBalance, err := env.(*node.Env).ChainAPI.StateMinerAvailableBalance(req.Context, addr, ts.Key())
+		availableBalance, err := env.(*node.Env).ChainAPI.StateMinerAvailableBalance(ctx, addr, ts.Key())
 		if err != nil {
 			return fmt.Errorf("getting miner available balance: %w", err)
 		}
@@ -535,7 +517,7 @@ var stateMinerInfo = &cmds.Command{
 
 		writer.Println()
 
-		cd, err := env.(*node.Env).ChainAPI.StateMinerProvingDeadline(req.Context, addr, ts.Key())
+		cd, err := env.(*node.Env).ChainAPI.StateMinerProvingDeadline(ctx, addr, ts.Key())
 		if err != nil {
 			return fmt.Errorf("getting miner info: %w", err)
 		}

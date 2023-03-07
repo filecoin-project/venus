@@ -43,7 +43,7 @@ var provingInfoCmd = &cmds.Command{
 		}
 		ctx := req.Context
 
-		blockDelay, err := blockDelay(req)
+		blockDelay, err := getBlockDelay(ctx, env)
 		if err != nil {
 			return err
 		}
@@ -123,8 +123,8 @@ var provingInfoCmd = &cmds.Command{
 		writer.Printf("Current Epoch:           %d\n", cd.CurrentEpoch)
 
 		writer.Printf("Proving Period Boundary: %d\n", cd.PeriodStart%cd.WPoStProvingPeriod)
-		writer.Printf("Proving Period Start:    %s\n", EpochTime(cd.CurrentEpoch, cd.PeriodStart, blockDelay))
-		writer.Printf("Next Period Start:       %s\n", EpochTime(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod, blockDelay))
+		writer.Printf("Proving Period Start:    %s\n", EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart, blockDelay, head))
+		writer.Printf("Next Period Start:       %s\n", EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod, blockDelay, head))
 
 		writer.Println()
 		writer.Printf("Faults:      %d (%.2f%%)\n", faults, faultPerc)
