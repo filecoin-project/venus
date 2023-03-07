@@ -48,6 +48,20 @@ func (m *MockIMarket) EXPECT() *MockIMarketMockRecorder {
 	return m.recorder
 }
 
+// ActorDelete mocks base method.
+func (m *MockIMarket) ActorDelete(arg0 context.Context, arg1 address.Address) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ActorDelete", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ActorDelete indicates an expected call of ActorDelete.
+func (mr *MockIMarketMockRecorder) ActorDelete(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActorDelete", reflect.TypeOf((*MockIMarket)(nil).ActorDelete), arg0, arg1)
+}
+
 // ActorExist mocks base method.
 func (m *MockIMarket) ActorExist(arg0 context.Context, arg1 address.Address) (bool, error) {
 	m.ctrl.T.Helper()
@@ -91,6 +105,21 @@ func (m *MockIMarket) ActorSectorSize(arg0 context.Context, arg1 address.Address
 func (mr *MockIMarketMockRecorder) ActorSectorSize(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActorSectorSize", reflect.TypeOf((*MockIMarket)(nil).ActorSectorSize), arg0, arg1)
+}
+
+// ActorUpsert mocks base method.
+func (m *MockIMarket) ActorUpsert(arg0 context.Context, arg1 market.User) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ActorUpsert", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ActorUpsert indicates an expected call of ActorUpsert.
+func (mr *MockIMarketMockRecorder) ActorUpsert(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActorUpsert", reflect.TypeOf((*MockIMarket)(nil).ActorUpsert), arg0, arg1)
 }
 
 // AddFsPieceStorage mocks base method.
