@@ -1,5 +1,13 @@
 # venus changelog
 
+## v1.10.1
+
+* 修复 evm 命令部署合约失败 [[#5785](https://github.com/filecoin-project/venus/pull/5785)]
+* 修复无法获取扇区的开始和过期时间 [[#5792](https://github.com/filecoin-project/venus/pull/5792)]
+* market 增加 miner 管理接口 [[#5794](https://github.com/filecoin-project/venus/pull/5794)]
+* 增加 StateCompute 接口 [[#5795](https://github.com/filecoin-project/venus/pull/5795)]
+* 优化调用 newEthBlockFromFilecoinTipSet 函数的耗时 [[#5798](https://github.com/filecoin-project/venus/pull/5798)]
+
 ## v1.10.0
 
 * 把实际的 vmTracing 传递给 VM [[#5757](https://github.com/filecoin-project/venus/pull/5757)]
