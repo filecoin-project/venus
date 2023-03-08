@@ -3,7 +3,7 @@ package blocksub
 import (
 	"bytes"
 	"context"
-
+	"fmt"
 	"github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -32,15 +32,18 @@ func NewBlockTopicValidator(bv BlockHeaderValidator, opts ...pubsub.ValidatorOpt
 	return &BlockTopicValidator{
 		opts: opts,
 		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
+			fmt.Println("debug validate block")
 			var bm types.BlockMsg
 			err := bm.UnmarshalCBOR(bytes.NewReader(msg.GetData()))
 			if err != nil {
+				fmt.Println("debug validate block", err)
 				blockTopicLogger.Warnf("failed to decode blocksub payload from peer %s: %s", p.String(), err.Error())
 				mDecodeBlkFail.Inc(ctx, 1)
 				return pubsub.ValidationIgnore
 			}
 
 			validateResult := bv.ValidateBlockMsg(ctx, &bm)
+			fmt.Println("debug validate block result ", validateResult)
 			if validateResult == pubsub.ValidationAccept {
 				msg.ValidatorData = bm
 			}
