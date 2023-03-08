@@ -20,6 +20,7 @@ type IMessagerStruct struct {
 		DeleteAddress            func(ctx context.Context, addr address.Address) error                                                                                      `perm:"write"`
 		DeleteNode               func(ctx context.Context, name string) error                                                                                               `perm:"admin"`
 		ForbiddenAddress         func(ctx context.Context, addr address.Address) error                                                                                      `perm:"write"`
+		GetActorCfgByID          func(ctx context.Context, id types.UUID) (*mtypes.ActorCfg, error)                                                                         `perm:"read"`
 		GetAddress               func(ctx context.Context, addr address.Address) (*mtypes.Address, error)                                                                   `perm:"read"`
 		GetMessageByFromAndNonce func(ctx context.Context, from address.Address, nonce uint64) (*mtypes.Message, error)                                                     `perm:"read"`
 		GetMessageBySignedCid    func(ctx context.Context, cid cid.Cid) (*mtypes.Message, error)                                                                            `perm:"read"`
@@ -30,6 +31,7 @@ type IMessagerStruct struct {
 		HasAddress               func(ctx context.Context, addr address.Address) (bool, error)                                                                              `perm:"read"`
 		HasMessageByUid          func(ctx context.Context, id string) (bool, error)                                                                                         `perm:"read"`
 		HasNode                  func(ctx context.Context, name string) (bool, error)                                                                                       `perm:"admin"`
+		ListActorCfg             func(ctx context.Context) ([]*mtypes.ActorCfg, error)                                                                                      `perm:"read"`
 		ListAddress              func(ctx context.Context) ([]*mtypes.Address, error)                                                                                       `perm:"read"`
 		ListBlockedMessage       func(ctx context.Context, addr address.Address, d time.Duration) ([]*mtypes.Message, error)                                                `perm:"read"`
 		ListFailedMessage        func(ctx context.Context) ([]*mtypes.Message, error)                                                                                       `perm:"read"`
@@ -48,12 +50,14 @@ type IMessagerStruct struct {
 		RecoverFailedMsg         func(ctx context.Context, addr address.Address) ([]string, error)                                                                          `perm:"write"`
 		ReplaceMessage           func(ctx context.Context, params *mtypes.ReplacMessageParams) (cid.Cid, error)                                                             `perm:"write"`
 		RepublishMessage         func(ctx context.Context, id string) error                                                                                                 `perm:"admin"`
+		SaveActorCfg             func(ctx context.Context, actorCfg *mtypes.ActorCfg) error                                                                                 `perm:"admin"`
 		SaveNode                 func(ctx context.Context, node *mtypes.Node) error                                                                                         `perm:"admin"`
 		Send                     func(ctx context.Context, params mtypes.QuickSendParams) (string, error)                                                                   `perm:"sign"`
 		SetFeeParams             func(ctx context.Context, params *mtypes.AddressSpec) error                                                                                `perm:"write"`
 		SetLogLevel              func(ctx context.Context, subsystem, level string) error                                                                                   `perm:"admin"`
 		SetSelectMsgNum          func(ctx context.Context, addr address.Address, num uint64) error                                                                          `perm:"write"`
 		SetSharedParams          func(ctx context.Context, params *mtypes.SharedSpec) error                                                                                 `perm:"admin"`
+		UpdateActorCfg           func(ctx context.Context, id types.UUID, changeSpecParams *mtypes.ChangeGasSpecParams) error                                               `perm:"admin"`
 		UpdateAllFilledMessage   func(ctx context.Context) (int, error)                                                                                                     `perm:"admin"`
 		UpdateFilledMessageByID  func(ctx context.Context, id string) (string, error)                                                                                       `perm:"write"`
 		UpdateMessageStateByID   func(ctx context.Context, id string, state mtypes.MessageState) error                                                                      `perm:"write"`
@@ -78,6 +82,9 @@ func (s *IMessagerStruct) DeleteNode(p0 context.Context, p1 string) error {
 }
 func (s *IMessagerStruct) ForbiddenAddress(p0 context.Context, p1 address.Address) error {
 	return s.Internal.ForbiddenAddress(p0, p1)
+}
+func (s *IMessagerStruct) GetActorCfgByID(p0 context.Context, p1 types.UUID) (*mtypes.ActorCfg, error) {
+	return s.Internal.GetActorCfgByID(p0, p1)
 }
 func (s *IMessagerStruct) GetAddress(p0 context.Context, p1 address.Address) (*mtypes.Address, error) {
 	return s.Internal.GetAddress(p0, p1)
@@ -108,6 +115,9 @@ func (s *IMessagerStruct) HasMessageByUid(p0 context.Context, p1 string) (bool, 
 }
 func (s *IMessagerStruct) HasNode(p0 context.Context, p1 string) (bool, error) {
 	return s.Internal.HasNode(p0, p1)
+}
+func (s *IMessagerStruct) ListActorCfg(p0 context.Context) ([]*mtypes.ActorCfg, error) {
+	return s.Internal.ListActorCfg(p0)
 }
 func (s *IMessagerStruct) ListAddress(p0 context.Context) ([]*mtypes.Address, error) {
 	return s.Internal.ListAddress(p0)
@@ -163,6 +173,9 @@ func (s *IMessagerStruct) ReplaceMessage(p0 context.Context, p1 *mtypes.ReplacMe
 func (s *IMessagerStruct) RepublishMessage(p0 context.Context, p1 string) error {
 	return s.Internal.RepublishMessage(p0, p1)
 }
+func (s *IMessagerStruct) SaveActorCfg(p0 context.Context, p1 *mtypes.ActorCfg) error {
+	return s.Internal.SaveActorCfg(p0, p1)
+}
 func (s *IMessagerStruct) SaveNode(p0 context.Context, p1 *mtypes.Node) error {
 	return s.Internal.SaveNode(p0, p1)
 }
@@ -180,6 +193,9 @@ func (s *IMessagerStruct) SetSelectMsgNum(p0 context.Context, p1 address.Address
 }
 func (s *IMessagerStruct) SetSharedParams(p0 context.Context, p1 *mtypes.SharedSpec) error {
 	return s.Internal.SetSharedParams(p0, p1)
+}
+func (s *IMessagerStruct) UpdateActorCfg(p0 context.Context, p1 types.UUID, p2 *mtypes.ChangeGasSpecParams) error {
+	return s.Internal.UpdateActorCfg(p0, p1, p2)
 }
 func (s *IMessagerStruct) UpdateAllFilledMessage(p0 context.Context) (int, error) {
 	return s.Internal.UpdateAllFilledMessage(p0)

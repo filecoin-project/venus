@@ -2,6 +2,7 @@ package networks
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -9,7 +10,7 @@ import (
 )
 
 func GetNetworkFromName(name string) (types.NetworkType, error) {
-	if name == "2k" {
+	if name == "2k" || strings.HasPrefix(name, "localnet-") {
 		return types.Network2k, nil
 	}
 	if name == "force" {

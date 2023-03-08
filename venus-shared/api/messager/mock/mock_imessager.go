@@ -112,6 +112,21 @@ func (mr *MockIMessagerMockRecorder) ForbiddenAddress(arg0, arg1 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForbiddenAddress", reflect.TypeOf((*MockIMessager)(nil).ForbiddenAddress), arg0, arg1)
 }
 
+// GetActorCfgByID mocks base method.
+func (m *MockIMessager) GetActorCfgByID(arg0 context.Context, arg1 types0.UUID) (*messager.ActorCfg, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActorCfgByID", arg0, arg1)
+	ret0, _ := ret[0].(*messager.ActorCfg)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActorCfgByID indicates an expected call of GetActorCfgByID.
+func (mr *MockIMessagerMockRecorder) GetActorCfgByID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActorCfgByID", reflect.TypeOf((*MockIMessager)(nil).GetActorCfgByID), arg0, arg1)
+}
+
 // GetAddress mocks base method.
 func (m *MockIMessager) GetAddress(arg0 context.Context, arg1 address.Address) (*messager.Address, error) {
 	m.ctrl.T.Helper()
@@ -260,6 +275,21 @@ func (m *MockIMessager) HasNode(arg0 context.Context, arg1 string) (bool, error)
 func (mr *MockIMessagerMockRecorder) HasNode(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasNode", reflect.TypeOf((*MockIMessager)(nil).HasNode), arg0, arg1)
+}
+
+// ListActorCfg mocks base method.
+func (m *MockIMessager) ListActorCfg(arg0 context.Context) ([]*messager.ActorCfg, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListActorCfg", arg0)
+	ret0, _ := ret[0].([]*messager.ActorCfg)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListActorCfg indicates an expected call of ListActorCfg.
+func (mr *MockIMessagerMockRecorder) ListActorCfg(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListActorCfg", reflect.TypeOf((*MockIMessager)(nil).ListActorCfg), arg0)
 }
 
 // ListAddress mocks base method.
@@ -529,6 +559,20 @@ func (mr *MockIMessagerMockRecorder) RepublishMessage(arg0, arg1 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RepublishMessage", reflect.TypeOf((*MockIMessager)(nil).RepublishMessage), arg0, arg1)
 }
 
+// SaveActorCfg mocks base method.
+func (m *MockIMessager) SaveActorCfg(arg0 context.Context, arg1 *messager.ActorCfg) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveActorCfg", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveActorCfg indicates an expected call of SaveActorCfg.
+func (mr *MockIMessagerMockRecorder) SaveActorCfg(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveActorCfg", reflect.TypeOf((*MockIMessager)(nil).SaveActorCfg), arg0, arg1)
+}
+
 // SaveNode mocks base method.
 func (m *MockIMessager) SaveNode(arg0 context.Context, arg1 *messager.Node) error {
 	m.ctrl.T.Helper()
@@ -612,6 +656,20 @@ func (m *MockIMessager) SetSharedParams(arg0 context.Context, arg1 *messager.Sha
 func (mr *MockIMessagerMockRecorder) SetSharedParams(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSharedParams", reflect.TypeOf((*MockIMessager)(nil).SetSharedParams), arg0, arg1)
+}
+
+// UpdateActorCfg mocks base method.
+func (m *MockIMessager) UpdateActorCfg(arg0 context.Context, arg1 types0.UUID, arg2 *messager.ChangeGasSpecParams) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateActorCfg", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateActorCfg indicates an expected call of UpdateActorCfg.
+func (mr *MockIMessagerMockRecorder) UpdateActorCfg(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateActorCfg", reflect.TypeOf((*MockIMessager)(nil).UpdateActorCfg), arg0, arg1, arg2)
 }
 
 // UpdateAllFilledMessage mocks base method.

@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/venus/venus-shared/api"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type ICommon interface {
@@ -14,6 +15,8 @@ type ICommon interface {
 
 	LogList(context.Context) ([]string, error)         //perm:read
 	LogSetLevel(context.Context, string, string) error //perm:write
+
+	ListSignedRecord(ctx context.Context, param *types.QuerySignRecordParams) ([]types.SignRecord, error) //perm:read
 
 	api.Version
 }
