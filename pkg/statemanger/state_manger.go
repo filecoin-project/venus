@@ -478,7 +478,6 @@ func (s *Stmgr) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, 
 }
 
 func MakeMsgGasCost(msg *types.Message, ret *vm.Ret) types.MsgGasCost {
-	fmt.Println(msg.RequiredFunds(), ret.OutPuts.Refund)
 	return types.MsgGasCost{
 		Message:            msg.Cid(),
 		GasUsed:            big.NewInt(ret.Receipt.GasUsed),
