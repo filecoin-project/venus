@@ -35,7 +35,7 @@ const (
 const MainNetBlockDelaySecs = uint64(builtin0.EpochDurationSeconds)
 
 // todo move this value to config
-var InsecurePoStValidation = false
+var InsecurePoStValidation = true
 
 const (
 	NoTimeout = math.MaxInt64
