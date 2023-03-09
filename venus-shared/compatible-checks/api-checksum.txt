@@ -284,6 +284,7 @@ api.FullNode:
 	CreateBackup:	In=2,	Out=1,	CheckSum=7b0679c2c73ab9606a7da21c5251ad19
 	Discover:	In=1,	Out=2,	CheckSum=09640e20c6d71c3e96c7a56c8698acc9
 	EthAccounts:	In=1,	Out=2,	CheckSum=d2d1b2a1ffc7dc9b28e8c64c79147670
+	EthAddressToFilecoinAddress:	In=2,	Out=2,	CheckSum=d1ca5904502264aa05b428089d46d660
 	EthBlockNumber:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
 	EthCall:	In=3,	Out=2,	CheckSum=64610416ed5674a0c717908d51904008
 	EthChainId:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
@@ -316,6 +317,7 @@ api.FullNode:
 	EthSubscribe:	In=2,	Out=2,	CheckSum=f63e0b205164d628bc8022b6d5a496f5
 	EthUninstallFilter:	In=2,	Out=2,	CheckSum=eaa6a477ffaae115413457bbdb11e339
 	EthUnsubscribe:	In=2,	Out=2,	CheckSum=eaa6a477ffaae115413457bbdb11e339
+	FilecoinAddressToEthAddress:	In=2,	Out=2,	CheckSum=13a0b5ce8f82604e17803a00c4086c4c
 	GasEstimateFeeCap:	In=4,	Out=2,	CheckSum=0fcac02de1d21c9ac6e10696a6499eba
 	GasEstimateGasLimit:	In=3,	Out=2,	CheckSum=4d1bd57eef0ee90d4c2e89f097d0604d
 	GasEstimateGasPremium:	In=5,	Out=2,	CheckSum=550724ed37e2fdaa64e55147e82214b1

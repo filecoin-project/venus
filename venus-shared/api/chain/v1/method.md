@@ -41,12 +41,12 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [GetEntry](#getentry)
   * [GetFullBlock](#getfullblock)
   * [GetParentStateRootActor](#getparentstaterootactor)
-  * [MessageWait](#messagewait)
   * [ProtocolParameters](#protocolparameters)
   * [ResolveToKeyAddr](#resolvetokeyaddr)
   * [StateActorCodeCIDs](#stateactorcodecids)
   * [StateActorManifestCID](#stateactormanifestcid)
   * [StateCall](#statecall)
+  * [StateCompute](#statecompute)
   * [StateGetBeaconEntry](#stategetbeaconentry)
   * [StateGetNetworkParams](#stategetnetworkparams)
   * [StateGetRandomnessFromBeacon](#stategetrandomnessfrombeacon)
@@ -65,6 +65,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [Version](#version)
 * [ETH](#eth)
   * [EthAccounts](#ethaccounts)
+  * [EthAddressToFilecoinAddress](#ethaddresstofilecoinaddress)
   * [EthBlockNumber](#ethblocknumber)
   * [EthCall](#ethcall)
   * [EthChainId](#ethchainid)
@@ -88,6 +89,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [EthMaxPriorityFeePerGas](#ethmaxpriorityfeepergas)
   * [EthProtocolVersion](#ethprotocolversion)
   * [EthSendRawTransaction](#ethsendrawtransaction)
+  * [FilecoinAddressToEthAddress](#filecoinaddresstoethaddress)
   * [NetListening](#netlistening)
   * [NetVersion](#netversion)
   * [Web3ClientVersion](#web3clientversion)
@@ -1205,105 +1207,6 @@ Response:
 }
 ```
 
-### MessageWait
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  10101,
-  10101
-]
-```
-
-Response:
-```json
-{
-  "TS": {
-    "Cids": null,
-    "Blocks": null,
-    "Height": 0
-  },
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "Block": {
-    "Miner": "f01234",
-    "Ticket": {
-      "VRFProof": "Bw=="
-    },
-    "ElectionProof": {
-      "WinCount": 9,
-      "VRFProof": "Bw=="
-    },
-    "BeaconEntries": [
-      {
-        "Round": 42,
-        "Data": "Ynl0ZSBhcnJheQ=="
-      }
-    ],
-    "WinPoStProof": [
-      {
-        "PoStProof": 8,
-        "ProofBytes": "Ynl0ZSBhcnJheQ=="
-      }
-    ],
-    "Parents": [
-      {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      }
-    ],
-    "ParentWeight": "0",
-    "Height": 10101,
-    "ParentStateRoot": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "ParentMessageReceipts": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "Messages": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "BLSAggregate": {
-      "Type": 2,
-      "Data": "Ynl0ZSBhcnJheQ=="
-    },
-    "Timestamp": 42,
-    "BlockSig": {
-      "Type": 2,
-      "Data": "Ynl0ZSBhcnJheQ=="
-    },
-    "ForkSignaling": 42,
-    "ParentBaseFee": "0"
-  },
-  "Receipt": {
-    "ExitCode": 0,
-    "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9,
-    "EventsRoot": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    }
-  }
-}
-```
-
 ### ProtocolParameters
 
 
@@ -1553,6 +1456,225 @@ Response:
   },
   "Error": "string value",
   "Duration": 60000000000
+}
+```
+
+### StateCompute
+StateCompute is a flexible command that applies the given messages on the given tipset.
+The messages are run as though the VM were at the provided height.
+
+When called, StateCompute will:
+- Load the provided tipset, or use the current chain head if not provided
+- Compute the tipset state of the provided tipset on top of the parent state
+- (note that this step runs before vmheight is applied to the execution)
+- Execute state upgrade if any were scheduled at the epoch, or in null
+blocks preceding the tipset
+- Call the cron actor on null blocks preceding the tipset
+- For each block in the tipset
+- Apply messages in blocks in the specified
+- Award block reward by calling the reward actor
+- Call the cron actor for the current epoch
+- If the specified vmheight is higher than the current epoch, apply any
+needed state upgrades to the state
+- Apply the specified messages to the state
+
+The vmheight parameter sets VM execution epoch, and can be used to simulate
+message execution in different network versions. If the specified vmheight
+epoch is higher than the epoch of the specified tipset, any state upgrades
+until the vmheight will be executed on the state before applying messages
+specified by the user.
+
+Note that the initial tipset state computation is not affected by the
+vmheight parameter - only the messages in the `apply` set are
+
+If the caller wants to simply compute the state, vmheight should be set to
+the epoch of the specified tipset.
+
+Messages in the `apply` parameter must have the correct nonces, and gas
+values set.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101,
+  [
+    {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "f01234",
+      "From": "f01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Root": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Trace": [
+    {
+      "MsgCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Msg": {
+        "CID": {
+          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        },
+        "Version": 42,
+        "To": "f01234",
+        "From": "f01234",
+        "Nonce": 42,
+        "Value": "0",
+        "GasLimit": 9,
+        "GasFeeCap": "0",
+        "GasPremium": "0",
+        "Method": 1,
+        "Params": "Ynl0ZSBhcnJheQ=="
+      },
+      "MsgRct": {
+        "ExitCode": 0,
+        "Return": "Ynl0ZSBhcnJheQ==",
+        "GasUsed": 9,
+        "EventsRoot": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        }
+      },
+      "GasCost": {
+        "Message": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "GasUsed": "0",
+        "BaseFeeBurn": "0",
+        "OverEstimationBurn": "0",
+        "MinerPenalty": "0",
+        "MinerTip": "0",
+        "Refund": "0",
+        "TotalCost": "0"
+      },
+      "ExecutionTrace": {
+        "Msg": {
+          "CID": {
+            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          },
+          "Version": 42,
+          "To": "f01234",
+          "From": "f01234",
+          "Nonce": 42,
+          "Value": "0",
+          "GasLimit": 9,
+          "GasFeeCap": "0",
+          "GasPremium": "0",
+          "Method": 1,
+          "Params": "Ynl0ZSBhcnJheQ=="
+        },
+        "MsgRct": {
+          "ExitCode": 0,
+          "Return": "Ynl0ZSBhcnJheQ==",
+          "GasUsed": 9,
+          "EventsRoot": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
+        },
+        "Error": "string value",
+        "Duration": 60000000000,
+        "GasCharges": [
+          {
+            "Name": "string value",
+            "loc": [
+              {
+                "File": "string value",
+                "Line": 123,
+                "Function": "string value"
+              }
+            ],
+            "tg": 9,
+            "cg": 9,
+            "sg": 9,
+            "vtg": 9,
+            "vcg": 9,
+            "vsg": 9,
+            "tt": 60000000000,
+            "ex": {}
+          }
+        ],
+        "Subcalls": [
+          {
+            "Msg": {
+              "CID": {
+                "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+              },
+              "Version": 42,
+              "To": "f01234",
+              "From": "f01234",
+              "Nonce": 42,
+              "Value": "0",
+              "GasLimit": 9,
+              "GasFeeCap": "0",
+              "GasPremium": "0",
+              "Method": 1,
+              "Params": "Ynl0ZSBhcnJheQ=="
+            },
+            "MsgRct": {
+              "ExitCode": 0,
+              "Return": "Ynl0ZSBhcnJheQ==",
+              "GasUsed": 9,
+              "EventsRoot": {
+                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+              }
+            },
+            "Error": "string value",
+            "Duration": 60000000000,
+            "GasCharges": [
+              {
+                "Name": "string value",
+                "loc": [
+                  {
+                    "File": "string value",
+                    "Line": 123,
+                    "Function": "string value"
+                  }
+                ],
+                "tg": 9,
+                "cg": 9,
+                "sg": 9,
+                "vtg": 9,
+                "vcg": 9,
+                "vsg": 9,
+                "tt": 60000000000,
+                "ex": {}
+              }
+            ],
+            "Subcalls": null
+          }
+        ]
+      },
+      "Error": "string value",
+      "Duration": 60000000000
+    }
+  ]
 }
 ```
 
@@ -2138,6 +2260,21 @@ Response:
 ]
 ```
 
+### EthAddressToFilecoinAddress
+EthAddressToFilecoinAddress converts an EthAddress into an f410 Filecoin Address
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707"
+]
+```
+
+Response: `"f01234"`
+
 ### EthBlockNumber
 EthBlockNumber returns the height of the latest (heaviest) TipSet
 
@@ -2643,6 +2780,21 @@ Inputs:
 ```
 
 Response: `"0x0707070707070707070707070707070707070707070707070707070707070707"`
+
+### FilecoinAddressToEthAddress
+FilecoinAddressToEthAddress converts an f410 or f0 Filecoin Address to an EthAddress
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `"0x0707070707070707070707070707070707070707"`
 
 ### NetListening
 

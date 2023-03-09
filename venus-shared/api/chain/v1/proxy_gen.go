@@ -282,12 +282,12 @@ type IChainInfoStruct struct {
 		GetEntry                      func(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)                                                                   `perm:"read"`
 		GetFullBlock                  func(ctx context.Context, id cid.Cid) (*types.FullBlock, error)                                                                                              `perm:"read"`
 		GetParentStateRootActor       func(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error)                                                                      `perm:"read"`
-		MessageWait                   func(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*types.ChainMessage, error)                                                  `perm:"read"`
 		ProtocolParameters            func(ctx context.Context) (*types.ProtocolParams, error)                                                                                                     `perm:"read"`
 		ResolveToKeyAddr              func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)                                                                   `perm:"read"`
 		StateActorCodeCIDs            func(context.Context, network.Version) (map[string]cid.Cid, error)                                                                                           `perm:"read"`
 		StateActorManifestCID         func(context.Context, network.Version) (cid.Cid, error)                                                                                                      `perm:"read"`
 		StateCall                     func(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error)                                                               `perm:"read"`
+		StateCompute                  func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*types.ComputeStateOutput, error)                                                  `perm:"read"`
 		StateGetBeaconEntry           func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)                                                                                  `perm:"read"`
 		StateGetNetworkParams         func(ctx context.Context) (*types.NetworkParams, error)                                                                                                      `perm:"read"`
 		StateGetRandomnessFromBeacon  func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
@@ -372,9 +372,6 @@ func (s *IChainInfoStruct) GetFullBlock(p0 context.Context, p1 cid.Cid) (*types.
 func (s *IChainInfoStruct) GetParentStateRootActor(p0 context.Context, p1 *types.TipSet, p2 address.Address) (*types.Actor, error) {
 	return s.Internal.GetParentStateRootActor(p0, p1, p2)
 }
-func (s *IChainInfoStruct) MessageWait(p0 context.Context, p1 cid.Cid, p2, p3 abi.ChainEpoch) (*types.ChainMessage, error) {
-	return s.Internal.MessageWait(p0, p1, p2, p3)
-}
 func (s *IChainInfoStruct) ProtocolParameters(p0 context.Context) (*types.ProtocolParams, error) {
 	return s.Internal.ProtocolParameters(p0)
 }
@@ -389,6 +386,9 @@ func (s *IChainInfoStruct) StateActorManifestCID(p0 context.Context, p1 network.
 }
 func (s *IChainInfoStruct) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*types.InvocResult, error) {
 	return s.Internal.StateCall(p0, p1, p2)
+}
+func (s *IChainInfoStruct) StateCompute(p0 context.Context, p1 abi.ChainEpoch, p2 []*types.Message, p3 types.TipSetKey) (*types.ComputeStateOutput, error) {
+	return s.Internal.StateCompute(p0, p1, p2, p3)
 }
 func (s *IChainInfoStruct) StateGetBeaconEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
 	return s.Internal.StateGetBeaconEntry(p0, p1)
@@ -839,6 +839,7 @@ func (s *ICommonStruct) Version(p0 context.Context) (types.Version, error) {
 type IETHStruct struct {
 	Internal struct {
 		EthAccounts                            func(ctx context.Context) ([]types.EthAddress, error)                                                                 `perm:"read"`
+		EthAddressToFilecoinAddress            func(ctx context.Context, ethAddress types.EthAddress) (address.Address, error)                                       `perm:"read"`
 		EthBlockNumber                         func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
 		EthCall                                func(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error)                                  `perm:"read"`
 		EthChainId                             func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
@@ -862,6 +863,7 @@ type IETHStruct struct {
 		EthMaxPriorityFeePerGas                func(ctx context.Context) (types.EthBigInt, error)                                                                    `perm:"read"`
 		EthProtocolVersion                     func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
 		EthSendRawTransaction                  func(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error)                                                `perm:"read"`
+		FilecoinAddressToEthAddress            func(ctx context.Context, filecoinAddress address.Address) (types.EthAddress, error)                                  `perm:"read"`
 		NetListening                           func(ctx context.Context) (bool, error)                                                                               `perm:"read"`
 		NetVersion                             func(ctx context.Context) (string, error)                                                                             `perm:"read"`
 		Web3ClientVersion                      func(ctx context.Context) (string, error)                                                                             `perm:"read"`
@@ -870,6 +872,9 @@ type IETHStruct struct {
 
 func (s *IETHStruct) EthAccounts(p0 context.Context) ([]types.EthAddress, error) {
 	return s.Internal.EthAccounts(p0)
+}
+func (s *IETHStruct) EthAddressToFilecoinAddress(p0 context.Context, p1 types.EthAddress) (address.Address, error) {
+	return s.Internal.EthAddressToFilecoinAddress(p0, p1)
 }
 func (s *IETHStruct) EthBlockNumber(p0 context.Context) (types.EthUint64, error) {
 	return s.Internal.EthBlockNumber(p0)
@@ -939,6 +944,9 @@ func (s *IETHStruct) EthProtocolVersion(p0 context.Context) (types.EthUint64, er
 }
 func (s *IETHStruct) EthSendRawTransaction(p0 context.Context, p1 types.EthBytes) (types.EthHash, error) {
 	return s.Internal.EthSendRawTransaction(p0, p1)
+}
+func (s *IETHStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (types.EthAddress, error) {
+	return s.Internal.FilecoinAddressToEthAddress(p0, p1)
 }
 func (s *IETHStruct) NetListening(p0 context.Context) (bool, error) {
 	return s.Internal.NetListening(p0)

@@ -1,5 +1,32 @@
 # venus changelog
 
+## v1.10.1
+
+* 修复 evm 命令部署合约失败 [[#5785](https://github.com/filecoin-project/venus/pull/5785)]
+* 修复无法获取扇区的开始和过期时间 [[#5792](https://github.com/filecoin-project/venus/pull/5792)]
+* market 增加 miner 管理接口 [[#5794](https://github.com/filecoin-project/venus/pull/5794)]
+* 增加 StateCompute 接口 [[#5795](https://github.com/filecoin-project/venus/pull/5795)]
+* 优化调用 newEthBlockFromFilecoinTipSet 函数的耗时 [[#5798](https://github.com/filecoin-project/venus/pull/5798)]
+
+## v1.10.0
+
+* 把实际的 vmTracing 传递给 VM [[#5757](https://github.com/filecoin-project/venus/pull/5757)]
+* 增加接口 FilecoinAddressToEthAddress [[#5772]](https://github.com/filecoin-project/venus/pull/5772)
+* 重构 market 接口 updatedealstatus [[#5778](https://github.com/filecoin-project/venus/pull/5778)]
+
+## v1.10.0-rc4
+
+* 修复保存 MessageReceipt 失败问题 [[#5743](https://github.com/filecoin-project/venus/pull/5743)]
+
+## v1.10.0-rc3
+
+* 调整 force 网络的 Hygge 升级高度
+* 增加 bootstrap peers flag
+* 增加 RPC接口：EthAddressToFilecoinAddress
+* 升级 go-libipfs 版本到 v0.4.1
+* 修复 EthGetTransactionCount 接口返回不正确的 nonce
+* 调整预迁移开始高度和结束高度
+
 ## v1.10.0-rc1
 
 这是 venus v1.10.0 版本（**强制性**）的第一个候选版本，此版本将提供 Hygge 网络升级，并引入 Filecoin 网络版本18。

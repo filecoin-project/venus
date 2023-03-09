@@ -661,21 +661,6 @@ func (mr *MockFullNodeMockRecorder) LockWallet(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockWallet", reflect.TypeOf((*MockFullNode)(nil).LockWallet), arg0)
 }
 
-// MessageWait mocks base method.
-func (m *MockFullNode) MessageWait(arg0 context.Context, arg1 cid.Cid, arg2, arg3 abi.ChainEpoch) (*types0.ChainMessage, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MessageWait", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*types0.ChainMessage)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// MessageWait indicates an expected call of MessageWait.
-func (mr *MockFullNodeMockRecorder) MessageWait(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MessageWait", reflect.TypeOf((*MockFullNode)(nil).MessageWait), arg0, arg1, arg2, arg3)
-}
-
 // MinerCreateBlock mocks base method.
 func (m *MockFullNode) MinerCreateBlock(arg0 context.Context, arg1 *types0.BlockTemplate) (*types0.BlockMsg, error) {
 	m.ctrl.T.Helper()
@@ -1621,6 +1606,21 @@ func (m *MockFullNode) StateCirculatingSupply(arg0 context.Context, arg1 types0.
 func (mr *MockFullNodeMockRecorder) StateCirculatingSupply(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateCirculatingSupply", reflect.TypeOf((*MockFullNode)(nil).StateCirculatingSupply), arg0, arg1)
+}
+
+// StateCompute mocks base method.
+func (m *MockFullNode) StateCompute(arg0 context.Context, arg1 abi.ChainEpoch, arg2 []*types.Message, arg3 types0.TipSetKey) (*types0.ComputeStateOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateCompute", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*types0.ComputeStateOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateCompute indicates an expected call of StateCompute.
+func (mr *MockFullNodeMockRecorder) StateCompute(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateCompute", reflect.TypeOf((*MockFullNode)(nil).StateCompute), arg0, arg1, arg2, arg3)
 }
 
 // StateDealProviderCollateralBounds mocks base method.

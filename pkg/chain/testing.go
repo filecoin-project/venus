@@ -190,8 +190,8 @@ func (f *fakeStmgr) GetActorAt(ctx context.Context, a address.Address, set *type
 	return f.cs.GetActorAt(ctx, set, a)
 }
 
-func (f *fakeStmgr) RunStateTransition(ctx context.Context, set *types.TipSet, cb vm.ExecCallBack) (root cid.Cid, receipts cid.Cid, err error) {
-	return f.eva.RunStateTransition(ctx, set, cb)
+func (f *fakeStmgr) RunStateTransition(ctx context.Context, set *types.TipSet, cb vm.ExecCallBack, vmTracing bool) (root cid.Cid, receipts cid.Cid, err error) {
+	return f.eva.RunStateTransition(ctx, set, cb, vmTracing)
 }
 
 var _ IStmgr = &fakeStmgr{}
@@ -283,7 +283,7 @@ func (f *Builder) AppendOn(ctx context.Context, parent *types.TipSet, width int)
 }
 
 func (f *Builder) FlushHead(ctx context.Context) error {
-	_, _, e := f.FakeStateEvaluator().RunStateTransition(ctx, f.store.GetHead(), nil)
+	_, _, e := f.FakeStateEvaluator().RunStateTransition(ctx, f.store.GetHead(), nil, false)
 	return e
 }
 
@@ -645,7 +645,7 @@ type FakeStateEvaluator struct {
 }
 
 // RunStateTransition delegates to StateBuilder.ComputeState
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.ExecCallBack) (rootCid cid.Cid, receiptCid cid.Cid, err error) {
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.ExecCallBack, vmTracing bool) (rootCid cid.Cid, receiptCid cid.Cid, err error) {
 	key := ts.Key()
 	e.stLk.Lock()
 	workingCh, exist := e.ChsWorkingOn[key]
@@ -707,7 +707,7 @@ func (e *FakeStateEvaluator) ValidateFullBlock(ctx context.Context, blk *types.B
 		return err
 	}
 
-	root, receipts, err := e.RunStateTransition(ctx, parent, nil)
+	root, receipts, err := e.RunStateTransition(ctx, parent, nil, false)
 	if err != nil {
 		return err
 	}

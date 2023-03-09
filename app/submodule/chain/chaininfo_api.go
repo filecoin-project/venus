@@ -483,19 +483,6 @@ func (cia *chainInfoAPI) StateVerifierStatus(ctx context.Context, addr address.A
 	return &dcap, nil
 }
 
-// MessageWait invokes the callback when a message with the given cid appears on chain.
-// It will find the message in both the case that it is already on chain and
-// the case that it appears in a newly mined block. An error is returned if one is
-// encountered or if the context is canceled. Otherwise, it waits forever for the message
-// to appear on chain.
-func (cia *chainInfoAPI) MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*types.ChainMessage, error) {
-	chainMsg, err := cia.chain.MessageStore.LoadMessage(ctx, msgCid)
-	if err != nil {
-		return nil, err
-	}
-	return cia.chain.Waiter.Wait(ctx, chainMsg, uint64(confidence), lookback, true)
-}
-
 // StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
 func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, from types.TipSetKey, mCid cid.Cid, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	chainMsg, err := cia.chain.MessageStore.LoadMessage(ctx, mCid)
@@ -514,7 +501,7 @@ func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, from types.TipSetKe
 
 	if found {
 		return &types.MsgLookup{
-			Message: mCid,
+			Message: msgResult.Message.Cid(),
 			Receipt: *msgResult.Receipt,
 			TipSet:  msgResult.TS.Key(),
 			Height:  msgResult.TS.Height(),
@@ -579,7 +566,7 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 		}
 
 		return &types.MsgLookup{
-			Message:   mCid,
+			Message:   msgResult.Message.Cid(),
 			Receipt:   *msgResult.Receipt,
 			ReturnDec: returndec,
 			TipSet:    msgResult.TS.Key(),
@@ -786,7 +773,7 @@ func (cia *chainInfoAPI) StateCall(ctx context.Context, msg *types.Message, tsk 
 		}
 	}
 
-	return res, nil
+	return res, err
 }
 
 // StateReplay replays a given message, assuming it was included in a block in the specified tipset.
@@ -881,4 +868,20 @@ func (cia *chainInfoAPI) ChainGetEvents(ctx context.Context, root cid.Cid) ([]ty
 	})
 
 	return ret, err
+}
+
+func (cia *chainInfoAPI) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs []*types.Message, tsk types.TipSetKey) (*types.ComputeStateOutput, error) {
+	ts, err := cia.ChainGetTipSet(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	st, t, err := statemanger.ComputeState(ctx, cia.chain.Stmgr, height, msgs, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.ComputeStateOutput{
+		Root:  st,
+		Trace: t,
+	}, nil
 }

@@ -61,7 +61,6 @@ type IChainInfo interface {
 	GetActor(ctx context.Context, addr address.Address) (*types.Actor, error)                                                                                                             //perm:read
 	GetParentStateRootActor(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error)                                                                            //perm:read
 	GetEntry(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)                                                                                        //perm:read
-	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*types.ChainMessage, error)                                                                    //perm:read
 	ProtocolParameters(ctx context.Context) (*types.ProtocolParams, error)                                                                                                                //perm:read
 	ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)                                                                                //perm:read
 	StateNetworkName(ctx context.Context) (types.NetworkName, error)                                                                                                                      //perm:read
@@ -84,6 +83,39 @@ type IChainInfo interface {
 	StateActorManifestCID(context.Context, network.Version) (cid.Cid, error)                            //perm:read
 	StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) //perm:read
 	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error)                  //perm:read
+	// StateCompute is a flexible command that applies the given messages on the given tipset.
+	// The messages are run as though the VM were at the provided height.
+	//
+	// When called, StateCompute will:
+	// - Load the provided tipset, or use the current chain head if not provided
+	// - Compute the tipset state of the provided tipset on top of the parent state
+	//   - (note that this step runs before vmheight is applied to the execution)
+	//   - Execute state upgrade if any were scheduled at the epoch, or in null
+	//     blocks preceding the tipset
+	//   - Call the cron actor on null blocks preceding the tipset
+	//   - For each block in the tipset
+	//     - Apply messages in blocks in the specified
+	//     - Award block reward by calling the reward actor
+	//   - Call the cron actor for the current epoch
+	// - If the specified vmheight is higher than the current epoch, apply any
+	//   needed state upgrades to the state
+	// - Apply the specified messages to the state
+	//
+	// The vmheight parameter sets VM execution epoch, and can be used to simulate
+	// message execution in different network versions. If the specified vmheight
+	// epoch is higher than the epoch of the specified tipset, any state upgrades
+	// until the vmheight will be executed on the state before applying messages
+	// specified by the user.
+	//
+	// Note that the initial tipset state computation is not affected by the
+	// vmheight parameter - only the messages in the `apply` set are
+	//
+	// If the caller wants to simply compute the state, vmheight should be set to
+	// the epoch of the specified tipset.
+	//
+	// Messages in the `apply` parameter must have the correct nonces, and gas
+	// values set.
+	StateCompute(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*types.ComputeStateOutput, error) //perm:read
 }
 
 type IMinerState interface {

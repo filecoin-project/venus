@@ -14,12 +14,15 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/fvm"
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -150,7 +153,7 @@ func (s *Stmgr) ParentState(ctx context.Context, ts *types.TipSet) (*types.TipSe
 			ts.Key().String(), err)
 	}
 
-	if stateRoot, _, err := s.RunStateTransition(ctx, parent, nil); err != nil {
+	if stateRoot, _, err := s.RunStateTransition(ctx, parent, nil, false); err != nil {
 		return nil, nil, fmt.Errorf("runstateTransition failed:%w", err)
 	} else if !stateRoot.Equals(ts.At(0).ParentStateRoot) {
 		return nil, nil, fmt.Errorf("runstateTransition error, %w", consensus.ErrStateRootMismatch)
@@ -175,7 +178,7 @@ func (s *Stmgr) TipsetStateTsk(ctx context.Context, tsk types.TipSetKey) (*types
 }
 
 func (s *Stmgr) TipsetState(ctx context.Context, ts *types.TipSet) (*tree.State, error) {
-	root, _, err := s.RunStateTransition(ctx, ts, nil)
+	root, _, err := s.RunStateTransition(ctx, ts, nil, false)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +200,7 @@ redo:
 	}
 	s.stLk.Unlock()
 
-	if root, _, err := s.RunStateTransition(ctx, pts, nil); err != nil {
+	if root, _, err := s.RunStateTransition(ctx, pts, nil, false); err != nil {
 		return err
 	} else if !root.Equals(cts.At(0).ParentStateRoot) {
 		cts = pts
@@ -209,7 +212,7 @@ redo:
 	return nil
 }
 
-func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.ExecCallBack) (root cid.Cid, receipts cid.Cid, err error) {
+func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.ExecCallBack, vmTracing bool) (root cid.Cid, receipts cid.Cid, err error) {
 	if nil != s.stopFlag(false) {
 		return cid.Undef, cid.Undef, fmt.Errorf("state manager is stopping")
 	}
@@ -266,7 +269,7 @@ func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	}
 
-	if root, receipts, err = s.cp.RunStateTransition(ctx, ts, cb); err != nil {
+	if root, receipts, err = s.cp.RunStateTransition(ctx, ts, cb, vmTracing); err != nil {
 		return cid.Undef, cid.Undef, err
 	}
 
@@ -353,7 +356,7 @@ func (s *Stmgr) RunStateTransitionV2(ctx context.Context, ts *types.TipSet) (cid
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	}
 
-	if state.stateRoot, state.receipt, err = s.cp.RunStateTransition(ctx, ts, nil); err != nil {
+	if state.stateRoot, state.receipt, err = s.cp.RunStateTransition(ctx, ts, nil, false); err != nil {
 		return cid.Undef, cid.Undef, err
 	} else if err = s.cs.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
@@ -400,7 +403,7 @@ func (s *Stmgr) StateViewTsk(ctx context.Context, tsk types.TipSetKey) (*types.T
 }
 
 func (s *Stmgr) StateView(ctx context.Context, ts *types.TipSet) (cid.Cid, *appstate.View, error) {
-	stateCid, _, err := s.RunStateTransition(ctx, ts, nil)
+	stateCid, _, err := s.RunStateTransition(ctx, ts, nil, false)
 	if err != nil {
 		return cid.Undef, nil, err
 	}
@@ -431,7 +434,7 @@ func (s *Stmgr) Replay(ctx context.Context, ts *types.TipSet, msgCID cid.Cid) (*
 		return nil
 	}
 
-	_, _, err := s.cp.RunStateTransition(ctx, ts, cb)
+	_, _, err := s.cp.RunStateTransition(ctx, ts, cb, true)
 	if err != nil && !errors.Is(err, errHaltExecution) {
 		return nil, nil, fmt.Errorf("unexpected error during execution: %w", err)
 	}
@@ -443,10 +446,41 @@ func (s *Stmgr) Replay(ctx context.Context, ts *types.TipSet, msgCID cid.Cid) (*
 	return outm, outr, nil
 }
 
+func (s *Stmgr) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*types.InvocResult, error) {
+	var invocTrace []*types.InvocResult
+
+	cb := func(mcid cid.Cid, msg *types.Message, ret *vm.Ret) error {
+		ir := &types.InvocResult{
+			MsgCid:         mcid,
+			Msg:            msg,
+			MsgRct:         &ret.Receipt,
+			ExecutionTrace: ret.GasTracker.ExecutionTrace,
+			Duration:       ret.Duration,
+		}
+		if ret.ActorErr != nil {
+			ir.Error = ret.ActorErr.Error()
+		}
+		if !ret.OutPuts.Refund.Nil() {
+			ir.GasCost = MakeMsgGasCost(msg, ret)
+		}
+
+		invocTrace = append(invocTrace, ir)
+
+		return nil
+	}
+
+	st, _, err := s.cp.RunStateTransition(ctx, ts, cb, true)
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	return st, invocTrace, nil
+}
+
 func MakeMsgGasCost(msg *types.Message, ret *vm.Ret) types.MsgGasCost {
 	return types.MsgGasCost{
 		Message:            msg.Cid(),
-		GasUsed:            big.NewInt(ret.GasTracker.GasUsed),
+		GasUsed:            big.NewInt(ret.Receipt.GasUsed),
 		BaseFeeBurn:        ret.OutPuts.BaseFeeBurn,
 		OverEstimationBurn: ret.OutPuts.OverEstimationBurn,
 		MinerPenalty:       ret.OutPuts.MinerPenalty,
@@ -456,9 +490,79 @@ func MakeMsgGasCost(msg *types.Message, ret *vm.Ret) types.MsgGasCost {
 	}
 }
 
+func ComputeState(ctx context.Context, s *Stmgr, height abi.ChainEpoch, msgs []*types.Message, ts *types.TipSet) (cid.Cid, []*types.InvocResult, error) {
+	if ts == nil {
+		ts = s.cs.GetHead()
+	}
+
+	base, trace, err := s.ExecutionTrace(ctx, ts)
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	for i := ts.Height(); i < height; i++ {
+		// Technically, the tipset we're passing in here should be ts+1, but that may not exist.
+		base, err = s.fork.HandleStateForks(ctx, base, i, ts)
+		if err != nil {
+			return cid.Undef, nil, fmt.Errorf("error handling state forks: %w", err)
+		}
+
+		// We intentionally don't run cron here, as we may be trying to look into the
+		// future. It's not guaranteed to be accurate... but that's fine.
+	}
+
+	buffStore := blockstoreutil.NewTieredBstore(s.cs.Blockstore(), blockstoreutil.NewTemporarySync())
+	vmopt := vm.VmOption{
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
+			cs, err := s.cs.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			if err != nil {
+				return abi.TokenAmount{}, err
+			}
+			return cs.FilCirculating, nil
+		},
+		PRoot:               base,
+		Epoch:               ts.Height(),
+		Timestamp:           ts.MinTimestamp(),
+		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
+		Bsstore:             buffStore,
+		SysCallsImpl:        s.syscallsImpl,
+		GasPriceSchedule:    s.gasSchedule,
+		NetworkVersion:      s.GetNetworkVersion(ctx, height),
+		BaseFee:             ts.Blocks()[0].ParentBaseFee,
+		Fork:                s.fork,
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
+		TipSetGetter:        vmcontext.TipSetGetterForTipset(s.cs.GetTipSetByHeight, ts),
+		Tracing:             true,
+		ActorDebugging:      s.actorDebugging,
+	}
+
+	vmi, err := fvm.NewVM(ctx, vmopt)
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	for i, msg := range msgs {
+		// TODO: Use the signed message length for secp messages
+		ret, err := vmi.ApplyMessage(ctx, msg)
+		if err != nil {
+			return cid.Undef, nil, fmt.Errorf("applying message %s: %w", msg.Cid(), err)
+		}
+		if ret.Receipt.ExitCode != 0 {
+			s.log.Infof("compute state apply message %d failed (exit: %d): %s", i, ret.Receipt.ExitCode, ret.ActorErr)
+		}
+	}
+
+	root, err := vmi.Flush(ctx)
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	return root, trace, nil
+}
+
 func (s *Stmgr) FlushChainHead() (*types.TipSet, error) {
 	head := s.cs.GetHead()
-	_, _, err := s.RunStateTransition(context.TODO(), head, nil)
+	_, _, err := s.RunStateTransition(context.TODO(), head, nil, false)
 	return head, err
 }
 

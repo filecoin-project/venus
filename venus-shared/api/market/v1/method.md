@@ -2,14 +2,16 @@
 
 ```bash
 # <Inputs> corresponding to the value of Inputs Tag of each API
-curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "Authorization: Bearer <token>"  -d '{"method": "VENUS_MARKET.<method>", "params": <Inputs>, "id": 0}'
+curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "Authorization: Bearer <token>"  -d '{"method": "VENUS_MARKET.<method>", "params": <Inputs>, "id": 0}'
 ```
 # Groups
 
 * [Market](#market)
+  * [ActorDelete](#actordelete)
   * [ActorExist](#actorexist)
   * [ActorList](#actorlist)
   * [ActorSectorSize](#actorsectorsize)
+  * [ActorUpsert](#actorupsert)
   * [AddFsPieceStorage](#addfspiecestorage)
   * [AddS3PieceStorage](#adds3piecestorage)
   * [AssignUnPackedDeals](#assignunpackeddeals)
@@ -100,6 +102,20 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
 
 ## Market
 
+### ActorDelete
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `{}`
+
 ### ActorExist
 
 
@@ -144,6 +160,23 @@ Inputs:
 ```
 
 Response: `34359738368`
+
+### ActorUpsert
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Addr": "f01234",
+    "Account": "string value"
+  }
+]
+```
+
+Response: `true`
 
 ### AddFsPieceStorage
 
@@ -2250,7 +2283,8 @@ Inputs:
 [
   "f01234",
   5432,
-  "Undefine"
+  "Undefine",
+  42
 ]
 ```
 

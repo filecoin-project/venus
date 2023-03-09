@@ -5,13 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"path/filepath"
+	"os"
 	"strconv"
 
-	"github.com/filecoin-project/venus/app/paths"
 	"github.com/filecoin-project/venus/cmd/tablewriter"
-
-	"github.com/filecoin-project/venus/pkg/config"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -57,6 +54,7 @@ var stateCmd = &cmds.Command{
 		"list-actor":      stateListActorCmd,
 		"actor-cids":      stateSysActorCIDsCmd,
 		"replay":          stateReplayCmd,
+		"compute-state":   StateComputeStateCmd,
 	},
 }
 
@@ -257,7 +255,8 @@ var stateSectorCmd = &cmds.Command{
 			return err
 		}
 
-		ts, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
+		ctx := req.Context
+		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
 		if err != nil {
 			return err
 		}
@@ -267,12 +266,12 @@ var stateSectorCmd = &cmds.Command{
 			return err
 		}
 
-		blockDelay, err := blockDelay(req)
+		blockDelay, err := getBlockDelay(ctx, env)
 		if err != nil {
 			return err
 		}
 
-		si, err := env.(*node.Env).ChainAPI.StateSectorGetInfo(req.Context, maddr, abi.SectorNumber(sid), ts.Key())
+		si, err := env.(*node.Env).ChainAPI.StateSectorGetInfo(ctx, maddr, abi.SectorNumber(sid), ts.Key())
 		if err != nil {
 			return err
 		}
@@ -289,8 +288,8 @@ var stateSectorCmd = &cmds.Command{
 		writer.Println("SealedCID: ", si.SealedCID)
 		writer.Println("DealIDs: ", si.DealIDs)
 		writer.Println()
-		writer.Println("Activation: ", EpochTime(height, si.Activation, blockDelay))
-		writer.Println("Expiration: ", EpochTime(height, si.Expiration, blockDelay))
+		writer.Println("Activation: ", EpochTimeTs(height, si.Activation, blockDelay, ts))
+		writer.Println("Expiration: ", EpochTimeTs(height, si.Expiration, blockDelay, ts))
 		writer.Println()
 		writer.Println("DealWeight: ", si.DealWeight)
 		writer.Println("VerifiedDealWeight: ", si.VerifiedDealWeight)
@@ -309,22 +308,6 @@ var stateSectorCmd = &cmds.Command{
 
 		return re.Emit(buf)
 	},
-}
-
-func blockDelay(req *cmds.Request) (uint64, error) {
-	var err error
-	repoDir, _ := req.Options[OptionRepoDir].(string)
-	repoDir, err = paths.GetRepoPath(repoDir)
-	if err != nil {
-		return 0, err
-	}
-	cfgPath := filepath.Join(repoDir, "config.json")
-	cfg, err := config.ReadFile(cfgPath)
-	if err != nil {
-		return 0, err
-	}
-
-	return cfg.NetworkParams.BlockDelay, nil
 }
 
 var stateGetActorCmd = &cmds.Command{
@@ -471,22 +454,23 @@ var stateMinerInfo = &cmds.Command{
 			return err
 		}
 
-		blockDelay, err := blockDelay(req)
+		ctx := req.Context
+		blockDelay, err := getBlockDelay(ctx, env)
 		if err != nil {
 			return err
 		}
 
-		ts, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
+		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
 		if err != nil {
 			return err
 		}
 
-		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(req.Context, addr, ts.Key())
+		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(ctx, addr, ts.Key())
 		if err != nil {
 			return err
 		}
 
-		availableBalance, err := env.(*node.Env).ChainAPI.StateMinerAvailableBalance(req.Context, addr, ts.Key())
+		availableBalance, err := env.(*node.Env).ChainAPI.StateMinerAvailableBalance(ctx, addr, ts.Key())
 		if err != nil {
 			return fmt.Errorf("getting miner available balance: %w", err)
 		}
@@ -535,7 +519,7 @@ var stateMinerInfo = &cmds.Command{
 
 		writer.Println()
 
-		cd, err := env.(*node.Env).ChainAPI.StateMinerProvingDeadline(req.Context, addr, ts.Key())
+		cd, err := env.(*node.Env).ChainAPI.StateMinerProvingDeadline(ctx, addr, ts.Key())
 		if err != nil {
 			return fmt.Errorf("getting miner info: %w", err)
 		}
@@ -726,4 +710,87 @@ func makeActorView(act *types.Actor, addr address.Address) *ActorView {
 		Balance: act.Balance,
 		Head:    act.Head,
 	}
+}
+
+var StateComputeStateCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Perform state computations",
+	},
+	Options: []cmds.Option{
+		cmds.Uint64Option("vm-height", "set the height that the vm will see"),
+		cmds.BoolOption("apply-mpool-messages", "apply messages from the mempool to the computed state"),
+		cmds.BoolOption("show-trace", "print out full execution trace for given tipset"),
+		cmds.BoolOption("json", "generate json output"),
+		cmds.StringOption("compute-state-output", "a json file containing pre-existing compute-state output, to generate html reports without rerunning state changes"),
+		cmds.BoolOption("no-timing", "don't show timing information in html traces"),
+		cmds.StringOption("tipset", ""),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		ctx := req.Context
+
+		ts, err := LoadTipSet(ctx, req, getEnv(env).ChainAPI)
+		if err != nil {
+			return err
+		}
+		h, _ := req.Options["vm-height"].(uint64)
+		if h == 0 {
+			h = uint64(ts.Height())
+		}
+
+		var msgs []*types.Message
+		if applyMsg, _ := req.Options["apply-mpool-messages"].(bool); applyMsg {
+			pmsgs, err := getEnv(env).MessagePoolAPI.MpoolSelect(ctx, ts.Key(), 1)
+			if err != nil {
+				return err
+			}
+
+			for _, sm := range pmsgs {
+				msgs = append(msgs, &sm.Message)
+			}
+		}
+
+		var stout *types.ComputeStateOutput
+		if csofile, _ := req.Options["compute-state-output"].(string); len(csofile) != 0 {
+			data, err := os.ReadFile(csofile)
+			if err != nil {
+				return err
+			}
+
+			var o types.ComputeStateOutput
+			if err := json.Unmarshal(data, &o); err != nil {
+				return err
+			}
+
+			stout = &o
+		} else {
+			o, err := getEnv(env).ChainAPI.StateCompute(ctx, abi.ChainEpoch(h), msgs, ts.Key())
+			if err != nil {
+				return err
+			}
+
+			stout = o
+		}
+
+		buf := &bytes.Buffer{}
+		writer := NewSilentWriter(buf)
+
+		if ok, _ := req.Options["json"].(bool); ok {
+			out, err := json.Marshal(stout)
+			if err != nil {
+				return err
+			}
+			writer.Println(string(out))
+			return re.Emit(buf)
+		}
+
+		writer.Println("computed state cid: ", stout.Root)
+		if showTrace, _ := req.Options["show-trace"].(bool); showTrace {
+			for _, ir := range stout.Trace {
+				writer.Printf("%s\t%s\t%s\t%d\t%x\t%d\t%x\n", ir.Msg.From, ir.Msg.To, ir.Msg.Value, ir.Msg.Method, ir.Msg.Params, ir.MsgRct.ExitCode, ir.MsgRct.Return)
+				printInternalExecutions(writer, "\t", ir.ExecutionTrace.Subcalls)
+			}
+		}
+
+		return re.Emit(buf)
+	},
 }

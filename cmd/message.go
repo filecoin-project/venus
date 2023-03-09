@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
@@ -106,12 +107,6 @@ var msgSendCmd = &cmds.Command{
 			return fmt.Errorf("mal-formed value: %v", err)
 		}
 
-		methodID := builtin.MethodSend
-		method, ok := req.Options["method"]
-		if ok {
-			methodID = abi.MethodNum(method.(uint64))
-		}
-
 		var fromAddr address.Address
 		if addrStr, _ := req.Options["from-eth-addr"].(string); len(addrStr) != 0 {
 			fromAddr, err = address.NewFromString(addrStr)
@@ -125,14 +120,53 @@ var msgSendCmd = &cmds.Command{
 			}
 		}
 
-		if fromAddr.Protocol() == address.Delegated {
+		var params []byte
+		if rawPH := req.Options["params-hex"]; rawPH != nil {
+			decparams, err := hex.DecodeString(rawPH.(string))
+			if err != nil {
+				return fmt.Errorf("failed to decode hex params: %w", err)
+			}
+			params = decparams
+		}
+
+		methodID := builtin.MethodSend
+		method := req.Options["method"]
+		if types.IsEthAddress(fromAddr) {
+			// Method numbers don't make sense from eth accounts.
+			if method != nil {
+				return fmt.Errorf("messages from f410f addresses may not specify a method number")
+			}
+
+			// Now, figure out the correct method number from the recipient.
+			if toAddr == builtintypes.EthereumAddressManagerActorAddr {
+				methodID = builtintypes.MethodsEAM.CreateExternal
+			} else {
+				methodID = builtintypes.MethodsEVM.InvokeContract
+			}
+
+			if req.Options["params-json"] != nil {
+				return fmt.Errorf("may not call with json parameters from an eth account")
+			}
+
+			// And format the parameters, if present.
+			if len(params) > 0 {
+				var buf bytes.Buffer
+				if err := cbg.WriteByteArray(&buf, params); err != nil {
+					return fmt.Errorf("failed to marshal EVM parameters")
+				}
+				params = buf.Bytes()
+			}
+
+			// We can only send to an f410f or f0 address.
 			if !(toAddr.Protocol() == address.ID || toAddr.Protocol() == address.Delegated) {
 				// Resolve id addr if possible.
 				toAddr, err = env.(*node.Env).ChainAPI.StateLookupID(ctx, toAddr, types.EmptyTSK)
 				if err != nil {
-					return fmt.Errorf("f4 addresses can only send to other f4 or id addresses. could not find id address for %s", toAddr.String())
+					return fmt.Errorf("addresses starting with f410f can only send to other addresses starting with f410f, or id addresses. could not find id address for %s", toAddr.String())
 				}
 			}
+		} else if method != nil {
+			methodID = abi.MethodNum(method.(uint64))
 		}
 
 		if methodID == builtin.MethodSend && fromAddr.String() == toAddr.String() {
@@ -148,24 +182,14 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		var params []byte
 		rawPJ := req.Options["params-json"]
 		if rawPJ != nil {
-			decparams, err := decodeTypedParams(ctx, env.(*node.Env), toAddr, methodID, rawPJ.(string))
-			if err != nil {
-				return fmt.Errorf("failed to decode json params: %s", err)
-			}
-			params = decparams
-		}
-
-		rawPH := req.Options["params-hex"]
-		if rawPH != nil {
 			if params != nil {
 				return fmt.Errorf("can only specify one of 'params-json' and 'params-hex'")
 			}
-			decparams, err := hex.DecodeString(rawPH.(string))
+			decparams, err := decodeTypedParams(ctx, env.(*node.Env), toAddr, methodID, rawPJ.(string))
 			if err != nil {
-				return fmt.Errorf("failed to decode hex params: %s", err)
+				return fmt.Errorf("failed to decode json params: %s", err)
 			}
 			params = decparams
 		}

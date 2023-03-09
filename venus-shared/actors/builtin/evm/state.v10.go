@@ -5,9 +5,9 @@ package evm
 import (
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	evm10 "github.com/filecoin-project/go-state-types/builtin/v10/evm"
 )
 
@@ -41,6 +41,10 @@ type state10 struct {
 
 func (s *state10) Nonce() (uint64, error) {
 	return s.State.Nonce, nil
+}
+
+func (s *state10) IsAlive() (bool, error) {
+	return s.State.Tombstone == nil, nil
 }
 
 func (s *state10) GetState() interface{} {

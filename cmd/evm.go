@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -76,16 +77,22 @@ var evmGetInfoCmd = &cmds.Command{
 		}
 
 		actor, err := chainAPI.StateGetActor(ctx, faddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
 
 		buf := new(bytes.Buffer)
 		writer := NewSilentWriter(buf)
 
 		writer.Println("Filecoin address: ", faddr)
-		writer.Println("Eth address: ", eaddr)
-		writer.Println("Code cid: ", actor.Code.String())
+		writer.Println("Eth address:      ", eaddr)
+		if err != nil {
+			writer.Printf("Actor lookup failed for faddr %s with error: %s\n", faddr, err)
+		} else {
+			idAddr, err := chainAPI.StateLookupID(ctx, faddr, types.EmptyTSK)
+			if err == nil {
+				writer.Println("ID address:       ", idAddr)
+				writer.Println("Code cid:         ", actor.Code.String())
+				writer.Println("Actor Type:       ", builtin.ActorNameByCode(actor.Code))
+			}
+		}
 
 		return re.Emit(buf)
 	},
@@ -241,22 +248,19 @@ var evmDeployCmd = &cmds.Command{
 			Params: params,
 		}
 
-		buf := &bytes.Buffer{}
-		afmt := NewSilentWriter(buf)
-
 		// TODO: On Jan 11th, we decided to add an `EAM#create_external` method
 		//  that uses the nonce of the caller instead of taking a user-supplied nonce.
 		//  Track: https://github.com/filecoin-project/ref-fvm/issues/1255
 		//  When that's implemented, we should migrate the CLI to use that,
 		//  as `EAM#create` will be reserved for the EVM runtime actor.
 		// TODO: this is very racy. It may assign a _different_ nonce than the expected one.
-		afmt.Println("sending message...")
+		_ = printOneString(re, "sending message...")
 		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, msg, nil)
 		if err != nil {
 			return fmt.Errorf("failed to push message: %w", err)
 		}
 
-		afmt.Println("waiting for message to execute...")
+		_ = printOneString(re, fmt.Sprintf("waiting for message %v to execute...", smsg.Cid()))
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, smsg.Cid(), 0, constants.LookbackNoLimit, true)
 		if err != nil {
 			return fmt.Errorf("error waiting for message: %w", err)
@@ -277,6 +281,10 @@ var evmDeployCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
+
+		buf := &bytes.Buffer{}
+		afmt := NewSilentWriter(buf)
+
 		afmt.Printf("Actor ID: %d\n", result.ActorID)
 		afmt.Printf("ID Address: %s\n", addr)
 		afmt.Printf("Robust Address: %s\n", result.RobustAddress)
@@ -340,7 +348,7 @@ var evmInvokeCmd = &cmds.Command{
 
 		var fromAddr address.Address
 		if from, _ := req.Options["from"].(string); from == "" {
-			defaddr, err := env.(node.Env).WalletAPI.WalletDefaultAddress(ctx)
+			defaddr, err := getEnv(env).WalletAPI.WalletDefaultAddress(ctx)
 			if err != nil {
 				return err
 			}
@@ -365,16 +373,14 @@ var evmInvokeCmd = &cmds.Command{
 			Params: callData,
 		}
 
-		buf := &bytes.Buffer{}
-		afmt := NewSilentWriter(buf)
-		afmt.Println("sending message...")
-		smsg, err := env.(node.Env).MessagePoolAPI.MpoolPushMessage(ctx, msg, nil)
+		_ = printOneString(re, "sending message...")
+		smsg, err := getEnv(env).MessagePoolAPI.MpoolPushMessage(ctx, msg, nil)
 		if err != nil {
 			return fmt.Errorf("failed to push message: %w", err)
 		}
 
-		afmt.Println("waiting for message to execute...")
-		wait, err := env.(node.Env).ChainAPI.StateWaitMsg(ctx, smsg.Cid(), 0, constants.LookbackNoLimit, true)
+		_ = printOneString(re, fmt.Sprintf("waiting for message %v to execute...", smsg.Cid()))
+		wait, err := getEnv(env).ChainAPI.StateWaitMsg(ctx, smsg.Cid(), 0, constants.LookbackNoLimit, true)
 		if err != nil {
 			return fmt.Errorf("error waiting for message: %w", err)
 		}
@@ -384,6 +390,8 @@ var evmInvokeCmd = &cmds.Command{
 			return fmt.Errorf("actor execution failed")
 		}
 
+		buf := &bytes.Buffer{}
+		afmt := NewSilentWriter(buf)
 		afmt.Println("Gas used: ", wait.Receipt.GasUsed)
 		result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
 		if err != nil {
@@ -391,7 +399,7 @@ var evmInvokeCmd = &cmds.Command{
 		}
 
 		if len(result) > 0 {
-			afmt.Println(hex.EncodeToString(result))
+			afmt.Println("Result: ", hex.EncodeToString(result))
 		} else {
 			afmt.Println("OK")
 		}

@@ -12,8 +12,9 @@ import (
 	gatewayv0 "github.com/filecoin-project/venus/venus-shared/api/gateway/v0"
 	gatewayv1 "github.com/filecoin-project/venus/venus-shared/api/gateway/v1"
 	gatewayv2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
-	"github.com/filecoin-project/venus/venus-shared/api/market"
 	market_client "github.com/filecoin-project/venus/venus-shared/api/market/client"
+	marketv0 "github.com/filecoin-project/venus/venus-shared/api/market/v0"
+	marketv1 "github.com/filecoin-project/venus/venus-shared/api/market/v1"
 	"github.com/filecoin-project/venus/venus-shared/api/messager"
 	"github.com/filecoin-project/venus/venus-shared/api/wallet"
 )
@@ -79,13 +80,24 @@ func init() {
 			},
 		},
 		util.APIMeta{
-			Type: reflect.TypeOf((*market.IMarket)(nil)).Elem(),
+			Type: reflect.TypeOf((*marketv0.IMarket)(nil)).Elem(),
 			ParseOpt: util.InterfaceParseOption{
-				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/market",
+				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/market/v0",
 				IncludeAll: true,
 			},
 			RPCMeta: util.RPCMeta{
 				Version:         0,
+				MethodNamespace: "VENUS_MARKET",
+			},
+		},
+		util.APIMeta{
+			Type: reflect.TypeOf((*marketv1.IMarket)(nil)).Elem(),
+			ParseOpt: util.InterfaceParseOption{
+				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/market/v1",
+				IncludeAll: true,
+			},
+			RPCMeta: util.RPCMeta{
+				Version:         1,
 				MethodNamespace: "VENUS_MARKET",
 			},
 		},

@@ -470,6 +470,21 @@ func (mr *MockFullNodeMockRecorder) EthAccounts(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthAccounts", reflect.TypeOf((*MockFullNode)(nil).EthAccounts), arg0)
 }
 
+// EthAddressToFilecoinAddress mocks base method.
+func (m *MockFullNode) EthAddressToFilecoinAddress(arg0 context.Context, arg1 types.EthAddress) (address.Address, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthAddressToFilecoinAddress", arg0, arg1)
+	ret0, _ := ret[0].(address.Address)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthAddressToFilecoinAddress indicates an expected call of EthAddressToFilecoinAddress.
+func (mr *MockFullNodeMockRecorder) EthAddressToFilecoinAddress(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthAddressToFilecoinAddress", reflect.TypeOf((*MockFullNode)(nil).EthAddressToFilecoinAddress), arg0, arg1)
+}
+
 // EthBlockNumber mocks base method.
 func (m *MockFullNode) EthBlockNumber(arg0 context.Context) (types.EthUint64, error) {
 	m.ctrl.T.Helper()
@@ -950,6 +965,21 @@ func (mr *MockFullNodeMockRecorder) EthUnsubscribe(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthUnsubscribe", reflect.TypeOf((*MockFullNode)(nil).EthUnsubscribe), arg0, arg1)
 }
 
+// FilecoinAddressToEthAddress mocks base method.
+func (m *MockFullNode) FilecoinAddressToEthAddress(arg0 context.Context, arg1 address.Address) (types.EthAddress, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FilecoinAddressToEthAddress", arg0, arg1)
+	ret0, _ := ret[0].(types.EthAddress)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FilecoinAddressToEthAddress indicates an expected call of FilecoinAddressToEthAddress.
+func (mr *MockFullNodeMockRecorder) FilecoinAddressToEthAddress(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilecoinAddressToEthAddress", reflect.TypeOf((*MockFullNode)(nil).FilecoinAddressToEthAddress), arg0, arg1)
+}
+
 // GasBatchEstimateMessageGas mocks base method.
 func (m *MockFullNode) GasBatchEstimateMessageGas(arg0 context.Context, arg1 []*types0.EstimateMessage, arg2 uint64, arg3 types0.TipSetKey) ([]*types0.EstimateResult, error) {
 	m.ctrl.T.Helper()
@@ -1141,21 +1171,6 @@ func (m *MockFullNode) LockWallet(arg0 context.Context) error {
 func (mr *MockFullNodeMockRecorder) LockWallet(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockWallet", reflect.TypeOf((*MockFullNode)(nil).LockWallet), arg0)
-}
-
-// MessageWait mocks base method.
-func (m *MockFullNode) MessageWait(arg0 context.Context, arg1 cid.Cid, arg2, arg3 abi.ChainEpoch) (*types0.ChainMessage, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MessageWait", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*types0.ChainMessage)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// MessageWait indicates an expected call of MessageWait.
-func (mr *MockFullNodeMockRecorder) MessageWait(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MessageWait", reflect.TypeOf((*MockFullNode)(nil).MessageWait), arg0, arg1, arg2, arg3)
 }
 
 // MinerCreateBlock mocks base method.
@@ -2238,6 +2253,21 @@ func (m *MockFullNode) StateCirculatingSupply(arg0 context.Context, arg1 types0.
 func (mr *MockFullNodeMockRecorder) StateCirculatingSupply(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateCirculatingSupply", reflect.TypeOf((*MockFullNode)(nil).StateCirculatingSupply), arg0, arg1)
+}
+
+// StateCompute mocks base method.
+func (m *MockFullNode) StateCompute(arg0 context.Context, arg1 abi.ChainEpoch, arg2 []*types.Message, arg3 types0.TipSetKey) (*types0.ComputeStateOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateCompute", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*types0.ComputeStateOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateCompute indicates an expected call of StateCompute.
+func (mr *MockFullNodeMockRecorder) StateCompute(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateCompute", reflect.TypeOf((*MockFullNode)(nil).StateCompute), arg0, arg1, arg2, arg3)
 }
 
 // StateComputeDataCID mocks base method.

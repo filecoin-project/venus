@@ -571,12 +571,10 @@ func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
 		new: added,
 	}
 
-	store.persistTipSetKey(ctx, newTS.Key())
-
 	return nil
 }
 
-func (store *Store) persistTipSetKey(ctx context.Context, key types.TipSetKey) {
+func (store *Store) PersistTipSetKey(ctx context.Context, key types.TipSetKey) {
 	tskBlk, err := key.ToStorageBlock()
 	if err != nil {
 		log.Errorf("failed to create a block from tsk: %s", key)
@@ -1051,7 +1049,7 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 		}
 
 		// save tipsetkey
-		store.persistTipSetKey(ctx, curParentTipset.Key())
+		store.PersistTipSetKey(ctx, curParentTipset.Key())
 
 		curTipset = curParentTipset
 	}

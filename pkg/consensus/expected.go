@@ -165,7 +165,7 @@ func NewExpected(cs cbor.IpldStore,
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.ExecCallBack) (cid.Cid, cid.Cid, error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.ExecCallBack, vmTracing bool) (cid.Cid, cid.Cid, error) {
 	begin := time.Now()
 	defer func() {
 		logExpect.Infof("process ts height %d, blocks %d, took %.4f(s)", ts.Height(), ts.Len(), time.Since(begin).Seconds())
@@ -215,7 +215,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, cb 
 		PRoot:               ts.At(0).ParentStateRoot,
 		SysCallsImpl:        c.syscallsImpl,
 		TipSetGetter:        vmcontext.TipSetGetterForTipset(c.chainState.GetTipSetByHeight, ts),
-		Tracing:             false,
+		Tracing:             vmTracing,
 		ActorDebugging:      c.netParamCfg.ActorDebugging,
 		ReturnEvents:        c.returnEvents,
 	}
