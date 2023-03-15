@@ -22,9 +22,11 @@ type IMarketClient interface {
 	// ClientRemoveImport removes file import
 	ClientRemoveImport(ctx context.Context, importID client.ImportID) error //perm:admin
 	// ClientStartDeal proposes a deal with a miner.
-	ClientStartDeal(ctx context.Context, params *client.StartDealParams) (*cid.Cid, error) //perm:admin
+	ClientStartDeal(ctx context.Context, params *client.DealParams) (*cid.Cid, error) //perm:admin
 	// ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
-	ClientStatelessDeal(ctx context.Context, params *client.StartDealParams) (*cid.Cid, error) //perm:write
+	ClientStatelessDeal(ctx context.Context, params *client.DealParams) (*cid.Cid, error) //perm:write
+	// ClientBatchDeal proposes deals with a miner
+	ClientBatchDeal(ctx context.Context, params *client.DealsParams) (*client.DealResults, error) //perm:write
 	// ClientGetDealInfo returns the latest information about a given deal.
 	ClientGetDealInfo(context.Context, cid.Cid) (*client.DealInfo, error) //perm:read
 	// ClientListDeals returns information about the deals made by the local client.

@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
-type StartDealParams struct {
+type DealParams struct {
 	Data               *storagemarket.DataRef
 	Wallet             address.Address
 	Miner              address.Address
@@ -46,4 +46,18 @@ type DealInfo struct {
 
 	TransferChannelID *datatransfer.ChannelID
 	DataTransfer      *market.DataTransferChannel
+}
+
+type DealResults struct {
+	Results []*DealResult
+}
+
+type DealResult struct {
+	ProposalCID cid.Cid
+	// Create deal failed
+	Message string
+}
+
+type DealsParams struct {
+	Params []*DealParams
 }

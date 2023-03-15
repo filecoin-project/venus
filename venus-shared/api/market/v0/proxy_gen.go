@@ -37,6 +37,7 @@ type IMarketStruct struct {
 		DagstoreInitializeStorage               func(context.Context, string, market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error)                                                                                 `perm:"admin"`
 		DagstoreListShards                      func(ctx context.Context) ([]market.DagstoreShardInfo, error)                                                                                                                                       `perm:"admin"`
 		DagstoreRecoverShard                    func(ctx context.Context, key string) error                                                                                                                                                         `perm:"admin"`
+		DealsBatchImportData                    func(ctx context.Context, refs []*market.ImportDataRef) ([]*market.ImportDataResult, error)                                                                                                         `perm:"admin"`
 		DealsConsiderOfflineRetrievalDeals      func(context.Context, address.Address) (bool, error)                                                                                                                                                `perm:"read"`
 		DealsConsiderOfflineStorageDeals        func(context.Context, address.Address) (bool, error)                                                                                                                                                `perm:"read"`
 		DealsConsiderOnlineRetrievalDeals       func(context.Context, address.Address) (bool, error)                                                                                                                                                `perm:"read"`
@@ -164,6 +165,9 @@ func (s *IMarketStruct) DagstoreListShards(p0 context.Context) ([]market.Dagstor
 }
 func (s *IMarketStruct) DagstoreRecoverShard(p0 context.Context, p1 string) error {
 	return s.Internal.DagstoreRecoverShard(p0, p1)
+}
+func (s *IMarketStruct) DealsBatchImportData(p0 context.Context, p1 []*market.ImportDataRef) ([]*market.ImportDataResult, error) {
+	return s.Internal.DealsBatchImportData(p0, p1)
 }
 func (s *IMarketStruct) DealsConsiderOfflineRetrievalDeals(p0 context.Context, p1 address.Address) (bool, error) {
 	return s.Internal.DealsConsiderOfflineRetrievalDeals(p0, p1)

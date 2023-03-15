@@ -18,6 +18,7 @@ import (
 
 type IMarketClientStruct struct {
 	Internal struct {
+		ClientBatchDeal                           func(ctx context.Context, params *client.DealsParams) (*client.DealResults, error)                         `perm:"write"`
 		ClientCalcCommP                           func(ctx context.Context, inpath string) (*client.CommPRet, error)                                         `perm:"write"`
 		ClientCancelDataTransfer                  func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error   `perm:"write"`
 		ClientCancelRetrievalDeal                 func(ctx context.Context, dealid retrievalmarket.DealID) error                                             `perm:"write"`
@@ -44,8 +45,8 @@ type IMarketClientStruct struct {
 		ClientRetrieve                            func(ctx context.Context, params client.RetrievalOrder) (*client.RestrievalRes, error)                     `perm:"admin"`
 		ClientRetrieveTryRestartInsufficientFunds func(ctx context.Context, paymentChannel address.Address) error                                            `perm:"write"`
 		ClientRetrieveWait                        func(ctx context.Context, deal retrievalmarket.DealID) error                                               `perm:"admin"`
-		ClientStartDeal                           func(ctx context.Context, params *client.StartDealParams) (*cid.Cid, error)                                `perm:"admin"`
-		ClientStatelessDeal                       func(ctx context.Context, params *client.StartDealParams) (*cid.Cid, error)                                `perm:"write"`
+		ClientStartDeal                           func(ctx context.Context, params *client.DealParams) (*cid.Cid, error)                                     `perm:"admin"`
+		ClientStatelessDeal                       func(ctx context.Context, params *client.DealParams) (*cid.Cid, error)                                     `perm:"write"`
 		DefaultAddress                            func(ctx context.Context) (address.Address, error)                                                         `perm:"read"`
 		MarketAddBalance                          func(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)                 `perm:"write"`
 		MarketGetReserved                         func(ctx context.Context, addr address.Address) (types.BigInt, error)                                      `perm:"read"`
@@ -59,6 +60,9 @@ type IMarketClientStruct struct {
 	}
 }
 
+func (s *IMarketClientStruct) ClientBatchDeal(p0 context.Context, p1 *client.DealsParams) (*client.DealResults, error) {
+	return s.Internal.ClientBatchDeal(p0, p1)
+}
 func (s *IMarketClientStruct) ClientCalcCommP(p0 context.Context, p1 string) (*client.CommPRet, error) {
 	return s.Internal.ClientCalcCommP(p0, p1)
 }
@@ -137,10 +141,10 @@ func (s *IMarketClientStruct) ClientRetrieveTryRestartInsufficientFunds(p0 conte
 func (s *IMarketClientStruct) ClientRetrieveWait(p0 context.Context, p1 retrievalmarket.DealID) error {
 	return s.Internal.ClientRetrieveWait(p0, p1)
 }
-func (s *IMarketClientStruct) ClientStartDeal(p0 context.Context, p1 *client.StartDealParams) (*cid.Cid, error) {
+func (s *IMarketClientStruct) ClientStartDeal(p0 context.Context, p1 *client.DealParams) (*cid.Cid, error) {
 	return s.Internal.ClientStartDeal(p0, p1)
 }
-func (s *IMarketClientStruct) ClientStatelessDeal(p0 context.Context, p1 *client.StartDealParams) (*cid.Cid, error) {
+func (s *IMarketClientStruct) ClientStatelessDeal(p0 context.Context, p1 *client.DealParams) (*cid.Cid, error) {
 	return s.Internal.ClientStatelessDeal(p0, p1)
 }
 func (s *IMarketClientStruct) DefaultAddress(p0 context.Context) (address.Address, error) {

@@ -45,6 +45,21 @@ func (m *MockIMarketClient) EXPECT() *MockIMarketClientMockRecorder {
 	return m.recorder
 }
 
+// ClientBatchDeal mocks base method.
+func (m *MockIMarketClient) ClientBatchDeal(arg0 context.Context, arg1 *client.DealsParams) (*client.DealResults, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientBatchDeal", arg0, arg1)
+	ret0, _ := ret[0].(*client.DealResults)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClientBatchDeal indicates an expected call of ClientBatchDeal.
+func (mr *MockIMarketClientMockRecorder) ClientBatchDeal(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientBatchDeal", reflect.TypeOf((*MockIMarketClient)(nil).ClientBatchDeal), arg0, arg1)
+}
+
 // ClientCalcCommP mocks base method.
 func (m *MockIMarketClient) ClientCalcCommP(arg0 context.Context, arg1 string) (*client.CommPRet, error) {
 	m.ctrl.T.Helper()
@@ -428,7 +443,7 @@ func (mr *MockIMarketClientMockRecorder) ClientRetrieveWait(arg0, arg1 interface
 }
 
 // ClientStartDeal mocks base method.
-func (m *MockIMarketClient) ClientStartDeal(arg0 context.Context, arg1 *client.StartDealParams) (*cid.Cid, error) {
+func (m *MockIMarketClient) ClientStartDeal(arg0 context.Context, arg1 *client.DealParams) (*cid.Cid, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ClientStartDeal", arg0, arg1)
 	ret0, _ := ret[0].(*cid.Cid)
@@ -443,7 +458,7 @@ func (mr *MockIMarketClientMockRecorder) ClientStartDeal(arg0, arg1 interface{})
 }
 
 // ClientStatelessDeal mocks base method.
-func (m *MockIMarketClient) ClientStatelessDeal(arg0 context.Context, arg1 *client.StartDealParams) (*cid.Cid, error) {
+func (m *MockIMarketClient) ClientStatelessDeal(arg0 context.Context, arg1 *client.DealParams) (*cid.Cid, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ClientStatelessDeal", arg0, arg1)
 	ret0, _ := ret[0].(*cid.Cid)
