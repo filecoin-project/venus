@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -32,7 +33,7 @@ func TestChainIndex(t *testing.T) {
 
 	head := links[linksCount-1]
 
-	DefaultChainIndexCacheSize = 10
+	_ = os.Setenv("CHAIN_INDEX_CACHE", "10")
 	chainIndex := NewChainIndex(builder.GetTipSet)
 	chainIndex.skipLength = 10
 

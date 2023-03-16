@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -397,7 +398,7 @@ func TestLoadTipsetMeta(t *testing.T) {
 		requirePutBlocksToCborStore(t, cst, ts.ToSlice()...)
 	}
 
-	chain.DefaultChainIndexCacheSize = 2
+	_ = os.Setenv("CHAIN_INDEX_CACHE", "2")
 	chain.DefaultTipsetLruCacheSize = 2
 
 	cs := chain.NewStore(ds, bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator())
