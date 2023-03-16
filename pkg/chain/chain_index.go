@@ -3,6 +3,8 @@ package chain
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -11,6 +13,16 @@ import (
 )
 
 var DefaultChainIndexCacheSize = 32 << 15
+
+func init() {
+	if s := os.Getenv("CHAIN_INDEX_CACHE"); s != "" {
+		lcic, err := strconv.Atoi(s)
+		if err != nil {
+			log.Errorf("failed to parse 'CHAIN_INDEX_CACHE' env var: %s", err)
+		}
+		DefaultChainIndexCacheSize = lcic
+	}
+}
 
 // ChainIndex tipset height index, used to getting tipset by height quickly
 type ChainIndex struct { //nolint

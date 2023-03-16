@@ -8,6 +8,9 @@ on:
     branches:
       - '**'
 
+env:
+  CHAIN_INDEX_CACHE: 2048
+
 jobs:
 
   test:
