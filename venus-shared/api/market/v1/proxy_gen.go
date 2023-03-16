@@ -72,9 +72,11 @@ type IMarketStruct struct {
 		MarketDataTransferPath                  func(context.Context, address.Address) (string, error)                                                                                                                                              `perm:"admin"`
 		MarketDataTransferUpdates               func(ctx context.Context) (<-chan market.DataTransferChannel, error)                                                                                                                                `perm:"admin"`
 		MarketGetAsk                            func(ctx context.Context, mAddr address.Address) (*market.SignedStorageAsk, error)                                                                                                                  `perm:"read"`
+		MarketGetDeal                           func(ctx context.Context, dealPropCid cid.Cid) (*market.MinerDeal, error)                                                                                                                           `perm:"read"`
 		MarketGetDealUpdates                    func(ctx context.Context) (<-chan market.MinerDeal, error)                                                                                                                                          `perm:"admin"`
 		MarketGetReserved                       func(ctx context.Context, addr address.Address) (types.BigInt, error)                                                                                                                               `perm:"sign"`
 		MarketGetRetrievalAsk                   func(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error)                                                                                                                      `perm:"read"`
+		MarketGetRetrievalDeal                  func(ctx context.Context, receiver peer.ID, dealID uint64) (*market.ProviderDealState, error)                                                                                                       `perm:"read"`
 		MarketImportDealData                    func(ctx context.Context, propcid cid.Cid, path string) error                                                                                                                                       `perm:"admin"`
 		MarketImportPublishedDeal               func(ctx context.Context, deal market.MinerDeal) error                                                                                                                                              `perm:"write"`
 		MarketListDataTransfers                 func(ctx context.Context) ([]market.DataTransferChannel, error)                                                                                                                                     `perm:"admin"`
@@ -265,6 +267,9 @@ func (s *IMarketStruct) MarketDataTransferUpdates(p0 context.Context) (<-chan ma
 func (s *IMarketStruct) MarketGetAsk(p0 context.Context, p1 address.Address) (*market.SignedStorageAsk, error) {
 	return s.Internal.MarketGetAsk(p0, p1)
 }
+func (s *IMarketStruct) MarketGetDeal(p0 context.Context, p1 cid.Cid) (*market.MinerDeal, error) {
+	return s.Internal.MarketGetDeal(p0, p1)
+}
 func (s *IMarketStruct) MarketGetDealUpdates(p0 context.Context) (<-chan market.MinerDeal, error) {
 	return s.Internal.MarketGetDealUpdates(p0)
 }
@@ -273,6 +278,9 @@ func (s *IMarketStruct) MarketGetReserved(p0 context.Context, p1 address.Address
 }
 func (s *IMarketStruct) MarketGetRetrievalAsk(p0 context.Context, p1 address.Address) (*retrievalmarket.Ask, error) {
 	return s.Internal.MarketGetRetrievalAsk(p0, p1)
+}
+func (s *IMarketStruct) MarketGetRetrievalDeal(p0 context.Context, p1 peer.ID, p2 uint64) (*market.ProviderDealState, error) {
+	return s.Internal.MarketGetRetrievalDeal(p0, p1, p2)
 }
 func (s *IMarketStruct) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
 	return s.Internal.MarketImportDealData(p0, p1, p2)

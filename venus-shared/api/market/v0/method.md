@@ -57,9 +57,11 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [MarketDataTransferPath](#marketdatatransferpath)
   * [MarketDataTransferUpdates](#marketdatatransferupdates)
   * [MarketGetAsk](#marketgetask)
+  * [MarketGetDeal](#marketgetdeal)
   * [MarketGetDealUpdates](#marketgetdealupdates)
   * [MarketGetReserved](#marketgetreserved)
   * [MarketGetRetrievalAsk](#marketgetretrievalask)
+  * [MarketGetRetrievalDeal](#marketgetretrievaldeal)
   * [MarketImportDealData](#marketimportdealdata)
   * [MarketImportPublishedDeal](#marketimportpublisheddeal)
   * [MarketListDataTransfers](#marketlistdatatransfers)
@@ -1134,6 +1136,89 @@ Response:
 }
 ```
 
+### MarketGetDeal
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "Proposal": {
+    "PieceCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "PieceSize": 1032,
+    "VerifiedDeal": true,
+    "Client": "f01234",
+    "Provider": "f01234",
+    "Label": "",
+    "StartEpoch": 10101,
+    "EndEpoch": 10101,
+    "StoragePricePerEpoch": "0",
+    "ProviderCollateral": "0",
+    "ClientCollateral": "0"
+  },
+  "ClientSignature": {
+    "Type": 2,
+    "Data": "Ynl0ZSBhcnJheQ=="
+  },
+  "ProposalCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "AddFundsCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "PublishCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Miner": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "State": 42,
+  "PiecePath": "/some/path",
+  "PayloadSize": 42,
+  "MetadataPath": "/some/path",
+  "SlashEpoch": 10101,
+  "FastRetrieval": true,
+  "Message": "string value",
+  "FundsReserved": "0",
+  "Ref": {
+    "TransferType": "string value",
+    "Root": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "PieceCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "PieceSize": 1024,
+    "RawBlockSize": 42
+  },
+  "AvailableForRetrieval": true,
+  "DealID": 5432,
+  "CreationTime": "0001-01-01T00:00:00Z",
+  "TransferChannelId": {
+    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "ID": 3
+  },
+  "SectorNumber": 9,
+  "Offset": 1032,
+  "PieceStatus": "Undefine",
+  "InboundCAR": "string value",
+  "CreatedAt": 42,
+  "UpdatedAt": 42
+}
+```
+
 ### MarketGetDealUpdates
 
 
@@ -1243,6 +1328,57 @@ Response:
   "UnsealPrice": "0",
   "PaymentInterval": 42,
   "PaymentIntervalIncrease": 42
+}
+```
+
+### MarketGetRetrievalDeal
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  42
+]
+```
+
+Response:
+```json
+{
+  "PayloadCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "ID": 5,
+  "Selector": {
+    "Raw": "Ynl0ZSBhcnJheQ=="
+  },
+  "PieceCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "PricePerByte": "0",
+  "PaymentInterval": 42,
+  "PaymentIntervalIncrease": 42,
+  "UnsealPrice": "0",
+  "StoreID": 42,
+  "SelStorageProposalCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "ChannelID": {
+    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "ID": 3
+  },
+  "Status": 0,
+  "Receiver": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "TotalSent": 42,
+  "FundsReceived": "0",
+  "Message": "string value",
+  "CurrentInterval": 42,
+  "LegacyProtocol": true,
+  "CreatedAt": 42,
+  "UpdatedAt": 42
 }
 ```
 
