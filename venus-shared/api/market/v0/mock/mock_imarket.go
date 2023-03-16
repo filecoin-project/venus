@@ -778,6 +778,21 @@ func (mr *MockIMarketMockRecorder) MarketGetAsk(arg0, arg1 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketGetAsk", reflect.TypeOf((*MockIMarket)(nil).MarketGetAsk), arg0, arg1)
 }
 
+// MarketGetDeal mocks base method.
+func (m *MockIMarket) MarketGetDeal(arg0 context.Context, arg1 cid.Cid) (*market.MinerDeal, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarketGetDeal", arg0, arg1)
+	ret0, _ := ret[0].(*market.MinerDeal)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MarketGetDeal indicates an expected call of MarketGetDeal.
+func (mr *MockIMarketMockRecorder) MarketGetDeal(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketGetDeal", reflect.TypeOf((*MockIMarket)(nil).MarketGetDeal), arg0, arg1)
+}
+
 // MarketGetDealUpdates mocks base method.
 func (m *MockIMarket) MarketGetDealUpdates(arg0 context.Context) (<-chan market.MinerDeal, error) {
 	m.ctrl.T.Helper()
@@ -821,6 +836,21 @@ func (m *MockIMarket) MarketGetRetrievalAsk(arg0 context.Context, arg1 address.A
 func (mr *MockIMarketMockRecorder) MarketGetRetrievalAsk(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketGetRetrievalAsk", reflect.TypeOf((*MockIMarket)(nil).MarketGetRetrievalAsk), arg0, arg1)
+}
+
+// MarketGetRetrievalDeal mocks base method.
+func (m *MockIMarket) MarketGetRetrievalDeal(arg0 context.Context, arg1 peer.ID, arg2 uint64) (*market.ProviderDealState, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarketGetRetrievalDeal", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*market.ProviderDealState)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MarketGetRetrievalDeal indicates an expected call of MarketGetRetrievalDeal.
+func (mr *MockIMarketMockRecorder) MarketGetRetrievalDeal(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketGetRetrievalDeal", reflect.TypeOf((*MockIMarket)(nil).MarketGetRetrievalDeal), arg0, arg1, arg2)
 }
 
 // MarketImportDealData mocks base method.
