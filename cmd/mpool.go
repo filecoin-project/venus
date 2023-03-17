@@ -226,6 +226,8 @@ var mpoolReplaceCmd = &cmds.Command{
 		cmds.StringOption("max-fee", "Spend up to X FIL for this message (applicable for auto mode)"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		ctx := requestContext(req)
+
 		feecap, premium, gasLimit, err := parseGasOptions(req)
 		if err != nil {
 			return err
@@ -243,7 +245,7 @@ var mpoolReplaceCmd = &cmds.Command{
 				return err
 			}
 
-			msg, err := env.(*node.Env).ChainAPI.ChainGetMessage(req.Context, mcid)
+			msg, err := env.(*node.Env).ChainAPI.ChainGetMessage(ctx, mcid)
 			if err != nil {
 				return fmt.Errorf("could not find referenced message: %w", err)
 			}
@@ -267,12 +269,12 @@ var mpoolReplaceCmd = &cmds.Command{
 			return errors.New("command syntax error")
 		}
 
-		ts, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
+		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
 		if err != nil {
 			return fmt.Errorf("getting chain head: %w", err)
 		}
 
-		pending, err := env.(*node.Env).MessagePoolAPI.MpoolPending(req.Context, ts.Key())
+		pending, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -292,7 +294,12 @@ var mpoolReplaceCmd = &cmds.Command{
 		msg := found.Message
 
 		if auto {
-			minRBF := messagepool.ComputeMinRBF(msg.GasPremium)
+			cfg, err := getEnv(env).MessagePoolAPI.MpoolGetConfig(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to lookup the message pool config: %w", err)
+			}
+
+			defaultRBF := messagepool.ComputeRBF(msg.GasPremium, cfg.ReplaceByFeeRatio)
 
 			var mss *types.MessageSendSpec
 			if len(maxFee) > 0 {
@@ -313,7 +320,7 @@ var mpoolReplaceCmd = &cmds.Command{
 				return fmt.Errorf("failed to estimate gas values: %w", err)
 			}
 
-			msg.GasPremium = big.Max(retm.GasPremium, minRBF)
+			msg.GasPremium = big.Max(retm.GasPremium, defaultRBF)
 			msg.GasFeeCap = big.Max(retm.GasFeeCap, msg.GasPremium)
 
 			mff := func() (abi.TokenAmount, error) {
