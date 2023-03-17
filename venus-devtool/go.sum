@@ -338,8 +338,8 @@ github.com/filecoin-project/go-statemachine v1.0.2 h1:421SSWBk8GIoCoWYYTE/d+qCWc
 github.com/filecoin-project/go-statestore v0.2.0 h1:cRRO0aPLrxKQCZ2UOQbzFGn4WDNdofHZoGPjfNaAo5Q=
 github.com/filecoin-project/go-statestore v0.2.0/go.mod h1:8sjBYbS35HwPzct7iT4lIXjLlYyPor80aU7t7a/Kspo=
 github.com/filecoin-project/index-provider v0.9.1 h1:Jnh9dviIHvQxZ2baNoYu3n8z6F9O62ksnVlyREgPyyM=
-github.com/filecoin-project/lotus v1.20.1 h1:thlefi6NROiJo58dRBf+RweNmTlxCFdEIysLjx83tMw=
-github.com/filecoin-project/lotus v1.20.1/go.mod h1:dprpVaiQezI8Jl4tWcPNIYGGAAo31feZlGAOk8D7bJU=
+github.com/filecoin-project/lotus v1.20.3 h1:7Szh7jCc8pOa1++tdZgaUGMJYSHIMkUpypAO4at9I2U=
+github.com/filecoin-project/lotus v1.20.3/go.mod h1:eNjjbZvjLgH7OEaD7kAkk5i8OrZ7owq349yfQ1wrVTo=
 github.com/filecoin-project/pubsub v1.0.0 h1:ZTmT27U07e54qV1mMiQo4HDr0buo8I1LDHBYLXlsNXM=
 github.com/filecoin-project/pubsub v1.0.0/go.mod h1:GkpB33CcUtUNrLPhJgfdy4FDx4OMNR9k+46DHx/Lqrg=
 github.com/filecoin-project/specs-actors v0.9.13/go.mod h1:TS1AW/7LbG+615j4NsjMK1qlpAwaFsG9w0V2tg2gSao=

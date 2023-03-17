@@ -294,6 +294,10 @@ func init() {
 		FromBlock: pstring("2301220"),
 		Address:   []types.EthAddress{ethaddr},
 	})
+
+	percent := types.Percent(123)
+	addExample(percent)
+	addExample(&percent)
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

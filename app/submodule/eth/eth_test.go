@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -133,7 +134,7 @@ func TestRewardPercentiles(t *testing.T) {
 		{
 			percentiles:  []float64{25, 50, 75},
 			txGasRewards: []gasRewardTuple{},
-			answer:       []int64{0, 0, 0},
+			answer:       []int64{messagepool.MinGasPremium, messagepool.MinGasPremium, messagepool.MinGasPremium},
 		},
 		{
 			percentiles: []float64{25, 50, 75, 100},

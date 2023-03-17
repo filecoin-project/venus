@@ -10,10 +10,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var (
-	ReplaceByFeeRatioDefault  = 1.25
+	ReplaceByFeePercentageMinimum types.Percent = 110
+	ReplaceByFeePercentageDefault types.Percent = 125
+)
+
+var (
 	MemPoolSizeLimitHiDefault = 30000
 	MemPoolSizeLimitLoDefault = 20000
 	PruneCooldownDefault      = time.Minute
@@ -26,7 +31,7 @@ type MpoolConfig struct {
 	PriorityAddrs          []address.Address
 	SizeLimitHigh          int
 	SizeLimitLow           int
-	ReplaceByFeeRatio      float64
+	ReplaceByFeeRatio      types.Percent
 	PruneCooldown          time.Duration
 	GasLimitOverestimation float64
 }
@@ -71,9 +76,9 @@ func (mp *MessagePool) GetConfig() *MpoolConfig {
 }
 
 func validateConfg(cfg *MpoolConfig) error {
-	if cfg.ReplaceByFeeRatio < ReplaceByFeeRatioDefault {
-		return fmt.Errorf("'ReplaceByFeeRatio' is less than required %f < %f",
-			cfg.ReplaceByFeeRatio, ReplaceByFeeRatioDefault)
+	if cfg.ReplaceByFeeRatio < ReplaceByFeePercentageMinimum {
+		return fmt.Errorf("'ReplaceByFeeRatio' is less than required %s < %s",
+			cfg.ReplaceByFeeRatio, ReplaceByFeePercentageMinimum)
 	}
 	if cfg.GasLimitOverestimation < 1 {
 		return fmt.Errorf("'GasLimitOverestimation' cannot be less than 1")
@@ -102,7 +107,7 @@ func DefaultConfig() *MpoolConfig {
 	return &MpoolConfig{
 		SizeLimitHigh:          MemPoolSizeLimitHiDefault,
 		SizeLimitLow:           MemPoolSizeLimitLoDefault,
-		ReplaceByFeeRatio:      ReplaceByFeeRatioDefault,
+		ReplaceByFeeRatio:      ReplaceByFeePercentageDefault,
 		PruneCooldown:          PruneCooldownDefault,
 		GasLimitOverestimation: GasLimitOverestimation,
 	}

@@ -42,6 +42,8 @@ import (
 
 var log = logging.Logger("eth_api")
 
+var ErrNullRound = errors.New("requested epoch was a null round")
+
 func newEthAPI(em *EthSubModule) (*ethAPI, error) {
 	a := &ethAPI{
 		em:    em,
@@ -184,7 +186,7 @@ func (a *ethAPI) EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, f
 	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.chain)
 }
 
-func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string) (tipset *types.TipSet, err error) {
+func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool) (tipset *types.TipSet, err error) {
 	if blkParam == "earliest" {
 		return nil, fmt.Errorf("block param \"earliest\" is not supported")
 	}
@@ -208,16 +210,22 @@ func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string) (tipset *ty
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse block number: %v", err)
 		}
-		ts, err := a.em.chainModule.ChainReader.GetTipSetByHeight(ctx, nil, abi.ChainEpoch(num), false)
+		if abi.ChainEpoch(num) > head.Height()-1 {
+			return nil, fmt.Errorf("requested a future epoch (beyond 'latest')")
+		}
+		ts, err := a.chain.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(num), head.Key())
 		if err != nil {
 			return nil, fmt.Errorf("cannot get tipset at height: %v", num)
+		}
+		if strict && ts.Height() != abi.ChainEpoch(num) {
+			return nil, ErrNullRound
 		}
 		return ts, nil
 	}
 }
 
 func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (types.EthBlock, error) {
-	ts, err := a.parseBlkParam(ctx, blkParam)
+	ts, err := a.parseBlkParam(ctx, blkParam, true)
 	if err != nil {
 		return types.EthBlock{}, err
 	}
@@ -322,7 +330,7 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 	if err != nil {
 		return types.EthUint64(0), err
 	}
-	ts, err := a.parseBlkParam(ctx, blkParam)
+	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
 		return types.EthUint64(0), fmt.Errorf("cannot parse block param: %s", blkParam)
 	}
@@ -411,7 +419,7 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 		return nil, fmt.Errorf("cannot get Filecoin address: %w", err)
 	}
 
-	ts, err := a.parseBlkParam(ctx, blkParam)
+	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse block param: %s", blkParam)
 	}
@@ -490,7 +498,7 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 }
 
 func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, position types.EthBytes, blkParam string) (types.EthBytes, error) {
-	ts, err := a.parseBlkParam(ctx, blkParam)
+	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse block param: %s", blkParam)
 	}
@@ -586,7 +594,7 @@ func (a *ethAPI) EthGetBalance(ctx context.Context, address types.EthAddress, bl
 		return types.EthBigInt{}, err
 	}
 
-	ts, err := a.parseBlkParam(ctx, blkParam)
+	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
 		return types.EthBigInt{}, fmt.Errorf("cannot parse block param: %s", blkParam)
 	}
@@ -633,16 +641,12 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.
 		}
 	}
 
-	ts, err := a.parseBlkParam(ctx, params.NewestBlkNum)
+	ts, err := a.parseBlkParam(ctx, params.NewestBlkNum, false)
 	if err != nil {
 		return types.EthFeeHistory{}, fmt.Errorf("bad block parameter %s: %s", params.NewestBlkNum, err)
 	}
 
-	// Deal with the case that the chain is shorter than the number of requested blocks.
 	oldestBlkHeight := uint64(1)
-	if abi.ChainEpoch(params.BlkCount) <= ts.Height() {
-		oldestBlkHeight = uint64(ts.Height()) - uint64(params.BlkCount) + 1
-	}
 
 	// NOTE: baseFeePerGas should include the next block after the newest of the returned range,
 	//  because the next base fee can be inferred from the messages in the newest block.
@@ -652,29 +656,31 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.
 	gasUsedRatioArray := []float64{}
 	rewardsArray := make([][]types.EthBigInt, 0)
 
-	for ts.Height() >= abi.ChainEpoch(oldestBlkHeight) {
-		// Unfortunately we need to rebuild the full message view so we can
-		// totalize gas used in the tipset.
-		msgs, err := a.em.chainModule.MessageStore.MessagesForTipset(ts)
+	blocksIncluded := 0
+	for blocksIncluded < int(params.BlkCount) && ts.Height() > 0 {
+		compOutput, err := a.chain.StateCompute(ctx, ts.Height(), nil, ts.Key())
 		if err != nil {
-			return types.EthFeeHistory{}, fmt.Errorf("error loading messages for tipset: %v: %w", ts, err)
+			return types.EthFeeHistory{}, fmt.Errorf("cannot lookup the status of for tipset: %v: %w", ts, err)
 		}
 
 		txGasRewards := gasRewardSorter{}
-		for txIdx, msg := range msgs {
-			msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, msg.Cid(), constants.LookbackNoLimit, false)
-			if err != nil || msgLookup == nil {
-				return types.EthFeeHistory{}, nil
+		for _, msg := range compOutput.Trace {
+			if msg.Msg.From == builtintypes.SystemActorAddr {
+				continue
 			}
 
-			tx, err := newEthTxFromMessageLookup(ctx, msgLookup, txIdx, a.em.chainModule.MessageStore, a.chain)
+			smsgCid, err := getSignedMessage(ctx, a.em.chainModule.MessageStore, msg.MsgCid)
 			if err != nil {
-				return types.EthFeeHistory{}, nil
+				return types.EthFeeHistory{}, fmt.Errorf("failed to get signed msg %s: %w", msg.MsgCid, err)
+			}
+			tx, err := newEthTxFromSignedMessage(ctx, smsgCid, a.chain)
+			if err != nil {
+				return types.EthFeeHistory{}, err
 			}
 
 			txGasRewards = append(txGasRewards, gasRewardTuple{
 				reward: tx.Reward(ts.Blocks()[0].ParentBaseFee),
-				gas:    uint64(msgLookup.Receipt.GasUsed),
+				gas:    uint64(msg.MsgRct.GasUsed),
 			})
 		}
 
@@ -684,6 +690,8 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.
 		baseFeeArray = append(baseFeeArray, types.EthBigInt(ts.Blocks()[0].ParentBaseFee))
 		gasUsedRatioArray = append(gasUsedRatioArray, float64(totalGasUsed)/float64(constants.BlockGasLimit))
 		rewardsArray = append(rewardsArray, rewards)
+		oldestBlkHeight = uint64(ts.Height())
+		blocksIncluded++
 
 		parentTSKey := ts.Parents()
 		ts, err = a.chain.ChainGetTipSet(ctx, parentTSKey)
@@ -1033,7 +1041,7 @@ func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam string)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}
-	ts, err := a.parseBlkParam(ctx, blkParam)
+	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse block param: %s", blkParam)
 	}
@@ -1091,11 +1099,15 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return types.EthBlock{}, fmt.Errorf("failed to compute state: %w", err)
 	}
 
-	for txIdx, msg := range compOutput.Trace {
+	txIdx := 0
+	for _, msg := range compOutput.Trace {
 		// skip system messages like reward application and cron
 		if msg.Msg.From == builtintypes.SystemActorAddr {
 			continue
 		}
+
+		ti := types.EthUint64(txIdx)
+		txIdx++
 
 		gasUsed += msg.MsgRct.GasUsed
 		smsgCid, err := getSignedMessage(ctx, ms, msg.MsgCid)
@@ -1106,8 +1118,6 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		if err != nil {
 			return types.EthBlock{}, fmt.Errorf("failed to convert msg to ethTx: %w", err)
 		}
-
-		ti := types.EthUint64(txIdx)
 
 		tx.ChainID = types.EthUint64(types2.Eip155ChainID)
 		tx.BlockHash = &blkHash
@@ -1643,7 +1653,7 @@ func calculateRewardsAndGasUsed(rewardPercentiles []float64, txGasRewards gasRew
 
 	rewards := make([]types.EthBigInt, len(rewardPercentiles))
 	for i := range rewards {
-		rewards[i] = types.EthBigIntZero
+		rewards[i] = types.EthBigInt(types.NewInt(messagepool.MinGasPremium))
 	}
 
 	if len(txGasRewards) == 0 {
