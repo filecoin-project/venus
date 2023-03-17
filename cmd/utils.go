@@ -228,3 +228,16 @@ func isController(mi types.MinerInfo, addr address.Address) bool {
 func getEnv(env cmds.Environment) *node.Env {
 	return env.(*node.Env)
 }
+
+func requestContext(req *cmds.Request) context.Context {
+	ctx, cancel := context.WithCancel(req.Context)
+
+	sig := make(chan os.Signal, 2)
+	go func() {
+		<-sig
+		cancel()
+	}()
+	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+
+	return ctx
+}
