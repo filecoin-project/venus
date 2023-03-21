@@ -56,3 +56,12 @@ type RetrievalAsk struct {
 	PaymentIntervalIncrease uint64
 	TimeStamp
 }
+
+type RetrievalDealQueryParams struct {
+	Receiver          string
+	DealID            abi.DealID
+	Status            *uint64
+	DiscardFailedDeal bool
+
+	Page
+}

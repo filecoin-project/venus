@@ -1570,7 +1570,14 @@ Perms: read
 Inputs:
 ```json
 [
-  "f01234"
+  {
+    "Miner": "f01234",
+    "State": 12,
+    "Client": "string value",
+    "DiscardFailedDeal": true,
+    "Offset": 123,
+    "Limit": 123
+  }
 ]
 ```
 
@@ -1672,7 +1679,19 @@ Response:
 
 Perms: read
 
-Inputs: `[]`
+Inputs:
+```json
+[
+  {
+    "Receiver": "string value",
+    "DealID": 5432,
+    "Status": 12,
+    "DiscardFailedDeal": true,
+    "Offset": 123,
+    "Limit": 123
+  }
+]
+```
 
 Response:
 ```json

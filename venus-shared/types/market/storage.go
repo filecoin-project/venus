@@ -3,6 +3,7 @@ package market
 import (
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -107,4 +108,19 @@ func (sa *SignedStorageAsk) ToChainAsk() *storagemarket.SignedStorageAsk {
 		Ask:       sa.Ask,
 		Signature: sa.Signature,
 	}
+}
+
+type Page struct {
+	Offset int
+	Limit  int
+}
+
+type StorageDealQueryParams struct {
+	// provider
+	Miner             address.Address
+	State             *uint64
+	Client            string
+	DiscardFailedDeal bool
+
+	Page
 }

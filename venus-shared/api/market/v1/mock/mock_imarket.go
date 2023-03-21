@@ -912,7 +912,7 @@ func (mr *MockIMarketMockRecorder) MarketListDeals(arg0, arg1 interface{}) *gomo
 }
 
 // MarketListIncompleteDeals mocks base method.
-func (m *MockIMarket) MarketListIncompleteDeals(arg0 context.Context, arg1 address.Address) ([]market.MinerDeal, error) {
+func (m *MockIMarket) MarketListIncompleteDeals(arg0 context.Context, arg1 *market.StorageDealQueryParams) ([]market.MinerDeal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarketListIncompleteDeals", arg0, arg1)
 	ret0, _ := ret[0].([]market.MinerDeal)
@@ -942,18 +942,18 @@ func (mr *MockIMarketMockRecorder) MarketListRetrievalAsk(arg0 interface{}) *gom
 }
 
 // MarketListRetrievalDeals mocks base method.
-func (m *MockIMarket) MarketListRetrievalDeals(arg0 context.Context) ([]market.ProviderDealState, error) {
+func (m *MockIMarket) MarketListRetrievalDeals(arg0 context.Context, arg1 *market.RetrievalDealQueryParams) ([]market.ProviderDealState, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MarketListRetrievalDeals", arg0)
+	ret := m.ctrl.Call(m, "MarketListRetrievalDeals", arg0, arg1)
 	ret0, _ := ret[0].([]market.ProviderDealState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // MarketListRetrievalDeals indicates an expected call of MarketListRetrievalDeals.
-func (mr *MockIMarketMockRecorder) MarketListRetrievalDeals(arg0 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) MarketListRetrievalDeals(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketListRetrievalDeals", reflect.TypeOf((*MockIMarket)(nil).MarketListRetrievalDeals), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketListRetrievalDeals", reflect.TypeOf((*MockIMarket)(nil).MarketListRetrievalDeals), arg0, arg1)
 }
 
 // MarketListStorageAsk mocks base method.
