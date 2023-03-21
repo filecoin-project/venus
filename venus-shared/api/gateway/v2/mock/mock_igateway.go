@@ -13,9 +13,9 @@ import (
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	network "github.com/filecoin-project/go-state-types/network"
 	proof "github.com/filecoin-project/go-state-types/proof"
-	storage "github.com/filecoin-project/specs-storage/storage"
 	types "github.com/filecoin-project/venus/venus-shared/types"
 	gateway "github.com/filecoin-project/venus/venus-shared/types/gateway"
+	market "github.com/filecoin-project/venus/venus-shared/types/market"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
 )
@@ -73,7 +73,7 @@ func (mr *MockIGatewayMockRecorder) ComputeProof(arg0, arg1, arg2, arg3, arg4, a
 }
 
 // IsUnsealed mocks base method.
-func (m *MockIGateway) IsUnsealed(arg0 context.Context, arg1 address.Address, arg2 cid.Cid, arg3 storage.SectorRef, arg4 types.PaddedByteIndex, arg5 abi.PaddedPieceSize) (bool, error) {
+func (m *MockIGateway) IsUnsealed(arg0 context.Context, arg1 address.Address, arg2 cid.Cid, arg3 abi.SectorNumber, arg4 types.PaddedByteIndex, arg5 abi.PaddedPieceSize) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsUnsealed", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(bool)
@@ -264,7 +264,7 @@ func (mr *MockIGatewayMockRecorder) ResponseWalletEvent(arg0, arg1 interface{}) 
 }
 
 // SectorsUnsealPiece mocks base method.
-func (m *MockIGateway) SectorsUnsealPiece(arg0 context.Context, arg1 address.Address, arg2 cid.Cid, arg3 storage.SectorRef, arg4 types.PaddedByteIndex, arg5 abi.PaddedPieceSize, arg6 string) error {
+func (m *MockIGateway) SectorsUnsealPiece(arg0 context.Context, arg1 address.Address, arg2 cid.Cid, arg3 abi.SectorNumber, arg4 types.PaddedByteIndex, arg5 abi.PaddedPieceSize, arg6 *market.Transfer) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SectorsUnsealPiece", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 	ret0, _ := ret[0].(error)
