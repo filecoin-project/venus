@@ -93,6 +93,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [PiecesGetPieceInfo](#piecesgetpieceinfo)
   * [PiecesListCidInfos](#pieceslistcidinfos)
   * [PiecesListPieces](#pieceslistpieces)
+  * [ReleaseDeals](#releasedeals)
   * [RemovePieceStorage](#removepiecestorage)
   * [ResponseMarketEvent](#responsemarketevent)
   * [SectorGetExpectedSealDuration](#sectorgetexpectedsealduration)
@@ -2345,6 +2346,24 @@ Response:
   }
 ]
 ```
+
+### ReleaseDeals
+ReleaseDeals is used to release the deals that have been assigned by AssignUnPackedDeals method.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    5432
+  ]
+]
+```
+
+Response: `{}`
 
 ### RemovePieceStorage
 
