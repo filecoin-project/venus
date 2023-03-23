@@ -8,8 +8,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/filecoin-project/venus/cmd/tablewriter"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
@@ -20,6 +18,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/cmd/tablewriter"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"

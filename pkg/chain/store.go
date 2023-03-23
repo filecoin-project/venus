@@ -9,15 +9,7 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/filecoin-project/pubsub"
-	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
-	lru "github.com/hashicorp/golang-lru"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	blocks "github.com/ipfs/go-libipfs/blocks"
-	logging "github.com/ipfs/go-log/v2"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
 	carv2 "github.com/ipld/go-car/v2"
@@ -26,10 +18,18 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	blocks "github.com/ipfs/go-libipfs/blocks"
+	logging "github.com/ipfs/go-log/v2"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/pubsub"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -49,17 +49,9 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
-
-// ErrNoMethod is returned by Get when there is no method signature (eg, transfer).
-var ErrNoMethod = errors.New("no method")
-
-// ErrNoActorImpl is returned by Get when the actor implementation doesn't exist, eg
-// the actor address is an empty actor, an address that has received a transfer of FIL
-// but hasn't yet been upgraded to an account actor. (The actor implementation might
-// also genuinely be missing, which is not expected.)
-var ErrNoActorImpl = errors.New("no actor implementation")
 
 // GenesisKey is the key at which the genesis Cid is written in the datastore.
 var GenesisKey = datastore.NewKey("/consensus/genesisCid")
@@ -90,10 +82,6 @@ var CheckPoint = datastore.NewKey("/chain/checkPoint")
 type TSState struct {
 	StateRoot cid.Cid
 	Receipts  cid.Cid
-}
-
-func ActorStore(ctx context.Context, bs blockstore.Blockstore) adt.Store {
-	return adt.WrapStore(ctx, cbor.NewCborStore(bs))
 }
 
 // Store is a generic implementation of the Store interface.
@@ -139,7 +127,7 @@ type Store struct {
 	reorgCh        chan reorg
 	reorgNotifeeCh chan ReorgNotifee
 
-	tsCache *lru.ARCCache
+	tsCache *lru.ARCCache[types.TipSetKey, *types.TipSet]
 }
 
 // NewStore constructs a new default store.
@@ -148,7 +136,7 @@ func NewStore(chainDs repo.Datastore,
 	genesisCid cid.Cid,
 	circulatiingSupplyCalculator ICirculatingSupplyCalcualtor,
 ) *Store {
-	tsCache, _ := lru.NewARC(DefaultTipsetLruCacheSize)
+	tsCache, _ := lru.NewARC[types.TipSetKey, *types.TipSet](DefaultTipsetLruCacheSize)
 	store := &Store{
 		stateAndBlockSource: cbor.NewCborStore(bsstore),
 		ds:                  chainDs,
@@ -330,9 +318,8 @@ func (store *Store) GetTipSet(ctx context.Context, key types.TipSetKey) (*types.
 		return store.GetHead(), nil
 	}
 
-	val, has := store.tsCache.Get(key)
-	if has {
-		return val.(*types.TipSet), nil
+	if val, has := store.tsCache.Get(key); has {
+		return val, nil
 	}
 
 	cids := key.Cids()

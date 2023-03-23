@@ -4,21 +4,21 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/venus/venus-shared/types"
-
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type messageCache struct {
 	api IEvent
 
 	blockMsgLk    sync.Mutex
-	blockMsgCache *lru.ARCCache
+	blockMsgCache *lru.ARCCache[cid.Cid, *types.BlockMessages]
 }
 
 func newMessageCache(api IEvent) *messageCache {
-	blsMsgCache, _ := lru.NewARC(500)
+	blsMsgCache, _ := lru.NewARC[cid.Cid, *types.BlockMessages](500)
 
 	return &messageCache{
 		api:           api,
@@ -30,14 +30,14 @@ func (c *messageCache) ChainGetBlockMessages(ctx context.Context, blkCid cid.Cid
 	c.blockMsgLk.Lock()
 	defer c.blockMsgLk.Unlock()
 
-	msgsI, ok := c.blockMsgCache.Get(blkCid)
+	msgs, ok := c.blockMsgCache.Get(blkCid)
 	var err error
 	if !ok {
-		msgsI, err = c.api.ChainGetBlockMessages(ctx, blkCid)
+		msgs, err = c.api.ChainGetBlockMessages(ctx, blkCid)
 		if err != nil {
 			return nil, err
 		}
-		c.blockMsgCache.Add(blkCid, msgsI)
+		c.blockMsgCache.Add(blkCid, msgs)
 	}
-	return msgsI.(*types.BlockMessages), nil
+	return msgs, nil
 }
