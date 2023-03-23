@@ -108,6 +108,7 @@ type IMarketStruct struct {
 		PiecesGetPieceInfo                      func(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error)                                                                                                                          `perm:"read"`
 		PiecesListCidInfos                      func(ctx context.Context) ([]cid.Cid, error)                                                                                                                                                        `perm:"read"`
 		PiecesListPieces                        func(ctx context.Context) ([]cid.Cid, error)                                                                                                                                                        `perm:"read"`
+		ReleaseDeals                            func(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                                                                                          `perm:"write"`
 		RemovePieceStorage                      func(ctx context.Context, name string) error                                                                                                                                                        `perm:"admin"`
 		ResponseMarketEvent                     func(ctx context.Context, resp *gateway.ResponseEvent) error                                                                                                                                        `perm:"read"`
 		SectorGetExpectedSealDuration           func(context.Context, address.Address) (time.Duration, error)                                                                                                                                       `perm:"read"`
@@ -374,6 +375,9 @@ func (s *IMarketStruct) PiecesListCidInfos(p0 context.Context) ([]cid.Cid, error
 }
 func (s *IMarketStruct) PiecesListPieces(p0 context.Context) ([]cid.Cid, error) {
 	return s.Internal.PiecesListPieces(p0)
+}
+func (s *IMarketStruct) ReleaseDeals(p0 context.Context, p1 address.Address, p2 []abi.DealID) error {
+	return s.Internal.ReleaseDeals(p0, p1, p2)
 }
 func (s *IMarketStruct) RemovePieceStorage(p0 context.Context, p1 string) error {
 	return s.Internal.RemovePieceStorage(p0, p1)
