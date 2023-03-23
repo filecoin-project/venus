@@ -59,7 +59,7 @@ type RetrievalAsk struct {
 
 type RetrievalDealQueryParams struct {
 	Receiver          string
-	DealID            abi.DealID
+	PayloadCID        string
 	Status            *uint64
 	DiscardFailedDeal bool
 

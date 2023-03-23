@@ -1684,7 +1684,7 @@ Inputs:
 [
   {
     "Receiver": "string value",
-    "DealID": 5432,
+    "PayloadCID": "string value",
     "Status": 12,
     "DiscardFailedDeal": true,
     "Offset": 123,
