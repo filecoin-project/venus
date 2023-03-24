@@ -165,6 +165,20 @@ func (mr *MockIMarketMockRecorder) AssignUnPackedDeals(arg0, arg1, arg2, arg3 in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AssignUnPackedDeals", reflect.TypeOf((*MockIMarket)(nil).AssignUnPackedDeals), arg0, arg1, arg2, arg3)
 }
 
+// DagstoreDestroyShard mocks base method.
+func (m *MockIMarket) DagstoreDestroyShard(arg0 context.Context, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DagstoreDestroyShard", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DagstoreDestroyShard indicates an expected call of DagstoreDestroyShard.
+func (mr *MockIMarketMockRecorder) DagstoreDestroyShard(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DagstoreDestroyShard", reflect.TypeOf((*MockIMarket)(nil).DagstoreDestroyShard), arg0, arg1)
+}
+
 // DagstoreGC mocks base method.
 func (m *MockIMarket) DagstoreGC(arg0 context.Context) ([]market.DagstoreShardResult, error) {
 	m.ctrl.T.Helper()
