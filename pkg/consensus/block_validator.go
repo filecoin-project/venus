@@ -10,10 +10,11 @@ import (
 
 	"github.com/Gurpartap/async"
 	"github.com/hashicorp/go-multierror"
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/multiformats/go-varint"
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
@@ -24,8 +25,6 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/multiformats/go-varint"
-
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
@@ -79,7 +78,7 @@ type BlockValidator struct {
 	// gasprice for vm
 	gasPirceSchedule *gas.PricesSchedule
 	// cache for validate block
-	validateBlockCache *lru.ARCCache
+	validateBlockCache *lru.ARCCache[cid.Cid, struct{}]
 
 	Stmgr StateTransformer
 }
@@ -98,7 +97,7 @@ func NewBlockValidator(tv TicketValidator,
 	config *config.NetworkParamsConfig,
 	gasPirceSchedule *gas.PricesSchedule,
 ) *BlockValidator {
-	validateBlockCache, _ := lru.NewARC(2048)
+	validateBlockCache, _ := lru.NewARC[cid.Cid, struct{}](2048)
 	return &BlockValidator{
 		tv:                 tv,
 		bstore:             bstore,

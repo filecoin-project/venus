@@ -9,13 +9,14 @@ import (
 	"math/rand"
 	"sort"
 
+	lru "github.com/hashicorp/golang-lru/v2"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	lru "github.com/hashicorp/golang-lru"
-
 	builtin2 "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/exitcode"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -27,7 +28,7 @@ const MinGasPremium = 100e3
 // const MaxSpendOnFeeDenom = 100
 
 type GasPriceCache struct {
-	c *lru.TwoQueueCache
+	c *lru.TwoQueueCache[types.TipSetKey, []GasMeta]
 }
 
 type GasMeta struct {
@@ -37,7 +38,7 @@ type GasMeta struct {
 
 func NewGasPriceCache() *GasPriceCache {
 	// 50 because we usually won't access more than 40
-	c, err := lru.New2Q(50)
+	c, err := lru.New2Q[types.TipSetKey, []GasMeta](50)
 	if err != nil {
 		// err only if parameter is bad
 		panic(err)
@@ -51,7 +52,7 @@ func NewGasPriceCache() *GasPriceCache {
 func (g *GasPriceCache) GetTSGasStats(ctx context.Context, provider Provider, ts *types.TipSet) ([]GasMeta, error) {
 	i, has := g.c.Get(ts.Key())
 	if has {
-		return i.([]GasMeta), nil
+		return i, nil
 	}
 
 	var prices []GasMeta
