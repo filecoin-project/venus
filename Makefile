@@ -127,7 +127,7 @@ TAG:=test
 docker: $(BUILD_DEPS)
 	curl -O https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/docker/dockerfile
 	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=venus -t venus  .
-	docker tag venus:latest filvenus/venus:$(TAG)
+	docker tag venus:latest $(PRIVATE_REGISTRY)/filvenus/venus:$(TAG)
 
 docker-push: docker
-	docker push filvenus/venus:$(TAG)
+	docker push $(PRIVATE_REGISTRY)/filvenus/venus:$(TAG)
