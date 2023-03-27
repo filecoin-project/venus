@@ -1,5 +1,16 @@
 package market
 
+// refer: https://github.com/filecoin-project/dagstore/blob/master/shard_state.go#L37
+const (
+	ShardStateNew          = "ShardStateNew"
+	ShardStateInitializing = "ShardStateInitializing"
+	ShardStateAvailable    = "ShardStateAvailable"
+	ShardStateServing      = "ShardStateServing"
+	ShardStateRecovering   = "ShardStateRecovering"
+	ShardStateErrored      = "ShardStateErrored"
+	ShardStateUnknown      = "ShardStateUnknown"
+)
+
 // DagstoreShardInfo is the serialized form of dagstore.DagstoreShardInfo that
 // we expose through JSON-RPC to avoid clients having to depend on the
 // dagstore lib.

@@ -152,6 +152,9 @@ type IMarket interface {
 	// DagstoreGC runs garbage collection on the DAG store.
 	DagstoreGC(ctx context.Context) ([]market.DagstoreShardResult, error) //perm:admin
 
+	// DagstoreDestroyShard destroy shard by key
+	DagstoreDestroyShard(ctx context.Context, key string) error //perm:admin
+
 	MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                          //perm:write
 	UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error   //perm:write
 	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus market.PieceStatus) error                             //perm:write

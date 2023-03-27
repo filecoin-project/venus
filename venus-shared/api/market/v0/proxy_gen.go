@@ -30,6 +30,7 @@ type IMarketStruct struct {
 		AddFsPieceStorage                       func(ctx context.Context, name string, path string, readonly bool) error                                                                                                                            `perm:"admin"`
 		AddS3PieceStorage                       func(ctx context.Context, name, endpoit, bucket, subdir, accessKey, secretKey, token string, readonly bool) error                                                                                   `perm:"admin"`
 		AssignUnPackedDeals                     func(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                  `perm:"write"`
+		DagstoreDestroyShard                    func(ctx context.Context, key string) error                                                                                                                                                         `perm:"admin"`
 		DagstoreGC                              func(ctx context.Context) ([]market.DagstoreShardResult, error)                                                                                                                                     `perm:"admin"`
 		DagstoreInitializeAll                   func(ctx context.Context, params market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error)                                                                              `perm:"admin"`
 		DagstoreInitializeShard                 func(ctx context.Context, key string) error                                                                                                                                                         `perm:"admin"`
@@ -142,6 +143,9 @@ func (s *IMarketStruct) AddS3PieceStorage(p0 context.Context, p1, p2, p3, p4, p5
 }
 func (s *IMarketStruct) AssignUnPackedDeals(p0 context.Context, p1 abi.SectorID, p2 abi.SectorSize, p3 *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) {
 	return s.Internal.AssignUnPackedDeals(p0, p1, p2, p3)
+}
+func (s *IMarketStruct) DagstoreDestroyShard(p0 context.Context, p1 string) error {
+	return s.Internal.DagstoreDestroyShard(p0, p1)
 }
 func (s *IMarketStruct) DagstoreGC(p0 context.Context) ([]market.DagstoreShardResult, error) {
 	return s.Internal.DagstoreGC(p0)

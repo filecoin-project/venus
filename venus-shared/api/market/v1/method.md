@@ -15,6 +15,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [AddFsPieceStorage](#addfspiecestorage)
   * [AddS3PieceStorage](#adds3piecestorage)
   * [AssignUnPackedDeals](#assignunpackeddeals)
+  * [DagstoreDestroyShard](#dagstoredestroyshard)
   * [DagstoreGC](#dagstoregc)
   * [DagstoreInitializeAll](#dagstoreinitializeall)
   * [DagstoreInitializeShard](#dagstoreinitializeshard)
@@ -272,6 +273,21 @@ Response:
   }
 ]
 ```
+
+### DagstoreDestroyShard
+DagstoreDestroyShard destroy shard by key
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
 
 ### DagstoreGC
 DagstoreGC runs garbage collection on the DAG store.
