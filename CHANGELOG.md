@@ -1,5 +1,9 @@
 # venus changelog
 
+## v1.10.2
+
+* 更新 ffi 以提高执行并行性 [[#5867](https://github.com/filecoin-project/venus/pull/5867)]
+
 ## v1.10.1
 
 * 修复 evm 命令部署合约失败 [[#5785](https://github.com/filecoin-project/venus/pull/5785)]
