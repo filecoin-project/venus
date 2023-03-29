@@ -80,7 +80,7 @@ func (f FIL) MarshalText() (text []byte, err error) {
 	return []byte(f.String()), nil
 }
 
-func (f FIL) UnmarshalText(text []byte) error {
+func (f *FIL) UnmarshalText(text []byte) error {
 	p, err := ParseFIL(string(text))
 	if err != nil {
 		return err
