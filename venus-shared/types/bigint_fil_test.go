@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	"github.com/filecoin-project/venus/venus-shared/types/params"
@@ -192,7 +193,7 @@ func TestFilShort(t *testing.T) {
 	}
 }
 
-func TestMarshal(t *testing.T) {
+func TestJSONMarshal(t *testing.T) {
 	tf.UnitTest(t)
 	type A struct {
 		Fil FIL
@@ -208,7 +209,7 @@ func TestMarshal(t *testing.T) {
 	fmt.Println(string(aBytes))
 }
 
-func TestUnMarshal(t *testing.T) {
+func TestJSONUnMarshal(t *testing.T) {
 	tf.UnitTest(t)
 	type A struct {
 		Fil FIL
@@ -233,6 +234,36 @@ func TestUnMarshal(t *testing.T) {
 	} {
 		a := A{}
 		err := json.Unmarshal([]byte(s.fil), &a)
+		require.NoError(t, err)
+		require.Equal(t, a.Fil.String(), s.expect.String())
+	}
+}
+
+func TestTextUnMarshal(t *testing.T) {
+	tf.UnitTest(t)
+	type A struct {
+		Fil FIL
+	}
+	bigFIl, _ := big.NewInt(0).SetString("100000000000000000000", 10)
+	for _, s := range []struct {
+		fil    string
+		expect FIL
+	}{
+		{
+			fil:    `Fil = "0.000000000001 FIL"`,
+			expect: FIL{Int: big.NewInt(1000000)},
+		},
+		{
+			fil:    `Fil = "1 FIL"`,
+			expect: FIL{Int: big.NewInt(1000000000000000000)},
+		},
+		{
+			fil:    `Fil = "100 FIL"`,
+			expect: FIL{Int: bigFIl},
+		},
+	} {
+		a := A{}
+		err := toml.Unmarshal([]byte(s.fil), &a)
 		require.NoError(t, err)
 		require.Equal(t, a.Fil.String(), s.expect.String())
 	}
