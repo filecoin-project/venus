@@ -1,6 +1,8 @@
 export CGO_CFLAGS_ALLOW=-D__BLST_PORTABLE__
 export CGO_CFLAGS=-D__BLST_PORTABLE__
 
+GO?=go
+
 all: build
 .PHONY: all
 
@@ -46,65 +48,65 @@ gen-all: cborgen gogen inline-gen api-gen bundle-gen state-type-gen
 
 ### devtool ###
 cborgen:
-	cd venus-devtool && go run ./cborgen/*.go
+	cd venus-devtool && $(GO) run ./cborgen/*.go
 
 gogen:
-	cd venus-shared && go generate ./...
+	cd venus-shared && $(GO) generate ./...
 
 inline-gen:
-	cd venus-devtool && go run ./inline-gen/main.go ../ ./inline-gen/inlinegen-data.json
+	cd venus-devtool && $(GO) run ./inline-gen/main.go ../ ./inline-gen/inlinegen-data.json
 
 test-venus-shared:
-	cd venus-shared && go test -covermode=set ./...
+	cd venus-shared && $(GO) test -covermode=set ./...
 
 bundle-gen:
-	cd venus-devtool && go run ./bundle-gen/*.go  --dst ./../venus-shared/actors/builtin_actors_gen.go
+	cd venus-devtool && $(GO) run ./bundle-gen/*.go  --dst ./../venus-shared/actors/builtin_actors_gen.go
 
 state-type-gen:
-	cd venus-devtool && go run ./state-type-gen/*.go --dst ./../venus-shared/types
+	cd venus-devtool && $(GO) run ./state-type-gen/*.go --dst ./../venus-shared/types
 
 api-gen:
 	find ./venus-shared/api/ -name 'client_gen.go' -delete
 	find ./venus-shared/api/ -name 'proxy_gen.go' -delete
-	cd ./venus-devtool/ && go run ./api-gen/ proxy
-	cd ./venus-devtool/ && go run ./api-gen/ client
-	cd ./venus-devtool/ && go run ./api-gen/ doc
-	cd ./venus-devtool/ && go run ./api-gen/ mock
+	cd ./venus-devtool/ && $(GO) run ./api-gen/ proxy
+	cd ./venus-devtool/ && $(GO) run ./api-gen/ client
+	cd ./venus-devtool/ && $(GO) run ./api-gen/ doc
+	cd ./venus-devtool/ && $(GO) run ./api-gen/ mock
 
 compatible-all: compatible-api compatible-actor
 
 compatible-api: api-checksum api-diff api-perm
 
 api-checksum:
-	cd venus-devtool && go run ./compatible/apis/*.go checksum > ../venus-shared/compatible-checks/api-checksum.txt
+	cd venus-devtool && $(GO) run ./compatible/apis/*.go checksum > ../venus-shared/compatible-checks/api-checksum.txt
 
 api-diff:
-	cd venus-devtool && go run ./compatible/apis/*.go diff > ../venus-shared/compatible-checks/api-diff.txt
+	cd venus-devtool && $(GO) run ./compatible/apis/*.go diff > ../venus-shared/compatible-checks/api-diff.txt
 
 api-perm:
-	cd venus-devtool && go run ./compatible/apis/*.go perm > ../venus-shared/compatible-checks/api-perm.txt
+	cd venus-devtool && $(GO) run ./compatible/apis/*.go perm > ../venus-shared/compatible-checks/api-perm.txt
 
 compatible-actor: actor-templates actor-sources actor-render
 
 actor-templates:
-	cd venus-devtool && go run ./compatible/actors/*.go templates --dst ../venus-shared/actors/ > ../venus-shared/compatible-checks/actor-templates.txt
+	cd venus-devtool && $(GO) run ./compatible/actors/*.go templates --dst ../venus-shared/actors/ > ../venus-shared/compatible-checks/actor-templates.txt
 
 actor-sources:
-	cd venus-devtool && go run ./compatible/actors/*.go sources > ../venus-shared/compatible-checks/actor-sources.txt
+	cd venus-devtool && $(GO) run ./compatible/actors/*.go sources > ../venus-shared/compatible-checks/actor-sources.txt
 
 actor-render:
-	cd venus-devtool && go run ./compatible/actors/*.go render ../venus-shared/actors/
+	cd venus-devtool && $(GO) run ./compatible/actors/*.go render ../venus-shared/actors/
 
 actor-replica:
-	cd venus-devtool && go run ./compatible/actors/*.go replica --dst ../venus-shared/actors/
+	cd venus-devtool && $(GO) run ./compatible/actors/*.go replica --dst ../venus-shared/actors/
 
 test:test-venus-shared
-	go build -o genesis-file-server ./tools/genesis-file-server
-	go build -o gengen ./tools/gengen
+	$(GO) build -o genesis-file-server ./tools/genesis-file-server
+	$(GO) build -o gengen ./tools/gengen
 	./gengen --keypath ./fixtures/live --out-car ./fixtures/live/genesis.car --out-json  ./fixtures/live/gen.json --config ./fixtures/setup.json
 	./gengen --keypath ./fixtures/test --out-car ./fixtures/test/genesis.car --out-json  ./fixtures/test/gen.json --config ./fixtures/setup.json
-	go test $$(go list ./... | grep -v /venus-shared/) -timeout=30m -v -integration=true -unit=false
-	go test $$(go list ./... | grep -v /venus-shared/) -timeout=30m -v -integration=false -unit=true
+	$(GO) test $$(go list ./... | grep -v /venus-shared/) -timeout=30m -v -integration=true -unit=false
+	$(GO) test $$(go list ./... | grep -v /venus-shared/) -timeout=30m -v -integration=false -unit=true
 
 lint: $(BUILD_DEPS)
 	golangci-lint run
@@ -117,7 +119,7 @@ dist-clean:
 
 build: $(BUILD_DEPS)
 	rm -f venus
-	go build -o ./venus $(GOFLAGS) .
+	$(GO) build -o ./venus $(GOFLAGS) .
 
 
 .PHONY: docker
