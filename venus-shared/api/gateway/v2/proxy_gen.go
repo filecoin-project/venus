@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	gtypes "github.com/filecoin-project/venus/venus-shared/types/gateway"
-	mktypes "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 type IProofClientStruct struct {
@@ -108,19 +107,15 @@ type IWalletEventStruct struct {
 
 type IMarketClientStruct struct {
 	Internal struct {
-		IsUnsealed                 func(ctx context.Context, miner address.Address, pieceCid cid.Cid, sid abi.SectorNumber, offset types.PaddedByteIndex, size abi.PaddedPieceSize) (bool, error)                     `perm:"admin"`
-		ListMarketConnectionsState func(ctx context.Context) ([]gtypes.MarketConnectionState, error)                                                                                                                  `perm:"admin"`
-		SectorsUnsealPiece         func(ctx context.Context, miner address.Address, pieceCid cid.Cid, sid abi.SectorNumber, offset types.PaddedByteIndex, size abi.PaddedPieceSize, transfer *mktypes.Transfer) error `perm:"admin"`
+		ListMarketConnectionsState func(ctx context.Context) ([]gtypes.MarketConnectionState, error)                                                                                                   `perm:"admin"`
+		SectorsUnsealPiece         func(ctx context.Context, miner address.Address, pieceCid cid.Cid, sid abi.SectorNumber, offset types.PaddedByteIndex, size abi.PaddedPieceSize, dest string) error `perm:"admin"`
 	}
 }
 
-func (s *IMarketClientStruct) IsUnsealed(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 abi.SectorNumber, p4 types.PaddedByteIndex, p5 abi.PaddedPieceSize) (bool, error) {
-	return s.Internal.IsUnsealed(p0, p1, p2, p3, p4, p5)
-}
 func (s *IMarketClientStruct) ListMarketConnectionsState(p0 context.Context) ([]gtypes.MarketConnectionState, error) {
 	return s.Internal.ListMarketConnectionsState(p0)
 }
-func (s *IMarketClientStruct) SectorsUnsealPiece(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 abi.SectorNumber, p4 types.PaddedByteIndex, p5 abi.PaddedPieceSize, p6 *mktypes.Transfer) error {
+func (s *IMarketClientStruct) SectorsUnsealPiece(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 abi.SectorNumber, p4 types.PaddedByteIndex, p5 abi.PaddedPieceSize, p6 string) error {
 	return s.Internal.SectorsUnsealPiece(p0, p1, p2, p3, p4, p5, p6)
 }
 

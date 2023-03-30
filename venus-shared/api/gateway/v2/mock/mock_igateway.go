@@ -15,7 +15,6 @@ import (
 	proof "github.com/filecoin-project/go-state-types/proof"
 	types "github.com/filecoin-project/venus/venus-shared/types"
 	gateway "github.com/filecoin-project/venus/venus-shared/types/gateway"
-	market "github.com/filecoin-project/venus/venus-shared/types/market"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
 )
@@ -70,21 +69,6 @@ func (m *MockIGateway) ComputeProof(arg0 context.Context, arg1 address.Address, 
 func (mr *MockIGatewayMockRecorder) ComputeProof(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ComputeProof", reflect.TypeOf((*MockIGateway)(nil).ComputeProof), arg0, arg1, arg2, arg3, arg4, arg5)
-}
-
-// IsUnsealed mocks base method.
-func (m *MockIGateway) IsUnsealed(arg0 context.Context, arg1 address.Address, arg2 cid.Cid, arg3 abi.SectorNumber, arg4 types.PaddedByteIndex, arg5 abi.PaddedPieceSize) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsUnsealed", arg0, arg1, arg2, arg3, arg4, arg5)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// IsUnsealed indicates an expected call of IsUnsealed.
-func (mr *MockIGatewayMockRecorder) IsUnsealed(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsUnsealed", reflect.TypeOf((*MockIGateway)(nil).IsUnsealed), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
 // ListConnectedMiners mocks base method.
@@ -264,7 +248,7 @@ func (mr *MockIGatewayMockRecorder) ResponseWalletEvent(arg0, arg1 interface{}) 
 }
 
 // SectorsUnsealPiece mocks base method.
-func (m *MockIGateway) SectorsUnsealPiece(arg0 context.Context, arg1 address.Address, arg2 cid.Cid, arg3 abi.SectorNumber, arg4 types.PaddedByteIndex, arg5 abi.PaddedPieceSize, arg6 *market.Transfer) error {
+func (m *MockIGateway) SectorsUnsealPiece(arg0 context.Context, arg1 address.Address, arg2 cid.Cid, arg3 abi.SectorNumber, arg4 types.PaddedByteIndex, arg5 abi.PaddedPieceSize, arg6 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SectorsUnsealPiece", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 	ret0, _ := ret[0].(error)

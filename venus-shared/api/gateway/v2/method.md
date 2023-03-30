@@ -9,7 +9,6 @@ curl http://<ip>:<port>/rpc/v2 -X POST -H "Content-Type: application/json"  -H "
 * [Gateway](#gateway)
   * [Version](#version)
 * [MarketClient](#marketclient)
-  * [IsUnsealed](#isunsealed)
   * [ListMarketConnectionsState](#listmarketconnectionsstate)
   * [SectorsUnsealPiece](#sectorsunsealpiece)
 * [MarketServiceProvider](#marketserviceprovider)
@@ -53,26 +52,6 @@ Response:
 ```
 
 ## MarketClient
-
-### IsUnsealed
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  "f01234",
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  9,
-  10,
-  1032
-]
-```
-
-Response: `true`
 
 ### ListMarketConnectionsState
 
@@ -119,10 +98,7 @@ Inputs:
   9,
   10,
   1032,
-  {
-    "Type": "fs",
-    "Params": "eyJQYXRoIjoiL3BhdGgifQ=="
-  }
+  "string value"
 ]
 ```
 
