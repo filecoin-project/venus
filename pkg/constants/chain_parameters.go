@@ -1,10 +1,9 @@
 package constants
 
 import (
-	"math"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	"math"
 )
 
 const (
@@ -33,9 +32,6 @@ const (
 )
 
 const MainNetBlockDelaySecs = uint64(builtin0.EpochDurationSeconds)
-
-// todo move this value to config
-var InsecurePoStValidation = false
 
 const (
 	NoTimeout = math.MaxInt64
