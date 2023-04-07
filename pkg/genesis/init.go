@@ -2,7 +2,6 @@ package genesis
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -44,13 +43,8 @@ func Init(ctx context.Context, r repo.Repo, bs blockstoreutil.Blockstore, cst cb
 	if err = chainStore.SetHead(ctx, genTipSet); err != nil {
 		return nil, errors.Wrap(err, "failed to persist genesis block in chain store")
 	}
-	// Persist the genesis cid to the repo.
-	val, err := json.Marshal(genesis.Cid())
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal genesis cid")
-	}
 
-	if err = r.ChainDatastore().Put(ctx, chain.GenesisKey, val); err != nil {
+	if err := chainStore.PersistGenesisCID(ctx, genesis); err != nil {
 		return nil, errors.Wrap(err, "failed to persist genesis cid")
 	}
 

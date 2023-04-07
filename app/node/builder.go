@@ -84,8 +84,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		b.journal = journal.NewNoopJournal()
 	}
 
-	// fetch genesis block id
-	b.genBlk, err = readGenesisCid(ctx, b.repo.ChainDatastore(), b.repo.Datastore())
+	b.genBlk, err = chain2.GenesisBlock(ctx, b.repo.ChainDatastore(), b.repo.Datastore())
 	if err != nil {
 		return nil, err
 	}
