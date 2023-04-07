@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -411,6 +412,36 @@ func (store *Store) GetTipSetState(ctx context.Context, ts *types.TipSet) (tree.
 // GetGenesisBlock returns the genesis block held by the chain store.
 func (store *Store) GetGenesisBlock(ctx context.Context) (*types.BlockHeader, error) {
 	return store.GetBlock(ctx, store.GenesisCid())
+}
+
+func (store *Store) PersistGenesisCID(ctx context.Context, blk *types.BlockHeader) error {
+	data, err := json.Marshal(blk.Cid())
+	if err != nil {
+		return fmt.Errorf("failed to marshal genesis cid: %v", err)
+	}
+
+	return store.ds.Put(ctx, GenesisKey, data)
+}
+
+func GenesisBlock(ctx context.Context, chainDs datastore.Datastore, bs blockstoreutil.Blockstore) (types.BlockHeader, error) {
+	bb, err := chainDs.Get(ctx, GenesisKey)
+	if err != nil {
+		return types.BlockHeader{}, fmt.Errorf("failed to read genesisKey: %v", err)
+	}
+
+	var c cid.Cid
+	err = json.Unmarshal(bb, &c)
+	if err != nil {
+		return types.BlockHeader{}, fmt.Errorf("failed to cast genesisCid: %v", err)
+	}
+
+	var blk types.BlockHeader
+	err = cbor.NewCborStore(bs).Get(ctx, c, &blk)
+	if err != nil {
+		return types.BlockHeader{}, fmt.Errorf("failed to read genesis block: %v", err)
+	}
+
+	return blk, nil
 }
 
 // GetTipSetStateRoot returns the aggregate state root CID of the tipset identified by `key`.

@@ -105,6 +105,14 @@ func importChain(ctx context.Context, r repo.Repo, fname string) error {
 	}
 	logImport.Infof("accepting %s as new head", tip.Key().String())
 
+	genesis, err := chainStore.GetTipSetByHeight(ctx, tip, 0, false)
+	if err != nil {
+		return fmt.Errorf("got genesis failed: %v", err)
+	}
+	if err := chainStore.PersistGenesisCID(ctx, genesis.Blocks()[0]); err != nil {
+		return fmt.Errorf("persist genesis failed: %v", err)
+	}
+
 	err = chainStore.WriteCheckPoint(context.TODO(), tip.Key())
 	if err != nil {
 		logImport.Errorf("set check point error: %s", err.Error())
