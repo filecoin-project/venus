@@ -344,17 +344,17 @@ func (mr *MockIMarketMockRecorder) DealsConsiderVerifiedStorageDeals(arg0, arg1 
 }
 
 // DealsImportData mocks base method.
-func (m *MockIMarket) DealsImportData(arg0 context.Context, arg1 cid.Cid, arg2 string) error {
+func (m *MockIMarket) DealsImportData(arg0 context.Context, arg1 cid.Cid, arg2 string, arg3 bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsImportData", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "DealsImportData", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DealsImportData indicates an expected call of DealsImportData.
-func (mr *MockIMarketMockRecorder) DealsImportData(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsImportData(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsImportData", reflect.TypeOf((*MockIMarket)(nil).DealsImportData), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsImportData", reflect.TypeOf((*MockIMarket)(nil).DealsImportData), arg0, arg1, arg2, arg3)
 }
 
 // DealsMaxProviderCollateralMultiplier mocks base method.
