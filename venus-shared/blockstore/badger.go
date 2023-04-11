@@ -8,6 +8,7 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/keytransform"
@@ -148,7 +149,8 @@ func Open(opts Options) (*BadgerBlockstore, error) {
 		return nil, fmt.Errorf("failed to open badger blockstore: %w", err)
 	}
 
-	cache := NewLruCache(10 * 10000)
+	cache := NewLruCache(int(constants.BadgerCache))
+	log.Infof("badger lru cache: %v", constants.BadgerCache)
 	bs := &BadgerBlockstore{
 		DB:           db,
 		keyTransform: keyTransform,
