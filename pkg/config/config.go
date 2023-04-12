@@ -327,9 +327,9 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeOhSnapHeight:      1594680,
 	UpgradeSkyrHeight:        1960320,
 	UpgradeSharkHeight:       2383680,
-	UpgradeHyggeHeight:       99999999999999,
+	UpgradeHyggeHeight:       2683348,
 	UpgradeLightningHeight:   99999999999999,
-	UpgradeThunderHeight:     99999999999999,
+	UpgradeThunderHeight:     99999999999999 + 1,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
