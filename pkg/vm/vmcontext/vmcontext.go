@@ -31,6 +31,7 @@ import (
 )
 
 const MaxCallDepth = 4096
+const CborCodec = 0x51
 
 var vmlog = logging.Logger("vm.context")
 
@@ -195,6 +196,9 @@ func (vm *LegacyVM) normalizeAddress(addr address.Address) (address.Address, boo
 func (vm *LegacyVM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 	// implicit messages gas is tracked separatly and not paid by the miner
 	gasTank := gas.NewGasTracker(constants.BlockGasLimit * 10000)
+	if imsg.Params != nil {
+		gasTank.ExecutionTrace.Msg.ParamsCodec = CborCodec
+	}
 
 	// the execution of the implicit messages is simpler than full external/actor-actor messages
 	// execution:
@@ -231,6 +235,9 @@ func (vm *LegacyVM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 		return nil, fmt.Errorf("invalid exit code %d during implicit message execution: From %s, To %s, Method %d, Value %s, Params %v",
 			code, imsg.From, imsg.To, imsg.Method, imsg.Value, imsg.Params)
 	}
+	if len(ret) > 0 {
+		gasTank.ExecutionTrace.MsgRct.ReturnCodec = CborCodec
+	}
 	return &Ret{
 		GasTracker: gasTank,
 		OutPuts:    gas.GasOutputs{},
@@ -260,6 +267,9 @@ func (vm *LegacyVM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, 
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
 	// initiate gas tracking
 	gasTank := gas.NewGasTracker(msg.GasLimit)
+	if len(msg.Params) > 0 {
+		gasTank.ExecutionTrace.Msg.ParamsCodec = CborCodec
+	}
 	// pre-send
 	// 1. charge for message existence
 	// 2. load sender actor
@@ -407,6 +417,9 @@ func (vm *LegacyVM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, 
 		// of Method execution failure.
 		code = exitcode.SysErrOutOfGas
 		ret = []byte{}
+	}
+	if len(ret) > 0 {
+		gasTank.ExecutionTrace.MsgRct.ReturnCodec = CborCodec
 	}
 
 	// Roll back all stateView if the receipt's exit code is not ok.
