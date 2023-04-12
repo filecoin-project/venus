@@ -373,7 +373,19 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 		}, {
 			Height:    upgradeHeight.UpgradeLightningHeight,
 			Network:   network.Version19,
-			Migration: nil,
+			Migration: cf.UpgradeActorsV11,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV11,
+				StartWithin:     240,
+				DontStartWithin: 60,
+				StopWithin:      20,
+			}, {
+				PreMigration:    cf.PreUpgradeActorsV11,
+				StartWithin:     15,
+				DontStartWithin: 10,
+				StopWithin:      5,
+			}},
+			Expensive: true,
 		}, {
 			Height:    upgradeHeight.UpgradeThunderHeight,
 			Network:   network.Version20,
@@ -2408,7 +2420,7 @@ func (c *ChainFork) upgradeActorsV10Common(
 
 	if stateRoot.Version != vmstate.StateTreeVersion4 {
 		return cid.Undef, fmt.Errorf(
-			"expected state root version 4 for actors v10 upgrade, got %d",
+			"expected state root version 4 for actors v9 upgrade, got %d",
 			stateRoot.Version,
 		)
 	}
@@ -2498,8 +2510,8 @@ func (c *ChainFork) upgradeActorsV11Common(
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
 	config migration.Config,
 ) (cid.Cid, error) {
-	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
-	store := adt.WrapStore(ctx, cbor.NewCborStore(buf))
+	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB/4)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(writeStore))
 
 	// ensure that the manifest is loaded in the blockstore
 	if err := actors.LoadBundles(ctx, c.bs, actorstypes.Version11); err != nil {
@@ -2541,15 +2553,12 @@ func (c *ChainFork) upgradeActorsV11Common(
 		return cid.Undef, fmt.Errorf("failed to persist new state root: %w", err)
 	}
 
-	// Persist the new tree.
-
-	{
-		from := buf
-		to := buf.Read()
-
-		if err := Copy(ctx, from, to, newRoot); err != nil {
-			return cid.Undef, fmt.Errorf("copying migrated tree: %w", err)
-		}
+	// Persist the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, fmt.Errorf("writeStore flush failed: %w", err)
+	}
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, fmt.Errorf("writeStore shutdown failed: %w", err)
 	}
 
 	return newRoot, nil
