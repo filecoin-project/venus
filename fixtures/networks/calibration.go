@@ -61,6 +61,9 @@ func Calibration() *NetworkConf {
 				UpgradeSkyrHeight:        510,
 				UpgradeSharkHeight:       16800,
 				UpgradeHyggeHeight:       322354, // 2023-02-21T16:30:00Z
+				// TODO: set upgrade height
+				UpgradeLightningHeight: 999999999999999,
+				UpgradeThunderHeight:   999999999999999 + 1,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,

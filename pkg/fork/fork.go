@@ -369,6 +369,14 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      5,
 			}},
 			Expensive: true,
+		}, {
+			Height:    upgradeHeight.UpgradeLightningHeight,
+			Network:   network.Version19,
+			Migration: nil,
+		}, {
+			Height:    upgradeHeight.UpgradeThunderHeight,
+			Network:   network.Version20,
+			Migration: nil,
 		},
 	}
 

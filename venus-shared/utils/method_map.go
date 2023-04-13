@@ -58,6 +58,7 @@ func loadMethodsMap() {
 	actors = append(actors, actorsWithVersion{av: actorstypes.Version8, actors: builtin.MakeRegistry(actorstypes.Version8)})
 	actors = append(actors, actorsWithVersion{av: actorstypes.Version9, actors: builtin.MakeRegistry(actorstypes.Version9)})
 	actors = append(actors, actorsWithVersion{av: actorstypes.Version10, actors: builtin.MakeRegistry(actorstypes.Version10)})
+	actors = append(actors, actorsWithVersion{av: actorstypes.Version11, actors: builtin.MakeRegistry(actorstypes.Version11)})
 
 	for _, awv := range actors {
 		for _, actor := range awv.actors {
