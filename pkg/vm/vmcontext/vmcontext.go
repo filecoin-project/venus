@@ -196,6 +196,10 @@ func (vm *LegacyVM) normalizeAddress(addr address.Address) (address.Address, boo
 func (vm *LegacyVM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 	// implicit messages gas is tracked separatly and not paid by the miner
 	gasTank := gas.NewGasTracker(constants.BlockGasLimit * 10000)
+	gasTank.ExecutionTrace.Msg.From = imsg.From
+	gasTank.ExecutionTrace.Msg.To = imsg.To
+	gasTank.ExecutionTrace.Msg.Method = imsg.Method
+	gasTank.ExecutionTrace.Msg.Value = imsg.Value
 	if imsg.Params != nil {
 		gasTank.ExecutionTrace.Msg.ParamsCodec = CborCodec
 	}
@@ -238,6 +242,8 @@ func (vm *LegacyVM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 	if len(ret) > 0 {
 		gasTank.ExecutionTrace.MsgRct.ReturnCodec = CborCodec
 	}
+	gasTank.ExecutionTrace.MsgRct.Return = ret
+	gasTank.ExecutionTrace.MsgRct.ExitCode = code
 	return &Ret{
 		GasTracker: gasTank,
 		OutPuts:    gas.GasOutputs{},
@@ -267,6 +273,10 @@ func (vm *LegacyVM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, 
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
 	// initiate gas tracking
 	gasTank := gas.NewGasTracker(msg.GasLimit)
+	gasTank.ExecutionTrace.Msg.From = msg.From
+	gasTank.ExecutionTrace.Msg.To = msg.To
+	gasTank.ExecutionTrace.Msg.Method = msg.Method
+	gasTank.ExecutionTrace.Msg.Value = msg.Value
 	if len(msg.Params) > 0 {
 		gasTank.ExecutionTrace.Msg.ParamsCodec = CborCodec
 	}
@@ -421,6 +431,8 @@ func (vm *LegacyVM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, 
 	if len(ret) > 0 {
 		gasTank.ExecutionTrace.MsgRct.ReturnCodec = CborCodec
 	}
+	gasTank.ExecutionTrace.MsgRct.Return = ret
+	gasTank.ExecutionTrace.MsgRct.ExitCode = code
 
 	// Roll back all stateView if the receipt's exit code is not ok.
 	// This is required in addition To revert within the invocation context since top level messages can fail for
