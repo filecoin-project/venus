@@ -297,6 +297,8 @@ type ForkUpgradeConfig struct {
 	UpgradeSkyrHeight          abi.ChainEpoch `json:"upgradeSkyrHeight"`
 	UpgradeSharkHeight         abi.ChainEpoch `json:"upgradeSharkHeight"`
 	UpgradeHyggeHeight         abi.ChainEpoch `json:"upgradeHyggeHeight"`
+	UpgradeLightningHeight     abi.ChainEpoch `json:"upgradeLightningHeight"`
+	UpgradeThunderHeight       abi.ChainEpoch `json:"upgradeThunderHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -325,7 +327,9 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeOhSnapHeight:      1594680,
 	UpgradeSkyrHeight:        1960320,
 	UpgradeSharkHeight:       2383680,
-	UpgradeHyggeHeight:       99999999999999,
+	UpgradeHyggeHeight:       2683348,
+	UpgradeLightningHeight:   99999999999999,
+	UpgradeThunderHeight:     99999999999999 + 1,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {

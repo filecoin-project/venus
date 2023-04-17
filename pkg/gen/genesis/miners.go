@@ -62,6 +62,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 	"github.com/filecoin-project/venus/venus-shared/types"
+
+	power11 "github.com/filecoin-project/go-state-types/builtin/v11/power"
+	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 )
 
 func MinerAddress(genesisIndex uint64) address.Address {
@@ -137,7 +140,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		sectorWeight []abi.StoragePower
 	}, len(miners))
 
-	maxPeriods := policy.GetMaxSectorExpirationExtension() / minertypes.WPoStProvingPeriod
+	maxPeriods := policy.GetDefaultSectorExpirationExtension() / minertypes.WPoStProvingPeriod
 	rawPow, qaPow := big.NewInt(0), big.NewInt(0)
 	for i, m := range miners {
 		// Create miner through power actor
@@ -150,14 +153,32 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		}
 
 		{
-			constructorParams := &power0.CreateMinerParams{
-				Owner:         m.Worker,
-				Worker:        m.Worker,
-				Peer:          []byte(m.PeerID),
-				SealProofType: spt,
+			var params []byte
+			if nv <= network.Version10 {
+				constructorParams := &power2.CreateMinerParams{
+					Owner:         m.Worker,
+					Worker:        m.Worker,
+					Peer:          []byte(m.PeerID),
+					SealProofType: spt,
+				}
+
+				params = mustEnc(constructorParams)
+			} else {
+				ppt, err := spt.RegisteredWindowPoStProofByNetworkVersion(nv)
+				if err != nil {
+					return cid.Undef, fmt.Errorf("failed to convert spt to wpt: %w", err)
+				}
+
+				constructorParams := &power11.CreateMinerParams{
+					Owner:               m.Worker,
+					Worker:              m.Worker,
+					Peer:                []byte(m.PeerID),
+					WindowPoStProofType: ppt,
+				}
+
+				params = mustEnc(constructorParams)
 			}
 
-			params := mustEnc(constructorParams)
 			rval, err := doExecValue(ctx, genesisVM, power.Address, m.Owner, m.PowerBalance, power.Methods.CreateMiner, params)
 			if err != nil {
 				return cid.Undef, fmt.Errorf("failed to create genesis miner: %w", err)

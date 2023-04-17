@@ -53,7 +53,10 @@ func InteropNet() *NetworkConf {
 				UpgradeOhSnapHeight:      -18,
 				UpgradeSkyrHeight:        -19,
 				UpgradeSharkHeight:       -20,
-				UpgradeHyggeHeight:       99999999999999,
+				UpgradeHyggeHeight:       100,
+				// TODO: set correct upgrade height
+				UpgradeLightningHeight: 200,
+				UpgradeThunderHeight:   300 + 1,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,
