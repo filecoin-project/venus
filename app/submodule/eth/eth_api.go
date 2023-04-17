@@ -43,6 +43,7 @@ import (
 var log = logging.Logger("eth_api")
 
 var ErrNullRound = errors.New("requested epoch was a null round")
+var ErrUnsupported = errors.New("unsupported method")
 
 func newEthAPI(em *EthSubModule) (*ethAPI, error) {
 	a := &ethAPI{
@@ -396,7 +397,7 @@ func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthH
 		}
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, replay, events, a.chain)
+	receipt, err := newEthTxReceipt(ctx, tx, replay, events, a.chain)
 	if err != nil {
 		return nil, nil
 	}
@@ -405,11 +406,11 @@ func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthH
 }
 
 func (a *ethAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error) {
-	return types.EthTx{}, nil
+	return types.EthTx{}, ErrUnsupported
 }
 
 func (a *ethAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error) {
-	return types.EthTx{}, nil
+	return types.EthTx{}, ErrUnsupported
 }
 
 // EthGetCode returns string value of the compiled bytecode
@@ -1335,7 +1336,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *types.MsgLookup, 
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLookup, replay *types.InvocResult, events []types.Event, ca v1.IChain) (types.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx types.EthTx, replay *types.InvocResult, events []types.Event, ca v1.IChain) (types.EthTxReceipt, error) {
 	var (
 		transactionIndex types.EthUint64
 		blockHash        types.EthHash
@@ -1364,25 +1365,25 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLooku
 		LogsBloom:        types.EmptyEthBloom[:],
 	}
 
-	if lookup.Receipt.ExitCode.IsSuccess() {
+	if replay.MsgRct.ExitCode.IsSuccess() {
 		receipt.Status = 1
 	}
-	if lookup.Receipt.ExitCode.IsError() {
+	if replay.MsgRct.ExitCode.IsError() {
 		receipt.Status = 0
 	}
 
-	receipt.GasUsed = types.EthUint64(lookup.Receipt.GasUsed)
+	receipt.GasUsed = types.EthUint64(replay.MsgRct.GasUsed)
 
 	// TODO: handle CumulativeGasUsed
 	receipt.CumulativeGasUsed = types.EmptyEthInt
 
-	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
+	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(replay.MsgRct.GasUsed))
 	receipt.EffectiveGasPrice = types.EthBigInt(effectiveGasPrice)
 
-	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
+	if receipt.To == nil && replay.MsgRct.ExitCode.IsSuccess() {
 		// Create and Create2 return the same things.
 		var ret eam.CreateExternalReturn
-		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
+		if err := ret.UnmarshalCBOR(bytes.NewReader(replay.MsgRct.Return)); err != nil {
 			return types.EthTxReceipt{}, fmt.Errorf("failed to parse contract creation result: %w", err)
 		}
 		addr := types.EthAddress(ret.EthAddress)
