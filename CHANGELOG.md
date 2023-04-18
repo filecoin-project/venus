@@ -1,5 +1,23 @@
 # venus changelog
 
+## v1.11.0-rc1
+
+### New Features
+* feat: add bootstrap peers flag / 添加bootstrap节点的Flag [#5742](https://github.com/filecoin-project/venus/pull/5742)
+* feat: add status api to detect api ready / 添加状态检测接口 [#5740](https://github.com/filecoin-project/venus/pull/5740)
+* feat: update auth client with token /更新authClient的token授权 [[#5752](https://github.com/filecoin-project/venus/pull/5752)]
+* feat: make chain tipset fetching 1000x faster / chain fetch 优化 [[#5824](https://github.com/filecoin-project/venus/pull/5824)]
+* feat: get signer deal detail /增加获取单个存储订单和检索订单的接口 [[#5831](https://github.com/filecoin-project/venus/pull/5831)]
+* feat: update cache to the new generic version /缓存库版本升级 [[#5857](https://github.com/filecoin-project/venus/pull/5857)]
+* feat: add docker push by @hunjixin /增加推送到镜像仓库的功能 [[#5889](https://github.com/filecoin-project/venus/pull/5889)]
+
+### Bug Fixes
+
+* fix: Saving genesis blocks when importing snapshots by @simlecode / 修复删除 badger chain 后导入快照失败 [[#5892](https://github.com/filecoin-project/venus/pull/5892)]
+* fix: use FIL pointer to unmarshaltext by @simlecode /设置UnmarshalText方法的接收器为FIL指针 [[#5869](https://github.com/filecoin-project/venus/pull/5869)]
+* fix: not sync in 2k network by @hunjixin / 修复2k网络同步失败 [[#5748](https://github.com/filecoin-project/venus/pull/5748)]
+
+
 ## v1.10.1
 
 * 修复 evm 命令部署合约失败 [[#5785](https://github.com/filecoin-project/venus/pull/5785)]
