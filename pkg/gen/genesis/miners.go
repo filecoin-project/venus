@@ -140,7 +140,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		sectorWeight []abi.StoragePower
 	}, len(miners))
 
-	maxPeriods := policy.GetDefaultSectorExpirationExtension() / minertypes.WPoStProvingPeriod
+	maxPeriods := policy.GetMaxSectorExpirationExtension() / minertypes.WPoStProvingPeriod
 	rawPow, qaPow := big.NewInt(0), big.NewInt(0)
 	for i, m := range miners {
 		// Create miner through power actor
