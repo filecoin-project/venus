@@ -38,6 +38,7 @@ var evmCmd = &cmds.Command{
 		"stat":             evmGetInfoCmd,
 		"call":             evmCallSimulateCmd,
 		"contract-address": evmGetContractAddressCmd,
+		"bytecode":         evmGetBytecode,
 	},
 }
 
@@ -439,6 +440,48 @@ var evmInvokeCmd = &cmds.Command{
 		}
 
 		return re.Emit(buf)
+	},
+}
+
+var evmGetBytecode = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Write the bytecode of a smart contract to a file",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("contract-address", true, false, "contract address"),
+		cmds.StringArg("file-name", true, false, "file name"),
+	},
+	Options: []cmds.Option{
+		cmds.StringOption("bin", "write the bytecode as raw binary and don't hex-encode"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if len(req.Arguments) != 2 {
+			return fmt.Errorf("must pass the contract address and file name")
+		}
+
+		contractAddr, err := types.ParseEthAddress(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		fileName := req.Arguments[1]
+		ctx := requestContext(req)
+		api := getEnv(env)
+
+		code, err := api.EthAPI.EthGetCode(ctx, contractAddr, "latest")
+		if err != nil {
+			return err
+		}
+		if bin, _ := req.Options["bin"].(bool); bin {
+			newCode := make([]byte, hex.EncodedLen(len(code)))
+			hex.Encode(newCode, code)
+			code = newCode
+		}
+		if err := os.WriteFile(fileName, code, 0o666); err != nil {
+			return fmt.Errorf("failed to write bytecode to file %s: %w", fileName, err)
+		}
+
+		return printOneString(re, fmt.Sprintf("Code for %s written to %s\n", contractAddr, fileName))
 	},
 }
 
