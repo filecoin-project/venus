@@ -123,13 +123,21 @@ build: $(BUILD_DEPS)
 
 
 .PHONY: docker
-
-
 TAG:=test
 docker: $(BUILD_DEPS)
-	curl -O https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/docker/dockerfile
+ifdef DOCKERFILE
+	cp $(DOCKERFILE) ./dockerfile
+else
+	curl -o dockerfile https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/docker/dockerfile
+endif
+
 	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=venus -t venus  .
+	docker tag venus:latest filvenus/venus:$(TAG)
+
+ifdef PRIVATE_REGISTRY
 	docker tag venus:latest $(PRIVATE_REGISTRY)/filvenus/venus:$(TAG)
+endif
+
 
 docker-push: docker
 	docker push $(PRIVATE_REGISTRY)/filvenus/venus:$(TAG)
