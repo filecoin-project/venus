@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/abi"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -60,11 +61,19 @@ func (e *ethAPIDummy) EthGetTransactionByHash(ctx context.Context, txHash *types
 	return nil, ErrModuleDisabled
 }
 
+func (e *ethAPIDummy) EthGetTransactionByHashLimited(ctx context.Context, txHash *types.EthHash, limit abi.ChainEpoch) (*types.EthTx, error) {
+	return nil, ErrModuleDisabled
+}
+
 func (e *ethAPIDummy) EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkOpt string) (types.EthUint64, error) {
 	return 0, ErrModuleDisabled
 }
 
 func (e *ethAPIDummy) EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error) {
+	return nil, ErrModuleDisabled
+}
+
+func (e *ethAPIDummy) EthGetTransactionReceiptLimited(ctx context.Context, txHash types.EthHash, limit abi.ChainEpoch) (*types.EthTxReceipt, error) {
 	return nil, ErrModuleDisabled
 }
 

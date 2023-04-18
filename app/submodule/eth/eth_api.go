@@ -235,6 +235,10 @@ func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkParam string, fullT
 }
 
 func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error) {
+	return a.EthGetTransactionByHashLimited(ctx, txHash, constants.LookbackNoLimit)
+}
+
+func (a *ethAPI) EthGetTransactionByHashLimited(ctx context.Context, txHash *types.EthHash, limit abi.ChainEpoch) (*types.EthTx, error) {
 	// Ethereum's behavior is to return null when the txHash is invalid, so we use nil to check if txHash is valid
 	if txHash == nil {
 		return nil, nil
@@ -251,7 +255,7 @@ func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthH
 	}
 
 	// first, try to get the cid from mined transactions
-	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, constants.LookbackNoLimit, true)
+	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
 	if err == nil && msgLookup != nil {
 		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.chain)
 		if err == nil {
@@ -365,6 +369,10 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 }
 
 func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error) {
+	return a.EthGetTransactionReceiptLimited(ctx, txHash, constants.LookbackNoLimit)
+}
+
+func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash types.EthHash, limit abi.ChainEpoch) (*types.EthTxReceipt, error) {
 	c, err := a.ethTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
 	if err != nil {
 		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
@@ -375,7 +383,7 @@ func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthH
 		c = txHash.ToCid()
 	}
 
-	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, constants.LookbackNoLimit, true)
+	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
 	if err != nil || msgLookup == nil {
 		return nil, nil
 	}
