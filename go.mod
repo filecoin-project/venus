@@ -103,6 +103,7 @@ require (
 	github.com/whyrusleeping/cbor-gen v0.0.0-20221021053955-c138aae13722
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
+	github.com/zyedidia/generic v1.2.1
 	go.opencensus.io v0.23.0
 	go.uber.org/zap v1.23.0
 	golang.org/x/crypto v0.5.0
