@@ -55,7 +55,7 @@ func ForceNet() *NetworkConf {
 				UpgradeOhSnapHeight:     -18,
 				UpgradeSkyrHeight:       -19,
 				UpgradeSharkHeight:      -20,
-				UpgradeHyggeHeight:      30,
+				UpgradeHyggeHeight:      -21,
 				UpgradeLightningHeight:  30,
 				UpgradeThunderHeight:    1000,
 			},
