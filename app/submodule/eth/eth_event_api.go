@@ -22,6 +22,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-varint"
+	"github.com/zyedidia/generic/queue"
 )
 
 const ChainHeadConfidence = 1
@@ -437,7 +438,7 @@ func (e *ethEventAPI) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ty
 		return types.EthSubscriptionID{}, fmt.Errorf("connection doesn't support callbacks")
 	}
 
-	sub, err := e.SubManager.StartSubscription(e.SubscribtionCtx, ethCb.EthSubscription)
+	sub, err := e.SubManager.StartSubscription(e.SubscribtionCtx, ethCb.EthSubscription, e.uninstallFilter)
 	if err != nil {
 		return types.EthSubscriptionID{}, err
 	}
@@ -504,16 +505,9 @@ func (e *ethEventAPI) EthUnsubscribe(ctx context.Context, id types.EthSubscripti
 		return false, api.ErrNotSupported
 	}
 
-	filters, err := e.SubManager.StopSubscription(ctx, id)
+	err := e.SubManager.StopSubscription(ctx, id)
 	if err != nil {
 		return false, nil
-	}
-
-	for _, f := range filters {
-		if err := e.uninstallFilter(ctx, f); err != nil {
-			// this will leave the filter a zombie, collecting events up to the maximum allowed
-			log.Warnf("failed to remove filter when unsubscribing: %v", err)
-		}
 	}
 
 	return true, nil
@@ -702,7 +696,7 @@ type EthSubscriptionManager struct { // nolint
 	subs         map[types.EthSubscriptionID]*ethSubscription
 }
 
-func (e *EthSubscriptionManager) StartSubscription(ctx context.Context, out ethSubscriptionCallback) (*ethSubscription, error) { // nolint
+func (e *EthSubscriptionManager) StartSubscription(ctx context.Context, out ethSubscriptionCallback, dropFilter func(context.Context, filter.Filter) error) (*ethSubscription, error) { // nolint
 	rawid, err := uuid.NewRandom()
 	if err != nil {
 		return nil, fmt.Errorf("new uuid: %w", err)
@@ -713,12 +707,16 @@ func (e *EthSubscriptionManager) StartSubscription(ctx context.Context, out ethS
 	ctx, quit := context.WithCancel(ctx)
 
 	sub := &ethSubscription{
-		chainAPI:     e.ChainAPI,
-		messageStore: e.messageStore,
-		id:           id,
-		in:           make(chan interface{}, 200),
-		out:          out,
-		quit:         quit,
+		chainAPI:        e.ChainAPI,
+		messageStore:    e.messageStore,
+		uninstallFilter: dropFilter,
+		id:              id,
+		in:              make(chan interface{}, 200),
+		out:             out,
+		quit:            quit,
+
+		toSend:   queue.New[[]byte](),
+		sendCond: make(chan struct{}, 1),
 	}
 
 	e.mu.Lock()
@@ -729,36 +727,45 @@ func (e *EthSubscriptionManager) StartSubscription(ctx context.Context, out ethS
 	e.mu.Unlock()
 
 	go sub.start(ctx)
+	go sub.startOut(ctx)
 
 	return sub, nil
 }
 
-func (e *EthSubscriptionManager) StopSubscription(ctx context.Context, id types.EthSubscriptionID) ([]filter.Filter, error) {
+func (e *EthSubscriptionManager) StopSubscription(ctx context.Context, id types.EthSubscriptionID) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
 	sub, ok := e.subs[id]
 	if !ok {
-		return nil, fmt.Errorf("subscription not found")
+		return fmt.Errorf("subscription not found")
 	}
 	sub.stop()
 	delete(e.subs, id)
 
-	return sub.filters, nil
+	return nil
 }
 
 type ethSubscriptionCallback func(context.Context, jsonrpc.RawParams) error
 
+const maxSendQueue = 20000
+
 type ethSubscription struct {
-	chainAPI     v1.IChain
-	messageStore *chain.MessageStore
-	id           types.EthSubscriptionID
-	in           chan interface{}
-	out          ethSubscriptionCallback
+	chainAPI        v1.IChain
+	messageStore    *chain.MessageStore
+	uninstallFilter func(context.Context, filter.Filter) error
+	id              types.EthSubscriptionID
+	in              chan interface{}
+	out             ethSubscriptionCallback
 
 	mu      sync.Mutex
 	filters []filter.Filter
 	quit    func()
+
+	sendLk       sync.Mutex
+	sendQueueLen int
+	toSend       *queue.Queue[[]byte]
+	sendCond     chan struct{}
 }
 
 func (e *ethSubscription) addFilter(ctx context.Context, f filter.Filter) {
@@ -767,6 +774,36 @@ func (e *ethSubscription) addFilter(ctx context.Context, f filter.Filter) {
 
 	f.SetSubChannel(e.in)
 	e.filters = append(e.filters, f)
+}
+
+// sendOut processes the final subscription queue. It's here in case the subscriber
+// is slow, and we need to buffer the messages.
+func (e *ethSubscription) startOut(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-e.sendCond:
+			e.sendLk.Lock()
+
+			for !e.toSend.Empty() {
+				front := e.toSend.Dequeue()
+				e.sendQueueLen--
+
+				e.sendLk.Unlock()
+
+				if err := e.out(ctx, front); err != nil {
+					log.Warnw("error sending subscription response, killing subscription", "sub", e.id, "error", err)
+					e.stop()
+					return
+				}
+
+				e.sendLk.Lock()
+			}
+
+			e.sendLk.Unlock()
+		}
+	}
 }
 
 func (e *ethSubscription) send(ctx context.Context, v interface{}) {
@@ -781,9 +818,21 @@ func (e *ethSubscription) send(ctx context.Context, v interface{}) {
 		return
 	}
 
-	if err := e.out(ctx, outParam); err != nil {
-		log.Warnw("sending subscription response", "sub", e.id, "error", err)
+	e.sendLk.Lock()
+	defer e.sendLk.Unlock()
+
+	e.toSend.Enqueue(outParam)
+
+	e.sendQueueLen++
+	if e.sendQueueLen > maxSendQueue {
+		log.Warnw("subscription send queue full, killing subscription", "sub", e.id)
+		e.stop()
 		return
+	}
+
+	select {
+	case e.sendCond <- struct{}{}:
+	default: // already signalled, and we're holding the lock so we know that the event will be processed
 	}
 }
 
@@ -828,10 +877,22 @@ func (e *ethSubscription) start(ctx context.Context) {
 
 func (e *ethSubscription) stop() {
 	e.mu.Lock()
-	defer e.mu.Unlock()
+	if e.quit == nil {
+		e.mu.Unlock()
+		return
+	}
 
 	if e.quit != nil {
 		e.quit()
 		e.quit = nil
+		e.mu.Unlock()
+
+		for _, f := range e.filters {
+			// note: the context in actually unused in uninstallFilter
+			if err := e.uninstallFilter(context.TODO(), f); err != nil {
+				// this will leave the filter a zombie, collecting events up to the maximum allowed
+				log.Warnf("failed to remove filter when unsubscribing: %v", err)
+			}
+		}
 	}
 }
