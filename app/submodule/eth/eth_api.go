@@ -714,12 +714,7 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.
 }
 
 func (a *ethAPI) NetVersion(ctx context.Context) (string, error) {
-	// Note that networkId is not encoded in hex
-	nv, err := a.chain.StateNetworkVersion(ctx, types.EmptyTSK)
-	if err != nil {
-		return "", err
-	}
-	return strconv.FormatUint(uint64(nv), 10), nil
+	return strconv.FormatInt(int64(types2.Eip155ChainID), 10), nil
 }
 
 func (a *ethAPI) NetListening(ctx context.Context) (bool, error) {
