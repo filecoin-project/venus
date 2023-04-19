@@ -83,9 +83,11 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [EthGetTransactionByBlockHashAndIndex](#ethgettransactionbyblockhashandindex)
   * [EthGetTransactionByBlockNumberAndIndex](#ethgettransactionbyblocknumberandindex)
   * [EthGetTransactionByHash](#ethgettransactionbyhash)
+  * [EthGetTransactionByHashLimited](#ethgettransactionbyhashlimited)
   * [EthGetTransactionCount](#ethgettransactioncount)
   * [EthGetTransactionHashByCid](#ethgettransactionhashbycid)
   * [EthGetTransactionReceipt](#ethgettransactionreceipt)
+  * [EthGetTransactionReceiptLimited](#ethgettransactionreceiptlimited)
   * [EthMaxPriorityFeePerGas](#ethmaxpriorityfeepergas)
   * [EthProtocolVersion](#ethprotocolversion)
   * [EthSendRawTransaction](#ethsendrawtransaction)
@@ -2535,6 +2537,45 @@ Response:
 }
 ```
 
+### EthGetTransactionByHashLimited
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+  10101
+]
+```
+
+Response:
+```json
+{
+  "chainId": "0x5",
+  "nonce": "0x5",
+  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+  "blockNumber": "0x5",
+  "transactionIndex": "0x5",
+  "from": "0x0707070707070707070707070707070707070707",
+  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+  "value": "0x0",
+  "type": "0x5",
+  "input": "0x07",
+  "gas": "0x5",
+  "maxFeePerGas": "0x0",
+  "maxPriorityFeePerGas": "0x0",
+  "accessList": [
+    "0x0707070707070707070707070707070707070707070707070707070707070707"
+  ],
+  "v": "0x0",
+  "r": "0x0",
+  "s": "0x0"
+}
+```
+
 ### EthGetTransactionCount
 
 
@@ -2575,6 +2616,54 @@ Inputs:
 ```json
 [
   "0x0707070707070707070707070707070707070707070707070707070707070707"
+]
+```
+
+Response:
+```json
+{
+  "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "transactionIndex": "0x5",
+  "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockNumber": "0x5",
+  "from": "0x0707070707070707070707070707070707070707",
+  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+  "root": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "status": "0x5",
+  "contractAddress": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+  "cumulativeGasUsed": "0x5",
+  "gasUsed": "0x5",
+  "effectiveGasPrice": "0x0",
+  "logsBloom": "0x07",
+  "logs": [
+    {
+      "address": "0x0707070707070707070707070707070707070707",
+      "data": "0x07",
+      "topics": [
+        "0x0707070707070707070707070707070707070707070707070707070707070707"
+      ],
+      "removed": true,
+      "logIndex": "0x5",
+      "transactionIndex": "0x5",
+      "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+      "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+      "blockNumber": "0x5"
+    }
+  ],
+  "type": "0x5"
+}
+```
+
+### EthGetTransactionReceiptLimited
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707070707070707070707070707",
+  10101
 ]
 ```
 

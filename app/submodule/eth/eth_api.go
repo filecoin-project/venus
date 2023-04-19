@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/statemanger"
+	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	builtinactors "github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	builtinevm "github.com/filecoin-project/venus/venus-shared/actors/builtin/evm"
@@ -234,6 +235,10 @@ func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkParam string, fullT
 }
 
 func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error) {
+	return a.EthGetTransactionByHashLimited(ctx, txHash, constants.LookbackNoLimit)
+}
+
+func (a *ethAPI) EthGetTransactionByHashLimited(ctx context.Context, txHash *types.EthHash, limit abi.ChainEpoch) (*types.EthTx, error) {
 	// Ethereum's behavior is to return null when the txHash is invalid, so we use nil to check if txHash is valid
 	if txHash == nil {
 		return nil, nil
@@ -250,7 +255,7 @@ func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthH
 	}
 
 	// first, try to get the cid from mined transactions
-	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, constants.LookbackNoLimit, true)
+	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
 	if err == nil && msgLookup != nil {
 		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.chain)
 		if err == nil {
@@ -364,6 +369,10 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 }
 
 func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error) {
+	return a.EthGetTransactionReceiptLimited(ctx, txHash, constants.LookbackNoLimit)
+}
+
+func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash types.EthHash, limit abi.ChainEpoch) (*types.EthTxReceipt, error) {
 	c, err := a.ethTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
 	if err != nil {
 		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
@@ -374,7 +383,7 @@ func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthH
 		c = txHash.ToCid()
 	}
 
-	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, constants.LookbackNoLimit, true)
+	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
 	if err != nil || msgLookup == nil {
 		return nil, nil
 	}
@@ -384,20 +393,15 @@ func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthH
 		return nil, nil
 	}
 
-	replay, err := a.chain.StateReplay(ctx, types.EmptyTSK, c)
-	if err != nil {
-		return nil, nil
-	}
-
 	var events []types.Event
-	if rct := replay.MsgRct; rct != nil && rct.EventsRoot != nil {
+	if rct := msgLookup.Receipt; rct.EventsRoot != nil {
 		events, err = a.chain.ChainGetEvents(ctx, *rct.EventsRoot)
 		if err != nil {
 			return nil, nil
 		}
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, replay, events, a.chain)
+	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, events, a.chain)
 	if err != nil {
 		return nil, nil
 	}
@@ -1320,7 +1324,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *types.MsgLookup, 
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx types.EthTx, replay *types.InvocResult, events []types.Event, ca v1.IChain) (types.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLookup, events []types.Event, ca v1.IChain) (types.EthTxReceipt, error) {
 	var (
 		transactionIndex types.EthUint64
 		blockHash        types.EthHash
@@ -1349,25 +1353,38 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, replay *types.InvocRes
 		LogsBloom:        types.EmptyEthBloom[:],
 	}
 
-	if replay.MsgRct.ExitCode.IsSuccess() {
+	if lookup.Receipt.ExitCode.IsSuccess() {
 		receipt.Status = 1
 	}
-	if replay.MsgRct.ExitCode.IsError() {
+	if lookup.Receipt.ExitCode.IsError() {
 		receipt.Status = 0
 	}
 
-	receipt.GasUsed = types.EthUint64(replay.MsgRct.GasUsed)
+	receipt.GasUsed = types.EthUint64(lookup.Receipt.GasUsed)
 
 	// TODO: handle CumulativeGasUsed
 	receipt.CumulativeGasUsed = types.EmptyEthInt
 
-	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(replay.MsgRct.GasUsed))
+	// TODO: avoid loading the tipset twice (once here, once when we convert the message to a txn)
+	ts, err := ca.ChainGetTipSet(ctx, lookup.TipSet)
+	if err != nil {
+		return types.EthTxReceipt{}, fmt.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", lookup.TipSet, err)
+	}
+
+	baseFee := ts.Blocks()[0].ParentBaseFee
+	gasOutputs := gas.ComputeGasOutputs(lookup.Receipt.GasUsed, int64(tx.Gas), baseFee, big.Int(tx.MaxFeePerGas), big.Int(tx.MaxPriorityFeePerGas), true)
+	totalSpent := big.Sum(gasOutputs.BaseFeeBurn, gasOutputs.MinerTip, gasOutputs.OverEstimationBurn)
+
+	effectiveGasPrice := big.Zero()
+	if lookup.Receipt.GasUsed > 0 {
+		effectiveGasPrice = big.Div(totalSpent, big.NewInt(lookup.Receipt.GasUsed))
+	}
 	receipt.EffectiveGasPrice = types.EthBigInt(effectiveGasPrice)
 
-	if receipt.To == nil && replay.MsgRct.ExitCode.IsSuccess() {
+	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
 		// Create and Create2 return the same things.
 		var ret eam.CreateExternalReturn
-		if err := ret.UnmarshalCBOR(bytes.NewReader(replay.MsgRct.Return)); err != nil {
+		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
 			return types.EthTxReceipt{}, fmt.Errorf("failed to parse contract creation result: %w", err)
 		}
 		addr := types.EthAddress(ret.EthAddress)
