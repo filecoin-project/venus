@@ -1,5 +1,11 @@
 # venus changelog
 
+## v1.11.0-rc2
+
+### Main Changes
+
+* Revert add new-vm-exec-tracer [[#5901](https://github.com/filecoin-project/venus/pull/5901)]
+
 ## v1.11.0-rc1
 
 ### New Features
