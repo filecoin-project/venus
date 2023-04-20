@@ -55,6 +55,8 @@ func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
 	toUse := gasCharge.Total()
 	// code for https://github.com/filecoin-project/venus/issues/4610
 	if EnableDetailedTracing {
+		var callers [10]uintptr
+		cout := 0 // gruntime.Callers(2+skip, callers[:])
 
 		now := time.Now()
 		if t.LastGasCharge != nil {
@@ -62,11 +64,26 @@ func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
 		}
 
 		gasTrace := types.GasTrace{
-			Name: gasCharge.Name,
+			Name:  gasCharge.Name,
+			Extra: gasCharge.Extra,
 
 			TotalGas:   toUse,
 			ComputeGas: gasCharge.ComputeGas,
 			StorageGas: gasCharge.StorageGas,
+
+			// TotalVirtualGas:   gasCharge.VirtualCompute*GasComputeMulti + gasCharge.VirtualStorage*GasStorageMulti,
+			TotalVirtualGas:   gasCharge.VirtualCompute + gasCharge.VirtualStorage,
+			VirtualComputeGas: gasCharge.VirtualCompute,
+			VirtualStorageGas: gasCharge.VirtualStorage,
+
+			Callers: callers[:cout],
+		}
+
+		if gasTrace.VirtualStorageGas == 0 {
+			gasTrace.VirtualStorageGas = gasTrace.StorageGas
+		}
+		if gasTrace.VirtualComputeGas == 0 {
+			gasTrace.VirtualComputeGas = gasTrace.ComputeGas
 		}
 
 		t.ExecutionTrace.GasCharges = append(t.ExecutionTrace.GasCharges, &gasTrace)
