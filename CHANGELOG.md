@@ -1,5 +1,20 @@
 # venus changelog
 
+## v1.11.0
+
+This is the stable release of Venus v1.11.0 for the upcoming MANDATORY network upgrade at `2023-04-27T13:00:00Z`, epoch `2809800`. This release delivers the nv19 Lighting and nv20 Thunder network upgrade for mainnet.
+The Lighting and Thunder upgrade introduces the following Filecoin Improvement Proposals (FIPs), delivered by builtin-actors v11 (see actors [v11.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v11.0.0-rc2)):
+
+- [FIP 0060](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0060.md) - Thirty day market deal maintenance interval
+- [FIP 0061](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0061.md) - WindowPoSt grindability fix
+- [FIP 0062](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0062.md) - Fallback method handler for multisig actor
+
+### New Features
+
+- add interface for health check /各组件增加状态检查接口 [[#4887](https://github.com/filecoin-project/venus/issues/4887)]
+- ffi validation parallelism / ffi 验证平行计算 [[#5838](https://github.com/filecoin-project/venus/issues/5838)]
+- chain fetch faster / chain fetch 优化 [[#5814](https://github.com/filecoin-project/venus/issues/5814)]
+
 ## v1.11.0-rc2
 
 ### Main Changes
