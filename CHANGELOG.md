@@ -1,5 +1,9 @@
 # venus changelog
 
+## v1.11.1
+
+* fix: windowPoST verify fail [[#fvm-1750](https://github.com/filecoin-project/ref-fvm/pull/1750)]
+
 ## v1.11.0
 
 This is the stable release of Venus v1.11.0 for the upcoming MANDATORY network upgrade at `2023-04-27T13:00:00Z`, epoch `2809800`. This release delivers the nv19 Lighting and nv20 Thunder network upgrade for mainnet.
