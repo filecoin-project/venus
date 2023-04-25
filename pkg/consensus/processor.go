@@ -206,7 +206,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			}
 
 			if cb != nil {
-				if err := cb(mcid, m.VMMessage(), ret); err != nil {
+				if err := cb(m.Cid(), m.VMMessage(), ret); err != nil {
 					return cid.Undef, nil, err
 				}
 			}

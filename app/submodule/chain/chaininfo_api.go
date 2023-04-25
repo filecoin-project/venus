@@ -291,25 +291,14 @@ func (cia *chainInfoAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Ci
 		return nil, nil
 	}
 
-	// TODO: need to get the number of messages better than this
-	pts, err := cia.chain.ChainReader.GetTipSet(ctx, types.NewTipSetKey(b.Parents...))
+	receipts, err := cia.chain.MessageStore.LoadReceipts(ctx, b.ParentMessageReceipts)
 	if err != nil {
 		return nil, err
 	}
 
-	cm, err := cia.chain.MessageStore.MessagesForTipset(pts)
-	if err != nil {
-		return nil, err
-	}
-
-	var out []*types.MessageReceipt
-	for i := 0; i < len(cm); i++ {
-		r, err := cia.chain.ChainReader.GetParentReceipt(b, i)
-		if err != nil {
-			return nil, err
-		}
-
-		out = append(out, r)
+	out := make([]*types.MessageReceipt, len(receipts))
+	for i := range receipts {
+		out[i] = &receipts[i]
 	}
 
 	return out, nil

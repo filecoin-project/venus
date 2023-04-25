@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
@@ -215,6 +216,19 @@ func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) 
 	}
 
 	return nil
+}
+
+// EffectiveGasPremium returns the effective gas premium claimable by the miner
+// given the supplied base fee.
+//
+// Filecoin clamps the gas premium at GasFeeCap - BaseFee, if lower than the
+// specified premium.
+func (m *Message) EffectiveGasPremium(baseFee abi.TokenAmount) abi.TokenAmount {
+	available := big.Sub(m.GasFeeCap, baseFee)
+	if big.Cmp(m.GasPremium, available) <= 0 {
+		return m.GasPremium
+	}
+	return available
 }
 
 func (m *Message) VMMessage() *Message {
