@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"testing"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -21,6 +23,7 @@ import (
 )
 
 func TestKeyInfoAddress(t *testing.T) {
+	tf.UnitTest(t)
 	prv, _ := hex.DecodeString("2a2a2a2a2a2a2a2a5fbf0ed0f8364c01ff27540ecd6669ff4cc548cbe60ef5ab")
 	ki := &KeyInfo{
 		SigType: crypto.SigTypeSecp256k1,
@@ -32,6 +35,8 @@ func TestKeyInfoAddress(t *testing.T) {
 }
 
 func TestKeyInfoUnmarshalAndMarshal(t *testing.T) {
+	tf.UnitTest(t)
+
 	prv := []byte("marshal_and_unmarshal")
 	prvCp := make([]byte, len(prv))
 	copy(prvCp, prv)
@@ -55,6 +60,8 @@ func TestKeyInfoUnmarshalAndMarshal(t *testing.T) {
 }
 
 func TestGenerateSecpKey(t *testing.T) {
+	tf.UnitTest(t)
+
 	token := bytes.Repeat([]byte{42}, 512)
 	// stm: @CRYPTO_CRYPTO_NEW_BLS_KEY_001
 	ki, err := NewSecpKeyFromSeed(bytes.NewReader(token))
@@ -107,6 +114,8 @@ func TestGenerateSecpKey(t *testing.T) {
 }
 
 func TestBLSSigning(t *testing.T) {
+	tf.UnitTest(t)
+
 	token := bytes.Repeat([]byte{42}, 512)
 	// stm: @CRYPTO_CRYPTO_NEW_BLS_KEY_001
 	ki, err := NewBLSKeyFromSeed(bytes.NewReader(token))
@@ -141,6 +150,8 @@ func TestBLSSigning(t *testing.T) {
 }
 
 func TestDelegatedSigning(t *testing.T) {
+	tf.UnitTest(t)
+
 	token := bytes.Repeat([]byte{42}, 512)
 	ki, err := NewDelegatedKeyFromSeed(bytes.NewReader(token))
 	assert.NoError(t, err)
@@ -199,6 +210,8 @@ func aggregateSignatures(sigs []*crypto.Signature) (*crypto.Signature, error) {
 }
 
 func TestVerifyAggregate(t *testing.T) {
+	tf.UnitTest(t)
+
 	var (
 		size     = 10
 		messages = make([][]byte, size)

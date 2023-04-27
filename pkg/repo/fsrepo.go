@@ -17,7 +17,6 @@ import (
 
 	badgerds "github.com/ipfs/go-ds-badger2"
 	lockfile "github.com/ipfs/go-fs-lock"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 
@@ -39,13 +38,10 @@ const (
 	chainDatastorePrefix   = "chain"
 	metaDatastorePrefix    = "metadata"
 	paychDatastorePrefix   = "paych"
-	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
 	dataTransfer           = "data-transfer"
 	fsSqlite               = "sqlite"
 )
-
-var log = logging.Logger("repo")
 
 // FSRepo is a repo implementation backed by a filesystem.
 type FSRepo struct {
@@ -88,11 +84,12 @@ func InitFSRepo(targetPath string, version uint, cfg *config.Config) error {
 		repoPath = "./"
 	}
 
-	exists, err := fileExists(repoPath)
+	versionFile := filepath.Join(repoPath, versionFilename)
+	exists, err := fileExists(versionFile)
 	if err != nil {
 		return errors.Wrapf(err, "error inspecting repo path %s", repoPath)
 	} else if exists {
-		return errors.Errorf("repo at %s, file exists", repoPath)
+		return errors.Errorf("version file detect at %s, file exists", versionFile)
 	}
 
 	// Create the actual directory and then the link to it.
@@ -111,14 +108,6 @@ func InitFSRepoDirect(targetPath string, version uint, cfg *config.Config) error
 		return errors.Wrap(err, "no writable directory")
 	}
 
-	empty, err := isEmptyDir(repoPath)
-	if err != nil {
-		return errors.Wrapf(err, "failed to list repo directory %s", repoPath)
-	}
-	if !empty {
-		return fmt.Errorf("refusing to initialize repo in non-empty directory %s", repoPath)
-	}
-
 	if err := WriteVersion(repoPath, version); err != nil {
 		return errors.Wrap(err, "initializing repo version failed")
 	}
@@ -133,16 +122,10 @@ func InitFSRepoDirect(targetPath string, version uint, cfg *config.Config) error
 }
 
 func Exists(repoPath string) (bool, error) {
-	_, err := os.Stat(filepath.Join(repoPath, walletDatastorePrefix))
+	_, err := os.Stat(filepath.Join(repoPath, versionFilename))
 	notExist := os.IsNotExist(err)
 	if notExist {
-		err = nil
-
-		_, err = os.Stat(filepath.Join(repoPath, configFilename))
-		notExist = os.IsNotExist(err)
-		if notExist {
-			err = nil
-		}
+		return false, nil
 	}
 	return !notExist, err
 }
@@ -264,9 +247,6 @@ func (r *FSRepo) Config() *config.Config {
 
 // ReplaceConfig replaces the current config with the newly passed in one.
 func (r *FSRepo) ReplaceConfig(cfg *config.Config) error {
-	if err := r.SnapshotConfig(r.Config()); err != nil {
-		log.Warnf("failed to create snapshot: %s", err.Error())
-	}
 	r.lk.Lock()
 	defer r.lk.Unlock()
 
@@ -281,20 +261,6 @@ func (r *FSRepo) ReplaceConfig(cfg *config.Config) error {
 		return err
 	}
 	return os.Rename(tmp, filepath.Join(r.path, configFilename))
-}
-
-// SnapshotConfig stores a copy `cfg` in <repo_path>/snapshots/ appending the
-// time of snapshot to the filename.
-func (r *FSRepo) SnapshotConfig(cfg *config.Config) error {
-	snapshotFile := filepath.Join(r.path, snapshotStorePrefix, genSnapshotFileName())
-	exists, err := fileExists(snapshotFile)
-	if err != nil {
-		return errors.Wrap(err, "error checking snapshot file")
-	} else if exists {
-		// this should never happen
-		return fmt.Errorf("file already exists: %s", snapshotFile)
-	}
-	return cfg.WriteFile(snapshotFile)
 }
 
 // Datastore returns the datastore.
@@ -315,10 +281,6 @@ func (r *FSRepo) ChainDatastore() Datastore {
 func (r *FSRepo) MetaDatastore() Datastore {
 	return r.metaDs
 }
-
-/*func (r *FSRepo) MarketDatastore() Datastore {
-	return r.marketDs
-}*/
 
 func (r *FSRepo) PaychDatastore() Datastore {
 	return r.paychDs
@@ -394,16 +356,19 @@ func hasConfig(p string) (bool, error) {
 	}
 }
 
-func (r *FSRepo) loadConfig() error {
-	configFile := filepath.Join(r.path, configFilename)
+func LoadConfig(p string) (*config.Config, error) {
+	configFile := filepath.Join(p, configFilename)
 
 	cfg, err := config.ReadFile(configFile)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read config file at %q", configFile)
+		return nil, errors.Wrapf(err, "failed to read config file at %q", configFile)
 	}
+	return cfg, nil
+}
 
-	r.cfg = cfg
-	return nil
+func (r *FSRepo) loadConfig() (err error) {
+	r.cfg, err = LoadConfig(r.path)
+	return
 }
 
 // readVersion reads the repo's version file (but does not change r.version).
@@ -514,16 +479,11 @@ func initConfig(p string, cfg *config.Config) error {
 	if err != nil {
 		return errors.Wrap(err, "error inspecting config file")
 	} else if exists {
-		return fmt.Errorf("config file already exists: %s", configFile)
+		//config file prepared before
+		return nil
 	}
 
-	if err := cfg.WriteFile(configFile); err != nil {
-		return err
-	}
-
-	// make the snapshot dir
-	snapshotDir := filepath.Join(p, snapshotStorePrefix)
-	return ensureWritableDirectory(snapshotDir)
+	return cfg.WriteFile(configFile)
 }
 
 func initDataTransfer(p string) error {
@@ -540,10 +500,6 @@ func initDataTransfer(p string) error {
 	}
 	// create data-transfer state
 	return os.MkdirAll(dataTransferDir, 0o777)
-}
-
-func genSnapshotFileName() string {
-	return fmt.Sprintf("%s-%d.json", snapshotFilenamePrefix, time.Now().UTC().UnixNano())
 }
 
 // Ensures that path points to a read/writable directory, creating it if necessary.
@@ -569,15 +525,6 @@ func ensureWritableDirectory(path string) error {
 		return errors.Errorf("insufficient permissions for path %s, got %04o need %04o", path, stat.Mode(), 0o600)
 	}
 	return nil
-}
-
-// Tests whether the directory at path is empty
-func isEmptyDir(path string) (bool, error) {
-	infos, err := os.ReadDir(path)
-	if err != nil {
-		return false, err
-	}
-	return len(infos) == 0, nil
 }
 
 func fileExists(file string) (bool, error) {
