@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/filecoin-project/venus/pkg/util"
+
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/utils"
@@ -28,8 +30,11 @@ func SetConfigFromOptions(cfg *config.Config, networkName string) error {
 	if err != nil {
 		return err
 	}
-	cfg.Bootstrap = &netcfg.Bootstrap
 	cfg.NetworkParams = &netcfg.Network
+	//merge with config and option
+	peers := util.MergePeers(cfg.Bootstrap.Addresses, netcfg.Bootstrap.Addresses)
+	cfg.Bootstrap = &netcfg.Bootstrap
+	cfg.Bootstrap.AddPeers(peers...)
 	return nil
 }
 

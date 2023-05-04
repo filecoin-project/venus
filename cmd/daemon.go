@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -80,7 +81,7 @@ var daemonCmd = &cmds.Command{
 			return fmt.Errorf("fetching proof parameters: %w", err)
 		}
 
-		exist, err := repo.Exists(repoDir)
+		exist, err := repo.Exists(repoDir) //The configuration file and devgen are required for the program to start
 		if err != nil {
 			return err
 		}
@@ -98,7 +99,16 @@ var daemonCmd = &cmds.Command{
 			if err := re.Emit(repoDir); err != nil {
 				return err
 			}
-			if err := repo.InitFSRepo(repoDir, repo.LatestVersion, config.NewDefaultConfig()); err != nil {
+
+			cfg, err := repo.LoadConfig(repoDir) //use exit config, allow user prepare config before
+			if err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					cfg = config.NewDefaultConfig()
+				} else {
+					return err
+				}
+			}
+			if err := repo.InitFSRepo(repoDir, repo.LatestVersion, cfg); err != nil {
 				return err
 			}
 
@@ -112,7 +122,12 @@ var daemonCmd = &cmds.Command{
 }
 
 func initRun(req *cmds.Request) error {
-	rep, err := getRepo(req)
+	repoDir, _ := req.Options[OptionRepoDir].(string)
+	err := repo.WriteVersion(repoDir, repo.LatestVersion)
+	if err != nil {
+		return err
+	}
+	rep, err := getRepo(repoDir)
 	if err != nil {
 		return err
 	}
@@ -166,12 +181,22 @@ func initRun(req *cmds.Request) error {
 		return err
 	}
 
+	// import snapshot argument only work when init
+	importPath, _ := req.Options[ImportSnapshot].(string)
+	if len(importPath) != 0 {
+		err := Import(req.Context, rep, importPath)
+		if err != nil {
+			log.Errorf("failed to import snapshot, import path: %s, error: %s", importPath, err.Error())
+			return err
+		}
+	}
+
 	return nil
 }
 
 func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
-	// third precedence is config file.
-	rep, err := getRepo(req)
+	repoDir, _ := req.Options[OptionRepoDir].(string)
+	rep, err := getRepo(repoDir)
 	if err != nil {
 		return err
 	}
@@ -219,7 +244,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 
 	if bootPeers, ok := req.Options[BootstrapPeers].([]string); ok && len(bootPeers) > 0 {
-		config.Bootstrap.Addresses = MergePeers(config.Bootstrap.Addresses, bootPeers)
+		config.Bootstrap.AddPeers(bootPeers...)
 	}
 
 	opts, err := node.OptionsFromRepo(rep)
@@ -233,14 +258,6 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	if isRelay, ok := req.Options[IsRelay].(bool); ok && isRelay {
 		opts = append(opts, node.IsRelay())
-	}
-	importPath, _ := req.Options[ImportSnapshot].(string)
-	if len(importPath) != 0 {
-		err := Import(req.Context, rep, importPath)
-		if err != nil {
-			log.Errorf("failed to import snapshot, import path: %s, error: %s", importPath, err.Error())
-			return err
-		}
 	}
 
 	if password, _ := req.Options[Password].(string); len(password) > 0 {
@@ -296,8 +313,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	return fcn.RunRPCAndWait(req.Context, RootCmdDaemon, ready)
 }
 
-func getRepo(req *cmds.Request) (repo.Repo, error) {
-	repoDir, _ := req.Options[OptionRepoDir].(string)
+func getRepo(repoDir string) (repo.Repo, error) {
 	repoDir, err := paths.GetRepoPath(repoDir)
 	if err != nil {
 		return nil, err
@@ -306,23 +322,4 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 		return nil, err
 	}
 	return repo.OpenFSRepo(repoDir, repo.LatestVersion)
-}
-
-func MergePeers(peerSet1 []string, peerSet2 []string) []string {
-
-	filter := map[string]struct{}{}
-	for _, peer := range peerSet1 {
-		filter[peer] = struct{}{}
-	}
-
-	notInclude := []string{}
-	for _, peer := range peerSet2 {
-		_, has := filter[peer]
-		if has {
-			continue
-		}
-		filter[peer] = struct{}{}
-		notInclude = append(notInclude, peer)
-	}
-	return append(peerSet1, notInclude...)
 }

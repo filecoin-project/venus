@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/filecoin-project/venus/cmd"
-
 	manet "github.com/multiformats/go-multiaddr/net"
 
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
@@ -165,24 +163,4 @@ func TestDaemonOverHttp(t *testing.T) {
 	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNotFound, res.StatusCode)
-}
-
-func Test_MergePeers(t *testing.T) {
-	t.Run("empty", func(t *testing.T) {
-		peerSet1 := []string{"a", "b"}
-		peerSet2 := []string{}
-		assert.Equal(t, peerSet1, cmd.MergePeers(peerSet1, peerSet2))
-	})
-
-	t.Run("join", func(t *testing.T) {
-		peerSet1 := []string{"a", "b"}
-		peerSet2 := []string{"c", "d"}
-		assert.Equal(t, append(peerSet1, peerSet2...), cmd.MergePeers(peerSet1, peerSet2))
-	})
-
-	t.Run("distinct", func(t *testing.T) {
-		peerSet1 := []string{"a", "b"}
-		peerSet2 := []string{"a", "b", "c", "a", "b", "e"}
-		assert.Equal(t, append(peerSet1, "c", "e"), cmd.MergePeers(peerSet1, peerSet2))
-	})
 }

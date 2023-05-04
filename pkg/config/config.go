@@ -115,6 +115,24 @@ type BootstrapConfig struct {
 	Period           string   `json:"period,omitempty"`
 }
 
+func (bsc *BootstrapConfig) AddPeers(peers ...string) {
+	filter := map[string]struct{}{}
+	for _, peer := range bsc.Addresses {
+		filter[peer] = struct{}{}
+	}
+
+	notInclude := []string{}
+	for _, peer := range peers {
+		_, has := filter[peer]
+		if has {
+			continue
+		}
+		filter[peer] = struct{}{}
+		notInclude = append(notInclude, peer)
+	}
+	bsc.Addresses = append(bsc.Addresses, notInclude...)
+}
+
 // TODO: provide bootstrap node addresses
 func newDefaultBootstrapConfig() *BootstrapConfig {
 	return &BootstrapConfig{

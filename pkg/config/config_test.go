@@ -265,6 +265,8 @@ func createConfigFile(t *testing.T, content string) (string, error) {
 }
 
 func TestDuration(t *testing.T) {
+	tf.UnitTest(t)
+
 	d, err := time.ParseDuration("1h5m")
 	require.NoError(t, err)
 
@@ -276,4 +278,20 @@ func TestDuration(t *testing.T) {
 	var res Duration
 	require.NoError(t, json.Unmarshal(data, &res))
 	require.Equal(t, dd, res)
+}
+
+func TestAddBootPeers(t *testing.T) {
+	tf.UnitTest(t)
+
+	boot := &BootstrapConfig{}
+	boot.AddPeers("a")
+	assert.Equal(t, []string{"a"}, boot.Addresses)
+
+	boot.AddPeers("a")
+	assert.Equal(t, []string{"a"}, boot.Addresses)
+
+	boot.Addresses = []string{"a", "b"}
+	boot.AddPeers("a", "c")
+	assert.Equal(t, []string{"a", "b", "c"}, boot.Addresses)
+
 }
