@@ -213,7 +213,9 @@ func (store *Store) Load(ctx context.Context) (err error) {
 			return err
 		}
 		ts := iterator.Value()
-
+		if ts.Height() == 0 {
+			break
+		}
 		tipSetMetadata, err := store.LoadTipsetMetadata(ctx, ts)
 		if err != nil {
 			return err
