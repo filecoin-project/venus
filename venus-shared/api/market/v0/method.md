@@ -449,14 +449,17 @@ Perms: admin
 Inputs:
 ```json
 [
-  [
-    {
-      "ProposalCid": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "File": "string value"
-    }
-  ]
+  {
+    "Refs": [
+      {
+        "ProposalCID": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "File": "string value"
+      }
+    ],
+    "SkipCommP": true
+  }
 ]
 ```
 
@@ -464,7 +467,7 @@ Response:
 ```json
 [
   {
-    "ProposalCid": {
+    "ProposalCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "Message": "string value"

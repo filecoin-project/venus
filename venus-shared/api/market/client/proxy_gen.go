@@ -18,45 +18,47 @@ import (
 
 type IMarketClientStruct struct {
 	Internal struct {
-		ClientBatchDeal                           func(ctx context.Context, params *client.DealsParams) (*client.DealResults, error)                         `perm:"write"`
-		ClientCalcCommP                           func(ctx context.Context, inpath string) (*client.CommPRet, error)                                         `perm:"write"`
-		ClientCancelDataTransfer                  func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error   `perm:"write"`
-		ClientCancelRetrievalDeal                 func(ctx context.Context, dealid retrievalmarket.DealID) error                                             `perm:"write"`
-		ClientDataTransferUpdates                 func(ctx context.Context) (<-chan market.DataTransferChannel, error)                                       `perm:"write"`
-		ClientDealPieceCID                        func(ctx context.Context, root cid.Cid) (client.DataCIDSize, error)                                        `perm:"read"`
-		ClientDealSize                            func(ctx context.Context, root cid.Cid) (client.DataSize, error)                                           `perm:"read"`
-		ClientExport                              func(ctx context.Context, exportRef client.ExportRef, fileRef client.FileRef) error                        `perm:"admin"`
-		ClientFindData                            func(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]client.QueryOffer, error)                       `perm:"read"`
-		ClientGenCar                              func(ctx context.Context, ref client.FileRef, outpath string) error                                        `perm:"write"`
-		ClientGetDealInfo                         func(context.Context, cid.Cid) (*client.DealInfo, error)                                                   `perm:"read"`
-		ClientGetDealStatus                       func(ctx context.Context, statusCode uint64) (string, error)                                               `perm:"read"`
-		ClientGetDealUpdates                      func(ctx context.Context) (<-chan client.DealInfo, error)                                                  `perm:"write"`
-		ClientGetRetrievalUpdates                 func(ctx context.Context) (<-chan client.RetrievalInfo, error)                                             `perm:"write"`
-		ClientHasLocal                            func(ctx context.Context, root cid.Cid) (bool, error)                                                      `perm:"write"`
-		ClientImport                              func(ctx context.Context, ref client.FileRef) (*client.ImportRes, error)                                   `perm:"admin"`
-		ClientListDataTransfers                   func(ctx context.Context) ([]market.DataTransferChannel, error)                                            `perm:"write"`
-		ClientListDeals                           func(ctx context.Context) ([]client.DealInfo, error)                                                       `perm:"write"`
-		ClientListImports                         func(ctx context.Context) ([]client.Import, error)                                                         `perm:"write"`
-		ClientListRetrievals                      func(ctx context.Context) ([]client.RetrievalInfo, error)                                                  `perm:"write"`
-		ClientMinerQueryOffer                     func(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (client.QueryOffer, error)  `perm:"read"`
-		ClientQueryAsk                            func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error)             `perm:"read"`
-		ClientRemoveImport                        func(ctx context.Context, importID client.ImportID) error                                                  `perm:"admin"`
-		ClientRestartDataTransfer                 func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error   `perm:"write"`
-		ClientRetrieve                            func(ctx context.Context, params client.RetrievalOrder) (*client.RestrievalRes, error)                     `perm:"admin"`
-		ClientRetrieveTryRestartInsufficientFunds func(ctx context.Context, paymentChannel address.Address) error                                            `perm:"write"`
-		ClientRetrieveWait                        func(ctx context.Context, deal retrievalmarket.DealID) error                                               `perm:"admin"`
-		ClientStartDeal                           func(ctx context.Context, params *client.DealParams) (*cid.Cid, error)                                     `perm:"admin"`
-		ClientStatelessDeal                       func(ctx context.Context, params *client.DealParams) (*cid.Cid, error)                                     `perm:"write"`
-		DefaultAddress                            func(ctx context.Context) (address.Address, error)                                                         `perm:"read"`
-		MarketAddBalance                          func(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)                 `perm:"write"`
-		MarketGetReserved                         func(ctx context.Context, addr address.Address) (types.BigInt, error)                                      `perm:"read"`
-		MarketReleaseFunds                        func(ctx context.Context, addr address.Address, amt types.BigInt) error                                    `perm:"write"`
-		MarketReserveFunds                        func(ctx context.Context, wallet address.Address, addr address.Address, amt types.BigInt) (cid.Cid, error) `perm:"write"`
-		MarketWithdraw                            func(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)                 `perm:"write"`
-		MessagerGetMessage                        func(ctx context.Context, mid cid.Cid) (*types.Message, error)                                             `perm:"read"`
-		MessagerPushMessage                       func(ctx context.Context, msg *types.Message, meta *types.MessageSendSpec) (cid.Cid, error)                `perm:"write"`
-		MessagerWaitMessage                       func(ctx context.Context, mid cid.Cid) (*types.MsgLookup, error)                                           `perm:"read"`
-		Version                                   func(ctx context.Context) (types.Version, error)                                                           `perm:"read"`
+		ClientBatchDeal                           func(ctx context.Context, params *client.DealsParams) (*client.DealResults, error)                               `perm:"write"`
+		ClientCalcCommP                           func(ctx context.Context, inpath string) (*client.CommPRet, error)                                               `perm:"write"`
+		ClientCancelDataTransfer                  func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error         `perm:"write"`
+		ClientCancelRetrievalDeal                 func(ctx context.Context, dealid retrievalmarket.DealID) error                                                   `perm:"write"`
+		ClientDataTransferUpdates                 func(ctx context.Context) (<-chan market.DataTransferChannel, error)                                             `perm:"write"`
+		ClientDealPieceCID                        func(ctx context.Context, root cid.Cid) (client.DataCIDSize, error)                                              `perm:"read"`
+		ClientDealSize                            func(ctx context.Context, root cid.Cid) (client.DataSize, error)                                                 `perm:"read"`
+		ClientExport                              func(ctx context.Context, exportRef client.ExportRef, fileRef client.FileRef) error                              `perm:"admin"`
+		ClientFindData                            func(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]client.QueryOffer, error)                             `perm:"read"`
+		ClientGenCar                              func(ctx context.Context, ref client.FileRef, outpath string) error                                              `perm:"write"`
+		ClientGetDealInfo                         func(context.Context, cid.Cid) (*client.DealInfo, error)                                                         `perm:"read"`
+		ClientGetDealStatus                       func(ctx context.Context, statusCode uint64) (string, error)                                                     `perm:"read"`
+		ClientGetDealUpdates                      func(ctx context.Context) (<-chan client.DealInfo, error)                                                        `perm:"write"`
+		ClientGetRetrievalUpdates                 func(ctx context.Context) (<-chan client.RetrievalInfo, error)                                                   `perm:"write"`
+		ClientGetVerifiedDealDistribution         func(ctx context.Context, providers []address.Address, client address.Address) (*client.DealDistribution, error) `perm:"read"`
+		ClientHasLocal                            func(ctx context.Context, root cid.Cid) (bool, error)                                                            `perm:"write"`
+		ClientImport                              func(ctx context.Context, ref client.FileRef) (*client.ImportRes, error)                                         `perm:"admin"`
+		ClientListDataTransfers                   func(ctx context.Context) ([]market.DataTransferChannel, error)                                                  `perm:"write"`
+		ClientListDeals                           func(ctx context.Context) ([]client.DealInfo, error)                                                             `perm:"write"`
+		ClientListImports                         func(ctx context.Context) ([]client.Import, error)                                                               `perm:"write"`
+		ClientListOfflineDeals                    func(ctx context.Context) ([]client.DealInfo, error)                                                             `perm:"read"`
+		ClientListRetrievals                      func(ctx context.Context) ([]client.RetrievalInfo, error)                                                        `perm:"write"`
+		ClientMinerQueryOffer                     func(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (client.QueryOffer, error)        `perm:"read"`
+		ClientQueryAsk                            func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error)                   `perm:"read"`
+		ClientRemoveImport                        func(ctx context.Context, importID client.ImportID) error                                                        `perm:"admin"`
+		ClientRestartDataTransfer                 func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error         `perm:"write"`
+		ClientRetrieve                            func(ctx context.Context, params client.RetrievalOrder) (*client.RestrievalRes, error)                           `perm:"admin"`
+		ClientRetrieveTryRestartInsufficientFunds func(ctx context.Context, paymentChannel address.Address) error                                                  `perm:"write"`
+		ClientRetrieveWait                        func(ctx context.Context, deal retrievalmarket.DealID) error                                                     `perm:"admin"`
+		ClientStartDeal                           func(ctx context.Context, params *client.DealParams) (*cid.Cid, error)                                           `perm:"admin"`
+		ClientStatelessDeal                       func(ctx context.Context, params *client.DealParams) (*cid.Cid, error)                                           `perm:"write"`
+		DefaultAddress                            func(ctx context.Context) (address.Address, error)                                                               `perm:"read"`
+		MarketAddBalance                          func(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)                       `perm:"write"`
+		MarketGetReserved                         func(ctx context.Context, addr address.Address) (types.BigInt, error)                                            `perm:"read"`
+		MarketReleaseFunds                        func(ctx context.Context, addr address.Address, amt types.BigInt) error                                          `perm:"write"`
+		MarketReserveFunds                        func(ctx context.Context, wallet address.Address, addr address.Address, amt types.BigInt) (cid.Cid, error)       `perm:"write"`
+		MarketWithdraw                            func(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)                       `perm:"write"`
+		MessagerGetMessage                        func(ctx context.Context, mid cid.Cid) (*types.Message, error)                                                   `perm:"read"`
+		MessagerPushMessage                       func(ctx context.Context, msg *types.Message, meta *types.MessageSendSpec) (cid.Cid, error)                      `perm:"write"`
+		MessagerWaitMessage                       func(ctx context.Context, mid cid.Cid) (*types.MsgLookup, error)                                                 `perm:"read"`
+		Version                                   func(ctx context.Context) (types.Version, error)                                                                 `perm:"read"`
 	}
 }
 
@@ -102,6 +104,9 @@ func (s *IMarketClientStruct) ClientGetDealUpdates(p0 context.Context) (<-chan c
 func (s *IMarketClientStruct) ClientGetRetrievalUpdates(p0 context.Context) (<-chan client.RetrievalInfo, error) {
 	return s.Internal.ClientGetRetrievalUpdates(p0)
 }
+func (s *IMarketClientStruct) ClientGetVerifiedDealDistribution(p0 context.Context, p1 []address.Address, p2 address.Address) (*client.DealDistribution, error) {
+	return s.Internal.ClientGetVerifiedDealDistribution(p0, p1, p2)
+}
 func (s *IMarketClientStruct) ClientHasLocal(p0 context.Context, p1 cid.Cid) (bool, error) {
 	return s.Internal.ClientHasLocal(p0, p1)
 }
@@ -116,6 +121,9 @@ func (s *IMarketClientStruct) ClientListDeals(p0 context.Context) ([]client.Deal
 }
 func (s *IMarketClientStruct) ClientListImports(p0 context.Context) ([]client.Import, error) {
 	return s.Internal.ClientListImports(p0)
+}
+func (s *IMarketClientStruct) ClientListOfflineDeals(p0 context.Context) ([]client.DealInfo, error) {
+	return s.Internal.ClientListOfflineDeals(p0)
 }
 func (s *IMarketClientStruct) ClientListRetrievals(p0 context.Context) ([]client.RetrievalInfo, error) {
 	return s.Internal.ClientListRetrievals(p0)

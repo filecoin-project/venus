@@ -251,6 +251,21 @@ func (mr *MockIMarketClientMockRecorder) ClientGetRetrievalUpdates(arg0 interfac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientGetRetrievalUpdates", reflect.TypeOf((*MockIMarketClient)(nil).ClientGetRetrievalUpdates), arg0)
 }
 
+// ClientGetVerifiedDealDistribution mocks base method.
+func (m *MockIMarketClient) ClientGetVerifiedDealDistribution(arg0 context.Context, arg1 []address.Address, arg2 address.Address) (*client.DealDistribution, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientGetVerifiedDealDistribution", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*client.DealDistribution)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClientGetVerifiedDealDistribution indicates an expected call of ClientGetVerifiedDealDistribution.
+func (mr *MockIMarketClientMockRecorder) ClientGetVerifiedDealDistribution(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientGetVerifiedDealDistribution", reflect.TypeOf((*MockIMarketClient)(nil).ClientGetVerifiedDealDistribution), arg0, arg1, arg2)
+}
+
 // ClientHasLocal mocks base method.
 func (m *MockIMarketClient) ClientHasLocal(arg0 context.Context, arg1 cid.Cid) (bool, error) {
 	m.ctrl.T.Helper()
@@ -324,6 +339,21 @@ func (m *MockIMarketClient) ClientListImports(arg0 context.Context) ([]client.Im
 func (mr *MockIMarketClientMockRecorder) ClientListImports(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientListImports", reflect.TypeOf((*MockIMarketClient)(nil).ClientListImports), arg0)
+}
+
+// ClientListOfflineDeals mocks base method.
+func (m *MockIMarketClient) ClientListOfflineDeals(arg0 context.Context) ([]client.DealInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientListOfflineDeals", arg0)
+	ret0, _ := ret[0].([]client.DealInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClientListOfflineDeals indicates an expected call of ClientListOfflineDeals.
+func (mr *MockIMarketClientMockRecorder) ClientListOfflineDeals(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientListOfflineDeals", reflect.TypeOf((*MockIMarketClient)(nil).ClientListOfflineDeals), arg0)
 }
 
 // ClientListRetrievals mocks base method.

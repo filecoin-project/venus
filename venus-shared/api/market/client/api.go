@@ -91,5 +91,8 @@ type IMarketClient interface {
 	MessagerPushMessage(ctx context.Context, msg *types.Message, meta *types.MessageSendSpec) (cid.Cid, error) //perm:write
 	MessagerGetMessage(ctx context.Context, mid cid.Cid) (*types.Message, error)                               //perm:read
 
+	ClientGetVerifiedDealDistribution(ctx context.Context, providers []address.Address, client address.Address) (*client.DealDistribution, error) //perm:read
+	ClientListOfflineDeals(ctx context.Context) ([]client.DealInfo, error)                                                                        //perm:read
+
 	api.Version
 }
