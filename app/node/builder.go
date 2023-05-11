@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/venus-auth/core"
 	"github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
 	"github.com/filecoin-project/venus/app/submodule/eth"
@@ -206,7 +207,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	var ratelimiter *ratelimit.RateLimiter
 	if client != nil && cfg.RateLimitCfg.Enable {
 		if ratelimiter, err = ratelimit.NewRateLimitHandler(cfg.RateLimitCfg.Endpoint,
-			nil, &ValueFromCtx{}, jwtclient.WarpLimitFinder(client), logging.Logger("rate-limit")); err != nil {
+			nil, &core.ValueFromCtx{}, jwtclient.WarpLimitFinder(client), logging.Logger("rate-limit")); err != nil {
 			return nil, fmt.Errorf("request rate-limit is enabled, but create rate-limit handler failed:%w", err)
 		}
 		_ = logging.SetLogLevel("rate-limit", "warn")
@@ -215,14 +216,4 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.jsonRPCServiceV1 = apiBuilder.Build("v1", ratelimiter)
 	nd.jsonRPCService = apiBuilder.Build("v0", ratelimiter)
 	return nd, nil
-}
-
-type ValueFromCtx struct{}
-
-func (vfc *ValueFromCtx) AccFromCtx(ctx context.Context) (string, bool) {
-	return jwtclient.CtxGetName(ctx)
-}
-
-func (vfc *ValueFromCtx) HostFromCtx(ctx context.Context) (string, bool) {
-	return jwtclient.CtxGetTokenLocation(ctx)
 }

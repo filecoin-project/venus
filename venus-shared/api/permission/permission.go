@@ -7,24 +7,7 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/api"
 
-	"github.com/filecoin-project/go-jsonrpc/auth"
-)
-
-type permission = auth.Permission
-
-const (
-	// When changing these, update docs/API.md too
-
-	PermRead  permission = "read" // default
-	PermWrite permission = "write"
-	PermSign  permission = "sign"  // Use wallet keys for signing
-	PermAdmin permission = "admin" // Manage permissions
-
-)
-
-var (
-	AllPermissions = []auth.Permission{PermRead, PermWrite, PermSign, PermAdmin}
-	DefaultPerms   = []auth.Permission{PermRead}
+	"github.com/filecoin-project/venus-auth/core"
 )
 
 // PermissionProxy the scheduler between API and internal business
@@ -32,6 +15,7 @@ var (
 func PermissionProxy(in interface{}, out interface{}) {
 	ra := reflect.ValueOf(in)
 	outs := api.GetInternalStructs(out)
+	allPermissions := core.AdaptOldStrategy(core.PermAdmin)
 	for _, out := range outs {
 		rint := reflect.ValueOf(out).Elem()
 		for i := 0; i < ra.NumMethod(); i++ {
@@ -47,7 +31,7 @@ func PermissionProxy(in interface{}, out interface{}) {
 			}
 
 			var found bool
-			for _, perm := range AllPermissions {
+			for _, perm := range allPermissions {
 				if perm == requiredPerm {
 					found = true
 				}
@@ -60,7 +44,7 @@ func PermissionProxy(in interface{}, out interface{}) {
 			rint.FieldByName(methodName).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
 				ctx := args[0].Interface().(context.Context)
 				errNum := 0
-				if !auth.HasPerm(ctx, DefaultPerms, requiredPerm) {
+				if !core.HasPerm(ctx, []core.Permission{core.PermRead}, requiredPerm) {
 					errNum++
 					goto ABORT
 				}
