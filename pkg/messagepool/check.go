@@ -29,14 +29,14 @@ func (mp *MessagePool) CheckMessages(ctx context.Context, protos []*types.Messag
 // CheckPendingMessages performs a set of logical sets for all messages pending from a given actor
 func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Address) ([][]types.MessageCheckStatus, error) {
 	var msgs []*types.Message
-	mp.lk.Lock()
+	mp.lk.RLock()
 	mset, ok := mp.pending[from]
 	if ok {
 		for _, sm := range mset.msgs {
 			msgs = append(msgs, &sm.Message)
 		}
 	}
-	mp.lk.Unlock()
+	mp.lk.RUnlock()
 
 	if len(msgs) == 0 {
 		return nil, nil
@@ -55,7 +55,7 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 	msgMap := make(map[address.Address]map[uint64]*types.Message)
 	count := 0
 
-	mp.lk.Lock()
+	mp.lk.RLock()
 	for _, m := range replace {
 		mmap, ok := msgMap[m.From]
 		if !ok {
@@ -73,7 +73,7 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 		}
 		mmap[m.Nonce] = m
 	}
-	mp.lk.Unlock()
+	mp.lk.RUnlock()
 
 	msgs := make([]*types.Message, 0, count)
 	start := 0
@@ -100,9 +100,9 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 	if mp.api.IsLite() {
 		return nil, nil
 	}
-	mp.curTSLk.Lock()
+	mp.curTSLk.RLock()
 	curTS := mp.curTS
-	mp.curTSLk.Unlock()
+	mp.curTSLk.RUnlock()
 
 	epoch := curTS.Height() + 1
 
@@ -140,7 +140,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 
 		st, ok := state[m.From]
 		if !ok {
-			mp.lk.Lock()
+			mp.lk.RLock()
 			mset, ok := mp.pending[m.From]
 			if ok && !interned {
 				st = &actorState{nextNonce: mset.nextNonce, requiredFunds: mset.requiredFunds}
@@ -148,14 +148,14 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 					st.requiredFunds = new(stdbig.Int).Add(st.requiredFunds, m.Message.Value.Int)
 				}
 				state[m.From] = st
-				mp.lk.Unlock()
+				mp.lk.RUnlock()
 
 				check.OK = true
 				check.Hint = map[string]interface{}{
 					"nonce": st.nextNonce,
 				}
 			} else {
-				mp.lk.Unlock()
+				mp.lk.RUnlock()
 
 				stateNonce, err := mp.getStateNonce(ctx, m.From, curTS)
 				if err != nil {

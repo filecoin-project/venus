@@ -42,6 +42,7 @@ func (mp *MessagePool) SelectMessages(ctx context.Context, ts *types.TipSet, tq 
 	mp.curTSLk.Lock()
 	defer mp.curTSLk.Unlock()
 
+	//TODO confirm if we can switch to RLock here for performance
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
