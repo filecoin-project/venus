@@ -122,7 +122,7 @@ type MessagePoolEvtMessage struct { // nolint
 }
 
 type MessagePool struct {
-	lk sync.Mutex
+	lk sync.RWMutex
 
 	sm *statemanger.Stmgr
 	ds repo.Datastore
@@ -142,12 +142,12 @@ type MessagePool struct {
 	// do NOT access this map directly, use getPendingMset, setPendingMset, deletePendingMset, forEachPending, and clearPending respectively
 	pending map[address.Address]*msgSet
 
-	keyCache map[address.Address]address.Address
+	keyCache *lru.Cache[address.Address, address.Address]
 
-	curTSLk sync.Mutex // DO NOT LOCK INSIDE lk
+	curTSLk sync.RWMutex // DO NOT LOCK INSIDE lk
 	curTS   *types.TipSet
 
-	cfgLk sync.Mutex
+	cfgLk sync.RWMutex
 	cfg   *MpoolConfig
 
 	api Provider
@@ -390,6 +390,7 @@ func New(ctx context.Context,
 ) (*MessagePool, error) {
 	cache, _ := lru.New2Q[cid.Cid, crypto.Signature](constants.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q[string, struct{}](constants.VerifSigCacheSize)
+	keycache, _ := lru.New[address.Address, address.Address](1_000_000)
 
 	cfg, err := loadConfig(ctx, ds)
 	if err != nil {
@@ -410,7 +411,7 @@ func New(ctx context.Context,
 		repubTrigger:  make(chan struct{}, 1),
 		localAddrs:    make(map[address.Address]struct{}),
 		pending:       make(map[address.Address]*msgSet),
-		keyCache:      make(map[address.Address]address.Address),
+		keyCache:      keycache,
 		minGasPrice:   big.NewInt(0),
 		pruneTrigger:  make(chan struct{}, 1),
 		pruneCooldown: make(chan struct{}, 1),
@@ -472,8 +473,8 @@ func New(ctx context.Context,
 
 func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (address.Address, error) {
 	// check the cache
-	a, f := mp.keyCache[addr]
-	if f {
+	a, ok := mp.keyCache.Get(addr)
+	if ok {
 		return a, nil
 	}
 
@@ -484,8 +485,8 @@ func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (
 	}
 
 	// place both entries in the cache (may both be key addresses, which is fine)
-	mp.keyCache[addr] = ka
-	mp.keyCache[ka] = ka
+	mp.keyCache.Add(addr, ka)
+	mp.keyCache.Add(ka, ka)
 
 	return ka, nil
 }
@@ -822,7 +823,28 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 		<-mp.addSema
 	}()
 
+	mp.curTSLk.RLock()
+	tmpCurTS := mp.curTS
+	mp.curTSLk.RUnlock()
+
+	//ensures computations are cached without holding lock
+	_, _ = mp.api.GetActorAfter(ctx, m.Message.From, tmpCurTS)
+	_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTS)
+
 	mp.curTSLk.Lock()
+	if tmpCurTS == mp.curTS {
+		//with the lock enabled, mp.curTs is the same Ts as we just had, so we know that our computations are cached
+	} else {
+		//curTs has been updated so we want to cache the new one:
+		tmpCurTS = mp.curTS
+		//we want to release the lock, cache the computations then grab it again
+		mp.curTSLk.Unlock()
+		_, _ = mp.api.GetActorAfter(ctx, m.Message.From, tmpCurTS)
+		_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTS)
+		mp.curTSLk.Lock()
+		//now that we have the lock, we continue, we could do this as a loop forever, but that's bad to loop forever, and this was added as an optimization and it seems once is enough because the computation < block time
+	}
+
 	defer mp.curTSLk.Unlock()
 
 	_, err = mp.addTS(ctx, m, mp.curTS, false, false)
@@ -909,9 +931,6 @@ func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS 
 		return false, fmt.Errorf("minimum expected nonce is %d: %v", snonce, ErrNonceTooLow)
 	}
 
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
-
 	senderAct, err := mp.api.GetActorAfter(ctx, m.Message.From, curTS)
 	if err != nil {
 		return false, fmt.Errorf("failed to get sender actor: %w", err)
@@ -925,6 +944,9 @@ func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS 
 	if !consensus.IsValidForSending(nv, senderAct) {
 		return false, fmt.Errorf("sender actor %s is not a valid top-level sender", m.Message.From)
 	}
+
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
 
 	publish, err := mp.verifyMsgBeforeAdd(ctx, m, curTS, local)
 	if err != nil {
@@ -1059,19 +1081,19 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 }
 
 func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address, _ types.TipSetKey) (uint64, error) {
-	mp.curTSLk.Lock()
-	defer mp.curTSLk.Unlock()
+	mp.curTSLk.RLock()
+	defer mp.curTSLk.RUnlock()
 
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
+	mp.lk.RLock()
+	defer mp.lk.RUnlock()
 
 	return mp.getNonceLocked(ctx, addr, mp.curTS)
 }
 
 // GetActor should not be used. It is only here to satisfy interface mess caused by lite node handling
 func (mp *MessagePool) GetActor(ctx context.Context, addr address.Address, _ types.TipSetKey) (*types.Actor, error) {
-	mp.curTSLk.Lock()
-	defer mp.curTSLk.Unlock()
+	mp.curTSLk.RLock()
+	defer mp.curTSLk.RUnlock()
 	return mp.api.GetActorAfter(ctx, addr, mp.curTS)
 }
 
@@ -1206,11 +1228,11 @@ func (mp *MessagePool) remove(ctx context.Context, from address.Address, nonce u
 }
 
 func (mp *MessagePool) Pending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet) {
-	mp.curTSLk.Lock()
-	defer mp.curTSLk.Unlock()
+	mp.curTSLk.RLock()
+	defer mp.curTSLk.RUnlock()
 
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
+	mp.lk.RLock()
+	defer mp.lk.RUnlock()
 
 	return mp.allPending(ctx)
 }
@@ -1225,11 +1247,11 @@ func (mp *MessagePool) allPending(ctx context.Context) ([]*types.SignedMessage, 
 }
 
 func (mp *MessagePool) PendingFor(ctx context.Context, a address.Address) ([]*types.SignedMessage, *types.TipSet) {
-	mp.curTSLk.Lock()
-	defer mp.curTSLk.Unlock()
+	mp.curTSLk.RLock()
+	defer mp.curTSLk.RUnlock()
 
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
+	mp.lk.RLock()
+	defer mp.lk.RUnlock()
 	return mp.pendingFor(ctx, a), mp.curTS
 }
 
@@ -1278,9 +1300,9 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 
 	maybeRepub := func(cid cid.Cid) {
 		if !repubTrigger {
-			mp.lk.Lock()
+			mp.lk.RLock()
 			_, republished := mp.republished[cid]
-			mp.lk.Unlock()
+			mp.lk.RUnlock()
 			if republished {
 				repubTrigger = true
 			}
@@ -1352,9 +1374,9 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 	}
 
 	if len(revert) > 0 && futureDebug {
-		mp.lk.Lock()
+		mp.lk.RLock()
 		msgs, ts := mp.allPending(ctx)
-		mp.lk.Unlock()
+		mp.lk.RUnlock()
 
 		buckets := map[address.Address]*statBucket{}
 
