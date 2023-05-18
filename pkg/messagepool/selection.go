@@ -46,6 +46,16 @@ func (mp *MessagePool) SelectMessages(ctx context.Context, ts *types.TipSet, tq 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
+	// See if we need to prune before selection; excessive buildup can lead to slow selection,
+	// so prune if we have too many messages (ignoring the cooldown).
+	mpCfg := mp.cfg
+	if mp.currentSize > mpCfg.SizeLimitHigh {
+		log.Infof("too many messages; pruning before selection")
+		if err := mp.pruneMessages(ctx, ts); err != nil {
+			log.Warnf("error pruning excess messages: %s", err)
+		}
+	}
+
 	// Load messages for the target tipset; if it is the same as the current tipset in the mpool
 	//    then this is just the pending messages
 	pending, err := mp.getPendingMessages(ctx, mp.curTS, ts)
