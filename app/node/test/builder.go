@@ -80,6 +80,7 @@ func (b *NodeBuilder) Build(ctx context.Context) *node.Node {
 	for _, opt := range b.configMutations {
 		opt(repo.Config())
 	}
+	b.requireNoError(node.Init(ctx, repo, b.gif))
 
 	// Initialize the node.
 	repoConfigOpts, err := node.OptionsFromRepo(repo)
