@@ -22,8 +22,6 @@ import (
 type NodeBuilder struct {
 	// Initialisation function for the genesis block and state.
 	gif genesis.InitFunc
-	// Options to the repo initialisation.
-	initOpts []node.InitOpt
 	// Mutations to be applied to node config after initialisation.
 	configMutations []node.ConfigOpt
 	// Mutations to be applied to the node builder config before building.
@@ -35,8 +33,7 @@ type NodeBuilder struct {
 // NewNodeBuilder creates a new node builder.
 func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 	return &NodeBuilder{
-		gif:      gengen.MakeGenesisFunc(gengen.NetworkName("gfctest")),
-		initOpts: []node.InitOpt{},
+		gif: gengen.MakeGenesisFunc(gengen.NetworkName("gfctest")),
 		configMutations: []node.ConfigOpt{
 			// Default configurations that make sense for integration tests.
 			// The can be overridden by subsequent `withConfigChanges`.
@@ -62,12 +59,6 @@ func (b *NodeBuilder) WithGenesisInit(gif genesis.InitFunc) *NodeBuilder {
 	return b
 }
 
-// WithInitOpt adds one or more options to repo initialisation.
-func (b *NodeBuilder) WithInitOpt(opts ...node.InitOpt) *NodeBuilder {
-	b.initOpts = append(b.initOpts, opts...)
-	return b
-}
-
 // WithBuilderOpt adds one or more node building options to node creation.
 func (b *NodeBuilder) WithBuilderOpt(opts ...node.BuilderOpt) *NodeBuilder {
 	b.builderOpts = append(b.builderOpts, opts...)
@@ -89,7 +80,7 @@ func (b *NodeBuilder) Build(ctx context.Context) *node.Node {
 	for _, opt := range b.configMutations {
 		opt(repo.Config())
 	}
-	b.requireNoError(node.Init(ctx, repo, b.gif, b.initOpts...))
+	b.requireNoError(node.Init(ctx, repo, b.gif))
 
 	// Initialize the node.
 	repoConfigOpts, err := node.OptionsFromRepo(repo)
