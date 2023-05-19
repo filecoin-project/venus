@@ -16,6 +16,8 @@ import (
 
 const defaultPeerKeyBits = 2048
 
+const peerPrivateKey = "self"
+
 // initCfg contains configuration for initializing a node's repo.
 type initCfg struct {
 	initImports []*key.KeyInfo
@@ -71,7 +73,7 @@ func createPeerKey(store fskeystore.Keystore) (acrypto.PrivKey, error) {
 		return nil, err
 	}
 
-	if err := store.Put("self", kbytes); err != nil {
+	if err := store.Put(peerPrivateKey, kbytes); err != nil && !errors.Is(err, fskeystore.ErrKeyExists) {
 		return nil, errors.Wrap(err, "failed to store private key")
 	}
 	return pk, nil
