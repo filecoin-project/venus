@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/filecoin-project/venus/pkg/repo/fskeystore"
-	"github.com/filecoin-project/venus/pkg/wallet/key"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	acrypto "github.com/libp2p/go-libp2p/core/crypto"
@@ -18,31 +17,11 @@ const defaultPeerKeyBits = 2048
 
 const peerPrivateKey = "self"
 
-// initCfg contains configuration for initializing a node's repo.
-type initCfg struct {
-	initImports []*key.KeyInfo
-}
-
-// InitOpt is an option for initialization of a node's repo.
-type InitOpt func(*initCfg)
-
-// ImportKeyOpt imports the provided key during initialization.
-func ImportKeyOpt(ki *key.KeyInfo) InitOpt {
-	return func(opts *initCfg) {
-		opts.initImports = append(opts.initImports, ki)
-	}
-}
-
 // Init initializes a Filecoin repo with genesis state and keys.
 // This will always set the configuration for wallet default address (to the specified default
 // key or a newly generated one), but otherwise leave the repo's config object intact.
 // Make further configuration changes after initialization.
-func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc, opts ...InitOpt) error {
-	cfg := new(initCfg)
-	for _, o := range opts {
-		o(cfg)
-	}
-
+func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc) error {
 	bs := r.Datastore()
 	cst := cbor.NewCborStore(bs)
 	_, err := genesis.Init(ctx, r, bs, cst, gen)

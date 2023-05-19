@@ -106,13 +106,6 @@ func (cs *ChainSeed) Addr(t *testing.T, key int) address.Address {
 	return a
 }
 
-// KeyInitOpt is a node init option that imports one of the chain seed's
-// keys to a node's wallet
-func (cs *ChainSeed) KeyInitOpt(which int) node.InitOpt {
-	kinfo := cs.info.Keys[which]
-	return node.ImportKeyOpt(kinfo)
-}
-
 // FixtureChainSeed returns the genesis function that
 func FixtureChainSeed(t *testing.T) *ChainSeed {
 	return MakeChainSeed(t, &fortest.TestGenGenConfig)

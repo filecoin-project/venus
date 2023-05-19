@@ -25,8 +25,6 @@ func TestMessageSend(t *testing.T) {
 	cs := test.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
 	builder.WithConfig(test.DefaultAddressConfigOpt(defaultAddr))
-	builder.WithInitOpt(cs.KeyInitOpt(1))
-	builder.WithInitOpt(cs.KeyInitOpt(0))
 
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
