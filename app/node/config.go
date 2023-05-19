@@ -34,7 +34,7 @@ func OptionsFromRepo(r repo.Repo) ([]BuilderOpt, error) {
 }
 
 func loadPrivKeyFromKeystore(r repo.Repo) (ci.PrivKey, error) {
-	data, err := r.Keystore().Get("self")
+	data, err := r.Keystore().Get(peerPrivateKey)
 	if err != nil {
 		if err.Error() == "no key by the given name was found" {
 			return createPeerKey(r.Keystore())
@@ -47,23 +47,3 @@ func loadPrivKeyFromKeystore(r repo.Repo) (ci.PrivKey, error) {
 	}
 	return sk, nil
 }
-
-/*func initPeerKey(store fskeystore.Keystore, pk acrypto.PrivKey) error {
-	var err error
-	if pk == nil {
-		pk, _, err = acrypto.GenerateKeyPair(acrypto.RSA, defaultPeerKeyBits)
-		if err != nil {
-			return errors.Wrap(err, "failed to create peer key")
-		}
-	}
-
-	kbytes, err := acrypto.MarshalPrivateKey(pk)
-	if err != nil {
-		return err
-	}
-
-	if err := store.Put("self", kbytes); err != nil {
-		return errors.Wrap(err, "failed to store private key")
-	}
-	return nil
-}*/

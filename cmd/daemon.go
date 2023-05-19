@@ -112,7 +112,7 @@ var daemonCmd = &cmds.Command{
 				return err
 			}
 
-			if err = initRun(req); err != nil {
+			if err = initRun(req, repoDir); err != nil {
 				return err
 			}
 		}
@@ -121,12 +121,7 @@ var daemonCmd = &cmds.Command{
 	},
 }
 
-func initRun(req *cmds.Request) error {
-	repoDir, _ := req.Options[OptionRepoDir].(string)
-	err := repo.WriteVersion(repoDir, repo.LatestVersion)
-	if err != nil {
-		return err
-	}
+func initRun(req *cmds.Request, repoDir string) error {
 	rep, err := getRepo(repoDir)
 	if err != nil {
 		return err
