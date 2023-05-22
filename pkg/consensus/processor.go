@@ -111,6 +111,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			TipSetGetter:         vmOpts.TipSetGetter,
 			Tracing:              vmOpts.Tracing,
 			ActorDebugging:       vmOpts.ActorDebugging,
+			ReturnEvents:         vmOpts.ReturnEvents,
 		}
 
 		return fvm.NewVM(ctx, vmOpt)
