@@ -83,8 +83,11 @@ var stateWaitMsgCmd = &cmds.Command{
 			writer.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
 			writer.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
 			writer.Printf("Return: %x\n", mw.Receipt.Return)
+			if mw.Receipt.EventsRoot != nil {
+				writer.Printf("\nEvents Root: %s", mw.Receipt.EventsRoot)
+			}
 		} else {
-			writer.Printf("Unable to find message recepit of %s", cid)
+			writer.Printf("Unable to find message receipt of %s\n", cid)
 		}
 
 		return re.Emit(buf)
@@ -116,8 +119,11 @@ var stateSearchMsgCmd = &cmds.Command{
 			writer.Printf("\nExit Code: %d", mw.Receipt.ExitCode)
 			writer.Printf("\nGas Used: %d", mw.Receipt.GasUsed)
 			writer.Printf("\nReturn: %x", mw.Receipt.Return)
+			if mw.Receipt.EventsRoot != nil {
+				writer.Printf("\nEvents Root: %s", mw.Receipt.EventsRoot)
+			}
 		} else {
-			writer.Print("message was not found on chain")
+			writer.Println("message was not found on chain")
 		}
 
 		return re.Emit(buf)

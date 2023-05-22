@@ -37,6 +37,7 @@ var chainCmd = &cmds.Command{
 		"get-receipts":       chainGetReceiptsCmd,
 		"disputer":           chainDisputeSetCmd,
 		"export":             chainExportCmd,
+		"read-obj":           chainReadObjCmd,
 	},
 }
 
@@ -45,6 +46,32 @@ type ChainHeadResult struct {
 	ParentWeight big.Int
 	Cids         []cid.Cid
 	Timestamp    string
+}
+
+var chainReadObjCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Read the raw bytes of an object",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("objectCid", true, false, "object cid"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if len(req.Arguments) == 0 {
+			return fmt.Errorf("must pass object cid")
+		}
+		objectCid, err := cid.Parse(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		ctx := ReqContext(req.Context)
+		obj, err := env.(*node.Env).BlockStoreAPI.ChainReadObj(ctx, objectCid)
+		if err != nil {
+			return err
+		}
+
+		return printOneString(re, fmt.Sprintf("%x", obj))
+	},
 }
 
 var chainHeadCmd = &cmds.Command{
