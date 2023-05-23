@@ -257,8 +257,10 @@ jobs:
           cargo install cargo-lipo
 
       - name: Build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          go clean --modcache && make
+          make
           mkdir ./release
           if [[ "${{steps.vars.outputs.repo_name}}" == "venus-market" ]]; then
             mv ./market-client ./venus-market ./release
@@ -268,6 +270,7 @@ jobs:
           fi
 
       - name: Zip Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: TheDoctor0/zip-release@0.6.0
         with:
           filename: ${{steps.vars.outputs.artifact_name}}
