@@ -372,6 +372,10 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 			gasLimitOverestimation = estimateMessage.Spec.GasOverEstimation
 		}
 		estimateMessage.Msg.GasLimit = int64(float64(gasLimit) * gasLimitOverestimation)
+		// Gas overestimation can cause us to exceed the block gas limit, cap it.
+		if estimateMessage.Msg.GasLimit > constants.BlockGasLimit {
+			estimateMessage.Msg.GasLimit = constants.BlockGasLimit
+		}
 	}
 
 	if estimateMessage.Msg.GasPremium == types.EmptyInt || types.BigCmp(estimateMessage.Msg.GasPremium, types.NewInt(0)) == 0 {
@@ -441,6 +445,10 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 				continue
 			}
 			estimateMsg.GasLimit = int64(float64(gasUsed) * estimateMessage.Spec.GasOverEstimation)
+			// Gas overestimation can cause us to exceed the block gas limit, cap it.
+			if estimateMsg.GasLimit > constants.BlockGasLimit {
+				estimateMsg.GasLimit = constants.BlockGasLimit
+			}
 		}
 
 		if estimateMsg.GasPremium == types.EmptyInt || types.BigCmp(estimateMsg.GasPremium, types.NewInt(0)) == 0 {
