@@ -31,6 +31,7 @@ type Provider interface {
 	SubscribeHeadChanges(context.Context, func(rev, app []*types.TipSet) error) *types.TipSet
 	PutMessage(context.Context, types.ChainMsg) (cid.Cid, error)
 	PubSubPublish(context.Context, string, []byte) error
+	GetActorBefore(address.Address, *types.TipSet) (*types.Actor, error)
 	GetActorAfter(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
 	StateAccountKeyAtFinality(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateNetworkVersion(context.Context, abi.ChainEpoch) network.Version
@@ -72,6 +73,22 @@ func (mpp *mpoolProvider) IsLite() bool {
 	return mpp.lite != nil
 }
 
+func (mpp *mpoolProvider) getActorLite(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	if !mpp.IsLite() {
+		return nil, errors.New("should not use getActorLite on non lite Provider")
+	}
+	n, err := mpp.lite.GetNonce(ctx, addr, ts.Key())
+	if err != nil {
+		return nil, fmt.Errorf("getting nonce over lite: %w", err)
+	}
+	a, err := mpp.lite.GetActor(ctx, addr, ts.Key())
+	if err != nil {
+		return nil, fmt.Errorf("getting actor over lite: %w", err)
+	}
+	a.Nonce = n
+	return a, nil
+}
+
 func (mpp *mpoolProvider) SubscribeHeadChanges(ctx context.Context, cb func(rev, app []*types.TipSet) error) *types.TipSet {
 	mpp.sm.SubscribeHeadChanges(
 		chain.WrapHeadChangeCoalescer(
@@ -99,18 +116,29 @@ func (mpp *mpoolProvider) PubSubPublish(ctx context.Context, k string, v []byte)
 	return mpp.ps.Publish(k, v) // nolint
 }
 
+func (mpp *mpoolProvider) GetActorBefore(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	ctx := context.TODO()
+
+	if mpp.IsLite() {
+		return mpp.getActorLite(ctx, addr, ts)
+	}
+
+	_, st, err := mpp.stmgr.ParentState(ctx, ts)
+	if err != nil {
+		return nil, fmt.Errorf("computing tipset state for GetActor: %v", err)
+	}
+
+	act, found, err := st.GetActor(ctx, addr)
+	if !found {
+		err = types.ErrActorNotFound
+	}
+
+	return act, err
+}
+
 func (mpp *mpoolProvider) GetActorAfter(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, error) {
 	if mpp.IsLite() {
-		n, err := mpp.lite.GetNonce(ctx, addr, ts.Key())
-		if err != nil {
-			return nil, fmt.Errorf("getting nonce over lite: %w", err)
-		}
-		a, err := mpp.lite.GetActor(ctx, addr, ts.Key())
-		if err != nil {
-			return nil, fmt.Errorf("getting actor over lite: %w", err)
-		}
-		a.Nonce = n
-		return a, nil
+		return mpp.getActorLite(context.TODO(), addr, ts)
 	}
 
 	st, err := mpp.stmgr.TipsetState(ctx, ts)
@@ -120,7 +148,7 @@ func (mpp *mpoolProvider) GetActorAfter(ctx context.Context, addr address.Addres
 
 	act, found, err := st.GetActor(ctx, addr)
 	if !found {
-		err = errors.New("actor not found")
+		err = types.ErrActorNotFound
 	}
 
 	return act, err

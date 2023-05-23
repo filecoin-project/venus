@@ -172,6 +172,8 @@ type MessagePool struct {
 
 	sigValCache *lru.TwoQueueCache[string, struct{}]
 
+	stateNonceCache *lru.Cache[stateNonceCacheKey, uint64]
+
 	evtTypes [3]journal.EventType
 	journal  journal.Journal
 
@@ -180,6 +182,11 @@ type MessagePool struct {
 
 	GetMaxFee  DefaultMaxFeeFunc
 	PriceCache *GasPriceCache
+}
+
+type stateNonceCacheKey struct {
+	tsk  types.TipSetKey
+	addr address.Address
 }
 
 func newDefaultMaxFeeFunc(maxFee types.FIL) DefaultMaxFeeFunc {
@@ -391,6 +398,7 @@ func New(ctx context.Context,
 	cache, _ := lru.New2Q[cid.Cid, crypto.Signature](constants.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q[string, struct{}](constants.VerifSigCacheSize)
 	keycache, _ := lru.New[address.Address, address.Address](1_000_000)
+	stateNonceCache, _ := lru.New[stateNonceCacheKey, uint64](32768) // 32k * ~200 bytes = 6MB
 
 	cfg, err := loadConfig(ctx, ds)
 	if err != nil {
@@ -404,25 +412,26 @@ func New(ctx context.Context,
 	setRepublishInterval(networkParams.PropagationDelaySecs)
 
 	mp := &MessagePool{
-		ds:            ds,
-		addSema:       make(chan struct{}, 1),
-		closer:        make(chan struct{}),
-		repubTk:       constants.Clock.Ticker(RepublishInterval),
-		repubTrigger:  make(chan struct{}, 1),
-		localAddrs:    make(map[address.Address]struct{}),
-		pending:       make(map[address.Address]*msgSet),
-		keyCache:      keycache,
-		minGasPrice:   big.NewInt(0),
-		pruneTrigger:  make(chan struct{}, 1),
-		pruneCooldown: make(chan struct{}, 1),
-		blsSigCache:   cache,
-		sigValCache:   verifcache,
-		changes:       lps.New(50),
-		localMsgs:     namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
-		api:           api,
-		sm:            sm,
-		netName:       netName,
-		cfg:           cfg,
+		ds:              ds,
+		addSema:         make(chan struct{}, 1),
+		closer:          make(chan struct{}),
+		repubTk:         constants.Clock.Ticker(RepublishInterval),
+		repubTrigger:    make(chan struct{}, 1),
+		localAddrs:      make(map[address.Address]struct{}),
+		pending:         make(map[address.Address]*msgSet),
+		keyCache:        keycache,
+		minGasPrice:     big.NewInt(0),
+		pruneTrigger:    make(chan struct{}, 1),
+		pruneCooldown:   make(chan struct{}, 1),
+		blsSigCache:     cache,
+		sigValCache:     verifcache,
+		stateNonceCache: stateNonceCache,
+		changes:         lps.New(50),
+		localMsgs:       namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
+		api:             api,
+		sm:              sm,
+		netName:         netName,
+		cfg:             cfg,
 		evtTypes: [...]journal.EventType{
 			evtTypeMpoolAdd:    j.RegisterEventType("mpool", "add"),
 			evtTypeMpoolRemove: j.RegisterEventType("mpool", "remove"),
@@ -1123,12 +1132,52 @@ func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address,
 }
 
 func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, curTS *types.TipSet) (uint64, error) {
-	act, err := mp.api.GetActorAfter(ctx, addr, curTS)
+	nk := stateNonceCacheKey{
+		tsk:  curTS.Key(),
+		addr: addr,
+	}
+
+	n, ok := mp.stateNonceCache.Get(nk)
+	if ok {
+		return n, nil
+	}
+
+	// get the nonce from the actor before ts
+	actor, err := mp.api.GetActorBefore(addr, curTS)
+	if err != nil {
+		return 0, err
+	}
+	nextNonce := actor.Nonce
+
+	raddr, err := mp.resolveToKey(ctx, addr)
 	if err != nil {
 		return 0, err
 	}
 
-	return act.Nonce, nil
+	// loop over all messages sent by 'addr' and find the highest nonce
+	messages, err := mp.api.MessagesForTipset(ctx, curTS)
+	if err != nil {
+		return 0, err
+	}
+	for _, message := range messages {
+		msg := message.VMMessage()
+
+		maddr, err := mp.resolveToKey(ctx, msg.From)
+		if err != nil {
+			log.Warnf("failed to resolve message from address: %s", err)
+			continue
+		}
+
+		if maddr == raddr {
+			if n := msg.Nonce + 1; n > nextNonce {
+				nextNonce = n
+			}
+		}
+	}
+
+	mp.stateNonceCache.Add(nk, nextNonce)
+
+	return nextNonce, nil
 }
 
 func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (big.Int, error) {
