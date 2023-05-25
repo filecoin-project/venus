@@ -1369,7 +1369,7 @@ Response:
   },
   "ID": 5,
   "Selector": {
-    "Raw": "Ynl0ZSBhcnJheQ=="
+    "Node": null
   },
   "PieceCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -1719,7 +1719,7 @@ Response:
     },
     "ID": 5,
     "Selector": {
-      "Raw": "Ynl0ZSBhcnJheQ=="
+      "Node": null
     },
     "PieceCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"

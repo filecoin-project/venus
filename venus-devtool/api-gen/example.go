@@ -13,7 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -298,6 +298,8 @@ func init() {
 	percent := types.Percent(123)
 	addExample(percent)
 	addExample(&percent)
+
+	addExample(retrievalmarket.CborGenCompatibleNode{})
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

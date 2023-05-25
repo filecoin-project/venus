@@ -10,7 +10,7 @@ import (
 	time "time"
 
 	address "github.com/filecoin-project/go-address"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	piecestore "github.com/filecoin-project/go-fil-markets/piecestore"
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	abi "github.com/filecoin-project/go-state-types/abi"

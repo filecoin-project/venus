@@ -10,11 +10,11 @@ import (
 	dchain "github.com/drand/drand/chain"
 	dclient "github.com/drand/drand/client"
 	hclient "github.com/drand/drand/client/http"
+	"github.com/drand/drand/common/scheme"
 	dlog "github.com/drand/drand/log"
 	"github.com/drand/kyber"
-	kzap "github.com/go-kit/kit/log/zap"
 	lru "github.com/hashicorp/golang-lru/v2"
-	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -51,15 +51,24 @@ type DrandHTTPClient interface {
 	SetUserAgent(string)
 }
 
+type logger struct {
+	*zap.SugaredLogger
+}
+
+func (l *logger) With(args ...interface{}) dlog.Logger {
+	return &logger{l.SugaredLogger.With(args...)}
+}
+
+func (l *logger) Named(s string) dlog.Logger {
+	return &logger{l.SugaredLogger.Named(s)}
+}
+
 // NewDrandBeacon create new beacon client from config, genesis block time and block delay
 func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*DrandBeacon, error) {
 	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(config.ChainInfoJSON)))
 	if err != nil {
 		return nil, fmt.Errorf("unable to unmarshal drand chain info: %w", err)
 	}
-
-	dlogger := dlog.NewKitLoggerFrom(kzap.NewZapSugarLogger(
-		log.SugaredLogger.Desugar(), zapcore.InfoLevel))
 
 	var clients []dclient.Client
 	for _, url := range config.Servers {
@@ -75,7 +84,7 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 	opts := []dclient.Option{
 		dclient.WithChainInfo(drandChain),
 		dclient.WithCacheSize(1024),
-		dclient.WithLogger(dlogger),
+		dclient.WithLogger(&logger{&log.SugaredLogger}),
 	}
 
 	log.Info("drand beacon without pubsub")
@@ -162,7 +171,7 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 		Round:       curr.Round,
 		Signature:   curr.Data,
 	}
-	err := dchain.VerifyBeacon(db.pubkey, b)
+	err := dchain.NewVerifier(scheme.GetSchemeFromEnv()).VerifyBeacon(*b, db.pubkey)
 	if err == nil {
 		db.cacheValue(curr)
 	}

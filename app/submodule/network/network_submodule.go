@@ -36,10 +36,10 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
-	dtnet "github.com/filecoin-project/go-data-transfer/network"
-	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
+	dtimpl "github.com/filecoin-project/go-data-transfer/v2/impl"
+	dtnet "github.com/filecoin-project/go-data-transfer/v2/network"
+	dtgstransport "github.com/filecoin-project/go-data-transfer/v2/transport/graphsync"
 	"github.com/ipfs/go-libipfs/bitswap"
 
 	"github.com/filecoin-project/venus/pkg/chain"
