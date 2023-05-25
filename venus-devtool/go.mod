@@ -1,6 +1,6 @@
 module github.com/filecoin-project/venus/venus-devtool
 
-go 1.18
+go 1.19
 
 require (
 	github.com/filecoin-project/go-address v1.1.0
