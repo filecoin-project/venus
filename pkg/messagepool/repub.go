@@ -22,18 +22,21 @@ var RepublishBatchDelay = 100 * time.Millisecond
 func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 	mp.curTSLk.RLock()
 	ts := mp.curTS
+	mp.curTSLk.RUnlock()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
-	mp.curTSLk.RUnlock()
 	if err != nil {
 		return fmt.Errorf("computing basefee: %v", err)
 	}
 	baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactor)
 
 	pending := make(map[address.Address]map[uint64]*types.SignedMessage)
-	mp.curTSLk.Lock()
+
 	mp.lk.Lock()
 	mp.republished = nil // clear this to avoid races triggering an early republish
+	mp.lk.Unlock()
+
+	mp.lk.RLock()
 	for actor := range mp.localAddrs {
 		mset, ok := mp.pending[actor]
 		if !ok {
@@ -49,8 +52,7 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 		}
 		pending[actor] = pend
 	}
-	mp.lk.Unlock()
-	mp.curTSLk.Unlock()
+	mp.lk.RUnlock()
 
 	if len(pending) == 0 {
 		return nil
@@ -173,8 +175,8 @@ LOOP:
 		republished[m.Cid()] = struct{}{}
 	}
 
-	mp.lk.Lock()
 	// update the republished set so that we can trigger early republish from head changes
+	mp.lk.Lock()
 	mp.republished = republished
 	mp.lk.Unlock()
 
