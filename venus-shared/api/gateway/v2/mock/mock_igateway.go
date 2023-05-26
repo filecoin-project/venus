@@ -248,11 +248,12 @@ func (mr *MockIGatewayMockRecorder) ResponseWalletEvent(arg0, arg1 interface{}) 
 }
 
 // SectorsUnsealPiece mocks base method.
-func (m *MockIGateway) SectorsUnsealPiece(arg0 context.Context, arg1 address.Address, arg2 cid.Cid, arg3 abi.SectorNumber, arg4 types.PaddedByteIndex, arg5 abi.PaddedPieceSize, arg6 string) error {
+func (m *MockIGateway) SectorsUnsealPiece(arg0 context.Context, arg1 address.Address, arg2 cid.Cid, arg3 abi.SectorNumber, arg4 types.UnpaddedByteIndex, arg5 abi.UnpaddedPieceSize, arg6 string) (gateway.UnsealState, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SectorsUnsealPiece", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(gateway.UnsealState)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // SectorsUnsealPiece indicates an expected call of SectorsUnsealPiece.

@@ -107,15 +107,15 @@ type IWalletEventStruct struct {
 
 type IMarketClientStruct struct {
 	Internal struct {
-		ListMarketConnectionsState func(ctx context.Context) ([]gtypes.MarketConnectionState, error)                                                                                                   `perm:"admin"`
-		SectorsUnsealPiece         func(ctx context.Context, miner address.Address, pieceCid cid.Cid, sid abi.SectorNumber, offset types.PaddedByteIndex, size abi.PaddedPieceSize, dest string) error `perm:"admin"`
+		ListMarketConnectionsState func(ctx context.Context) ([]gtypes.MarketConnectionState, error)                                                                                                                             `perm:"admin"`
+		SectorsUnsealPiece         func(ctx context.Context, miner address.Address, pieceCid cid.Cid, sid abi.SectorNumber, offset types.UnpaddedByteIndex, size abi.UnpaddedPieceSize, dest string) (gtypes.UnsealState, error) `perm:"admin"`
 	}
 }
 
 func (s *IMarketClientStruct) ListMarketConnectionsState(p0 context.Context) ([]gtypes.MarketConnectionState, error) {
 	return s.Internal.ListMarketConnectionsState(p0)
 }
-func (s *IMarketClientStruct) SectorsUnsealPiece(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 abi.SectorNumber, p4 types.PaddedByteIndex, p5 abi.PaddedPieceSize, p6 string) error {
+func (s *IMarketClientStruct) SectorsUnsealPiece(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 abi.SectorNumber, p4 types.UnpaddedByteIndex, p5 abi.UnpaddedPieceSize, p6 string) (gtypes.UnsealState, error) {
 	return s.Internal.SectorsUnsealPiece(p0, p1, p2, p3, p4, p5, p6)
 }
 
