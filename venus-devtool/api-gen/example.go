@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/venus/venus-shared/types/gateway"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 	auuid "github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -298,6 +299,8 @@ func init() {
 	percent := types.Percent(123)
 	addExample(percent)
 	addExample(&percent)
+	addExample(gateway.UnsealStateFinished)
+	addExample(types.UnpaddedByteIndex(0))
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

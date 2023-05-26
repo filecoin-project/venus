@@ -17,12 +17,20 @@ type UnsealRequest struct {
 	PieceCid cid.Cid
 	Miner    address.Address
 	Sid      abi.SectorNumber
-	Offset   types.PaddedByteIndex
-	Size     abi.PaddedPieceSize
+	Offset   types.UnpaddedByteIndex
+	Size     abi.UnpaddedPieceSize
 	Dest     string
 }
 
-type UnsealResponse struct{}
+type UnsealState string
+
+const (
+	UnsealStateSet       UnsealState = "set_up"
+	UnsealStateFinished  UnsealState = "finished"
+	UnsealStateFailed    UnsealState = "failed"
+	UnsealStateUnsealing UnsealState = "unsealing"
+	UnsealStateUploading UnsealState = "uploading"
+)
 
 type MarketConnectionState struct {
 	Addr address.Address
