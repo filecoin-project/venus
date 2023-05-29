@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	builtin2 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -341,18 +340,6 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 		log.Infof("overestimate gas around the upgrade msg: %v, transitional multi: %v", msg, transitionalMulti)
 	}
 	ret = (ret * int64(transitionalMulti*1024)) >> 10
-
-	// Special case for PaymentChannel collect, which is deleting actor
-	// We ignore errors in this special case since they CAN occur,
-	// and we just want to detect existing payment channel actors
-	_, st, err := mp.sm.ParentState(ctx, ts)
-	if err == nil {
-		act, found, err := st.GetActor(ctx, msg.To)
-		if err == nil && found && builtin.IsPaymentChannelActor(act.Code) && msgIn.Method == builtin2.MethodsPaych.Collect {
-			// add the refunded gas for DestroyActor back into the gas used
-			ret += 76e3
-		}
-	}
 
 	return ret, nil
 }
