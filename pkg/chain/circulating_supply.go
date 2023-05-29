@@ -40,8 +40,7 @@ type CirculatingSupplyCalculator struct {
 	postIgnitionVesting []msig0.State
 	postCalicoVesting   []msig0.State
 
-	genesisPledge      abi.TokenAmount
-	genesisMarketFunds abi.TokenAmount
+	genesisPledge abi.TokenAmount
 
 	genesisMsigLk sync.Mutex
 	upgradeConfig *config.ForkUpgradeConfig
@@ -144,17 +143,13 @@ func (caculator *CirculatingSupplyCalculator) setupGenesisVestingSchedule(ctx co
 		return fmt.Errorf("loading state tree: %v", err)
 	}
 
-	gmf, err := getFilMarketLocked(ctx, sTree)
-	if err != nil {
-		return fmt.Errorf("setting up genesis market funds: %v", err)
-	}
-
 	gp, err := getFilPowerLocked(ctx, sTree)
 	if err != nil {
 		return fmt.Errorf("setting up genesis pledge: %v", err)
 	}
 
-	caculator.genesisMarketFunds = gmf
+	caculator.genesisMsigLk.Lock()
+	defer caculator.genesisMsigLk.Unlock()
 	caculator.genesisPledge = gp
 
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
@@ -220,6 +215,8 @@ func (caculator *CirculatingSupplyCalculator) setupPostIgnitionVesting(ctx conte
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
+	caculator.genesisMsigLk.Lock()
+	defer caculator.genesisMsigLk.Unlock()
 	caculator.postIgnitionVesting = make([]msig0.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
 		ns := msig0.State{
@@ -269,6 +266,9 @@ func (caculator *CirculatingSupplyCalculator) setupPostCalicoVesting(ctx context
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(9_805_053))
 
+	caculator.genesisMsigLk.Lock()
+	defer caculator.genesisMsigLk.Unlock()
+
 	caculator.postCalicoVesting = make([]msig0.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
 		ns := msig0.State{
@@ -289,11 +289,8 @@ func (caculator *CirculatingSupplyCalculator) setupPostCalicoVesting(ctx context
 func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
 	vf := big.Zero()
 
-	caculator.genesisMsigLk.Lock()
-	defer caculator.genesisMsigLk.Unlock()
-
 	// TODO: combine all this?
-	if caculator.preIgnitionVesting == nil || caculator.genesisPledge.IsZero() || caculator.genesisMarketFunds.IsZero() {
+	if caculator.preIgnitionVesting == nil || caculator.genesisPledge.IsZero() {
 		err := caculator.setupGenesisVestingSchedule(ctx)
 		if err != nil {
 			return vf, fmt.Errorf("failed to setup pre-ignition vesting schedule: %w", err)
@@ -337,8 +334,6 @@ func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, 
 	if height <= caculator.upgradeConfig.UpgradeAssemblyHeight {
 		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
 		vf = big.Add(vf, caculator.genesisPledge)
-		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
-		vf = big.Add(vf, caculator.genesisMarketFunds)
 	}
 
 	return vf, nil
