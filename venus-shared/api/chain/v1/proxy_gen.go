@@ -966,15 +966,15 @@ func (s *IETHStruct) Web3ClientVersion(p0 context.Context) (string, error) {
 
 type IETHEventStruct struct {
 	Internal struct {
-		EthGetFilterChanges            func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)        `perm:"write"`
-		EthGetFilterLogs               func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)        `perm:"write"`
+		EthGetFilterChanges            func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)        `perm:"read"`
+		EthGetFilterLogs               func(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error)        `perm:"read"`
 		EthGetLogs                     func(ctx context.Context, filter *types.EthFilterSpec) (*types.EthFilterResult, error) `perm:"read"`
-		EthNewBlockFilter              func(ctx context.Context) (types.EthFilterID, error)                                   `perm:"write"`
-		EthNewFilter                   func(ctx context.Context, filter *types.EthFilterSpec) (types.EthFilterID, error)      `perm:"write"`
-		EthNewPendingTransactionFilter func(ctx context.Context) (types.EthFilterID, error)                                   `perm:"write"`
-		EthSubscribe                   func(ctx context.Context, params jsonrpc.RawParams) (types.EthSubscriptionID, error)   `perm:"write"`
-		EthUninstallFilter             func(ctx context.Context, id types.EthFilterID) (bool, error)                          `perm:"write"`
-		EthUnsubscribe                 func(ctx context.Context, id types.EthSubscriptionID) (bool, error)                    `perm:"write"`
+		EthNewBlockFilter              func(ctx context.Context) (types.EthFilterID, error)                                   `perm:"read"`
+		EthNewFilter                   func(ctx context.Context, filter *types.EthFilterSpec) (types.EthFilterID, error)      `perm:"read"`
+		EthNewPendingTransactionFilter func(ctx context.Context) (types.EthFilterID, error)                                   `perm:"read"`
+		EthSubscribe                   func(ctx context.Context, params jsonrpc.RawParams) (types.EthSubscriptionID, error)   `perm:"read"`
+		EthUninstallFilter             func(ctx context.Context, id types.EthFilterID) (bool, error)                          `perm:"read"`
+		EthUnsubscribe                 func(ctx context.Context, id types.EthSubscriptionID) (bool, error)                    `perm:"read"`
 	}
 }
 

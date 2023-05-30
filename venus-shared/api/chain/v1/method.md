@@ -2922,7 +2922,7 @@ Polling method for a filter, returns event logs which occurred since last poll.
 (requires write perm since timestamp of last filter execution will be written)
 
 
-Perms: write
+Perms: read
 
 Inputs:
 ```json
@@ -2943,7 +2943,7 @@ Returns event logs matching filter with given id.
 (requires write perm since timestamp of last filter execution will be written)
 
 
-Perms: write
+Perms: read
 
 Inputs:
 ```json
@@ -2989,7 +2989,7 @@ Response:
 Installs a persistent filter to notify when a new block arrives.
 
 
-Perms: write
+Perms: read
 
 Inputs: `[]`
 
@@ -2999,7 +2999,7 @@ Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 Installs a persistent filter based on given filter spec.
 
 
-Perms: write
+Perms: read
 
 Inputs:
 ```json
@@ -3020,7 +3020,7 @@ Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 Installs a persistent filter to notify when new messages arrive in the message pool.
 
 
-Perms: write
+Perms: read
 
 Inputs: `[]`
 
@@ -3036,7 +3036,7 @@ params contains additional parameters used with the log event type
 The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
 
 
-Perms: write
+Perms: read
 
 Inputs:
 ```json
@@ -3051,7 +3051,7 @@ Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 Uninstalls a filter with given id.
 
 
-Perms: write
+Perms: read
 
 Inputs:
 ```json
@@ -3066,7 +3066,7 @@ Response: `true`
 Unsubscribe from a websocket subscription
 
 
-Perms: write
+Perms: read
 
 Inputs:
 ```json
