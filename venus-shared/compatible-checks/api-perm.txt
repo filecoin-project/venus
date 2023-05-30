@@ -69,6 +69,14 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- EthSubscriber.EthSubscription
 	- IETH.EthGetTransactionByHashLimited
 	- IETH.EthGetTransactionReceiptLimited
+	> IETHEvent.EthGetFilterChanges: read <> FullNode.EthGetFilterChanges: write
+	> IETHEvent.EthGetFilterLogs: read <> FullNode.EthGetFilterLogs: write
+	> IETHEvent.EthNewBlockFilter: read <> FullNode.EthNewBlockFilter: write
+	> IETHEvent.EthNewFilter: read <> FullNode.EthNewFilter: write
+	> IETHEvent.EthNewPendingTransactionFilter: read <> FullNode.EthNewPendingTransactionFilter: write
+	> IETHEvent.EthSubscribe: read <> FullNode.EthSubscribe: write
+	> IETHEvent.EthUninstallFilter: read <> FullNode.EthUninstallFilter: write
+	> IETHEvent.EthUnsubscribe: read <> FullNode.EthUnsubscribe: write
 	- IMessagePool.GasBatchEstimateMessageGas
 	- IMessagePool.MpoolDeleteByAdress
 	- IMessagePool.MpoolPublishByAddr
