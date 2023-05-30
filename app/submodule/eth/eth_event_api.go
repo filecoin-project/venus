@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -236,6 +237,9 @@ func (e *ethEventAPI) installEthFilterSpec(ctx context.Context, filterSpec *type
 		} else if *filterSpec.FromBlock == "pending" {
 			return nil, api.ErrNotSupported
 		} else {
+			if !strings.HasPrefix(*filterSpec.FromBlock, "0x") {
+				return nil, fmt.Errorf("FromBlock is not a hex")
+			}
 			epoch, err := types.EthUint64FromHex(*filterSpec.FromBlock)
 			if err != nil {
 				return nil, fmt.Errorf("invalid epoch")
@@ -251,6 +255,9 @@ func (e *ethEventAPI) installEthFilterSpec(ctx context.Context, filterSpec *type
 		} else if *filterSpec.ToBlock == "pending" {
 			return nil, api.ErrNotSupported
 		} else {
+			if !strings.HasPrefix(*filterSpec.ToBlock, "0x") {
+				return nil, fmt.Errorf("ToBlock is not a hex")
+			}
 			epoch, err := types.EthUint64FromHex(*filterSpec.ToBlock)
 			if err != nil {
 				return nil, fmt.Errorf("invalid epoch")
