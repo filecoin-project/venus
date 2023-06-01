@@ -62,7 +62,7 @@ type DealsParams struct {
 	Params []*DealParams
 }
 
-type ClientOfflineDeal struct {
+type ClientOfflineDeal struct { //nolint
 	types.ClientDealProposal
 
 	ProposalCID    cid.Cid

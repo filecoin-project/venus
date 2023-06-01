@@ -644,6 +644,7 @@ Response:
     {
       "Client": "f01234",
       "Total": 42,
+      "Uniq": 42,
       "DuplicationPercentage": 12.3,
       "ReplicasPercentage": {
         "string value": 12.3
