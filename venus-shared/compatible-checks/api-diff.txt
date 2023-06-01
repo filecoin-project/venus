@@ -97,6 +97,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- StateGetRandomnessFromBeacon
 	- StateGetRandomnessFromTickets
 	- StateListMessages
+	> StateMinerInfo {[func(context.Context, address.Address, types.TipSetKey) (types.MinerInfo, error) <> func(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)] base=func out type: #0 input; nested={[types.MinerInfo <> api.MinerInfo] base=struct field; nested={[types.MinerInfo <> api.MinerInfo] base=exported fields count: 15 != 14; nested=nil}}}
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- StateReadState
@@ -223,6 +224,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ SetPassword
 	- Shutdown
 	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported fields count: 7 != 6; nested=nil}}}}
+	> StateMinerInfo {[func(context.Context, address.Address, types.TipSetKey) (types.MinerInfo, error) <> func(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)] base=func out type: #0 input; nested={[types.MinerInfo <> api.MinerInfo] base=struct field; nested={[types.MinerInfo <> api.MinerInfo] base=exported fields count: 15 != 14; nested=nil}}}
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- SyncCheckBad

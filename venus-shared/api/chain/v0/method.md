@@ -3632,6 +3632,7 @@ Response:
   "SectorSize": 34359738368,
   "WindowPoStPartitionSectors": 42,
   "ConsensusFaultElapsed": 10101,
+  "PendingOwnerAddress": "f01234",
   "Beneficiary": "f01234",
   "BeneficiaryTerm": {
     "Quota": "0",

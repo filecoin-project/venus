@@ -136,6 +136,7 @@ func (msa *minerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Addr
 		SectorSize:                 minfo.SectorSize,
 		WindowPoStPartitionSectors: minfo.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      minfo.ConsensusFaultElapsed,
+		PendingOwnerAddress:        minfo.PendingOwnerAddress,
 		Beneficiary:                minfo.Beneficiary,
 		BeneficiaryTerm:            &minfo.BeneficiaryTerm,
 		PendingBeneficiaryTerm:     minfo.PendingBeneficiaryTerm,
