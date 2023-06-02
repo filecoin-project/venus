@@ -40,7 +40,8 @@ func TestLoadFork(t *testing.T) {
 	sel := &chain.FakeChainSelector{}
 
 	blockValidator := builder.FakeStateEvaluator()
-	stmgr := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), blockValidator, nil, nil, nil, nil, false)
+	stmgr, err := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), blockValidator, nil, nil, nil, nil, false)
+	require.NoError(t, err)
 
 	s, err := syncer.NewSyncer(stmgr, blockValidator, sel, builder.Store(),
 		builder.Mstore(), builder.BlockStore(), builder, clock.NewFake(time.Unix(1234567890, 0)), nil)
