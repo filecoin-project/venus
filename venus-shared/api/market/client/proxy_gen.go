@@ -18,7 +18,7 @@ import (
 
 type IMarketClientStruct struct {
 	Internal struct {
-		ClientBatchDeal                           func(ctx context.Context, params *client.DealsParams) (*client.DealResults, error)                               `perm:"write"`
+		ClientBatchDeal                           func(ctx context.Context, params []*client.DealParams) (*client.DealResults, error)                              `perm:"write"`
 		ClientCalcCommP                           func(ctx context.Context, inpath string) (*client.CommPRet, error)                                               `perm:"write"`
 		ClientCancelDataTransfer                  func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error         `perm:"write"`
 		ClientCancelRetrievalDeal                 func(ctx context.Context, dealid retrievalmarket.DealID) error                                                   `perm:"write"`
@@ -62,7 +62,7 @@ type IMarketClientStruct struct {
 	}
 }
 
-func (s *IMarketClientStruct) ClientBatchDeal(p0 context.Context, p1 *client.DealsParams) (*client.DealResults, error) {
+func (s *IMarketClientStruct) ClientBatchDeal(p0 context.Context, p1 []*client.DealParams) (*client.DealResults, error) {
 	return s.Internal.ClientBatchDeal(p0, p1)
 }
 func (s *IMarketClientStruct) ClientCalcCommP(p0 context.Context, p1 string) (*client.CommPRet, error) {

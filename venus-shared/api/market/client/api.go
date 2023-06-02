@@ -26,7 +26,7 @@ type IMarketClient interface {
 	// ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
 	ClientStatelessDeal(ctx context.Context, params *client.DealParams) (*cid.Cid, error) //perm:write
 	// ClientBatchDeal proposes deals with a miner
-	ClientBatchDeal(ctx context.Context, params *client.DealsParams) (*client.DealResults, error) //perm:write
+	ClientBatchDeal(ctx context.Context, params []*client.DealParams) (*client.DealResults, error) //perm:write
 	// ClientGetDealInfo returns the latest information about a given deal.
 	ClientGetDealInfo(context.Context, cid.Cid) (*client.DealInfo, error) //perm:read
 	// ClientListDeals returns information about the deals made by the local client.

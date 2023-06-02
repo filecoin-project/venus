@@ -46,7 +46,7 @@ func (m *MockIMarketClient) EXPECT() *MockIMarketClientMockRecorder {
 }
 
 // ClientBatchDeal mocks base method.
-func (m *MockIMarketClient) ClientBatchDeal(arg0 context.Context, arg1 *client.DealsParams) (*client.DealResults, error) {
+func (m *MockIMarketClient) ClientBatchDeal(arg0 context.Context, arg1 []*client.DealParams) (*client.DealResults, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ClientBatchDeal", arg0, arg1)
 	ret0, _ := ret[0].(*client.DealResults)

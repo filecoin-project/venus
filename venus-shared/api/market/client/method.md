@@ -60,31 +60,29 @@ Perms: write
 Inputs:
 ```json
 [
-  {
-    "Params": [
-      {
-        "Data": {
-          "TransferType": "string value",
-          "Root": {
-            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-          },
-          "PieceCid": {
-            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-          },
-          "PieceSize": 1024,
-          "RawBlockSize": 42
+  [
+    {
+      "Data": {
+        "TransferType": "string value",
+        "Root": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
         },
-        "Wallet": "f01234",
-        "Miner": "f01234",
-        "EpochPrice": "0",
-        "MinBlocksDuration": 42,
-        "ProviderCollateral": "0",
-        "DealStartEpoch": 10101,
-        "FastRetrieval": true,
-        "VerifiedDeal": true
-      }
-    ]
-  }
+        "PieceCid": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "PieceSize": 1024,
+        "RawBlockSize": 42
+      },
+      "Wallet": "f01234",
+      "Miner": "f01234",
+      "EpochPrice": "0",
+      "MinBlocksDuration": 42,
+      "ProviderCollateral": "0",
+      "DealStartEpoch": 10101,
+      "FastRetrieval": true,
+      "VerifiedDeal": true
+    }
+  ]
 ]
 ```
 

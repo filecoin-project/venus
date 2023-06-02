@@ -58,10 +58,6 @@ type DealResult struct {
 	Message string
 }
 
-type DealsParams struct {
-	Params []*DealParams
-}
-
 type ClientOfflineDeal struct { //nolint
 	types.ClientDealProposal
 
