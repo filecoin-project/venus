@@ -317,7 +317,9 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
 	// in the bsstore and linked to genesis.
 	eval := builder.FakeStateEvaluator()
-	stmgr := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false)
+	stmgr, err := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false)
+	assert.NoError(t, err)
+
 	newSyncer, err := syncer.NewSyncer(stmgr,
 		eval,
 		&chain.FakeChainSelector{},
@@ -498,7 +500,9 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 	eval := newPoisonValidator(t, 98, 99)
 	builder := chain.NewBuilder(t, address.Undef)
 
-	stmgr := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false)
+	stmgr, err := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false)
+	require.NoError(t, err)
+
 	builder, syncer := setupWithValidator(ctx, t, builder, stmgr, eval)
 
 	genesis := builder.Store().GetHead()
@@ -528,7 +532,7 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 		Err:       nil,
 		ChainInfo: *types.NewChainInfo("", "", link1),
 	}
-	err := syncer.HandleNewTipSet(ctx, target1)
+	err = syncer.HandleNewTipSet(ctx, target1)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "val semantic fails")
 }
@@ -577,7 +581,8 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *syncer.Syncer) {
 	builder := chain.NewBuilder(t, address.Undef)
 	eval := builder.FakeStateEvaluator()
 
-	stmgr := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false)
+	stmgr, err := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false)
+	require.NoError(t, err)
 
 	return setupWithValidator(ctx, t, builder, stmgr, eval)
 }

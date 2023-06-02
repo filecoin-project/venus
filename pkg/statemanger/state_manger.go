@@ -24,10 +24,13 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 )
+
+const execTraceCacheSize = 16
 
 // stateManagerAPI defines the methods needed from StateManager
 // todo remove this code and add private interface in market and paychanel package
@@ -40,6 +43,11 @@ type IStateManager interface {
 
 type stateComputeResult struct {
 	stateRoot, receipt cid.Cid
+}
+
+type tipSetCacheEntry struct {
+	postStateRoot cid.Cid
+	invocTrace    []*types.InvocResult
 }
 
 var _ IStateManager = &Stmgr{}
@@ -65,6 +73,13 @@ type Stmgr struct {
 	fStopLk sync.Mutex
 
 	log *logging.ZapEventLogger
+
+	// We keep a small cache for calls to ExecutionTrace which helps improve
+	// performance for node operators like exchanges and block explorers
+	execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	// We need a lock while making the copy as to prevent other callers
+	// overwrite the cache while making the copy
+	execTraceCacheLock sync.Mutex
 }
 
 func NewStateManger(cs *chain.Store,
@@ -75,7 +90,12 @@ func NewStateManger(cs *chain.Store,
 	gasSchedule *gas.PricesSchedule,
 	syscallsImpl vm.SyscallsImpl,
 	actorDebugging bool,
-) *Stmgr {
+) (*Stmgr, error) {
+	execTraceCache, err := lru.NewARC[types.TipSetKey, tipSetCacheEntry](execTraceCacheSize)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Stmgr{
 		cs:             cs,
 		ms:             ms,
@@ -88,7 +108,8 @@ func NewStateManger(cs *chain.Store,
 		stCache:        make(map[types.TipSetKey]stateComputeResult),
 		chsWorkingOn:   make(map[types.TipSetKey]chan struct{}, 1),
 		actorDebugging: actorDebugging,
-	}
+		execTraceCache: execTraceCache,
+	}, nil
 }
 
 func (s *Stmgr) ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
@@ -447,6 +468,20 @@ func (s *Stmgr) Replay(ctx context.Context, ts *types.TipSet, msgCID cid.Cid) (*
 }
 
 func (s *Stmgr) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*types.InvocResult, error) {
+
+	tsKey := ts.Key()
+
+	// check if we have the trace for this tipset in the cache
+	s.execTraceCacheLock.Lock()
+	if entry, ok := s.execTraceCache.Get(tsKey); ok {
+		// we have to make a deep copy since caller can modify the invocTrace
+		// and we don't want that to change what we store in cache
+		invocTraceCopy := makeDeepCopy(entry.invocTrace)
+		s.execTraceCacheLock.Unlock()
+		return entry.postStateRoot, invocTraceCopy, nil
+	}
+	s.execTraceCacheLock.Unlock()
+
 	var invocTrace []*types.InvocResult
 
 	cb := func(mcid cid.Cid, msg *types.Message, ret *vm.Ret) error {
@@ -474,7 +509,26 @@ func (s *Stmgr) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, 
 		return cid.Undef, nil, err
 	}
 
+	invocTraceCopy := makeDeepCopy(invocTrace)
+
+	s.execTraceCacheLock.Lock()
+	s.execTraceCache.Add(tsKey, tipSetCacheEntry{st, invocTraceCopy})
+	s.execTraceCacheLock.Unlock()
+
 	return st, invocTrace, nil
+}
+
+func makeDeepCopy(invocTrace []*types.InvocResult) []*types.InvocResult {
+	c := make([]*types.InvocResult, len(invocTrace))
+	for i, ir := range invocTrace {
+		if ir == nil {
+			continue
+		}
+		tmp := *ir
+		c[i] = &tmp
+	}
+
+	return c
 }
 
 func MakeMsgGasCost(msg *types.Message, ret *vm.Ret) types.MsgGasCost {

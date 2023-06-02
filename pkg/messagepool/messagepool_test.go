@@ -360,7 +360,10 @@ func newWalletAndMpool(t *testing.T, tma *testMpoolAPI) (*wallet.Wallet, *Messag
 
 	builder := chain.NewBuilder(t, address.Undef)
 	eval := builder.FakeStateEvaluator()
-	stmgr := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), eval, nil, fork.NewMockFork(), nil, nil, false)
+	stmgr, err := statemanger.NewStateManger(builder.Store(), builder.MessageStore(), eval, nil, fork.NewMockFork(), nil, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	mp, err := New(context.Background(), tma, stmgr, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
