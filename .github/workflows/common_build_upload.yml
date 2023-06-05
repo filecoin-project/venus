@@ -127,10 +127,10 @@ jobs:
         run: |
           go clean --modcache && make
           mkdir ./release
-          if [[ "${{steps.vars.outputs.repo_name}}" == "venus-market" ]]; then
-            mv ./market-client ./venus-market ./release
+          if [[ "${{steps.vars.outputs.repo_name}}" == "droplet" ]]; then
+            mv ./droplet-client ./droplet ./release
           fi
-          if [[ "${{steps.vars.outputs.repo_name}}" != "venus-market" ]]; then
+          if [[ "${{steps.vars.outputs.repo_name}}" != "droplet" ]]; then
             mv ./${{inputs.bin_name}} ./release
           fi
 
@@ -262,10 +262,10 @@ jobs:
         run: |
           make
           mkdir ./release
-          if [[ "${{steps.vars.outputs.repo_name}}" == "venus-market" ]]; then
-            mv ./market-client ./venus-market ./release
+          if [[ "${{steps.vars.outputs.repo_name}}" == "droplet" ]]; then
+            mv ./droplet-client ./droplet ./release
           fi
-          if [[ "${{steps.vars.outputs.repo_name}}" != "venus-market" ]]; then
+          if [[ "${{steps.vars.outputs.repo_name}}" != "droplet" ]]; then
             mv ./${{inputs.bin_name}} ./release
           fi
 
