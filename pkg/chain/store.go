@@ -346,9 +346,14 @@ func (store *Store) GetTipSet(ctx context.Context, key types.TipSetKey) (*types.
 }
 
 // GetTipSetByHeight looks back for a tipset at the specified epoch.
-// If there are no blocks at the specified epoch, a tipset at an earlier epoch
-// will be returned.
+// In the case that the given height is a null round, the 'prev' flag
+// selects the tipset before the null round if true, and the tipset following
+// the null round if false.
 func (store *Store) GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h abi.ChainEpoch, prev bool) (*types.TipSet, error) {
+	if h < 0 {
+		return nil, fmt.Errorf("height %d is negative", h)
+	}
+
 	if ts == nil {
 		ts = store.head
 	}
