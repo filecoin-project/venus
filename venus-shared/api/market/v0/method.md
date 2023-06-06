@@ -22,6 +22,7 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [DagstoreInitializeStorage](#dagstoreinitializestorage)
   * [DagstoreListShards](#dagstorelistshards)
   * [DagstoreRecoverShard](#dagstorerecovershard)
+  * [DealsBatchImportData](#dealsbatchimportdata)
   * [DealsConsiderOfflineRetrievalDeals](#dealsconsiderofflineretrievaldeals)
   * [DealsConsiderOfflineStorageDeals](#dealsconsiderofflinestoragedeals)
   * [DealsConsiderOnlineRetrievalDeals](#dealsconsideronlineretrievaldeals)
@@ -439,6 +440,40 @@ Inputs:
 ```
 
 Response: `{}`
+
+### DealsBatchImportData
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Refs": [
+      {
+        "ProposalCID": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "File": "string value"
+      }
+    ],
+    "SkipCommP": true
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "ProposalCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "Message": "string value"
+  }
+]
+```
 
 ### DealsConsiderOfflineRetrievalDeals
 

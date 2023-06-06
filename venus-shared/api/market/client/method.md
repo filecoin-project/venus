@@ -7,6 +7,7 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
 # Groups
 
 * [MarketClient](#marketclient)
+  * [ClientBatchDeal](#clientbatchdeal)
   * [ClientCalcCommP](#clientcalccommp)
   * [ClientCancelDataTransfer](#clientcanceldatatransfer)
   * [ClientCancelRetrievalDeal](#clientcancelretrievaldeal)
@@ -20,11 +21,13 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [ClientGetDealStatus](#clientgetdealstatus)
   * [ClientGetDealUpdates](#clientgetdealupdates)
   * [ClientGetRetrievalUpdates](#clientgetretrievalupdates)
+  * [ClientGetVerifiedDealDistribution](#clientgetverifieddealdistribution)
   * [ClientHasLocal](#clienthaslocal)
   * [ClientImport](#clientimport)
   * [ClientListDataTransfers](#clientlistdatatransfers)
   * [ClientListDeals](#clientlistdeals)
   * [ClientListImports](#clientlistimports)
+  * [ClientListOfflineDeals](#clientlistofflinedeals)
   * [ClientListRetrievals](#clientlistretrievals)
   * [ClientMinerQueryOffer](#clientminerqueryoffer)
   * [ClientQueryAsk](#clientqueryask)
@@ -47,6 +50,55 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [Version](#version)
 
 ## MarketClient
+
+### ClientBatchDeal
+ClientBatchDeal proposes deals with a miner
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  [
+    {
+      "Data": {
+        "TransferType": "string value",
+        "Root": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "PieceCid": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "PieceSize": 1024,
+        "RawBlockSize": 42
+      },
+      "Wallet": "f01234",
+      "Miner": "f01234",
+      "EpochPrice": "0",
+      "MinBlocksDuration": 42,
+      "ProviderCollateral": "0",
+      "DealStartEpoch": 10101,
+      "FastRetrieval": true,
+      "VerifiedDeal": true
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Results": [
+    {
+      "ProposalCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Message": "string value"
+    }
+  ]
+}
+```
 
 ### ClientCalcCommP
 ClientCalcCommP calculates the CommP for a specified file
@@ -557,6 +609,60 @@ Response:
 }
 ```
 
+### ClientGetVerifiedDealDistribution
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    "f01234"
+  ],
+  "f01234"
+]
+```
+
+Response:
+```json
+{
+  "ProvidersDistribution": [
+    {
+      "Provider": "f01234",
+      "Total": 42,
+      "Uniq": 42,
+      "UniqPieces": {
+        "string value": 42
+      },
+      "DuplicationPercentage": 12.3
+    }
+  ],
+  "ReplicasDistribution": [
+    {
+      "Client": "f01234",
+      "Total": 42,
+      "Uniq": 42,
+      "DuplicationPercentage": 12.3,
+      "ReplicasPercentage": {
+        "string value": 12.3
+      },
+      "ReplicasDistribution": [
+        {
+          "Provider": "f01234",
+          "Total": 42,
+          "Uniq": 42,
+          "UniqPieces": {
+            "string value": 42
+          },
+          "DuplicationPercentage": 12.3
+        }
+      ]
+    }
+  ]
+}
+```
+
 ### ClientHasLocal
 ClientHasLocal indicates whether a certain CID is locally stored.
 
@@ -757,6 +863,98 @@ Response:
     "Source": "string value",
     "FilePath": "string value",
     "CARPath": "string value"
+  }
+]
+```
+
+### ClientListOfflineDeals
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  {
+    "ProposalCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "State": 42,
+    "Message": "string value",
+    "DealStages": {
+      "Stages": [
+        {
+          "Name": "string value",
+          "Description": "string value",
+          "ExpectedDuration": "string value",
+          "CreatedTime": "0001-01-01T00:00:00Z",
+          "UpdatedTime": "0001-01-01T00:00:00Z",
+          "Logs": [
+            {
+              "Log": "string value",
+              "UpdatedTime": "0001-01-01T00:00:00Z"
+            }
+          ]
+        }
+      ]
+    },
+    "Provider": "f01234",
+    "DataRef": {
+      "TransferType": "string value",
+      "Root": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PieceCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PieceSize": 1024,
+      "RawBlockSize": 42
+    },
+    "PieceCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "Size": 42,
+    "PricePerEpoch": "0",
+    "Duration": 42,
+    "DealID": 5432,
+    "CreationTime": "0001-01-01T00:00:00Z",
+    "Verified": true,
+    "TransferChannelID": {
+      "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "ID": 3
+    },
+    "DataTransfer": {
+      "TransferID": 3,
+      "Status": 1,
+      "BaseCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "IsInitiator": true,
+      "IsSender": true,
+      "Voucher": "string value",
+      "Message": "string value",
+      "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "Transferred": 42,
+      "Stages": {
+        "Stages": [
+          {
+            "Name": "string value",
+            "Description": "string value",
+            "CreatedTime": "0001-01-01T00:00:00Z",
+            "UpdatedTime": "0001-01-01T00:00:00Z",
+            "Logs": [
+              {
+                "Log": "string value",
+                "UpdatedTime": "0001-01-01T00:00:00Z"
+              }
+            ]
+          }
+        ]
+      }
+    }
   }
 ]
 ```

@@ -267,6 +267,21 @@ func (mr *MockIMarketMockRecorder) DagstoreRecoverShard(arg0, arg1 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DagstoreRecoverShard", reflect.TypeOf((*MockIMarket)(nil).DagstoreRecoverShard), arg0, arg1)
 }
 
+// DealsBatchImportData mocks base method.
+func (m *MockIMarket) DealsBatchImportData(arg0 context.Context, arg1 market.ImportDataRefs) ([]*market.ImportDataResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DealsBatchImportData", arg0, arg1)
+	ret0, _ := ret[0].([]*market.ImportDataResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DealsBatchImportData indicates an expected call of DealsBatchImportData.
+func (mr *MockIMarketMockRecorder) DealsBatchImportData(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsBatchImportData", reflect.TypeOf((*MockIMarket)(nil).DealsBatchImportData), arg0, arg1)
+}
+
 // DealsConsiderOfflineRetrievalDeals mocks base method.
 func (m *MockIMarket) DealsConsiderOfflineRetrievalDeals(arg0 context.Context, arg1 address.Address) (bool, error) {
 	m.ctrl.T.Helper()

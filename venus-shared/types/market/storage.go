@@ -124,3 +124,19 @@ type StorageDealQueryParams struct {
 
 	Page
 }
+
+type ImportDataRef struct {
+	ProposalCID cid.Cid
+	File        string
+}
+
+type ImportDataRefs struct {
+	Refs      []*ImportDataRef
+	SkipCommP bool
+}
+
+type ImportDataResult struct {
+	ProposalCID cid.Cid
+	// deal import failed
+	Message string
+}
