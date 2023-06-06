@@ -21,7 +21,7 @@ For phase 1, droplet will deliver a complete deal making experience as what lotu
 ![image-20210910170740850](https://i.loli.net/2021/09/10/seIgEWBiko6AKc2.png)
 
 - Implementation of the one-to-one model of lotus market like module and fully interoperable with lotus implementation, which means compatibility with lotus client and more
-- droplet deployed as independent module, like venus-sealer and venus-wallet
+- droplet deployed as independent module, like sophon-cluster and venus-wallet
 - Implementation of a reliable market module that runs a seperate process from the main storage process
 - A clear module boundary that allows interoperability and user customizations
 - Flexibilities of market module to interact with existing venus infrastructures using RPC APIs
@@ -68,7 +68,7 @@ Design draws inspirations from the original [filecoin component document](https:
 
 ### Modules and processes
 
->  In a multi-process architecture, the storage component would form the miner operator’s entry point for all mining and market operations (but not basic node operations) pertaining to a single storage miner actor. It depends on a node to mediate blockchain interactions. **The storage component drives these interactions**. If viewed as a system of services, the storage component is the consumer of a service provided by a node. Thus, the **storage component will depend on an RPC API be provided by a node**. This API is likely to include streaming operations in order to provide continually changing blockchain state to the component. The [mimblewimble/grin project](https://github.com/mimblewimble) is another example of this multi-process node/miner architecture.
+>  In a multi-process architecture, the storage component would form the miner operator’s entry point for all mining and market operations (but not basic node operations) pertaining to a single storage miner actor. It depends on a node to mediate blockchain interactions. **The storagFe component drives these interactions**. If viewed as a system of services, the storage component is the consumer of a service provided by a node. Thus, the **storage component will depend on an RPC API be provided by a node**. This API is likely to include streaming operations in order to provide continually changing blockchain state to the component. The [mimblewimble/grin project](https://github.com/mimblewimble) is another example of this multi-process node/miner architecture.
 
 Similar to what is described for storage component above, droplet will be dependent on a RPC API provided by a node ie. chain services, venus shared modules. Blockchain interactions will be handled by venus chain services which can also be extended to handle authentications among others.
 
@@ -91,9 +91,9 @@ Platform model implementation of droplet may store metadata on the deals it dist
 ### Dependencies
 
 1. `venus` module to provide node services
-2. `venus-messager` module to provide data services
-3. `venus-gateway` to provide signature services
-4. `venus-sealer` to provide sealing and data lookup services
+2. `sophon-messager` module to provide data services
+3. `sophon-gateway` to provide signature services
+4. `sophon-cluster` to provide sealing and data lookup services
 5. `go-fil-market` compatible with lotus one-to-one model (For compatbility with lotus only)
 6. piece data from external deals
 7. datastore using HA databases for deal meta data

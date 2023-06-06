@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/venus-auth/core"
-	"github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
 	"github.com/filecoin-project/venus/app/submodule/eth"
 	"github.com/filecoin-project/venus/app/submodule/network"
+	"github.com/ipfs-force-community/sophon-auth/core"
+	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
