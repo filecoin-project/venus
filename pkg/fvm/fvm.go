@@ -732,6 +732,23 @@ func (r *xRedirect) MarshalCBOR(w io.Writer) error {
 var useFvmDebug = os.Getenv("VENUS_FVM_DEVELOPER_DEBUG") == "1"
 
 func NewVM(ctx context.Context, opts vm.VmOption) (vm.Interface, error) {
+
+	switch opts.ExecutionLane {
+	case vmcontext.ExecutionLaneDefault, vmcontext.ExecutionLanePriority:
+	default:
+		return nil, fmt.Errorf("invalid execution lane: %d", opts.ExecutionLane)
+	}
+
+	vmi, err := makeVM(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return vmcontext.NewVMExecutor(vmi, opts.ExecutionLane), nil
+}
+
+func makeVM(ctx context.Context, opts vm.VmOption) (vm.Interface, error) {
+
 	if opts.NetworkVersion >= network.Version16 {
 		if useFvmDebug {
 			return NewDualExecutionFVM(ctx, &opts)

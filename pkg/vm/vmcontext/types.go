@@ -33,6 +33,15 @@ type (
 	TipSetGetter         func(context.Context, abi.ChainEpoch) (types.TipSetKey, error)
 )
 
+type ExecutionLane int
+
+const (
+	// ExecutionLaneDefault signifies a default, non prioritized execution lane.
+	ExecutionLaneDefault ExecutionLane = iota
+	// ExecutionLanePriority signifies a prioritized execution lane with reserved resources.
+	ExecutionLanePriority
+)
+
 type VmOption struct { //nolint
 	CircSupplyCalculator CircSupplyCalculator
 	LookbackStateGetter  LookbackStateGetter
@@ -53,6 +62,8 @@ type VmOption struct { //nolint
 	ActorDebugging bool
 	// ReturnEvents decodes and returns emitted events.
 	ReturnEvents bool
+	// ExecutionLane specifies the execution priority of the created vm
+	ExecutionLane ExecutionLane
 }
 
 type ILookBack interface {
