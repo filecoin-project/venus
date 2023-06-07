@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/api"
 
-	"github.com/filecoin-project/venus-auth/core"
+	"github.com/ipfs-force-community/sophon-auth/core"
 )
 
 // PermissionProxy the scheduler between API and internal business

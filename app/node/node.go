@@ -12,7 +12,6 @@ import (
 	"github.com/awnumar/memguard"
 	"github.com/etherlabsio/healthcheck/v2"
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/common"
@@ -35,6 +34,7 @@ import (
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"      // enable secp signatures
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	logging "github.com/ipfs/go-log/v2"
