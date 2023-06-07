@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fvm"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 
 	"github.com/filecoin-project/go-address"
@@ -112,6 +113,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			Tracing:              vmOpts.Tracing,
 			ActorDebugging:       vmOpts.ActorDebugging,
 			ReturnEvents:         vmOpts.ReturnEvents,
+			ExecutionLane:        vmcontext.ExecutionLanePriority,
 		}
 
 		return fvm.NewVM(ctx, vmOpt)
