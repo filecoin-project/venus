@@ -57,8 +57,8 @@ type IMarket interface {
 	PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error)   //perm:read
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string, skipCommP bool) error              //perm:admin
-	OfflineDealImport(ctx context.Context, deal market.MinerDeal) error                                       //perm:admin
 	DealsBatchImportData(ctx context.Context, refs market.ImportDataRefs) ([]*market.ImportDataResult, error) //perm:admin
+	DealsImport(ctx context.Context, deals []market.MinerDeal) error                                          //perm:admin
 
 	DealsConsiderOnlineStorageDeals(context.Context, address.Address) (bool, error)      //perm:read
 	DealsSetConsiderOnlineStorageDeals(context.Context, address.Address, bool) error     //perm:write

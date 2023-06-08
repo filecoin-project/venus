@@ -372,6 +372,20 @@ func (mr *MockIMarketMockRecorder) DealsConsiderVerifiedStorageDeals(arg0, arg1 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsConsiderVerifiedStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsConsiderVerifiedStorageDeals), arg0, arg1)
 }
 
+// DealsImport mocks base method.
+func (m *MockIMarket) DealsImport(arg0 context.Context, arg1 []*market.MinerDeal) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DealsImport", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DealsImport indicates an expected call of DealsImport.
+func (mr *MockIMarketMockRecorder) DealsImport(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsImport", reflect.TypeOf((*MockIMarket)(nil).DealsImport), arg0, arg1)
+}
+
 // DealsImportData mocks base method.
 func (m *MockIMarket) DealsImportData(arg0 context.Context, arg1 cid.Cid, arg2 string, arg3 bool) error {
 	m.ctrl.T.Helper()
@@ -1245,20 +1259,6 @@ func (m *MockIMarket) NetAddrsListen(arg0 context.Context) (peer.AddrInfo, error
 func (mr *MockIMarketMockRecorder) NetAddrsListen(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetAddrsListen", reflect.TypeOf((*MockIMarket)(nil).NetAddrsListen), arg0)
-}
-
-// OfflineDealImport mocks base method.
-func (m *MockIMarket) OfflineDealImport(arg0 context.Context, arg1 market.MinerDeal) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "OfflineDealImport", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// OfflineDealImport indicates an expected call of OfflineDealImport.
-func (mr *MockIMarketMockRecorder) OfflineDealImport(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OfflineDealImport", reflect.TypeOf((*MockIMarket)(nil).OfflineDealImport), arg0, arg1)
 }
 
 // PaychVoucherList mocks base method.

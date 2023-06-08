@@ -29,6 +29,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [DealsConsiderOnlineStorageDeals](#dealsconsideronlinestoragedeals)
   * [DealsConsiderUnverifiedStorageDeals](#dealsconsiderunverifiedstoragedeals)
   * [DealsConsiderVerifiedStorageDeals](#dealsconsiderverifiedstoragedeals)
+  * [DealsImport](#dealsimport)
   * [DealsImportData](#dealsimportdata)
   * [DealsMaxProviderCollateralMultiplier](#dealsmaxprovidercollateralmultiplier)
   * [DealsMaxPublishFee](#dealsmaxpublishfee)
@@ -89,7 +90,6 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [MessagerPushMessage](#messagerpushmessage)
   * [MessagerWaitMessage](#messagerwaitmessage)
   * [NetAddrsListen](#netaddrslisten)
-  * [OfflineDealImport](#offlinedealimport)
   * [PaychVoucherList](#paychvoucherlist)
   * [PiecesGetCIDInfo](#piecesgetcidinfo)
   * [PiecesGetPieceInfo](#piecesgetpieceinfo)
@@ -559,6 +559,86 @@ Inputs:
 ```
 
 Response: `true`
+
+### DealsImport
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    {
+      "Proposal": {
+        "PieceCID": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "PieceSize": 1032,
+        "VerifiedDeal": true,
+        "Client": "f01234",
+        "Provider": "f01234",
+        "Label": "",
+        "StartEpoch": 10101,
+        "EndEpoch": 10101,
+        "StoragePricePerEpoch": "0",
+        "ProviderCollateral": "0",
+        "ClientCollateral": "0"
+      },
+      "ClientSignature": {
+        "Type": 2,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      },
+      "ProposalCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "AddFundsCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PublishCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Miner": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "State": 42,
+      "PiecePath": "/some/path",
+      "PayloadSize": 42,
+      "MetadataPath": "/some/path",
+      "SlashEpoch": 10101,
+      "FastRetrieval": true,
+      "Message": "string value",
+      "FundsReserved": "0",
+      "Ref": {
+        "TransferType": "string value",
+        "Root": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "PieceCid": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "PieceSize": 1024,
+        "RawBlockSize": 42
+      },
+      "AvailableForRetrieval": true,
+      "DealID": 5432,
+      "CreationTime": "0001-01-01T00:00:00Z",
+      "TransferChannelId": {
+        "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+        "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+        "ID": 3
+      },
+      "SectorNumber": 9,
+      "Offset": 1032,
+      "PieceStatus": "Undefine",
+      "InboundCAR": "string value",
+      "CreatedAt": 42,
+      "UpdatedAt": 42
+    }
+  ]
+]
+```
+
+Response: `{}`
 
 ### DealsImportData
 
@@ -2181,84 +2261,6 @@ Response:
   ]
 }
 ```
-
-### OfflineDealImport
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  {
-    "Proposal": {
-      "PieceCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "PieceSize": 1032,
-      "VerifiedDeal": true,
-      "Client": "f01234",
-      "Provider": "f01234",
-      "Label": "",
-      "StartEpoch": 10101,
-      "EndEpoch": 10101,
-      "StoragePricePerEpoch": "0",
-      "ProviderCollateral": "0",
-      "ClientCollateral": "0"
-    },
-    "ClientSignature": {
-      "Type": 2,
-      "Data": "Ynl0ZSBhcnJheQ=="
-    },
-    "ProposalCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "AddFundsCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "PublishCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "Miner": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "State": 42,
-    "PiecePath": "/some/path",
-    "PayloadSize": 42,
-    "MetadataPath": "/some/path",
-    "SlashEpoch": 10101,
-    "FastRetrieval": true,
-    "Message": "string value",
-    "FundsReserved": "0",
-    "Ref": {
-      "TransferType": "string value",
-      "Root": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "PieceCid": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "PieceSize": 1024,
-      "RawBlockSize": 42
-    },
-    "AvailableForRetrieval": true,
-    "DealID": 5432,
-    "CreationTime": "0001-01-01T00:00:00Z",
-    "TransferChannelId": {
-      "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "ID": 3
-    },
-    "SectorNumber": 9,
-    "Offset": 1032,
-    "PieceStatus": "Undefine",
-    "InboundCAR": "string value",
-    "CreatedAt": 42,
-    "UpdatedAt": 42
-  }
-]
-```
-
-Response: `{}`
 
 ### PaychVoucherList
 Paych

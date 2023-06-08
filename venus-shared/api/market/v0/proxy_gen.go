@@ -44,6 +44,7 @@ type IMarketStruct struct {
 		DealsConsiderOnlineStorageDeals         func(context.Context, address.Address) (bool, error)                                                                                                                                                `perm:"read"`
 		DealsConsiderUnverifiedStorageDeals     func(context.Context, address.Address) (bool, error)                                                                                                                                                `perm:"read"`
 		DealsConsiderVerifiedStorageDeals       func(context.Context, address.Address) (bool, error)                                                                                                                                                `perm:"read"`
+		DealsImport                             func(ctx context.Context, deals []market.MinerDeal) error                                                                                                                                           `perm:"admin"`
 		DealsImportData                         func(ctx context.Context, dealPropCid cid.Cid, file string, skipCommP bool) error                                                                                                                   `perm:"admin"`
 		DealsMaxProviderCollateralMultiplier    func(context.Context, address.Address) (uint64, error)                                                                                                                                              `perm:"read"`
 		DealsMaxPublishFee                      func(context.Context, address.Address) (types.FIL, error)                                                                                                                                           `perm:"read"`
@@ -104,7 +105,6 @@ type IMarketStruct struct {
 		MessagerPushMessage                     func(ctx context.Context, msg *types.Message, meta *types.MessageSendSpec) (cid.Cid, error)                                                                                                         `perm:"write"`
 		MessagerWaitMessage                     func(ctx context.Context, mid cid.Cid) (*types.MsgLookup, error)                                                                                                                                    `perm:"read"`
 		NetAddrsListen                          func(context.Context) (peer.AddrInfo, error)                                                                                                                                                        `perm:"read"`
-		OfflineDealImport                       func(ctx context.Context, deal market.MinerDeal) error                                                                                                                                              `perm:"admin"`
 		PaychVoucherList                        func(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error)                                                                                                                      `perm:"read"`
 		PiecesGetCIDInfo                        func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error)                                                                                                                          `perm:"read"`
 		PiecesGetPieceInfo                      func(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error)                                                                                                                          `perm:"read"`
@@ -186,6 +186,9 @@ func (s *IMarketStruct) DealsConsiderUnverifiedStorageDeals(p0 context.Context, 
 }
 func (s *IMarketStruct) DealsConsiderVerifiedStorageDeals(p0 context.Context, p1 address.Address) (bool, error) {
 	return s.Internal.DealsConsiderVerifiedStorageDeals(p0, p1)
+}
+func (s *IMarketStruct) DealsImport(p0 context.Context, p1 []market.MinerDeal) error {
+	return s.Internal.DealsImport(p0, p1)
 }
 func (s *IMarketStruct) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string, p3 bool) error {
 	return s.Internal.DealsImportData(p0, p1, p2, p3)
@@ -364,9 +367,6 @@ func (s *IMarketStruct) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*ty
 }
 func (s *IMarketStruct) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
 	return s.Internal.NetAddrsListen(p0)
-}
-func (s *IMarketStruct) OfflineDealImport(p0 context.Context, p1 market.MinerDeal) error {
-	return s.Internal.OfflineDealImport(p0, p1)
 }
 func (s *IMarketStruct) PaychVoucherList(p0 context.Context, p1 address.Address) ([]*paych.SignedVoucher, error) {
 	return s.Internal.PaychVoucherList(p0, p1)
