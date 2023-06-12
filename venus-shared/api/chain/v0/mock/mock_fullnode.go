@@ -1578,6 +1578,21 @@ func (mr *MockFullNodeMockRecorder) StateActorManifestCID(arg0, arg1 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateActorManifestCID", reflect.TypeOf((*MockFullNode)(nil).StateActorManifestCID), arg0, arg1)
 }
 
+// StateAllMinerFaults mocks base method.
+func (m *MockFullNode) StateAllMinerFaults(arg0 context.Context, arg1 abi.ChainEpoch, arg2 types0.TipSetKey) ([]*types0.Fault, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateAllMinerFaults", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*types0.Fault)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateAllMinerFaults indicates an expected call of StateAllMinerFaults.
+func (mr *MockFullNodeMockRecorder) StateAllMinerFaults(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateAllMinerFaults", reflect.TypeOf((*MockFullNode)(nil).StateAllMinerFaults), arg0, arg1, arg2)
+}
+
 // StateCall mocks base method.
 func (m *MockFullNode) StateCall(arg0 context.Context, arg1 *types.Message, arg2 types0.TipSetKey) (*types0.InvocResult, error) {
 	m.ctrl.T.Helper()
@@ -1591,6 +1606,21 @@ func (m *MockFullNode) StateCall(arg0 context.Context, arg1 *types.Message, arg2
 func (mr *MockFullNodeMockRecorder) StateCall(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateCall", reflect.TypeOf((*MockFullNode)(nil).StateCall), arg0, arg1, arg2)
+}
+
+// StateChangedActors mocks base method.
+func (m *MockFullNode) StateChangedActors(arg0 context.Context, arg1, arg2 cid.Cid) (map[string]types.ActorV5, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateChangedActors", arg0, arg1, arg2)
+	ret0, _ := ret[0].(map[string]types.ActorV5)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateChangedActors indicates an expected call of StateChangedActors.
+func (mr *MockFullNodeMockRecorder) StateChangedActors(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateChangedActors", reflect.TypeOf((*MockFullNode)(nil).StateChangedActors), arg0, arg1, arg2)
 }
 
 // StateCirculatingSupply mocks base method.
@@ -1636,6 +1666,21 @@ func (m *MockFullNode) StateDealProviderCollateralBounds(arg0 context.Context, a
 func (mr *MockFullNodeMockRecorder) StateDealProviderCollateralBounds(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateDealProviderCollateralBounds", reflect.TypeOf((*MockFullNode)(nil).StateDealProviderCollateralBounds), arg0, arg1, arg2, arg3)
+}
+
+// StateDecodeParams mocks base method.
+func (m *MockFullNode) StateDecodeParams(arg0 context.Context, arg1 address.Address, arg2 abi.MethodNum, arg3 []byte, arg4 types0.TipSetKey) (interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateDecodeParams", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(interface{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateDecodeParams indicates an expected call of StateDecodeParams.
+func (mr *MockFullNodeMockRecorder) StateDecodeParams(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateDecodeParams", reflect.TypeOf((*MockFullNode)(nil).StateDecodeParams), arg0, arg1, arg2, arg3, arg4)
 }
 
 // StateGetActor mocks base method.
@@ -1743,6 +1788,36 @@ func (mr *MockFullNodeMockRecorder) StateGetNetworkParams(arg0 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetNetworkParams", reflect.TypeOf((*MockFullNode)(nil).StateGetNetworkParams), arg0)
 }
 
+// StateGetRandomnessFromBeacon mocks base method.
+func (m *MockFullNode) StateGetRandomnessFromBeacon(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 types0.TipSetKey) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessFromBeacon", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessFromBeacon indicates an expected call of StateGetRandomnessFromBeacon.
+func (mr *MockFullNodeMockRecorder) StateGetRandomnessFromBeacon(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessFromBeacon", reflect.TypeOf((*MockFullNode)(nil).StateGetRandomnessFromBeacon), arg0, arg1, arg2, arg3, arg4)
+}
+
+// StateGetRandomnessFromTickets mocks base method.
+func (m *MockFullNode) StateGetRandomnessFromTickets(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 types0.TipSetKey) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessFromTickets", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessFromTickets indicates an expected call of StateGetRandomnessFromTickets.
+func (mr *MockFullNodeMockRecorder) StateGetRandomnessFromTickets(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessFromTickets", reflect.TypeOf((*MockFullNode)(nil).StateGetRandomnessFromTickets), arg0, arg1, arg2, arg3, arg4)
+}
+
 // StateGetReceipt mocks base method.
 func (m *MockFullNode) StateGetReceipt(arg0 context.Context, arg1 cid.Cid, arg2 types0.TipSetKey) (*types0.MessageReceipt, error) {
 	m.ctrl.T.Helper()
@@ -1771,6 +1846,21 @@ func (m *MockFullNode) StateListActors(arg0 context.Context, arg1 types0.TipSetK
 func (mr *MockFullNodeMockRecorder) StateListActors(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateListActors", reflect.TypeOf((*MockFullNode)(nil).StateListActors), arg0, arg1)
+}
+
+// StateListMessages mocks base method.
+func (m *MockFullNode) StateListMessages(arg0 context.Context, arg1 *types0.MessageMatch, arg2 types0.TipSetKey, arg3 abi.ChainEpoch) ([]cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateListMessages", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateListMessages indicates an expected call of StateListMessages.
+func (mr *MockFullNodeMockRecorder) StateListMessages(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateListMessages", reflect.TypeOf((*MockFullNode)(nil).StateListMessages), arg0, arg1, arg2, arg3)
 }
 
 // StateListMiners mocks base method.
@@ -2131,6 +2221,21 @@ func (m *MockFullNode) StateNetworkVersion(arg0 context.Context, arg1 types0.Tip
 func (mr *MockFullNodeMockRecorder) StateNetworkVersion(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateNetworkVersion", reflect.TypeOf((*MockFullNode)(nil).StateNetworkVersion), arg0, arg1)
+}
+
+// StateReadState mocks base method.
+func (m *MockFullNode) StateReadState(arg0 context.Context, arg1 address.Address, arg2 types0.TipSetKey) (*types0.ActorState, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateReadState", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*types0.ActorState)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateReadState indicates an expected call of StateReadState.
+func (mr *MockFullNodeMockRecorder) StateReadState(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateReadState", reflect.TypeOf((*MockFullNode)(nil).StateReadState), arg0, arg1, arg2)
 }
 
 // StateReplay mocks base method.
