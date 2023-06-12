@@ -50,6 +50,8 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [StateCall](#statecall)
   * [StateCompute](#statecompute)
   * [StateGetNetworkParams](#stategetnetworkparams)
+  * [StateGetRandomnessFromBeacon](#stategetrandomnessfrombeacon)
+  * [StateGetRandomnessFromTickets](#stategetrandomnessfromtickets)
   * [StateGetReceipt](#stategetreceipt)
   * [StateNetworkName](#statenetworkname)
   * [StateNetworkVersion](#statenetworkversion)
@@ -90,14 +92,18 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [MpoolSetConfig](#mpoolsetconfig)
   * [MpoolSub](#mpoolsub)
 * [MinerState](#minerstate)
+  * [StateAllMinerFaults](#stateallminerfaults)
+  * [StateChangedActors](#statechangedactors)
   * [StateCirculatingSupply](#statecirculatingsupply)
   * [StateDealProviderCollateralBounds](#statedealprovidercollateralbounds)
+  * [StateDecodeParams](#statedecodeparams)
   * [StateGetAllocation](#stategetallocation)
   * [StateGetAllocationForPendingDeal](#stategetallocationforpendingdeal)
   * [StateGetAllocations](#stategetallocations)
   * [StateGetClaim](#stategetclaim)
   * [StateGetClaims](#stategetclaims)
   * [StateListActors](#statelistactors)
+  * [StateListMessages](#statelistmessages)
   * [StateListMiners](#statelistminers)
   * [StateLookupID](#statelookupid)
   * [StateMarketBalance](#statemarketbalance)
@@ -119,6 +125,7 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [StateMinerSectorSize](#stateminersectorsize)
   * [StateMinerSectors](#stateminersectors)
   * [StateMinerWorkerAddress](#stateminerworkeraddress)
+  * [StateReadState](#statereadstate)
   * [StateSectorExpiration](#statesectorexpiration)
   * [StateSectorGetInfo](#statesectorgetinfo)
   * [StateSectorPartition](#statesectorpartition)
@@ -1683,6 +1690,56 @@ Response:
 }
 ```
 
+### StateGetRandomnessFromBeacon
+StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  2,
+  10101,
+  "Ynl0ZSBhcnJheQ==",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"Bw=="`
+
+### StateGetRandomnessFromTickets
+StateGetRandomnessFromTickets is used to sample the chain for randomness.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  2,
+  10101,
+  "Ynl0ZSBhcnJheQ==",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"Bw=="`
+
 ### StateGetReceipt
 
 
@@ -3057,6 +3114,71 @@ Response:
 
 ## MinerState
 
+### StateAllMinerFaults
+StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "Miner": "f01234",
+    "Epoch": 10101
+  }
+]
+```
+
+### StateChangedActors
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "t01236": {
+    "Code": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "Head": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "Nonce": 42,
+    "Balance": "0",
+    "Address": "f01234"
+  }
+}
+```
+
 ### StateCirculatingSupply
 
 
@@ -3106,6 +3228,31 @@ Response:
   "Max": "0"
 }
 ```
+
+### StateDecodeParams
+StateDecodeParams attempts to decode the provided params, based on the recipient actor address and method number.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  1,
+  "Ynl0ZSBhcnJheQ==",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
 
 ### StateGetAllocation
 StateGetAllocation returns the allocation for a given address and allocation ID.
@@ -3288,6 +3435,40 @@ Response:
 ```json
 [
   "f01234"
+]
+```
+
+### StateListMessages
+StateListMessages looks back and returns all messages with a matching to or from address, stopping at the given height.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "To": "f01234",
+    "From": "f01234"
+  },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  10101
+]
+```
+
+Response:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 ]
 ```
 
@@ -4021,6 +4202,38 @@ Inputs:
 ```
 
 Response: `"f01234"`
+
+### StateReadState
+StateReadState returns the indicated actor's state.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Balance": "0",
+  "Code": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "State": {}
+}
+```
 
 ### StateSectorExpiration
 
