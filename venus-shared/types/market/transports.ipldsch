@@ -1,0 +1,15 @@
+# Defines the response to a query asking which transport protocols a
+# Storage Provider supports
+type Multiaddr bytes
+
+type Protocol struct {
+  # The name of the transport protocol
+  # Known protocols: "libp2p", "http", "https"
+  Name String
+  # The addresses of the endpoint in multiaddr format
+  Addresses [Multiaddr]
+}
+
+type QueryResponse struct {
+  Protocols [Protocol]
+}
