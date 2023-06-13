@@ -1,5 +1,34 @@
 # venus changelog
 
+## v1.12.0-rc1
+
+* fix: update UpgradeHyggeHeight to -21 in forcenet [[#5912](https://github.com/filecoin-project/venus/pull/5912)]
+* opt: push all tag to tianyan by [[#5934](https://github.com/filecoin-project/venus/pull/5934)]
+* fix: supply release id [[#5938](https://github.com/filecoin-project/venus/pull/5938)]
+* feat: change init logic [[#5941](https://github.com/filecoin-project/venus/pull/5941)]
+* fix: fix import when less than 900 height [[#5950](https://github.com/filecoin-project/venus/pull/5950)]
+* opt: remove perm adapt strategy [[#5953](https://github.com/filecoin-project/venus/pull/5953)]
+* feat: message pool: change locks to RWMutexes for performance [[#5964](https://github.com/filecoin-project/venus/pull/5964)]
+* feat: mpool: prune excess messages before selection [[#5967](https://github.com/filecoin-project/venus/pull/5967)]
+* fix: Fix generating version in the current directory [[#5972](https://github.com/filecoin-project/venus/pull/5972)]
+* Opt/remove init option [[#5974](https://github.com/filecoin-project/venus/pull/5974)]
+* Fix/not store event [[#5977](https://github.com/filecoin-project/venus/pull/5977)]
+* fix: fetch filecoin-ffi failed [[#5981](https://github.com/filecoin-project/venus/pull/5981)]
+* feat: add unseal state / 增加了 unseal 的状态类型 [[#5990](https://github.com/filecoin-project/venus/pull/5990)]
+* feat: chain: speed up calculation of genesis circ supply [[#5991](https://github.com/filecoin-project/venus/pull/5991)]
+* fix: gas estimation: do not special case paych collects [[#5992](https://github.com/filecoin-project/venus/pull/5992)]
+* feat: downgrade perm for eth from write to read [[#5995](https://github.com/filecoin-project/venus/pull/5995)]
+* feat: verify eth filter's block index is in hex [[#5996](https://github.com/filecoin-project/venus/pull/5996)]
+* feat: Network parameters add an Eip155ChainID field [[#5997](https://github.com/filecoin-project/venus/pull/5997)]
+* opt: add codecov token [[#5998](https://github.com/filecoin-project/venus/pull/5998)]
+* opt: MinerInfo adds the PendingOwnerAddress field [[#5999](https://github.com/filecoin-project/venus/pull/5999)]
+* feat: add ExecutionTrace cache [[#6000](https://github.com/filecoin-project/venus/pull/6000)]
+* feat: add batch deal for market [[#5829](https://github.com/filecoin-project/venus/pull/5829)]
+* check if epoch is negative in GetTipsetByHeight() [[#6008](https://github.com/filecoin-project/venus/pull/6008)]
+* chore: rename market to droplet [[#6005](https://github.com/filecoin-project/venus/pull/6005)]
+* feat: add vm execution lanes [[#6011](https://github.com/filecoin-project/venus/pull/6011)]
+* refactor: market: rename OfflineDealImport to DealsImport [[#6012](https://github.com/filecoin-project/venus/pull/6012)]
+
 ## v1.11.1
 
 * fix: windowPoST verify fail [[#fvm-1750](https://github.com/filecoin-project/ref-fvm/pull/1750)]
