@@ -128,11 +128,12 @@ jobs:
           go clean --modcache && make
           mkdir ./release
           if [[ "${{steps.vars.outputs.repo_name}}" == "droplet" ]]; then
-            mv ./droplet-client ./droplet ./release
+            mv ./droplet-client ./release
           fi
-          if [[ "${{steps.vars.outputs.repo_name}}" != "droplet" ]]; then
-            mv ./${{inputs.bin_name}} ./release
+          if [[ "${{steps.vars.outputs.repo_name}}" == "venus-market" ]]; then
+            mv ./market-client ./release
           fi
+          mv ./${{inputs.bin_name}} ./release
 
       - name: Zip Release
         uses: TheDoctor0/zip-release@0.6.0
@@ -263,11 +264,12 @@ jobs:
           make
           mkdir ./release
           if [[ "${{steps.vars.outputs.repo_name}}" == "droplet" ]]; then
-            mv ./droplet-client ./droplet ./release
+            mv ./droplet-client ./release
           fi
-          if [[ "${{steps.vars.outputs.repo_name}}" != "droplet" ]]; then
-            mv ./${{inputs.bin_name}} ./release
+          if [[ "${{steps.vars.outputs.repo_name}}" == "venus-market" ]]; then
+            mv ./market-client ./release
           fi
+          mv ./${{inputs.bin_name}} ./release
 
       - name: Zip Release
         if: startsWith(github.ref, 'refs/tags/')
