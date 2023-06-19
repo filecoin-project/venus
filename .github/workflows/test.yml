@@ -16,10 +16,10 @@ jobs:
   test:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: 1.18
           cache: true
@@ -65,7 +65,7 @@ jobs:
         run: go test -coverpkg=./... -coverprofile=coverage_integration.txt -covermode=atomic -timeout=30m -parallel=4   -v $(go list ./... | grep -v /venus-shared/) -integration=true -unit=false
 
       - name: Upload
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           token:
           files: ./coverage_unit.txt,./coverage_integration.txt,./coverage_venus_shared.txt
