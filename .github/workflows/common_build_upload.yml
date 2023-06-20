@@ -136,7 +136,7 @@ jobs:
           mv ./${{inputs.bin_name}} ./release
 
       - name: Zip Release
-        uses: TheDoctor0/zip-release@0.6.0
+        uses: TheDoctor0/zip-release@0.7.1
         with:
           filename: ${{steps.vars.outputs.artifact_name}}
           path: ./release
@@ -273,7 +273,7 @@ jobs:
 
       - name: Zip Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: TheDoctor0/zip-release@0.6.0
+        uses: TheDoctor0/zip-release@0.7.1
         with:
           filename: ${{steps.vars.outputs.artifact_name}}
           path: ./release
