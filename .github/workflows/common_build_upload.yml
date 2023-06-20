@@ -198,10 +198,10 @@ jobs:
       - name: push god-eye
         run: |
           export link=${{steps.vars.outputs.job_url}}
-          if [[ "${{ steps.release.outcome }}" == "success" ]]; then
-            export link=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/${{steps.vars.outputs.github_tag}}/${{steps.vars.outputs.artifact_name}}
-          elif [[ "${{ steps.uploadftp.outcome }}" == "success" ]]; then
+          if [[ "${{ steps.uploadftp.outcome }}" == "success" ]]; then
             export link=ftp://${{secrets.FTP_HOST}}/${{steps.vars.outputs.repo_name}}/${{steps.vars.outputs.artifact_name}}
+          elif [[ "${{ steps.release.outcome }}" == "success" ]]; then
+            export link=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/${{steps.vars.outputs.github_tag}}/${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_ubuntu.tar.gz
           elif [[ "${{ steps.cposs.outcome }}" == "success" ]]; then
             export link=${{steps.cposs.outputs.oss_signed_url}}
           fi
