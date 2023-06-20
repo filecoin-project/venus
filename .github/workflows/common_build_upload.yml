@@ -106,7 +106,7 @@ jobs:
           echo ftp_url = ftp://${{secrets.FTP_HOST}}/${{steps.vars.outputs.repo_name}}/${{steps.vars.outputs.artifact_name}}
 
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: 1.18
           cache: true
@@ -245,7 +245,7 @@ jobs:
           echo vars.artifact_name = ${{steps.vars.outputs.artifact_name}}
 
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: 1.18
           cache: true
