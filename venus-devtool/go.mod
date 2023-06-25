@@ -62,6 +62,7 @@ require (
 	github.com/filecoin-project/go-commp-utils v0.1.3 // indirect
 	github.com/filecoin-project/go-commp-utils/nonffi v0.0.0-20220905160352-62059082a837 // indirect
 	github.com/filecoin-project/go-crypto v0.0.1 // indirect
+	github.com/filecoin-project/go-ds-versioning v0.1.2 // indirect
 	github.com/filecoin-project/go-fil-commcid v0.1.0 // indirect
 	github.com/filecoin-project/go-hamt-ipld v0.1.5 // indirect
 	github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 // indirect
