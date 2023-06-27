@@ -16,7 +16,7 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
-	blocks "github.com/ipfs/go-libipfs/blocks"
+	blocks "github.com/ipfs/go-block-format"
 
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"

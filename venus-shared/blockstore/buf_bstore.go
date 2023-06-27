@@ -4,9 +4,9 @@ import (
 	"context"
 	"os"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	block "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -135,7 +135,7 @@ func (bs *BufferedBS) View(ctx context.Context, c cid.Cid, callback func([]byte)
 	return bs.readviewer.View(ctx, c, callback)
 }
 
-func (bs *BufferedBS) Get(ctx context.Context, c cid.Cid) (block.Block, error) {
+func (bs *BufferedBS) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
 	if out, err := bs.write.Get(ctx, c); err != nil {
 		if !ipld.IsNotFound(err) {
 			return nil, err
@@ -156,7 +156,7 @@ func (bs *BufferedBS) GetSize(ctx context.Context, c cid.Cid) (int, error) {
 	return s, err
 }
 
-func (bs *BufferedBS) Put(ctx context.Context, blk block.Block) error {
+func (bs *BufferedBS) Put(ctx context.Context, blk blocks.Block) error {
 	has, err := bs.read.Has(ctx, blk.Cid()) // TODO: consider dropping this check
 	if err != nil {
 		return err
@@ -186,7 +186,7 @@ func (bs *BufferedBS) HashOnRead(hor bool) {
 	bs.write.HashOnRead(hor)
 }
 
-func (bs *BufferedBS) PutMany(ctx context.Context, blks []block.Block) error {
+func (bs *BufferedBS) PutMany(ctx context.Context, blks []blocks.Block) error {
 	return bs.write.PutMany(ctx, blks)
 }
 

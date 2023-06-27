@@ -7,11 +7,11 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	ipld "github.com/ipfs/go-ipld-format"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/ipfs/go-merkledag"
 
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"

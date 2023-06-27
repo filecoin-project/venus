@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/ipfs/go-cid"
-	blockFormat "github.com/ipfs/go-libipfs/blocks"
+	blockFormat "github.com/ipfs/go-block-format"
 )
 
 type storable interface {

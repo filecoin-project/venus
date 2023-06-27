@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
+	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	block "github.com/ipfs/go-libipfs/blocks"
 )
 
 // autolog is a logger for the autobatching blockstore. It is subscoped from the
