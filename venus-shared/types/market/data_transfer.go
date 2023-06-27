@@ -35,7 +35,7 @@ func NewDataTransferChannel(hostID peer.ID, channelState datatransfer.ChannelSta
 	voucher := channelState.Voucher()
 	voucherJSON, err := ipld.Encode(voucher.Voucher, dagjson.Encode)
 	if err != nil {
-		channel.Voucher = fmt.Errorf("Voucher Serialization: %w", err).Error()
+		channel.Voucher = fmt.Errorf("voucher serialization: %w", err).Error()
 	} else {
 		channel.Voucher = string(voucherJSON)
 	}

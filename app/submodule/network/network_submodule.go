@@ -12,6 +12,7 @@ import (
 	"github.com/dchest/blake2b"
 	"github.com/ipfs/boxo/bitswap"
 	bsnet "github.com/ipfs/boxo/bitswap/network"
+	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -22,7 +23,6 @@ import (
 	"github.com/ipfs/go-graphsync/storeutil"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	blocks "github.com/ipfs/go-block-format"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -343,7 +343,7 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 
 		relayHost, err := libp2p.New(
 			libp2p.EnableRelay(),
-			libp2p.EnableAutoRelay(),
+			libp2p.EnableAutoRelayWithStaticRelays([]peer.AddrInfo{}),
 			publicAddrFactory,
 			libp2p.ChainOptions(libP2pOpts...),
 			libp2p.Ping(true),
