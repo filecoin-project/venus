@@ -1,6 +1,6 @@
 module github.com/filecoin-project/venus
 
-go 1.18
+go 1.19
 
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.2.1
