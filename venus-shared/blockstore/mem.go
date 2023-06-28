@@ -3,10 +3,12 @@ package blockstore
 import (
 	"context"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 )
+
+var _ Blockstore = (*MemBlockstore)(nil)
 
 // NewMemory returns a temporary memory-backed blockstore.
 func NewMemory() MemBlockstore {

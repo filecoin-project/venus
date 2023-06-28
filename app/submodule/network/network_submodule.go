@@ -10,6 +10,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
 
 	"github.com/dchest/blake2b"
+	"github.com/ipfs/boxo/bitswap"
+	bsnet "github.com/ipfs/boxo/bitswap/network"
+	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -20,8 +23,6 @@ import (
 	"github.com/ipfs/go-graphsync/storeutil"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	bsnet "github.com/ipfs/go-libipfs/bitswap/network"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -36,11 +37,10 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
-	dtnet "github.com/filecoin-project/go-data-transfer/network"
-	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
-	"github.com/ipfs/go-libipfs/bitswap"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
+	dtimpl "github.com/filecoin-project/go-data-transfer/v2/impl"
+	dtnet "github.com/filecoin-project/go-data-transfer/v2/network"
+	dtgstransport "github.com/filecoin-project/go-data-transfer/v2/transport/graphsync"
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -343,7 +343,7 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 
 		relayHost, err := libp2p.New(
 			libp2p.EnableRelay(),
-			libp2p.EnableAutoRelay(),
+			libp2p.EnableAutoRelayWithStaticRelays([]peer.AddrInfo{}),
 			publicAddrFactory,
 			libp2p.ChainOptions(libP2pOpts...),
 			libp2p.Ping(true),

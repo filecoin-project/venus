@@ -2,7 +2,7 @@ package market
 
 import (
 	"github.com/filecoin-project/go-address"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -40,7 +40,17 @@ func (deal *ProviderDealState) IntervalLowerBound() uint64 {
 }
 
 func (deal *ProviderDealState) NextInterval() uint64 {
-	return deal.Params.NextInterval(deal.CurrentInterval)
+	return nextInterval(&deal.Params, deal.CurrentInterval)
+}
+
+func nextInterval(p *retrievalmarket.Params, currentInterval uint64) uint64 {
+	intervalSize := p.PaymentInterval
+	var nextInterval uint64
+	for nextInterval <= currentInterval {
+		nextInterval += intervalSize
+		intervalSize += p.PaymentIntervalIncrease
+	}
+	return nextInterval
 }
 
 // Identifier provides a unique id for this provider deal

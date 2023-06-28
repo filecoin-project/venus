@@ -120,6 +120,12 @@ func (s *state2) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, e
 
 }
 
+func (s *state2) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error) {
+
+	return nil, fmt.Errorf("unsupported in actors v2")
+
+}
+
 func (s *state2) ActorKey() string {
 	return manifest.VerifregKey
 }

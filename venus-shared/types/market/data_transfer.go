@@ -1,11 +1,12 @@
 package market
 
 import (
-	"encoding/json"
 	"fmt"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/ipfs/go-cid"
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec/dagjson"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -31,16 +32,12 @@ func NewDataTransferChannel(hostID peer.ID, channelState datatransfer.ChannelSta
 		IsSender:   channelState.Sender() == hostID,
 		Message:    channelState.Message(),
 	}
-	stringer, ok := channelState.Voucher().(fmt.Stringer)
-	if ok {
-		channel.Voucher = stringer.String()
+	voucher := channelState.Voucher()
+	voucherJSON, err := ipld.Encode(voucher.Voucher, dagjson.Encode)
+	if err != nil {
+		channel.Voucher = fmt.Errorf("voucher serialization: %w", err).Error()
 	} else {
-		voucherJSON, err := json.Marshal(channelState.Voucher())
-		if err != nil {
-			channel.Voucher = fmt.Errorf("Voucher Serialization: %w", err).Error() //nolint:stylecheck
-		} else {
-			channel.Voucher = string(voucherJSON)
-		}
+		channel.Voucher = string(voucherJSON)
 	}
 	if channel.IsSender {
 		channel.IsInitiator = !channelState.IsPull()

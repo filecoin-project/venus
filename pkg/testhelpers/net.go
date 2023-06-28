@@ -59,7 +59,7 @@ func (fh *FakeHost) Mux() protocol.Switch                             { panic("n
 func (fh *FakeHost) Peerstore() peerstore.Peerstore                   { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) RemoveStreamHandler(protocol.ID)                  { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) SetStreamHandler(protocol.ID, inet.StreamHandler) { panic("not implemented") } // nolint: golint
-func (fh *FakeHost) SetStreamHandlerMatch(protocol.ID, func(string) bool, inet.StreamHandler) { // nolint: golint
+func (fh *FakeHost) SetStreamHandlerMatch(protocol.ID, func(protocol.ID) bool, inet.StreamHandler) { // nolint: golint
 	panic("not implemented")
 }
 

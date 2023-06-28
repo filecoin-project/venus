@@ -8,7 +8,6 @@ import (
 	"os"
 	"syscall"
 
-	"contrib.go.opencensus.io/exporter/jaeger"
 	"github.com/awnumar/memguard"
 	"github.com/etherlabsio/healthcheck/v2"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -42,6 +41,7 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
 	"go.opencensus.io/tag"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
@@ -102,8 +102,8 @@ type Node struct {
 	//
 	jsonRPCService, jsonRPCServiceV1 *jsonrpc.RPCServer
 
-	jaegerExporter *jaeger.Exporter
-	remoteAuth     jwtclient.IJwtAuthClient
+	jaeger     *tracesdk.TracerProvider
+	remoteAuth jwtclient.IJwtAuthClient
 }
 
 func (node *Node) Chain() *chain2.ChainSubmodule {
@@ -157,7 +157,7 @@ func (node *Node) Start(ctx context.Context) error {
 		return errors.Wrap(err, "failed to setup metrics")
 	}
 
-	if node.jaegerExporter, err = metrics.RegisterJaeger(node.network.Host.ID().Pretty(),
+	if node.jaeger, err = metrics.SetupJaegerTracing(node.network.Host.ID().Pretty(),
 		node.repo.Config().Observability.Tracing); err != nil {
 		return errors.Wrap(err, "failed to setup tracing")
 	}
@@ -234,8 +234,10 @@ func (node *Node) Stop(ctx context.Context) {
 		_ = logging.Logger(name).Sync()
 	}
 
-	if node.jaegerExporter != nil {
-		node.jaegerExporter.Flush()
+	if node.jaeger != nil {
+		if err := metrics.ShutdownJaeger(ctx, node.jaeger); err != nil {
+			log.Warnf("error shutdown jaeger-tracing: %w", err)
+		}
 	}
 }
 

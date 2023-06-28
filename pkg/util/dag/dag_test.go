@@ -34,7 +34,7 @@ func TestDAGGet(t *testing.T) {
 		dag := NewDAG(dserv)
 
 		_, err := dag.GetNode(ctx, "awful")
-		assert.EqualError(t, err, "invalid path \"awful\": selected encoding not supported")
+		assert.ErrorContains(t, err, "selected encoding not supported")
 	})
 
 	t.Run("ILPD node not found results in error", func(t *testing.T) {
