@@ -4,53 +4,31 @@ labels: [C-enhancement]
 body:
 - type: checkboxes
   attributes:
-    label: 链服务模块 / Chain Service Components
+    label: Sophon Service / 智子服务  
     description: |
-      选择涉及模块。
       Please select the related components.
+      请选择涉及模块。
     options:
       - label: venus
         required: false
-      - label: venus-auth
+      - label: sophon-messager
         required: false
-      - label: venus-gateway
+      - label: sophon-miner
         required: false
-      - label: venus-messager
+      - label: sophon-auth
         required: false
-      - label: venus-miner
+      - label: sophon-gateway
         required: false
-      - label: 文档 / docs
+      - label: sophon-co
         required: false
-- type: checkboxes
-  attributes:
-    label: 订单服务模块 / Deal Service Components
-    description: |
-      选择涉及模块。
-      Please select the related components.
-    options:
-      - label: venus-market
-        required: false
-      - label: 文档 / docs
-        required: false
-- type: checkboxes
-  attributes:
-    label: 算力服务模块 / Storage Power Service Components
-    description: |
-      选择涉及模块。
-      Please select the related components.
-    options:
-      - label: venus-sector-manager
-        required: false
-      - label: venus-worker
-        required: false
-      - label: 文档 / docs
+      - label: docs / 文档 
         required: false
 - type: textarea
   id: description
   attributes:
-    label: 描述 / Description
+    label: Description / 描述
     placeholder: |
-      是否可以考虑...
       I suggest ...
+      是否可以考虑...
   validations:
     required: true
