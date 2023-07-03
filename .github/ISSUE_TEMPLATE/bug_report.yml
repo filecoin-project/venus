@@ -6,8 +6,8 @@ body:
   attributes:
     label: Sophon Service / 智子服务
     description: |
-      选择涉及模块。
       Please select the related components.
+      选择涉及模块。
     options:
       - label: venus
         required: false
