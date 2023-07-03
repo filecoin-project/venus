@@ -11,13 +11,15 @@ body:
     options:
       - label: venus
         required: false
+      - label: sophon-messager
+        required: false
+      - label: sophon-miner
+        required: false
       - label: sophon-auth
         required: false
       - label: sophon-gateway
         required: false
-      - label: sophon-messager
-        required: false
-      - label: sophon-miner
+      - label: sophon-co
         required: false
       - label: docs / 文档 
         required: false
