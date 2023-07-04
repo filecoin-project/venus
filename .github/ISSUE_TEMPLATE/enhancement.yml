@@ -1,5 +1,5 @@
-name: 功能特性 / Enhancement
-description:  "提议新功能，或改善已有功能 / New feature request or enhancement suggestion"
+name: Enhancement / 功能特性
+description:  "New feature request or enhancement suggestion / 提议新功能，或改善已有功能"
 labels: [C-enhancement]
 body:
 - type: checkboxes
