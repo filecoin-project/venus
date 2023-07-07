@@ -882,8 +882,8 @@ github.com/ipfs-force-community/go-jsonrpc v0.1.7/go.mod h1:jBSvPTl8V1N7gSTuCR4b
 github.com/ipfs-force-community/metrics v1.0.1-0.20211022060227-11142a08b729/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
 github.com/ipfs-force-community/metrics v1.0.1-0.20230626064437-eed34cb166f5 h1:fn4G/yeHNX4rVdHH/KELwxjcnbx5327hQBw4eXs5TEI=
 github.com/ipfs-force-community/metrics v1.0.1-0.20230626064437-eed34cb166f5/go.mod h1:yi9gw+y+UjzWjaYZG2xgnH0T6PcmwHRKhDkbylp9qxc=
-github.com/ipfs-force-community/sophon-auth v1.11.1-0.20230627090630-0f5939961cf4 h1:A+3yX/J/dToyZmWmuDf0KkWArISlCQFisq5qNMU2VY8=
-github.com/ipfs-force-community/sophon-auth v1.11.1-0.20230627090630-0f5939961cf4/go.mod h1:+S04oHCcJS6hylIv1kb74mA/m7qe41m6Py1hTFLM6rE=
+github.com/ipfs-force-community/sophon-auth v1.12.0 h1:nqjsA6bIv9Rd9+7lHxGDvNJ7gvt/M2yGSxymA6AoxXI=
+github.com/ipfs-force-community/sophon-auth v1.12.0/go.mod h1:cGYCfjA/BDB/Km9P7Za6t1hmwpFlPKf8ho/CHmLG81Y=
 github.com/ipfs/bbloom v0.0.1/go.mod h1:oqo8CVWsJFMOZqTglBG4wydCE4IQA/G2/SEofB0rjUI=
 github.com/ipfs/bbloom v0.0.4 h1:Gi+8EGJ2y5qiD5FbsbpX/TMNcJw8gSqr7eyjHa4Fhvs=
 github.com/ipfs/bbloom v0.0.4/go.mod h1:cS9YprKXpoZ9lT0n/Mw/a6/aFV6DTjTLYHeA+gyqMG0=
