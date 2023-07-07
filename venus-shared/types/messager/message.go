@@ -166,33 +166,12 @@ type MsgQueryParams struct {
 	// Message From
 	From []address.Address
 
-	PageIndex int
-	PageSize  int
-}
+	// the time stamp that query msgs updated before
+	ByUpdateAt *time.Time
 
-func (qp *MsgQueryParams) ToMap() map[string]interface{} {
-	ret := make(map[string]interface{})
-	if len(qp.State) > 0 {
-		ret["state"] = qp.State
-	}
-	if len(qp.From) > 0 {
-		temp := make([]string, 0, len(qp.From))
-		for _, addr := range qp.From {
-			temp = append(temp, addr.String())
-		}
-		ret["from_addr"] = temp
-	}
-	return ret
-}
+	// order by Asc or Desc, Default is Desc
+	Asc bool
 
-func (qp *MsgQueryParams) Offset() int {
-	return (qp.PageIndex - 1) * qp.PageSize
-}
-
-func (qp *MsgQueryParams) Limit() int {
-	return qp.PageSize
-}
-
-func (qp *MsgQueryParams) IsPaged() bool {
-	return qp.PageIndex > 0 && qp.PageSize > 0
+	Limit  uint
+	Offset uint
 }
