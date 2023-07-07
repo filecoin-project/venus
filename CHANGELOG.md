@@ -1,5 +1,10 @@
 # venus changelog
 
+## v1.12.0
+
+* fix: compatible with older versions by @simlecode in [[#6024](https://github.com/filecoin-project/venus/pull/6024)]
+* chore: update github actions by @galargh in [[#6027](https://github.com/filecoin-project/venus/pull/6027)]
+
 ## v1.12.0-rc1
 
 * fix: update UpgradeHyggeHeight to -21 in forcenet [[#5912](https://github.com/filecoin-project/venus/pull/5912)]
