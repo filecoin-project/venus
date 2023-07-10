@@ -13,7 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -24,9 +24,9 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types/gateway"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 	auuid "github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/metrics"
@@ -301,6 +301,8 @@ func init() {
 	addExample(&percent)
 	addExample(gateway.UnsealStateFinished)
 	addExample(types.UnpaddedByteIndex(0))
+
+	addExample(retrievalmarket.CborGenCompatibleNode{})
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

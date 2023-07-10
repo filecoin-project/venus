@@ -1,58 +1,36 @@
 name: "Bug Report"
-description: "报告 bug / File a bug report to help us improve"
+description: "File a bug report to help us improve / 报告 bug"
 labels: [C-bug]
 body:
 - type: checkboxes
   attributes:
-    label: 链服务模块 / Chain Service Components
+    label: Sophon Service / 智子服务
     description: |
-      选择涉及模块。
       Please select the related components.
+      选择涉及模块。
     options:
       - label: venus
         required: false
-      - label: venus-auth
+      - label: sophon-messager
         required: false
-      - label: venus-gateway
+      - label: sophon-miner
         required: false
-      - label: venus-messager
+      - label: sophon-auth
         required: false
-      - label: venus-miner
+      - label: sophon-gateway
         required: false
-      - label: 文档 / docs
-        required: false
-- type: checkboxes
-  attributes:
-    label: 订单服务模块 / Deal Service Components
-    description: |
-      选择涉及模块。
-      Please select the related components.
-    options:
-      - label: venus-market
-        required: false
-      - label: 文档 / docs
-        required: false
-- type: checkboxes
-  attributes:
-    label: 算力服务模块 / Storage Power Service Components
-    description: |
-      选择涉及模块。
-      Please select the related components.
-    options:
-      - label: venus-sector-manager
-        required: false
-      - label: venus-worker
+      - label: sophon-co
         required: false
       - label: 文档 / docs
         required: false
 - type: textarea
   id: version
   attributes:
-    label: 版本 / Version
+    label: Version / 版本
     render: text
     description: |
-      填写组件的版本。
       Enter version of the component if applicable.
+      填写组件的版本。
     placeholder: |
       e.g.
       { "Version": "1.6.0+git.3652863fa.dirty" }
@@ -62,30 +40,30 @@ body:
 - type: textarea
   id: description
   attributes:
-    label: 描述 / Describe the Bug
+    label: Describe the Bug / 描述
     description: |
+      This is where you get to tell us what went wrong, when doing so, please try to provide a clear and concise description of the bug with all related information.
       填写你所遇到的崩溃、异常信息或你认为与预期结果不符的行为。
-      This is where you get to tell us what went wrong, when doing so, please try to provide a clear and concise description of the bug with all related information:
   validations:
     required: true
 - type: textarea
   id: logging
   attributes:
-    label: 日志 / Logging Information
+    label: Logging Information / 日志 
     render: text
     description: |
-      填写可以帮助定位问题的日志信息。
       Please provide debug logs of the problem.
       If you don't provide detailed logs when you raise the issue it will almost certainly be the first request I make before furthur diagnosing the problem.
+      填写可以帮助定位问题的日志信息。
   validations:
     required: true
 - type: textarea
   id: reproduce
   attributes:
-    label: 重现步骤 / Repo Steps
+    label: Repo Steps / 重现步骤 
     description: |
-      能够重现问题的步骤。
       Steps to reproduce the behavior.
+      能够重现问题的步骤。
     placeholder: |
       1. Run '...'
       2. Do '...'

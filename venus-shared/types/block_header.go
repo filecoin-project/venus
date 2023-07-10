@@ -10,10 +10,10 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/proof"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	node "github.com/ipfs/go-ipld-format"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 )
 
 // DecodeBlock decodes raw cbor bytes into a BlockHeader.

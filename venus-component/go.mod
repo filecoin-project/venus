@@ -1,6 +1,6 @@
 module github.com/filecoin-project/venus/venus-component
 
-go 1.18
+go 1.19
 
 require (
 	github.com/filecoin-project/go-cbor-util v0.0.1

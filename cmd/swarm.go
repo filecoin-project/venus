@@ -521,8 +521,8 @@ var reachabilityCmd = &cmds.Command{
 		writer := NewSilentWriter(buf)
 
 		writer.Println("AutoNAT status: ", i.Reachability.String())
-		if i.PublicAddr != "" {
-			writer.Println("Public address: ", i.PublicAddr)
+		if len(i.PublicAddrs) > 0 {
+			writer.Println("Public address:", i.PublicAddrs)
 		}
 
 		return re.Emit(buf)

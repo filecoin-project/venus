@@ -1,6 +1,9 @@
 package gateway
 
 import (
+	"crypto/rand"
+	"fmt"
+
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -23,3 +26,11 @@ type WalletSignRequest struct {
 	ToSign []byte
 	Meta   types.MsgMeta
 }
+
+var RandomBytes = func() []byte {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		panic(fmt.Sprintf("init random bytes for address verify failed:%s", err))
+	}
+	return buf
+}()

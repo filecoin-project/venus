@@ -13,7 +13,7 @@ import (
 	"github.com/howeyc/gopass"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	files "github.com/ipfs/go-ipfs-files"
+	files "github.com/ipfs/go-libipfs/files"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"

@@ -120,6 +120,12 @@ func (s *state8) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, e
 
 }
 
+func (s *state8) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error) {
+
+	return nil, fmt.Errorf("unsupported in actors v8")
+
+}
+
 func (s *state8) ActorKey() string {
 	return manifest.VerifregKey
 }

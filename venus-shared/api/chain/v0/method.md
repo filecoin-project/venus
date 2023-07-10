@@ -4681,7 +4681,9 @@ Response:
 ```json
 {
   "Reachability": 1,
-  "PublicAddr": "string value"
+  "PublicAddrs": [
+    "string value"
+  ]
 }
 ```
 

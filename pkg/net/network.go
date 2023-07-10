@@ -12,6 +12,7 @@ import (
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	swarm "github.com/libp2p/go-libp2p/p2p/net/swarm"
 	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -113,8 +114,12 @@ func (network *Network) PeerInfo(ctx context.Context, p peer.ID) (*types.Extende
 
 	protocols, err := network.host.Peerstore().GetProtocols(p)
 	if err == nil {
-		sort.Strings(protocols)
-		info.Protocols = protocols
+		protocolStrings := make([]string, 0, len(protocols))
+		for _, protocol := range protocols {
+			protocolStrings = append(protocolStrings, string(protocol))
+		}
+		sort.Strings(protocolStrings)
+		info.Protocols = protocolStrings
 	}
 
 	if cm := network.host.ConnManager().GetTagInfo(p); cm != nil {
@@ -195,17 +200,17 @@ func (network *Network) AutoNatStatus() (types.NatInfo, error) {
 		}, nil
 	}
 
-	var maddr string
+	var addrs []string
 	if autonat.Status() == network2.ReachabilityPublic {
-		pa, err := autonat.PublicAddr()
-		if err != nil {
-			return types.NatInfo{}, err
+		for _, addr := range network.host.Addrs() {
+			if manet.IsPublicAddr(addr) {
+				addrs = append(addrs, addr.String())
+			}
 		}
-		maddr = pa.String()
 	}
 
 	return types.NatInfo{
 		Reachability: autonat.Status(),
-		PublicAddr:   maddr,
+		PublicAddrs:  addrs,
 	}, nil
 }

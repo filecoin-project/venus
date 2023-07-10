@@ -6,7 +6,7 @@ import (
 	"time"
 
 	address "github.com/filecoin-project/go-address"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"

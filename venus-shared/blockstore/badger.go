@@ -8,13 +8,13 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/keytransform"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	ipld "github.com/ipfs/go-ipld-format"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	"go.uber.org/zap"
 )
 

@@ -6,8 +6,8 @@ import (
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
+	blockFormat "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blockFormat "github.com/ipfs/go-libipfs/blocks"
 )
 
 type storable interface {

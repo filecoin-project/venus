@@ -106,9 +106,9 @@ jobs:
           echo ftp_url = ftp://${{secrets.FTP_HOST}}/${{steps.vars.outputs.repo_name}}/${{steps.vars.outputs.artifact_name}}
 
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
-          go-version: 1.18
+          go-version: 1.19
           cache: true
 
       - name: install deps
@@ -136,7 +136,7 @@ jobs:
           mv ./${{inputs.bin_name}} ./release
 
       - name: Zip Release
-        uses: TheDoctor0/zip-release@0.6.0
+        uses: TheDoctor0/zip-release@0.7.1
         with:
           filename: ${{steps.vars.outputs.artifact_name}}
           path: ./release
@@ -198,10 +198,10 @@ jobs:
       - name: push god-eye
         run: |
           export link=${{steps.vars.outputs.job_url}}
-          if [[ "${{ steps.release.outcome }}" == "success" ]]; then
-            export link=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/${{steps.vars.outputs.github_tag}}/${{steps.vars.outputs.artifact_name}}
-          elif [[ "${{ steps.uploadftp.outcome }}" == "success" ]]; then
+          if [[ "${{ steps.uploadftp.outcome }}" == "success" ]]; then
             export link=ftp://${{secrets.FTP_HOST}}/${{steps.vars.outputs.repo_name}}/${{steps.vars.outputs.artifact_name}}
+          elif [[ "${{ steps.release.outcome }}" == "success" ]]; then
+            export link=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/${{steps.vars.outputs.github_tag}}/${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_ubuntu.tar.gz
           elif [[ "${{ steps.cposs.outcome }}" == "success" ]]; then
             export link=${{steps.cposs.outputs.oss_signed_url}}
           fi
@@ -245,9 +245,9 @@ jobs:
           echo vars.artifact_name = ${{steps.vars.outputs.artifact_name}}
 
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
-          go-version: 1.18
+          go-version: 1.19
           cache: true
 
       - name: install more deps
@@ -273,7 +273,7 @@ jobs:
 
       - name: Zip Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: TheDoctor0/zip-release@0.6.0
+        uses: TheDoctor0/zip-release@0.7.1
         with:
           filename: ${{steps.vars.outputs.artifact_name}}
           path: ./release
