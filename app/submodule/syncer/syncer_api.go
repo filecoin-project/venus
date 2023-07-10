@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fvm"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -101,9 +102,11 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 		return fmt.Errorf("loading parent block: %v", err)
 	}
 
-	if err := sa.syncer.SlashFilter.MinedBlock(ctx, blk.Header, parent.Height); err != nil {
-		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-		return fmt.Errorf("<!!> SLASH FILTER ERROR: %v", err)
+	if !constants.NoSlashFilter {
+		if err := sa.syncer.SlashFilter.MinedBlock(ctx, blk.Header, parent.Height); err != nil {
+			log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
+			return fmt.Errorf("<!!> SLASH FILTER ERROR: %v", err)
+		}
 	}
 
 	// TODO: should we have some sort of fast path to adding a local block?
