@@ -18,8 +18,7 @@ func WallabyNet() *NetworkConf {
 				"/dns4/ca0.bootstrap.wallaby.yoga/tcp/41000/p2p/12D3KooWQAupDxeHoLzmc617FzhWnHHWEt8e2fNfccqByT5mHWPp",
 				"/dns4/sg0.bootstrap.wallaby.yoga/tcp/41000/p2p/12D3KooWAkSaZCXSngvgSi4ufVModcExCysnS3JhG6nnprPjVV4o",
 			},
-			MinPeerThreshold: 0,
-			Period:           "30s",
+			Period: "30s",
 		},
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,

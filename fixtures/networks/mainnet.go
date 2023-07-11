@@ -30,8 +30,7 @@ func Mainnet() *NetworkConf {
 				"/dns4/bootstrap-1.ipfsmain.cn/tcp/34723/p2p/12D3KooWMKxMkD5DMpSWsW7dBddKxKT7L2GgbNuckz9otxvkvByP",
 				"/dns4/bootstarp-0.1475.io/tcp/61256/p2p/12D3KooWRzCVDwHUkgdK7eRgnoXbjDAELhxPErjHzbRLguSV1aRt",
 			},
-			MinPeerThreshold: 1,
-			Period:           "30s",
+			Period: "30s",
 		},
 		Network: config.NetworkParamsConfig{
 			DevNet:                false,

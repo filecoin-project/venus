@@ -15,8 +15,7 @@ func InteropNet() *NetworkConf {
 				"/dns4/bootstrap-0.interop.fildev.network/tcp/1347/p2p/12D3KooWDpppr8csCNvEPnD2Z83KTPdBTM7iJhL66qK8LK3bB5NU",
 				"/dns4/bootstrap-1.interop.fildev.network/tcp/1347/p2p/12D3KooWR3K1sXWoDYcXWqDF26mFEM1o1g7e7fcVR3NYE7rn24Gs",
 			},
-			MinPeerThreshold: 0,
-			Period:           "30s",
+			Period: "30s",
 		},
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,

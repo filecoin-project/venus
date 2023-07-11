@@ -18,8 +18,7 @@ func HyperspaceNet() *NetworkConf {
 				"/dns4/ca0.bootstrap.hyperspace.yoga/tcp/31000/p2p/12D3KooWNJ4evKioh6gexD4fyvyeFecNtp2oTEPTyp3jtSQ3pWaP",
 				"/dns4/sg0.bootstrap.hyperspace.yoga/tcp/31000/p2p/12D3KooWCENec46HHByaJKzbjSqz9TqVdSxSAdi9FKNwdMvfw3vp",
 			},
-			MinPeerThreshold: 0,
-			Period:           "30s",
+			Period: "30s",
 		},
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
