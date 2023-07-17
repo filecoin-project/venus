@@ -1708,6 +1708,7 @@ Inputs:
     "State": 12,
     "Client": "string value",
     "DiscardFailedDeal": true,
+    "DealID": 5432,
     "Offset": 123,
     "Limit": 123
   }
