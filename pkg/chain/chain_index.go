@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-// DefaultChainIndexCacheSize no longer sets the maximum size, just the inital size of the map.
+// DefaultChainIndexCacheSize no longer sets the maximum size, just the initial size of the map.
 var DefaultChainIndexCacheSize = 1 << 15
 
 func init() {
@@ -29,7 +29,7 @@ func init() {
 }
 
 // ChainIndex tipset height index, used to getting tipset by height quickly
-type ChainIndex struct {
+type ChainIndex struct { //nolint:revive
 	indexCache *xsync.MapOf[types.TipSetKey, *lbEntry]
 
 	fillCacheLock shardedmutex.ShardedMutexFor[types.TipSetKey]

@@ -12,10 +12,10 @@ const cacheline = 64
 // Locks-8  74.6ns ± 7%  12.3ns ± 2%  -83.54%  (p=0.000 n=20+18)
 type paddedMutex struct {
 	mt  sync.Mutex
-	pad [cacheline - 8]uint8
+	pad [cacheline - 8]uint8 //nolint:unused
 }
 
-type ShardedMutex struct {
+type ShardedMutex struct { //nolint:revive
 	shards []paddedMutex
 }
 
@@ -45,7 +45,7 @@ func (sm ShardedMutex) GetLock(shard int) sync.Locker {
 	return &sm.shards[shard].mt
 }
 
-type ShardedMutexFor[K any] struct {
+type ShardedMutexFor[K any] struct { //nolint:revive
 	inner ShardedMutex
 
 	hasher func(maphash.Seed, K) uint64
