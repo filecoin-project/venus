@@ -562,6 +562,7 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []types.Et
 		topicsFoundCount int
 		dataFound        bool
 	)
+	topics = make([]types.EthHash, 0, 4)
 	for _, entry := range entries {
 		// Drop events with non-raw topics to avoid mistakes.
 		if entry.Codec != cid.Raw {

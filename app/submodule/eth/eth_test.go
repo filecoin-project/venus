@@ -16,7 +16,8 @@ func TestEthLogFromEvent(t *testing.T) {
 	data, topics, ok := ethLogFromEvent(nil)
 	require.True(t, ok)
 	require.Nil(t, data)
-	require.Nil(t, topics)
+	require.NotNil(t, topics)
+	require.Empty(t, topics)
 
 	// basic topic
 	data, topics, ok = ethLogFromEvent([]types.EventEntry{{

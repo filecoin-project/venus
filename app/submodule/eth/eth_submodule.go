@@ -3,7 +3,9 @@ package eth
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -39,6 +41,17 @@ func NewEthSubModule(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+
+		// prefill the whole skiplist cache maintained internally by the GetTipsetByHeight
+		go func() {
+			start := time.Now()
+			log.Infoln("Start prefilling GetTipsetByHeight cache")
+			_, err := em.chainModule.ChainReader.GetTipSetByHeight(ctx, em.chainModule.ChainReader.GetHead(), abi.ChainEpoch(0), false)
+			if err != nil {
+				log.Warnf("error when prefilling GetTipsetByHeight cache: %w", err)
+			}
+			log.Infof("Prefilling GetTipsetByHeight done in %s", time.Since(start))
+		}()
 	}
 
 	return em, nil

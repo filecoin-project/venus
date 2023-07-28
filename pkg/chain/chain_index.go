@@ -3,16 +3,20 @@ package chain
 import (
 	"context"
 	"fmt"
+	"hash/maphash"
 	"os"
 	"strconv"
-	"sync"
+
+	"github.com/puzpuzpuz/xsync/v2"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/venus/pkg/shardedmutex"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var DefaultChainIndexCacheSize = 32 << 15
+// DefaultChainIndexCacheSize no longer sets the maximum size, just the initial size of the map.
+var DefaultChainIndexCacheSize = 1 << 15
 
 func init() {
 	if s := os.Getenv("CHAIN_INDEX_CACHE"); s != "" {
@@ -25,21 +29,27 @@ func init() {
 }
 
 // ChainIndex tipset height index, used to getting tipset by height quickly
-type ChainIndex struct { //nolint
-	indexCacheLk sync.Mutex
-	indexCache   map[types.TipSetKey]*lbEntry
+type ChainIndex struct { //nolint:revive
+	indexCache *xsync.MapOf[types.TipSetKey, *lbEntry]
+
+	fillCacheLock shardedmutex.ShardedMutexFor[types.TipSetKey]
 
 	loadTipSet loadTipSetFunc
 
 	skipLength abi.ChainEpoch
 }
 
+func maphashTSK(s maphash.Seed, tsk types.TipSetKey) uint64 {
+	return maphash.Bytes(s, tsk.Bytes())
+}
+
 // NewChainIndex return a new chain index with arc cache
 func NewChainIndex(lts loadTipSetFunc) *ChainIndex {
 	return &ChainIndex{
-		indexCache: make(map[types.TipSetKey]*lbEntry, DefaultChainIndexCacheSize),
-		loadTipSet: lts,
-		skipLength: 20,
+		indexCache:    xsync.NewTypedMapOfPresized[types.TipSetKey, *lbEntry](maphashTSK, DefaultChainIndexCacheSize),
+		fillCacheLock: shardedmutex.NewFor(maphashTSK, 32),
+		loadTipSet:    lts,
+		skipLength:    20,
 	}
 }
 
@@ -62,17 +72,23 @@ func (ci *ChainIndex) GetTipSetByHeight(ctx context.Context, from *types.TipSet,
 		return nil, fmt.Errorf("failed to round down: %w", err)
 	}
 
-	ci.indexCacheLk.Lock()
-	defer ci.indexCacheLk.Unlock()
 	cur := rounded.Key()
 	for {
-		lbe, ok := ci.indexCache[cur]
+		lbe, ok := ci.indexCache.Load(cur) // check the cache
 		if !ok {
-			fc, err := ci.fillCache(ctx, cur)
-			if err != nil {
-				return nil, fmt.Errorf("failed to fill cache: %w", err)
+			lk := ci.fillCacheLock.GetLock(cur)
+			lk.Lock()                         // if entry is missing, take the lock
+			lbe, ok = ci.indexCache.Load(cur) // check if someone else added it while we waited for lock
+			if !ok {
+				fc, err := ci.fillCache(ctx, cur)
+				if err != nil {
+					lk.Unlock()
+					return nil, fmt.Errorf("failed to fill cache: %w", err)
+				}
+				lbe = fc
+				ci.indexCache.Store(cur, lbe)
 			}
-			lbe = fc
+			lk.Unlock()
 		}
 
 		if to == lbe.targetHeight {
@@ -141,7 +157,6 @@ func (ci *ChainIndex) fillCache(ctx context.Context, tsk types.TipSetKey) (*lbEn
 		targetHeight: skipTarget.Height(),
 		target:       skipTarget.Key(),
 	}
-	ci.indexCache[tsk] = lbe
 
 	return lbe, nil
 }
