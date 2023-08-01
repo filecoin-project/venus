@@ -102,26 +102,19 @@ type SwarmConfig struct {
 	Address            string `json:"address"`
 	PublicRelayAddress string `json:"public_relay_address,omitempty"`
 
-	// Addresses to explicitally announce to other peers. If not specified,
-	// all interface addresses are announced
-	// Format: multiaddress
-	AnnounceAddresses []string
-	// Addresses to not announce
-	// Format: multiaddress
-	NoAnnounceAddresses []string
-	ProtectedPeers      []string
+	ProtectedPeers []string `json:"protectedPeers"`
 	//ConnMgrLow is the number of connections that the basic connection manager
 	// will trim down to.
-	ConnMgrLow uint
+	ConnMgrLow uint `json:"connMgrLow"`
 
 	// ConnMgrHigh is the number of connections that, when exceeded, will trigger
 	// a connection GC operation. Note: protected/recently formed connections don't
 	// count towards this limit.
-	ConnMgrHigh uint
+	ConnMgrHigh uint `json:"connMgrHigh"`
 
 	// ConnMgrGrace is a time duration that new connections are immune from being
 	// closed by the connection manager.
-	ConnMgrGrace Duration
+	ConnMgrGrace Duration `json:"connMgrGrace"`
 }
 
 func newDefaultSwarmConfig() *SwarmConfig {
@@ -481,26 +474,7 @@ func newFevmConfig() *FevmConfig {
 
 type PubsubConfig struct {
 	// Run the node in bootstrap-node mode
-	Bootstrapper bool
-
-	RemoteTracer string
-
-	// Path to file that will be used to output tracer content in JSON format.
-	// If present tracer will save data to defined file.
-	// Format: file path
-	JsonTracer string
-
-	// Connection string for elasticsearch instance.
-	// If present tracer will save data to elasticsearch.
-	// Format: https://<username>:<password>@<elasticsearch_url>:<port>/
-	ElasticSearchTracer string
-
-	// Name of elasticsearch index that will be used to save tracer data.
-	// This property is used only if ElasticSearchTracer propery is set.
-	ElasticSearchIndex string
-
-	// Auth token that will be passed with logs to elasticsearch - used for weighted peers score.
-	TracerSourceAuth string
+	Bootstrapper bool `json:"bootstrapper"`
 }
 
 func newPubsubConfig() *PubsubConfig {

@@ -80,6 +80,8 @@ const (
 	AuthServiceToken = "auth-token"
 
 	BootstrapPeers = "bootstrap-peers"
+
+	Profile = "profile"
 )
 
 func init() {

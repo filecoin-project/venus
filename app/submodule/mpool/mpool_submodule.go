@@ -54,12 +54,13 @@ type MessagePoolSubmodule struct { //nolint
 	// Network Fields
 	MessageSub *pubsub.Subscription
 
-	MPool      *messagepool.MessagePool
-	msgSigner  *messagepool.MessageSigner
-	chain      *chain.ChainSubmodule
-	network    *network.NetworkSubmodule
-	walletAPI  v1api.IWallet
-	networkCfg *config.NetworkParamsConfig
+	MPool        *messagepool.MessagePool
+	msgSigner    *messagepool.MessageSigner
+	chain        *chain.ChainSubmodule
+	network      *network.NetworkSubmodule
+	walletAPI    v1api.IWallet
+	networkCfg   *config.NetworkParamsConfig
+	bootstrapper bool
 }
 
 func OpenFilesystemJournal(lr repo.Repo) (journal.Journal, error) {
@@ -71,7 +72,8 @@ func OpenFilesystemJournal(lr repo.Repo) (journal.Journal, error) {
 	return jrnl, err
 }
 
-func NewMpoolSubmodule(ctx context.Context, cfg messagepoolConfig,
+func NewMpoolSubmodule(ctx context.Context,
+	cfg messagepoolConfig,
 	network *network.NetworkSubmodule,
 	chain *chain.ChainSubmodule,
 	wallet *wallet.WalletSubmodule,
@@ -89,12 +91,13 @@ func NewMpoolSubmodule(ctx context.Context, cfg messagepoolConfig,
 	}
 
 	return &MessagePoolSubmodule{
-		MPool:      mp,
-		chain:      chain,
-		walletAPI:  wallet.API(),
-		network:    network,
-		networkCfg: cfg.Repo().Config().NetworkParams,
-		msgSigner:  messagepool.NewMessageSigner(wallet.WalletIntersection(), mp, cfg.Repo().MetaDatastore()),
+		MPool:        mp,
+		chain:        chain,
+		walletAPI:    wallet.API(),
+		network:      network,
+		networkCfg:   cfg.Repo().Config().NetworkParams,
+		msgSigner:    messagepool.NewMessageSigner(wallet.WalletIntersection(), mp, cfg.Repo().MetaDatastore()),
+		bootstrapper: cfg.Repo().Config().PubsubConfig.Bootstrapper,
 	}, nil
 }
 
@@ -190,12 +193,19 @@ func (mp *MessagePoolSubmodule) Start(ctx context.Context) error {
 	var once sync.Once
 	subscribe := func() {
 		once.Do(func() {
+			log.Infof("subscribing to pubsub topic %s", topicName)
+
 			var err error
 			if mp.MessageSub, err = msgTopic.Subscribe(); err != nil {
 				panic(err)
 			}
 			go mp.handleIncomingMessage(ctx)
 		})
+	}
+
+	if mp.bootstrapper {
+		subscribe()
+		return nil
 	}
 
 	// wait until we are synced within 10 epochs

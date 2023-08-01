@@ -56,6 +56,7 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
 		cmds.StringOption(Network, "when set, populates config with network specific parameters, eg. mainnet,2k,calibrationnet,interopnet,butterflynet").WithDefault("mainnet"),
 		cmds.StringOption(Password, "set wallet password"),
+		cmds.StringOption(Profile, "specify type of node, eg. bootstrapper"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if limit, _ := req.Options[ULimit].(bool); limit {
@@ -240,6 +241,13 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	if bootPeers, ok := req.Options[BootstrapPeers].([]string); ok && len(bootPeers) > 0 {
 		config.Bootstrap.AddPeers(bootPeers...)
+	}
+
+	if profile, ok := req.Options[Profile].(string); ok && len(profile) > 0 {
+		if profile != "bootstrapper" {
+			return fmt.Errorf("unrecognized profile type: %s", profile)
+		}
+		config.PubsubConfig.Bootstrapper = true
 	}
 
 	opts, err := node.OptionsFromRepo(rep)
