@@ -40,6 +40,7 @@ type Config struct {
 	SlashFilterDs *SlashFilterDsConfig `json:"slashFilter"`
 	RateLimitCfg  *RateLimitCfg        `json:"rateLimit"`
 	FevmConfig    *FevmConfig          `json:"fevm"`
+	PubsubConfig  *PubsubConfig        `json:"pubsub"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -100,11 +101,35 @@ func newDefaultDatastoreConfig() *DatastoreConfig {
 type SwarmConfig struct {
 	Address            string `json:"address"`
 	PublicRelayAddress string `json:"public_relay_address,omitempty"`
+
+	// Addresses to explicitally announce to other peers. If not specified,
+	// all interface addresses are announced
+	// Format: multiaddress
+	AnnounceAddresses []string
+	// Addresses to not announce
+	// Format: multiaddress
+	NoAnnounceAddresses []string
+	ProtectedPeers      []string
+	//ConnMgrLow is the number of connections that the basic connection manager
+	// will trim down to.
+	ConnMgrLow uint
+
+	// ConnMgrHigh is the number of connections that, when exceeded, will trigger
+	// a connection GC operation. Note: protected/recently formed connections don't
+	// count towards this limit.
+	ConnMgrHigh uint
+
+	// ConnMgrGrace is a time duration that new connections are immune from being
+	// closed by the connection manager.
+	ConnMgrGrace Duration
 }
 
 func newDefaultSwarmConfig() *SwarmConfig {
 	return &SwarmConfig{
-		Address: "/ip4/0.0.0.0/tcp/0",
+		Address:      "/ip4/0.0.0.0/tcp/0",
+		ConnMgrLow:   150,
+		ConnMgrHigh:  180,
+		ConnMgrGrace: Duration(20 * time.Second),
 	}
 }
 
@@ -346,8 +371,8 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeSkyrHeight:        1960320,
 	UpgradeSharkHeight:       2383680,
 	UpgradeHyggeHeight:       2683348,
-	UpgradeLightningHeight:   99999999999999,
-	UpgradeThunderHeight:     99999999999999 + 1,
+	UpgradeLightningHeight:   2809800,
+	UpgradeThunderHeight:     2809800 + 2880*21,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
@@ -454,6 +479,34 @@ func newFevmConfig() *FevmConfig {
 	}
 }
 
+type PubsubConfig struct {
+	// Run the node in bootstrap-node mode
+	Bootstrapper bool
+
+	RemoteTracer string
+
+	// Path to file that will be used to output tracer content in JSON format.
+	// If present tracer will save data to defined file.
+	// Format: file path
+	JsonTracer string
+
+	// Connection string for elasticsearch instance.
+	// If present tracer will save data to elasticsearch.
+	// Format: https://<username>:<password>@<elasticsearch_url>:<port>/
+	ElasticSearchTracer string
+
+	// Name of elasticsearch index that will be used to save tracer data.
+	// This property is used only if ElasticSearchTracer propery is set.
+	ElasticSearchIndex string
+
+	// Auth token that will be passed with logs to elasticsearch - used for weighted peers score.
+	TracerSourceAuth string
+}
+
+func newPubsubConfig() *PubsubConfig {
+	return &PubsubConfig{Bootstrapper: false}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -469,6 +522,7 @@ func NewDefaultConfig() *Config {
 		SlashFilterDs: newDefaultSlashFilterDsConfig(),
 		RateLimitCfg:  newRateLimitConfig(),
 		FevmConfig:    newFevmConfig(),
+		PubsubConfig:  newPubsubConfig(),
 	}
 }
 

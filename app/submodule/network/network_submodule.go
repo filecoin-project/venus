@@ -34,6 +34,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	yamux "github.com/libp2p/go-libp2p/p2p/muxer/yamux"
+	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
@@ -143,6 +144,13 @@ func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
 	if err != nil {
 		return nil, err
 	}
+
+	swarmCfg := config.Repo().Config().Swarm
+	cm, err := connectionManager(swarmCfg.ConnMgrLow, swarmCfg.ConnMgrHigh, time.Duration(swarmCfg.ConnMgrGrace), swarmCfg.ProtectedPeers, bootNodes)
+	if err != nil {
+		return nil, err
+	}
+	libP2pOpts = append(libP2pOpts, libp2p.ConnectionManager(cm))
 
 	// set up host
 	rawHost, err := buildHost(ctx, config, libP2pOpts, config.Repo().Config())
@@ -406,4 +414,26 @@ func makeSmuxTransportOption() libp2p.Option {
 func HashMsgId(m *pubsub_pb.Message) string {
 	hash := blake2b.Sum256(m.Data)
 	return string(hash[:])
+}
+
+func connectionManager(low, high uint, grace time.Duration, protected []string, bootstrapNodes []peer.AddrInfo) (*connmgr.BasicConnMgr, error) {
+	cm, err := connmgr.NewConnManager(int(low), int(high), connmgr.WithGracePeriod(grace))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, p := range protected {
+		pid, err := peer.Decode(p)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse peer ID in protected peers array: %w", err)
+		}
+
+		cm.Protect(pid, "config-prot")
+	}
+
+	for _, inf := range bootstrapNodes {
+		cm.Protect(inf.ID, "bootstrap")
+	}
+
+	return cm, nil
 }
