@@ -122,6 +122,9 @@ type StorageDealQueryParams struct {
 	Client            string
 	DiscardFailedDeal bool
 
+	DealID   abi.DealID
+	PieceCID string
+
 	Page
 }
 
