@@ -34,6 +34,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	yamux "github.com/libp2p/go-libp2p/p2p/muxer/yamux"
+	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
@@ -121,17 +122,19 @@ type networkConfig interface {
 }
 
 // NewNetworkSubmodule creates a new network submodule.
-func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
-	messageStore *chain.MessageStore, config networkConfig,
+func NewNetworkSubmodule(ctx context.Context,
+	chainStore *chain.Store,
+	messageStore *chain.MessageStore,
+	config networkConfig,
 ) (*NetworkSubmodule, error) {
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
 	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker), makeSmuxTransportOption())
 	var networkName string
 	var err error
-	if !config.Repo().Config().NetworkParams.DevNet {
+	cfg := config.Repo().Config()
+	if !cfg.NetworkParams.DevNet {
 		networkName = "testnetnet"
 	} else {
-		config.Repo().ChainDatastore()
 		networkName, err = retrieveNetworkName(ctx, config.GenesisCid(), cbor.NewCborStore(config.Repo().Datastore()))
 		if err != nil {
 			return nil, err
@@ -139,24 +142,31 @@ func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
 	}
 
 	// peer manager
-	bootNodes, err := net.ParseAddresses(ctx, config.Repo().Config().Bootstrap.Addresses)
+	bootNodes, err := net.ParseAddresses(ctx, cfg.Bootstrap.Addresses)
 	if err != nil {
 		return nil, err
 	}
+
+	swarmCfg := cfg.Swarm
+	cm, err := connectionManager(swarmCfg.ConnMgrLow, swarmCfg.ConnMgrHigh, time.Duration(swarmCfg.ConnMgrGrace), swarmCfg.ProtectedPeers, bootNodes)
+	if err != nil {
+		return nil, err
+	}
+	libP2pOpts = append(libP2pOpts, libp2p.ConnectionManager(cm))
 
 	// set up host
-	rawHost, err := buildHost(ctx, config, libP2pOpts, config.Repo().Config())
+	rawHost, err := buildHost(ctx, config, libP2pOpts, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	router, err := makeDHT(ctx, rawHost, config, networkName, bootNodes)
+	router, err := makeDHT(ctx, rawHost, config, networkName, bootNodes, cfg.PubsubConfig.Bootstrapper)
 	if err != nil {
 		return nil, err
 	}
 
 	peerHost := routedHost(rawHost, router)
-	period, err := time.ParseDuration(config.Repo().Config().Bootstrap.Period)
+	period, err := time.ParseDuration(cfg.Bootstrap.Period)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +177,7 @@ func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
 	}
 
 	sk := net.NewScoreKeeper()
-	gsub, err := net.NewGossipSub(ctx, peerHost, sk, networkName, config.Repo().Config().NetworkParams.DrandSchedule, bootNodes)
+	gsub, err := net.NewGossipSub(ctx, peerHost, sk, networkName, cfg.NetworkParams.DrandSchedule, bootNodes, cfg.PubsubConfig.Bootstrapper)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up network")
 	}
@@ -365,8 +375,11 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 	return libp2p.New(opts...)
 }
 
-func makeDHT(ctx context.Context, h types.RawHost, config networkConfig, networkName string, bootNodes []peer.AddrInfo) (routing.Routing, error) {
+func makeDHT(ctx context.Context, h types.RawHost, config networkConfig, networkName string, bootNodes []peer.AddrInfo, bootstrapper bool) (routing.Routing, error) {
 	mode := dht.ModeAuto
+	if bootstrapper {
+		mode = dht.ModeServer
+	}
 	opts := []dht.Option{
 		dht.Mode(mode),
 		dht.Datastore(config.Repo().ChainDatastore()),
@@ -406,4 +419,26 @@ func makeSmuxTransportOption() libp2p.Option {
 func HashMsgId(m *pubsub_pb.Message) string {
 	hash := blake2b.Sum256(m.Data)
 	return string(hash[:])
+}
+
+func connectionManager(low, high uint, grace time.Duration, protected []string, bootstrapNodes []peer.AddrInfo) (*connmgr.BasicConnMgr, error) {
+	cm, err := connmgr.NewConnManager(int(low), int(high), connmgr.WithGracePeriod(grace))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, p := range protected {
+		pid, err := peer.Decode(p)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse peer ID in protected peers array: %w", err)
+		}
+
+		cm.Protect(pid, "config-prot")
+	}
+
+	for _, inf := range bootstrapNodes {
+		cm.Protect(inf.ID, "bootstrap")
+	}
+
+	return cm, nil
 }

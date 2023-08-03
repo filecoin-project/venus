@@ -40,6 +40,7 @@ type Config struct {
 	SlashFilterDs *SlashFilterDsConfig `json:"slashFilter"`
 	RateLimitCfg  *RateLimitCfg        `json:"rateLimit"`
 	FevmConfig    *FevmConfig          `json:"fevm"`
+	PubsubConfig  *PubsubConfig        `json:"pubsub"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -100,11 +101,28 @@ func newDefaultDatastoreConfig() *DatastoreConfig {
 type SwarmConfig struct {
 	Address            string `json:"address"`
 	PublicRelayAddress string `json:"public_relay_address,omitempty"`
+
+	ProtectedPeers []string `json:"protectedPeers"`
+	//ConnMgrLow is the number of connections that the basic connection manager
+	// will trim down to.
+	ConnMgrLow uint `json:"connMgrLow"`
+
+	// ConnMgrHigh is the number of connections that, when exceeded, will trigger
+	// a connection GC operation. Note: protected/recently formed connections don't
+	// count towards this limit.
+	ConnMgrHigh uint `json:"connMgrHigh"`
+
+	// ConnMgrGrace is a time duration that new connections are immune from being
+	// closed by the connection manager.
+	ConnMgrGrace Duration `json:"connMgrGrace"`
 }
 
 func newDefaultSwarmConfig() *SwarmConfig {
 	return &SwarmConfig{
-		Address: "/ip4/0.0.0.0/tcp/0",
+		Address:      "/ip4/0.0.0.0/tcp/0",
+		ConnMgrLow:   150,
+		ConnMgrHigh:  180,
+		ConnMgrGrace: Duration(20 * time.Second),
 	}
 }
 
@@ -346,8 +364,8 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeSkyrHeight:        1960320,
 	UpgradeSharkHeight:       2383680,
 	UpgradeHyggeHeight:       2683348,
-	UpgradeLightningHeight:   99999999999999,
-	UpgradeThunderHeight:     99999999999999 + 1,
+	UpgradeLightningHeight:   2809800,
+	UpgradeThunderHeight:     2809800 + 2880*21,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
@@ -454,6 +472,15 @@ func newFevmConfig() *FevmConfig {
 	}
 }
 
+type PubsubConfig struct {
+	// Run the node in bootstrap-node mode
+	Bootstrapper bool `json:"bootstrapper"`
+}
+
+func newPubsubConfig() *PubsubConfig {
+	return &PubsubConfig{Bootstrapper: false}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -469,6 +496,7 @@ func NewDefaultConfig() *Config {
 		SlashFilterDs: newDefaultSlashFilterDsConfig(),
 		RateLimitCfg:  newRateLimitConfig(),
 		FevmConfig:    newFevmConfig(),
+		PubsubConfig:  newPubsubConfig(),
 	}
 }
 

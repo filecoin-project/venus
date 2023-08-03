@@ -47,6 +47,7 @@ func NewGossipSub(ctx context.Context,
 	networkName string,
 	drandSchedule map[abi.ChainEpoch]config.DrandEnum,
 	bootNodes []peer.AddrInfo,
+	bs bool,
 ) (*pubsub.PubSub, error) {
 	bootstrappers := make(map[peer.ID]struct{})
 	for _, info := range bootNodes {
@@ -206,7 +207,7 @@ func NewGossipSub(ctx context.Context,
 	// Index ingestion whitelist
 	topicParams[indexerIngestTopic] = ingestTopicParams
 
-	isBootstrapNode := false
+	isBootstrapNode := bs
 
 	// IP colocation whitelist
 	var ipcoloWhitelist []*net.IPNet
