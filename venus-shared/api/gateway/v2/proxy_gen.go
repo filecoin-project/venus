@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	gatewayTypes "github.com/filecoin-project/venus/venus-shared/types/gateway"
 	gtypes "github.com/filecoin-project/venus/venus-shared/types/gateway"
 )
 
@@ -138,10 +139,21 @@ type IMarketEventStruct struct {
 	IMarketServiceProviderStruct
 }
 
+type IProxyStruct struct {
+	Internal struct {
+		RegisterReverse func(ctx context.Context, hostKey gatewayTypes.HostKey, address string) error `perm:"admin"`
+	}
+}
+
+func (s *IProxyStruct) RegisterReverse(p0 context.Context, p1 gatewayTypes.HostKey, p2 string) error {
+	return s.Internal.RegisterReverse(p0, p1, p2)
+}
+
 type IGatewayStruct struct {
 	IProofEventStruct
 	IWalletEventStruct
 	IMarketEventStruct
+	IProxyStruct
 
 	Internal struct {
 		Version func(ctx context.Context) (types.Version, error) `perm:"read"`

@@ -8,6 +8,7 @@ type IGateway interface {
 	IProofEvent
 	IWalletEvent
 	IMarketEvent
+	IProxy
 
 	api.Version
 }

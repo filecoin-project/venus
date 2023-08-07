@@ -21,6 +21,8 @@ curl http://<ip>:<port>/rpc/v2 -X POST -H "Content-Type: application/json"  -H "
 * [ProofServiceProvider](#proofserviceprovider)
   * [ListenProofEvent](#listenproofevent)
   * [ResponseProofEvent](#responseproofevent)
+* [Proxy](#proxy)
+  * [RegisterReverse](#registerreverse)
 * [WalletClient](#walletclient)
   * [ListWalletInfo](#listwalletinfo)
   * [ListWalletInfoByWallet](#listwalletinfobywallet)
@@ -268,6 +270,23 @@ Inputs:
     "Payload": "Ynl0ZSBhcnJheQ==",
     "Error": "string value"
   }
+]
+```
+
+Response: `{}`
+
+## Proxy
+
+### RegisterReverse
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "VENUS",
+  "string value"
 ]
 ```
 
