@@ -38,7 +38,6 @@ type ConnectedCompleted struct {
 	ChannelId types.UUID // nolint
 }
 
-
 type HostKey string
 
 const (
