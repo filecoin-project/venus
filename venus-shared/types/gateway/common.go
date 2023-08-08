@@ -37,3 +37,15 @@ type ConnectState struct {
 type ConnectedCompleted struct {
 	ChannelId types.UUID // nolint
 }
+
+type HostKey string
+
+const (
+	HostUnknown  HostKey = ""
+	HostMessager HostKey = "MESSAGER"
+	HostDroplet  HostKey = "DROPLET"
+	HostNode     HostKey = "VENUS"
+	HostAuth     HostKey = "AUTH"
+	HostMiner    HostKey = "MINER"
+	HostGateway  HostKey = "GATEWAY"
+)

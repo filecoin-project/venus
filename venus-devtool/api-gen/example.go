@@ -303,6 +303,7 @@ func init() {
 	addExample(types.UnpaddedByteIndex(0))
 
 	addExample(retrievalmarket.CborGenCompatibleNode{})
+	addExample(gateway.HostNode)
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {
