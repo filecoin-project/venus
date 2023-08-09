@@ -716,6 +716,7 @@ func (store *Store) SubHeadChanges(ctx context.Context) chan []*types.HeadChange
 					log.Warnf("head change sub is slow, has %d buffered entries", len(out))
 				}
 			case <-ctx.Done():
+				log.Warnf("context done: %v", ctx.Err())
 				unsubOnce.Do(func() {
 					go store.headEvents.Unsub(subCh)
 				})
