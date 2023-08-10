@@ -81,7 +81,7 @@ require (
 	github.com/ipld/go-car v0.5.0
 	github.com/ipld/go-car/v2 v2.9.1-0.20230325062757-fff0e4397a3d
 	github.com/jbenet/goprocess v0.1.4
-	github.com/libp2p/go-libp2p v0.27.5
+	github.com/libp2p/go-libp2p v0.27.8
 	github.com/libp2p/go-libp2p-kad-dht v0.21.1
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
 	github.com/libp2p/go-msgio v0.3.0
@@ -269,8 +269,8 @@ require (
 	github.com/prometheus/statsd_exporter v0.23.0 // indirect
 	github.com/puzpuzpuz/xsync/v2 v2.4.1
 	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/qtls-go1-19 v0.3.2 // indirect
-	github.com/quic-go/qtls-go1-20 v0.2.2 // indirect
+	github.com/quic-go/qtls-go1-19 v0.3.3 // indirect
+	github.com/quic-go/qtls-go1-20 v0.2.3 // indirect
 	github.com/quic-go/quic-go v0.33.0 // indirect
 	github.com/quic-go/webtransport-go v0.5.2 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
