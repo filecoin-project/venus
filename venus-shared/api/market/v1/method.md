@@ -240,7 +240,8 @@ Inputs:
     "MinPieceSize": 42,
     "MinUsedSpace": 42,
     "StartEpoch": 10101,
-    "EndEpoch": 10101
+    "EndEpoch": 10101,
+    "SectorExpiration": 10101
   }
 ]
 ```
@@ -1020,7 +1021,8 @@ Inputs:
     "MinPieceSize": 42,
     "MinUsedSpace": 42,
     "StartEpoch": 10101,
-    "EndEpoch": 10101
+    "EndEpoch": 10101,
+    "SectorExpiration": 10101
   }
 ]
 ```
