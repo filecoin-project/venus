@@ -119,6 +119,26 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		return fvm.NewVM(ctx, vmOpt)
 	}
 
+	runCron := func(vmCron vm.Interface, epoch abi.ChainEpoch) error {
+		cronMsg := makeCronTickMessage(epoch)
+		ret, err := vmCron.ApplyImplicitMessage(ctx, cronMsg)
+		if err != nil {
+			return fmt.Errorf("running cron: %w", err)
+		}
+
+		if !ret.Receipt.ExitCode.IsSuccess() {
+			return fmt.Errorf("cron failed with exit code %d: %w", ret.Receipt.ExitCode, ret.ActorErr)
+		}
+
+		if cb != nil {
+			if err := cb(cronMsg.Cid(), cronMsg, ret); err != nil {
+				return fmt.Errorf("callback failed on cron message: %w", err)
+			}
+		}
+
+		return nil
+	}
+
 	// May get filled with the genesis block header if there are null rounds
 	// for which to backfill cron execution.
 	var genesis *types.BlockHeader
@@ -139,19 +159,13 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			}
 
 			// run cron for null rounds if any
-			cronMessage := makeCronTickMessage()
-			ret, err := vmCron.ApplyImplicitMessage(ctx, cronMessage)
-			if err != nil {
-				return cid.Undef, nil, err
+			if err = runCron(vmCron, i); err != nil {
+				return cid.Undef, nil, fmt.Errorf("running cron: %w", err)
 			}
+
 			pstate, err = vmCron.Flush(ctx)
 			if err != nil {
 				return cid.Undef, nil, fmt.Errorf("can not Flush vm State To db %vs", err)
-			}
-			if cb != nil {
-				if err := cb(cronMessage.Cid(), cronMessage, ret); err != nil {
-					return cid.Undef, nil, fmt.Errorf("callback failed on cron message: %w", err)
-				}
 			}
 		}
 		// handle State forks
@@ -223,14 +237,14 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		if err != nil {
 			return cid.Undef, nil, err
 		}
+
+		if ret.Receipt.ExitCode != 0 {
+			return cid.Undef, nil, fmt.Errorf("reward application message failed exit: %d, reason: %v", ret.Receipt.ExitCode, ret.ActorErr)
+		}
 		if cb != nil {
 			if err := cb(rewardMessage.Cid(), rewardMessage, ret); err != nil {
 				return cid.Undef, nil, fmt.Errorf("callback failed on reward message: %w", err)
 			}
-		}
-
-		if ret.Receipt.ExitCode != 0 {
-			return cid.Undef, nil, fmt.Errorf("reward application message failed exit: %d, reason: %v", ret.Receipt.ExitCode, ret.ActorErr)
 		}
 
 		processLog.Debugf("process block %v time %v", index, time.Since(toProcessBlock).Milliseconds())
@@ -238,17 +252,10 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 
 	// cron tick
 	toProcessCron := time.Now()
-	cronMessage := makeCronTickMessage()
-
-	ret, err := vm.ApplyImplicitMessage(ctx, cronMessage)
-	if err != nil {
-		return cid.Undef, nil, err
+	if err := runCron(vm, epoch); err != nil {
+		return cid.Cid{}, nil, err
 	}
-	if cb != nil {
-		if err := cb(cronMessage.Cid(), cronMessage, ret); err != nil {
-			return cid.Undef, nil, fmt.Errorf("callback failed on cron message: %w", err)
-		}
-	}
+	processLog.Debugf("process cron: %v", time.Since(toProcessCron).Milliseconds())
 
 	// Slice will be empty if not storing events.
 	for i, evs := range events {
@@ -267,8 +274,6 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		}
 	}
 
-	processLog.Debugf("process cron: %v", time.Since(toProcessCron).Milliseconds())
-
 	root, err := vm.Flush(ctx)
 	if err != nil {
 		return cid.Undef, nil, err
@@ -278,10 +283,11 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 	return root, receipts, nil
 }
 
-func makeCronTickMessage() *types.Message {
+func makeCronTickMessage(epoch abi.ChainEpoch) *types.Message {
 	return &types.Message{
 		To:         cron.Address,
 		From:       builtin.SystemActorAddr,
+		Nonce:      uint64(epoch),
 		Value:      types.NewInt(0),
 		GasFeeCap:  types.NewInt(0),
 		GasPremium: types.NewInt(0),
