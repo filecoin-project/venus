@@ -733,13 +733,24 @@ var StateComputeStateCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := req.Context
 
-		ts, err := LoadTipSet(ctx, req, getEnv(env).ChainAPI)
+		h, _ := req.Options["vm-height"].(uint64)
+		height := abi.ChainEpoch(h)
+		var ts *types.TipSet
+		var err error
+		chainApi := getEnv(env).ChainAPI
+		if tss := req.Options["tipset"].(string); tss != "" {
+			ts, err = ParseTipSetRef(ctx, chainApi, tss)
+		} else if height > 0 {
+			ts, err = chainApi.ChainGetTipSetByHeight(ctx, height, types.EmptyTSK)
+		} else {
+			ts, err = chainApi.ChainHead(ctx)
+		}
 		if err != nil {
 			return err
 		}
-		h, _ := req.Options["vm-height"].(uint64)
-		if h == 0 {
-			h = uint64(ts.Height())
+
+		if height == 0 {
+			height = ts.Height()
 		}
 
 		var msgs []*types.Message
@@ -768,7 +779,7 @@ var StateComputeStateCmd = &cmds.Command{
 
 			stout = &o
 		} else {
-			o, err := getEnv(env).ChainAPI.StateCompute(ctx, abi.ChainEpoch(h), msgs, ts.Key())
+			o, err := getEnv(env).ChainAPI.StateCompute(ctx, abi.ChainEpoch(height), msgs, ts.Key())
 			if err != nil {
 				return err
 			}
