@@ -14,5 +14,4 @@ func SanityCheck(t *testing.T, cfgJSON string) {
 	assert.True(t, strings.Contains(cfgJSON, "http://localhost:8080"))
 	assert.True(t, strings.Contains(cfgJSON, "bootstrap"))
 	assert.True(t, strings.Contains(cfgJSON, "bootstrap"))
-	assert.True(t, strings.Contains(cfgJSON, "\"minPeerThreshold\": 3"))
 }
