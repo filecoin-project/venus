@@ -45,7 +45,7 @@ var (
 	StatApplied uint64
 )
 
-var fvmLog = logging.Logger("fvm")
+var log = logging.Logger("fvm")
 
 var (
 	_ vm.Interface    = (*FVM)(nil)
@@ -142,31 +142,31 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	// can blocks be decoded properly?
 	var blockA, blockB types.BlockHeader
 	if decodeErr := blockA.UnmarshalCBOR(bytes.NewReader(a)); decodeErr != nil {
-		fvmLog.Infof("invalid consensus fault: cannot decode first block header: %w", decodeErr)
+		log.Infof("invalid consensus fault: cannot decode first block header: %w", decodeErr)
 		return ret, totalGas
 	}
 
 	if decodeErr := blockB.UnmarshalCBOR(bytes.NewReader(b)); decodeErr != nil {
-		fvmLog.Infof("invalid consensus fault: cannot decode second block header: %w", decodeErr)
+		log.Infof("invalid consensus fault: cannot decode second block header: %w", decodeErr)
 		return ret, totalGas
 	}
 
 	// are blocks the same?
 	if blockA.Cid().Equals(blockB.Cid()) {
-		fvmLog.Infof("invalid consensus fault: submitted blocks are the same")
+		log.Infof("invalid consensus fault: submitted blocks are the same")
 		return ret, totalGas
 	}
 	// (1) check conditions necessary to any consensus fault
 
 	// were blocks mined by same miner?
 	if blockA.Miner != blockB.Miner {
-		fvmLog.Infof("invalid consensus fault: blocks not mined by the same miner")
+		log.Infof("invalid consensus fault: blocks not mined by the same miner")
 		return ret, totalGas
 	}
 
 	// block a must be earlier or equal to block b, epoch wise (ie at least as early in the chain).
 	if blockB.Height < blockA.Height {
-		fvmLog.Infof("invalid consensus fault: first block must not be of higher height than second")
+		log.Infof("invalid consensus fault: first block must not be of higher height than second")
 		return ret, totalGas
 	}
 
@@ -198,7 +198,7 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	var blockC types.BlockHeader
 	if len(extra) > 0 {
 		if decodeErr := blockC.UnmarshalCBOR(bytes.NewReader(extra)); decodeErr != nil {
-			fvmLog.Infof("invalid consensus fault: cannot decode extra: %w", decodeErr)
+			log.Infof("invalid consensus fault: cannot decode extra: %w", decodeErr)
 			return ret, totalGas
 		}
 
@@ -210,7 +210,7 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 
 	// (3) return if no consensus fault by now
 	if faultType == ffi_cgo.ConsensusFaultNone {
-		fvmLog.Infof("invalid consensus fault: no fault detected")
+		log.Infof("invalid consensus fault: no fault detected")
 		return ret, totalGas
 	}
 
@@ -223,14 +223,14 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	gasA, sigErr := x.verifyBlockSig(ctx, &blockA)
 	totalGas += gasA
 	if sigErr != nil {
-		fvmLog.Infof("invalid consensus fault: cannot verify first block sig: %w", sigErr)
+		log.Infof("invalid consensus fault: cannot verify first block sig: %w", sigErr)
 		return ret, totalGas
 	}
 
 	gas2, sigErr := x.verifyBlockSig(ctx, &blockB)
 	totalGas += gas2
 	if sigErr != nil {
-		fvmLog.Infof("invalid consensus fault: cannot verify second block sig: %w", sigErr)
+		log.Infof("invalid consensus fault: cannot verify second block sig: %w", sigErr)
 		return ret, totalGas
 	}
 
@@ -414,13 +414,13 @@ func NewDebugFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 		for _, key := range manifest.GetBuiltinActorsKeys(av) {
 			from, ok := actors.GetActorCodeID(av, key)
 			if !ok {
-				fvmLog.Warnf("actor missing in the from manifest %s", key)
+				log.Warnf("actor missing in the from manifest %s", key)
 				continue
 			}
 
 			to, ok := mf.Get(key)
 			if !ok {
-				fvmLog.Warnf("actor missing in the to manifest %s", key)
+				log.Warnf("actor missing in the to manifest %s", key)
 				continue
 			}
 
@@ -446,7 +446,7 @@ func NewDebugFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 	debugBundlePath := os.Getenv(fmt.Sprintf("VENUS_FVM_DEBUG_BUNDLE_V%d", av))
 	if debugBundlePath != "" {
 		if err := createMapping(debugBundlePath); err != nil {
-			fvmLog.Errorf("failed to create v%d debug mapping", av)
+			log.Errorf("failed to create v%d debug mapping", av)
 		}
 	}
 
@@ -530,7 +530,7 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 	}
 
 	if fvm.returnEvents && len(ret.EventsBytes) > 0 {
-		applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		applyRet.Events, err = decodeEvents(ret.EventsBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
 		}
@@ -599,7 +599,7 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 	}
 
 	if fvm.returnEvents && len(ret.EventsBytes) > 0 {
-		applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		applyRet.Events, err = decodeEvents(ret.EventsBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
 		}
@@ -653,7 +653,7 @@ func (vm *dualExecutionFVM) ApplyMessage(ctx context.Context, cmsg types.ChainMs
 	go func() {
 		defer wg.Done()
 		if _, err := vm.debug.ApplyMessage(ctx, cmsg); err != nil {
-			fvmLog.Errorf("debug execution failed: %w", err)
+			log.Errorf("debug execution failed: %w", err)
 		}
 	}()
 
@@ -674,7 +674,7 @@ func (vm *dualExecutionFVM) ApplyImplicitMessage(ctx context.Context, msg types.
 	go func() {
 		defer wg.Done()
 		if _, err := vm.debug.ApplyImplicitMessage(ctx, msg); err != nil {
-			fvmLog.Errorf("debug execution failed: %s", err)
+			log.Errorf("debug execution failed: %s", err)
 		}
 	}()
 
