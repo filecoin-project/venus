@@ -737,13 +737,13 @@ var StateComputeStateCmd = &cmds.Command{
 		height := abi.ChainEpoch(h)
 		var ts *types.TipSet
 		var err error
-		chainApi := getEnv(env).ChainAPI
+		chainAPI := getEnv(env).ChainAPI
 		if tss := req.Options["tipset"].(string); tss != "" {
-			ts, err = ParseTipSetRef(ctx, chainApi, tss)
+			ts, err = ParseTipSetRef(ctx, chainAPI, tss)
 		} else if height > 0 {
-			ts, err = chainApi.ChainGetTipSetByHeight(ctx, height, types.EmptyTSK)
+			ts, err = chainAPI.ChainGetTipSetByHeight(ctx, height, types.EmptyTSK)
 		} else {
-			ts, err = chainApi.ChainHead(ctx)
+			ts, err = chainAPI.ChainHead(ctx)
 		}
 		if err != nil {
 			return err
@@ -779,7 +779,7 @@ var StateComputeStateCmd = &cmds.Command{
 
 			stout = &o
 		} else {
-			o, err := getEnv(env).ChainAPI.StateCompute(ctx, abi.ChainEpoch(height), msgs, ts.Key())
+			o, err := getEnv(env).ChainAPI.StateCompute(ctx, height, msgs, ts.Key())
 			if err != nil {
 				return err
 			}
