@@ -248,8 +248,6 @@ path = "mushroom-mushroom"}`
 
 		err := cfg.Set("bootstrap.period", `"3m"`)
 		assert.NoError(t, err)
-		err = cfg.Set("bootstrap.minPeerThreshold", `5`)
-		assert.NoError(t, err)
 		assert.Equal(t, cfg.Bootstrap.Period, "3m")
 	})
 }

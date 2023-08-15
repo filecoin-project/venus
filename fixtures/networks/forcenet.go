@@ -13,8 +13,7 @@ func ForceNet() *NetworkConf {
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{},
 
-			MinPeerThreshold: 0,
-			Period:           "30s",
+			Period: "30s",
 		},
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,

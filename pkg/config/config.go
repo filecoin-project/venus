@@ -128,9 +128,8 @@ func newDefaultSwarmConfig() *SwarmConfig {
 
 // BootstrapConfig holds all configuration options related to bootstrap nodes
 type BootstrapConfig struct {
-	Addresses        []string `json:"addresses"`
-	MinPeerThreshold int      `json:"minPeerThreshold"`
-	Period           string   `json:"period,omitempty"`
+	Addresses []string `json:"addresses"`
+	Period    string   `json:"period,omitempty"`
 }
 
 func (bsc *BootstrapConfig) AddPeers(peers ...string) {
@@ -154,9 +153,8 @@ func (bsc *BootstrapConfig) AddPeers(peers ...string) {
 // TODO: provide bootstrap node addresses
 func newDefaultBootstrapConfig() *BootstrapConfig {
 	return &BootstrapConfig{
-		Addresses:        []string{},
-		MinPeerThreshold: 3, // TODO: we don't actually have an bootstrap peers yet.
-		Period:           "1m",
+		Addresses: []string{},
+		Period:    "1m",
 	}
 }
 

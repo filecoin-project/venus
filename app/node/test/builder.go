@@ -42,9 +42,6 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 				c.API.APIAddress = "/ip4/127.0.0.1/tcp/0"
 				c.Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 			}),
-			node.ConfigOpt(func(c *config.Config) {
-				c.Bootstrap.MinPeerThreshold = 0
-			}),
 		},
 		builderOpts: []node.BuilderOpt{
 			node.SetWalletPassword([]byte("test-password")),
