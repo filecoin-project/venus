@@ -51,6 +51,9 @@ type GetDealSpec struct {
 	// end epoch limit of the chosen deals
 	// if set, the deals should not be alive after or equal than the this epoch
 	EndEpoch abi.ChainEpoch
+
+	// Filter by sector lifetime, for snapdeal
+	SectorExpiration *abi.ChainEpoch
 }
 
 type DealInfoIncludePath struct {
