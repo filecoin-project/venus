@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -30,7 +32,8 @@ import (
 	"go.opencensus.io/trace"
 )
 
-const execTraceCacheSize = 16
+// const execTraceCacheSize = 16
+var defaultExecTraceCacheSize = 16
 
 // stateManagerAPI defines the methods needed from StateManager
 // todo remove this code and add private interface in market and paychanel package
@@ -51,6 +54,7 @@ type tipSetCacheEntry struct {
 }
 
 var _ IStateManager = &Stmgr{}
+var log = logging.Logger("statemanager")
 
 type Stmgr struct {
 	cs  *chain.Store
@@ -72,8 +76,6 @@ type Stmgr struct {
 	fStop   chan struct{}
 	fStopLk sync.Mutex
 
-	log *logging.ZapEventLogger
-
 	// We keep a small cache for calls to ExecutionTrace which helps improve
 	// performance for node operators like exchanges and block explorers
 	execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
@@ -82,7 +84,7 @@ type Stmgr struct {
 	execTraceCacheLock sync.Mutex
 }
 
-func NewStateManger(cs *chain.Store,
+func NewStateManager(cs *chain.Store,
 	ms *chain.MessageStore,
 	cp consensus.StateTransformer,
 	rnd consensus.ChainRandomness,
@@ -91,9 +93,14 @@ func NewStateManger(cs *chain.Store,
 	syscallsImpl vm.SyscallsImpl,
 	actorDebugging bool,
 ) (*Stmgr, error) {
-	execTraceCache, err := lru.NewARC[types.TipSetKey, tipSetCacheEntry](execTraceCacheSize)
-	if err != nil {
-		return nil, err
+	log.Debugf("execTraceCache size: %d", defaultExecTraceCacheSize)
+	var execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	var err error
+	if defaultExecTraceCacheSize > 0 {
+		execTraceCache, err = lru.NewARC[types.TipSetKey, tipSetCacheEntry](defaultExecTraceCacheSize)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &Stmgr{
@@ -104,12 +111,22 @@ func NewStateManger(cs *chain.Store,
 		rnd:            rnd,
 		gasSchedule:    gasSchedule,
 		syscallsImpl:   syscallsImpl,
-		log:            logging.Logger("statemanager"),
 		stCache:        make(map[types.TipSetKey]stateComputeResult),
 		chsWorkingOn:   make(map[types.TipSetKey]chan struct{}, 1),
 		actorDebugging: actorDebugging,
 		execTraceCache: execTraceCache,
 	}, nil
+}
+
+func init() {
+	if s := os.Getenv("VENUS_EXEC_TRACE_CACHE"); s != "" {
+		letc, err := strconv.Atoi(s)
+		if err != nil {
+			log.Errorf("failed to parse 'VENUS_EXEC_TRACE_CACHE' env var: %s", err)
+		} else {
+			defaultExecTraceCacheSize = letc
+		}
+	}
 }
 
 func (s *Stmgr) ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
@@ -208,7 +225,7 @@ func (s *Stmgr) TipsetState(ctx context.Context, ts *types.TipSet) (*tree.State,
 
 // deprecated: this implementation needs more considerations
 func (s *Stmgr) Rollback(ctx context.Context, pts, cts *types.TipSet) error {
-	s.log.Infof("rollback chain head from(%d) to a valid tipset", pts.Height())
+	log.Infof("rollback chain head from(%d) to a valid tipset", pts.Height())
 redo:
 	s.stLk.Lock()
 	if err := s.cs.DeleteTipSetMetadata(ctx, pts); err != nil {
@@ -257,7 +274,7 @@ func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.
 			return cid.Undef, cid.Undef, ctx.Err()
 		case <-time.After(waitDur):
 			i++
-			s.log.Warnf("waiting runstatetransition(%d, %s) for %s", ts.Height(), ts.Key().String(), (waitDur * time.Duration(i)).String())
+			log.Warnf("waiting runstatetransition(%d, %s) for %s", ts.Height(), ts.Key().String(), (waitDur * time.Duration(i)).String())
 			goto longTimeWait
 		}
 	}
@@ -471,16 +488,18 @@ func (s *Stmgr) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, 
 
 	tsKey := ts.Key()
 
-	// check if we have the trace for this tipset in the cache
-	s.execTraceCacheLock.Lock()
-	if entry, ok := s.execTraceCache.Get(tsKey); ok {
-		// we have to make a deep copy since caller can modify the invocTrace
-		// and we don't want that to change what we store in cache
-		invocTraceCopy := makeDeepCopy(entry.invocTrace)
+	if defaultExecTraceCacheSize > 0 {
+		// check if we have the trace for this tipset in the cache
+		s.execTraceCacheLock.Lock()
+		if entry, ok := s.execTraceCache.Get(tsKey); ok {
+			// we have to make a deep copy since caller can modify the invocTrace
+			// and we don't want that to change what we store in cache
+			invocTraceCopy := makeDeepCopy(entry.invocTrace)
+			s.execTraceCacheLock.Unlock()
+			return entry.postStateRoot, invocTraceCopy, nil
+		}
 		s.execTraceCacheLock.Unlock()
-		return entry.postStateRoot, invocTraceCopy, nil
 	}
-	s.execTraceCacheLock.Unlock()
 
 	var invocTrace []*types.InvocResult
 
@@ -509,11 +528,13 @@ func (s *Stmgr) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, 
 		return cid.Undef, nil, err
 	}
 
-	invocTraceCopy := makeDeepCopy(invocTrace)
+	if defaultExecTraceCacheSize > 0 {
+		invocTraceCopy := makeDeepCopy(invocTrace)
 
-	s.execTraceCacheLock.Lock()
-	s.execTraceCache.Add(tsKey, tipSetCacheEntry{st, invocTraceCopy})
-	s.execTraceCacheLock.Unlock()
+		s.execTraceCacheLock.Lock()
+		s.execTraceCache.Add(tsKey, tipSetCacheEntry{st, invocTraceCopy})
+		s.execTraceCacheLock.Unlock()
+	}
 
 	return st, invocTrace, nil
 }
@@ -602,7 +623,7 @@ func ComputeState(ctx context.Context, s *Stmgr, height abi.ChainEpoch, msgs []*
 			return cid.Undef, nil, fmt.Errorf("applying message %s: %w", msg.Cid(), err)
 		}
 		if ret.Receipt.ExitCode != 0 {
-			s.log.Infof("compute state apply message %d failed (exit: %d): %s", i, ret.Receipt.ExitCode, ret.ActorErr)
+			log.Infof("compute state apply message %d failed (exit: %d): %s", i, ret.Receipt.ExitCode, ret.ActorErr)
 		}
 	}
 
@@ -621,21 +642,21 @@ func (s *Stmgr) FlushChainHead() (*types.TipSet, error) {
 }
 
 func (s *Stmgr) Close(ctx context.Context) {
-	s.log.Info("waiting state manager stop...")
+	log.Info("waiting state manager stop...")
 
 	if _, err := s.FlushChainHead(); err != nil {
-		s.log.Errorf("state manager flush chain head failed:%s", err.Error())
+		log.Errorf("state manager flush chain head failed:%s", err.Error())
 	} else {
-		s.log.Infof("state manager flush chain head successfully...")
+		log.Infof("state manager flush chain head successfully...")
 	}
 
-	s.log.Info("waiting state manager stopping...")
+	log.Info("waiting state manager stopping...")
 	f := s.stopFlag(true)
 	select {
 	case <-f:
-		s.log.Info("state manager stopped...")
+		log.Info("state manager stopped...")
 	case <-time.After(time.Minute):
-		s.log.Info("waiting state manager stop timeout...")
+		log.Info("waiting state manager stop timeout...")
 	}
 }
 
