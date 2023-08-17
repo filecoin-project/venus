@@ -695,8 +695,17 @@ func (store *Store) SubHeadChanges(ctx context.Context) chan []*types.HeadChange
 	}}
 
 	go func() {
-		defer close(out)
-		var unsubOnce sync.Once
+		defer func() {
+			// Tell the caller we're done first, the following may block for a bit.
+			close(out)
+
+			// Unsubscribe.
+			store.headEvents.Unsub(subCh)
+
+			// Drain the channel.
+			for range subCh {
+			}
+		}()
 
 		for {
 			select {
@@ -716,9 +725,8 @@ func (store *Store) SubHeadChanges(ctx context.Context) chan []*types.HeadChange
 					log.Warnf("head change sub is slow, has %d buffered entries", len(out))
 				}
 			case <-ctx.Done():
-				unsubOnce.Do(func() {
-					go store.headEvents.Unsub(subCh)
-				})
+				log.Infof("exit sub head change: %v", ctx.Err())
+				return
 			}
 		}
 	}()
