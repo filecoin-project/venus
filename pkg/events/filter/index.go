@@ -165,34 +165,34 @@ func (ei *EventIndex) migrateToVersion2(ctx context.Context, chainStore *chain.S
 	}
 	log.Infof("Migrating events from head to %d", minHeight.Int64)
 
-	currTs := chainStore.GetHead()
+	currTS := chainStore.GetHead()
 
-	for int64(currTs.Height()) >= minHeight.Int64 {
-		if currTs.Height()%1000 == 0 {
-			log.Infof("Migrating height %d (remaining %d)", currTs.Height(), int64(currTs.Height())-minHeight.Int64)
+	for int64(currTS.Height()) >= minHeight.Int64 {
+		if currTS.Height()%1000 == 0 {
+			log.Infof("Migrating height %d (remaining %d)", currTS.Height(), int64(currTS.Height())-minHeight.Int64)
 		}
 
-		tsKey := currTs.Parents()
-		currTs, err = chainStore.GetTipSet(ctx, tsKey)
+		tsKey := currTS.Parents()
+		currTS, err = chainStore.GetTipSet(ctx, tsKey)
 		if err != nil {
 			return fmt.Errorf("get tipset from key: %w", err)
 		}
-		log.Debugf("Migrating height %d", currTs.Height())
+		log.Debugf("Migrating height %d", currTS.Height())
 
-		tsKeyCid, err := currTs.Key().Cid()
+		tsKeyCid, err := currTS.Key().Cid()
 		if err != nil {
 			return fmt.Errorf("tipset key cid: %w", err)
 		}
 
 		// delete all events that are not in the canonical chain
-		_, err = stmtDeleteOffChainEvent.Exec(tsKeyCid.Bytes(), currTs.Height())
+		_, err = stmtDeleteOffChainEvent.Exec(tsKeyCid.Bytes(), currTS.Height())
 		if err != nil {
 			return fmt.Errorf("delete off chain event: %w", err)
 		}
 
-		// find the first eventId from the last time the tipset was applied
-		var eventId sql.NullInt64
-		err = stmtSelectEvent.QueryRow(tsKeyCid.Bytes()).Scan(&eventId)
+		// find the first eventID from the last time the tipset was applied
+		var eventID sql.NullInt64
+		err = stmtSelectEvent.QueryRow(tsKeyCid.Bytes()).Scan(&eventID)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				continue
@@ -201,12 +201,12 @@ func (ei *EventIndex) migrateToVersion2(ctx context.Context, chainStore *chain.S
 		}
 
 		// this tipset might not have any events which is ok
-		if !eventId.Valid {
+		if !eventID.Valid {
 			continue
 		}
-		log.Debugf("Deleting all events with id < %d at height %d", eventId.Int64, currTs.Height())
+		log.Debugf("Deleting all events with id < %d at height %d", eventID.Int64, currTS.Height())
 
-		res, err := stmtDeleteEvent.Exec(tsKeyCid.Bytes(), eventId.Int64)
+		res, err := stmtDeleteEvent.Exec(tsKeyCid.Bytes(), eventID.Int64)
 		if err != nil {
 			return fmt.Errorf("delete event: %w", err)
 		}
