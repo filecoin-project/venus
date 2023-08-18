@@ -64,7 +64,7 @@ func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error)
 		}
 
 		var err error
-		eventIndex, err = filter.NewEventIndex(dbPath)
+		eventIndex, err = filter.NewEventIndex(ctx, dbPath, em.chainModule.ChainReader)
 		if err != nil {
 			return nil, err
 		}
