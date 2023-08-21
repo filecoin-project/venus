@@ -232,13 +232,13 @@ func (a *ethAPI) getTipsetByEthBlockNumberOrHash(ctx context.Context, blkParam t
 		// verify that the tipset is in the canonical chain
 		if blkParam.RequireCanonical {
 			// walk up the current chain (our head) until we reach ts.Height()
-			walkTs, err := a.chain.ChainGetTipSetByHeight(ctx, ts.Height(), head.Key())
+			walkTS, err := a.chain.ChainGetTipSetByHeight(ctx, ts.Height(), head.Key())
 			if err != nil {
 				return nil, fmt.Errorf("cannot get tipset at height: %v", ts.Height())
 			}
 
 			// verify that it equals the expected tipset
-			if !walkTs.Equals(ts) {
+			if !walkTS.Equals(ts) {
 				return nil, fmt.Errorf("tipset is not canonical")
 			}
 		}
@@ -1093,7 +1093,7 @@ func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam types.E
 	}
 	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse block param: %s, %v", blkParam, err)
+		return nil, fmt.Errorf("cannot parse block param: %v, %v", blkParam, err)
 	}
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
