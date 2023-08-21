@@ -28,6 +28,7 @@ type (
 	EthAddressList          = types.EthAddressList
 	EthBigInt               = types.EthBigInt
 	EthBlock                = types.EthBlock
+	EthBlockNumberOrHash    = types.EthBlockNumberOrHash
 	EthBytes                = types.EthBytes
 	EthCall                 = types.EthCall
 	EthFeeHistory           = types.EthFeeHistory
@@ -49,21 +50,24 @@ type (
 )
 
 var (
-	CastEthAddress                   = types.CastEthAddress
-	DecodeHexString                  = types.DecodeHexString
-	DecodeHexStringTrimSpace         = types.DecodeHexStringTrimSpace
-	EthAddressFromFilecoinAddress    = types.EthAddressFromFilecoinAddress
-	EthAddressFromPubKey             = types.EthAddressFromPubKey
-	EthBloomSet                      = types.EthBloomSet
-	EthHashFromCid                   = types.EthHashFromCid
-	EthHashFromTxBytes               = types.EthHashFromTxBytes
-	EthUint64FromBytes               = types.EthUint64FromBytes
-	EthUint64FromHex                 = types.EthUint64FromHex
-	GetContractEthAddressFromCode    = types.GetContractEthAddressFromCode
-	IsEthAddress                     = types.IsEthAddress
-	NewEthBlock                      = types.NewEthBlock
-	ParseEthAddress                  = types.ParseEthAddress
-	ParseEthHash                     = types.ParseEthHash
-	SetEip155ChainID                 = types.SetEip155ChainID
-	TryEthAddressFromFilecoinAddress = types.TryEthAddressFromFilecoinAddress
+	CastEthAddress                        = types.CastEthAddress
+	DecodeHexString                       = types.DecodeHexString
+	DecodeHexStringTrimSpace              = types.DecodeHexStringTrimSpace
+	EthAddressFromFilecoinAddress         = types.EthAddressFromFilecoinAddress
+	EthAddressFromPubKey                  = types.EthAddressFromPubKey
+	EthBloomSet                           = types.EthBloomSet
+	EthHashFromCid                        = types.EthHashFromCid
+	EthHashFromTxBytes                    = types.EthHashFromTxBytes
+	EthUint64FromBytes                    = types.EthUint64FromBytes
+	EthUint64FromHex                      = types.EthUint64FromHex
+	GetContractEthAddressFromCode         = types.GetContractEthAddressFromCode
+	IsEthAddress                          = types.IsEthAddress
+	NewEthBlock                           = types.NewEthBlock
+	NewEthBlockNumberOrHashFromHexString  = types.NewEthBlockNumberOrHashFromHexString
+	NewEthBlockNumberOrHashFromNumber     = types.NewEthBlockNumberOrHashFromNumber
+	NewEthBlockNumberOrHashFromPredefined = types.NewEthBlockNumberOrHashFromPredefined
+	ParseEthAddress                       = types.ParseEthAddress
+	ParseEthHash                          = types.ParseEthHash
+	SetEip155ChainID                      = types.SetEip155ChainID
+	TryEthAddressFromFilecoinAddress      = types.TryEthAddressFromFilecoinAddress
 )

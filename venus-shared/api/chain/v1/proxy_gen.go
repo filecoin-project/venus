@@ -838,37 +838,37 @@ func (s *ICommonStruct) Version(p0 context.Context) (types.Version, error) {
 
 type IETHStruct struct {
 	Internal struct {
-		EthAccounts                            func(ctx context.Context) ([]types.EthAddress, error)                                                                 `perm:"read"`
-		EthAddressToFilecoinAddress            func(ctx context.Context, ethAddress types.EthAddress) (address.Address, error)                                       `perm:"read"`
-		EthBlockNumber                         func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
-		EthCall                                func(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error)                                  `perm:"read"`
-		EthChainId                             func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
-		EthEstimateGas                         func(ctx context.Context, tx types.EthCall) (types.EthUint64, error)                                                  `perm:"read"`
-		EthFeeHistory                          func(ctx context.Context, p jsonrpc.RawParams) (types.EthFeeHistory, error)                                           `perm:"read"`
-		EthGasPrice                            func(ctx context.Context) (types.EthBigInt, error)                                                                    `perm:"read"`
-		EthGetBalance                          func(ctx context.Context, address types.EthAddress, blkParam string) (types.EthBigInt, error)                         `perm:"read"`
-		EthGetBlockByHash                      func(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error)                             `perm:"read"`
-		EthGetBlockByNumber                    func(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error)                                     `perm:"read"`
-		EthGetBlockTransactionCountByHash      func(ctx context.Context, blkHash types.EthHash) (types.EthUint64, error)                                             `perm:"read"`
-		EthGetBlockTransactionCountByNumber    func(ctx context.Context, blkNum types.EthUint64) (types.EthUint64, error)                                            `perm:"read"`
-		EthGetCode                             func(ctx context.Context, address types.EthAddress, blkOpt string) (types.EthBytes, error)                            `perm:"read"`
-		EthGetMessageCidByTransactionHash      func(ctx context.Context, txHash *types.EthHash) (*cid.Cid, error)                                                    `perm:"read"`
-		EthGetStorageAt                        func(ctx context.Context, address types.EthAddress, position types.EthBytes, blkParam string) (types.EthBytes, error) `perm:"read"`
-		EthGetTransactionByBlockHashAndIndex   func(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error)                        `perm:"read"`
-		EthGetTransactionByBlockNumberAndIndex func(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error)                       `perm:"read"`
-		EthGetTransactionByHash                func(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error)                                                `perm:"read"`
-		EthGetTransactionByHashLimited         func(ctx context.Context, txHash *types.EthHash, limit abi.ChainEpoch) (*types.EthTx, error)                          `perm:"read"`
-		EthGetTransactionCount                 func(ctx context.Context, sender types.EthAddress, blkOpt string) (types.EthUint64, error)                            `perm:"read"`
-		EthGetTransactionHashByCid             func(ctx context.Context, cid cid.Cid) (*types.EthHash, error)                                                        `perm:"read"`
-		EthGetTransactionReceipt               func(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error)                                          `perm:"read"`
-		EthGetTransactionReceiptLimited        func(ctx context.Context, txHash types.EthHash, limit abi.ChainEpoch) (*types.EthTxReceipt, error)                    `perm:"read"`
-		EthMaxPriorityFeePerGas                func(ctx context.Context) (types.EthBigInt, error)                                                                    `perm:"read"`
-		EthProtocolVersion                     func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
-		EthSendRawTransaction                  func(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error)                                                `perm:"read"`
-		FilecoinAddressToEthAddress            func(ctx context.Context, filecoinAddress address.Address) (types.EthAddress, error)                                  `perm:"read"`
-		NetListening                           func(ctx context.Context) (bool, error)                                                                               `perm:"read"`
-		NetVersion                             func(ctx context.Context) (string, error)                                                                             `perm:"read"`
-		Web3ClientVersion                      func(ctx context.Context) (string, error)                                                                             `perm:"read"`
+		EthAccounts                            func(ctx context.Context) ([]types.EthAddress, error)                                                                                     `perm:"read"`
+		EthAddressToFilecoinAddress            func(ctx context.Context, ethAddress types.EthAddress) (address.Address, error)                                                           `perm:"read"`
+		EthBlockNumber                         func(ctx context.Context) (types.EthUint64, error)                                                                                        `perm:"read"`
+		EthCall                                func(ctx context.Context, tx types.EthCall, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error)                                  `perm:"read"`
+		EthChainId                             func(ctx context.Context) (types.EthUint64, error)                                                                                        `perm:"read"`
+		EthEstimateGas                         func(ctx context.Context, tx types.EthCall) (types.EthUint64, error)                                                                      `perm:"read"`
+		EthFeeHistory                          func(ctx context.Context, p jsonrpc.RawParams) (types.EthFeeHistory, error)                                                               `perm:"read"`
+		EthGasPrice                            func(ctx context.Context) (types.EthBigInt, error)                                                                                        `perm:"read"`
+		EthGetBalance                          func(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBigInt, error)                         `perm:"read"`
+		EthGetBlockByHash                      func(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error)                                                 `perm:"read"`
+		EthGetBlockByNumber                    func(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error)                                                         `perm:"read"`
+		EthGetBlockTransactionCountByHash      func(ctx context.Context, blkHash types.EthHash) (types.EthUint64, error)                                                                 `perm:"read"`
+		EthGetBlockTransactionCountByNumber    func(ctx context.Context, blkNum types.EthUint64) (types.EthUint64, error)                                                                `perm:"read"`
+		EthGetCode                             func(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error)                          `perm:"read"`
+		EthGetMessageCidByTransactionHash      func(ctx context.Context, txHash *types.EthHash) (*cid.Cid, error)                                                                        `perm:"read"`
+		EthGetStorageAt                        func(ctx context.Context, address types.EthAddress, position types.EthBytes, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error) `perm:"read"`
+		EthGetTransactionByBlockHashAndIndex   func(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error)                                            `perm:"read"`
+		EthGetTransactionByBlockNumberAndIndex func(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error)                                           `perm:"read"`
+		EthGetTransactionByHash                func(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error)                                                                    `perm:"read"`
+		EthGetTransactionByHashLimited         func(ctx context.Context, txHash *types.EthHash, limit abi.ChainEpoch) (*types.EthTx, error)                                              `perm:"read"`
+		EthGetTransactionCount                 func(ctx context.Context, sender types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthUint64, error)                          `perm:"read"`
+		EthGetTransactionHashByCid             func(ctx context.Context, cid cid.Cid) (*types.EthHash, error)                                                                            `perm:"read"`
+		EthGetTransactionReceipt               func(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error)                                                              `perm:"read"`
+		EthGetTransactionReceiptLimited        func(ctx context.Context, txHash types.EthHash, limit abi.ChainEpoch) (*types.EthTxReceipt, error)                                        `perm:"read"`
+		EthMaxPriorityFeePerGas                func(ctx context.Context) (types.EthBigInt, error)                                                                                        `perm:"read"`
+		EthProtocolVersion                     func(ctx context.Context) (types.EthUint64, error)                                                                                        `perm:"read"`
+		EthSendRawTransaction                  func(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error)                                                                    `perm:"read"`
+		FilecoinAddressToEthAddress            func(ctx context.Context, filecoinAddress address.Address) (types.EthAddress, error)                                                      `perm:"read"`
+		NetListening                           func(ctx context.Context) (bool, error)                                                                                                   `perm:"read"`
+		NetVersion                             func(ctx context.Context) (string, error)                                                                                                 `perm:"read"`
+		Web3ClientVersion                      func(ctx context.Context) (string, error)                                                                                                 `perm:"read"`
 	}
 }
 
@@ -881,7 +881,7 @@ func (s *IETHStruct) EthAddressToFilecoinAddress(p0 context.Context, p1 types.Et
 func (s *IETHStruct) EthBlockNumber(p0 context.Context) (types.EthUint64, error) {
 	return s.Internal.EthBlockNumber(p0)
 }
-func (s *IETHStruct) EthCall(p0 context.Context, p1 types.EthCall, p2 string) (types.EthBytes, error) {
+func (s *IETHStruct) EthCall(p0 context.Context, p1 types.EthCall, p2 types.EthBlockNumberOrHash) (types.EthBytes, error) {
 	return s.Internal.EthCall(p0, p1, p2)
 }
 func (s *IETHStruct) EthChainId(p0 context.Context) (types.EthUint64, error) {
@@ -896,7 +896,7 @@ func (s *IETHStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ty
 func (s *IETHStruct) EthGasPrice(p0 context.Context) (types.EthBigInt, error) {
 	return s.Internal.EthGasPrice(p0)
 }
-func (s *IETHStruct) EthGetBalance(p0 context.Context, p1 types.EthAddress, p2 string) (types.EthBigInt, error) {
+func (s *IETHStruct) EthGetBalance(p0 context.Context, p1 types.EthAddress, p2 types.EthBlockNumberOrHash) (types.EthBigInt, error) {
 	return s.Internal.EthGetBalance(p0, p1, p2)
 }
 func (s *IETHStruct) EthGetBlockByHash(p0 context.Context, p1 types.EthHash, p2 bool) (types.EthBlock, error) {
@@ -911,13 +911,13 @@ func (s *IETHStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ty
 func (s *IETHStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 types.EthUint64) (types.EthUint64, error) {
 	return s.Internal.EthGetBlockTransactionCountByNumber(p0, p1)
 }
-func (s *IETHStruct) EthGetCode(p0 context.Context, p1 types.EthAddress, p2 string) (types.EthBytes, error) {
+func (s *IETHStruct) EthGetCode(p0 context.Context, p1 types.EthAddress, p2 types.EthBlockNumberOrHash) (types.EthBytes, error) {
 	return s.Internal.EthGetCode(p0, p1, p2)
 }
 func (s *IETHStruct) EthGetMessageCidByTransactionHash(p0 context.Context, p1 *types.EthHash) (*cid.Cid, error) {
 	return s.Internal.EthGetMessageCidByTransactionHash(p0, p1)
 }
-func (s *IETHStruct) EthGetStorageAt(p0 context.Context, p1 types.EthAddress, p2 types.EthBytes, p3 string) (types.EthBytes, error) {
+func (s *IETHStruct) EthGetStorageAt(p0 context.Context, p1 types.EthAddress, p2 types.EthBytes, p3 types.EthBlockNumberOrHash) (types.EthBytes, error) {
 	return s.Internal.EthGetStorageAt(p0, p1, p2, p3)
 }
 func (s *IETHStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 types.EthHash, p2 types.EthUint64) (types.EthTx, error) {
@@ -932,7 +932,7 @@ func (s *IETHStruct) EthGetTransactionByHash(p0 context.Context, p1 *types.EthHa
 func (s *IETHStruct) EthGetTransactionByHashLimited(p0 context.Context, p1 *types.EthHash, p2 abi.ChainEpoch) (*types.EthTx, error) {
 	return s.Internal.EthGetTransactionByHashLimited(p0, p1, p2)
 }
-func (s *IETHStruct) EthGetTransactionCount(p0 context.Context, p1 types.EthAddress, p2 string) (types.EthUint64, error) {
+func (s *IETHStruct) EthGetTransactionCount(p0 context.Context, p1 types.EthAddress, p2 types.EthBlockNumberOrHash) (types.EthUint64, error) {
 	return s.Internal.EthGetTransactionCount(p0, p1, p2)
 }
 func (s *IETHStruct) EthGetTransactionHashByCid(p0 context.Context, p1 cid.Cid) (*types.EthHash, error) {

@@ -134,7 +134,7 @@ var evmCallSimulateCmd = &cmds.Command{
 			From: &fromEthAddr,
 			To:   &toEthAddr,
 			Data: params,
-		}, "")
+		}, types.NewEthBlockNumberOrHashFromPredefined("latest"))
 		if err != nil {
 			_ = re.Emit(fmt.Sprintln("Eth call fails, return val: ", res))
 			return err
@@ -468,7 +468,7 @@ var evmGetBytecode = &cmds.Command{
 		ctx := requestContext(req)
 		api := getEnv(env)
 
-		code, err := api.EthAPI.EthGetCode(ctx, contractAddr, "latest")
+		code, err := api.EthAPI.EthGetCode(ctx, contractAddr, types.NewEthBlockNumberOrHashFromPredefined("latest"))
 		if err != nil {
 			return err
 		}
