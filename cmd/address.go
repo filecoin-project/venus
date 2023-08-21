@@ -269,7 +269,7 @@ var balanceCmd = &cmds.Command{
 
 		var balanceStr string
 		if balance.Equals(big.NewInt(0)) && !isDone {
-			balanceStr = fmt.Sprintf("%s (warning: may display 0 if chain sync in progress)\n", types.FIL(balance))
+			balanceStr = fmt.Sprintf("%s (warning: may display 0 if chain sync in progress)", types.FIL(balance))
 		} else {
 			balanceStr = (types.FIL)(balance).String()
 		}
