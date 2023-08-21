@@ -309,6 +309,20 @@ func (b *BadgerBlockstore) Put(ctx context.Context, block blocks.Block) error {
 		return nil
 	}
 
+	// Check if we have it before writing it.
+	switch err := b.DB.View(func(txn *badger.Txn) error {
+		_, err := txn.Get(key.Bytes())
+		return err
+	}); err {
+	case badger.ErrKeyNotFound:
+	case nil:
+		b.cache.Add(key.String(), block)
+		// Already exists, skip the put.
+		return nil
+	default:
+		return err
+	}
+
 	err := b.DB.Update(func(txn *badger.Txn) error {
 		err := txn.Set(key.Bytes(), block.RawData())
 		if err == nil {
@@ -336,6 +350,20 @@ func (b *BadgerBlockstore) PutMany(ctx context.Context, blks []blocks.Block) err
 		key := b.ConvertKey(block.Cid())
 		if _, ok := b.cache.Get(key.String()); ok {
 			continue
+		}
+
+		// Check if we have it before writing it.
+		switch err := b.DB.View(func(txn *badger.Txn) error {
+			_, err := txn.Get(key.Bytes())
+			return err
+		}); err {
+		case badger.ErrKeyNotFound:
+		case nil:
+			// skipped because we already have it.
+			continue
+		default:
+			// Something is actually wrong
+			return err
 		}
 
 		if err := batch.Set(key.Bytes(), block.RawData()); err != nil {
