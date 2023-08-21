@@ -168,6 +168,10 @@ func (ei *EventIndex) migrateToVersion2(ctx context.Context, chainStore *chain.S
 	currTS := chainStore.GetHead()
 
 	for int64(currTS.Height()) >= minHeight.Int64 {
+		if currTS.Height() == 0 {
+			break
+		}
+
 		if currTS.Height()%1000 == 0 {
 			log.Infof("Migrating height %d (remaining %d)", currTS.Height(), int64(currTS.Height())-minHeight.Int64)
 		}
