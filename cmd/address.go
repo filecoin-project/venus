@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/howeyc/gopass"
 
@@ -261,8 +262,33 @@ var balanceCmd = &cmds.Command{
 			return err
 		}
 
-		return printOneString(re, (types.FIL)(balance).String())
+		isDone, err := isSyncDone(req.Context, env)
+		if err != nil {
+			return err
+		}
+
+		var balanceStr string
+		if balance.Equals(big.NewInt(0)) && !isDone {
+			balanceStr = fmt.Sprintf("%s (warning: may display 0 if chain sync in progress)\n", types.FIL(balance))
+		} else {
+			balanceStr = (types.FIL)(balance).String()
+		}
+
+		return printOneString(re, balanceStr)
 	},
+}
+
+func isSyncDone(ctx context.Context, env cmds.Environment) (bool, error) {
+	head, err := getEnv(env).ChainAPI.ChainHead(ctx)
+	if err != nil {
+		return false, err
+	}
+	params, err := getEnv(env).ChainAPI.StateGetNetworkParams(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return time.Now().Unix()-int64(head.MinTimestamp()) < int64(params.BlockDelaySecs), nil
 }
 
 // WalletSerializeResult is the type wallet export and import return and expect.
