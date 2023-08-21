@@ -140,6 +140,8 @@ func (mp *MessagePoolSubmodule) Validate(ctx context.Context, pid peer.ID, msg *
 		case errors.Is(err, messagepool.ErrNonceGap):
 			fallthrough
 		case errors.Is(err, messagepool.ErrNonceTooLow):
+			fallthrough
+		case errors.Is(err, messagepool.ErrExistingNonce):
 			return pubsub.ValidationIgnore
 		default:
 			return pubsub.ValidationReject
