@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/httpreader"
 	"io"
-	"net/http"
 	"os"
 	"strings"
 
@@ -30,18 +30,13 @@ func importChain(ctx context.Context, r repo.Repo, fname string) error {
 	var rd io.Reader
 	var l int64
 	if strings.HasPrefix(fname, "http://") || strings.HasPrefix(fname, "https://") {
-		resp, err := http.Get(fname) //nolint:gosec
+		rrd, err := httpreader.NewResumableReader(ctx, fname)
 		if err != nil {
-			return err
-		}
-		defer resp.Body.Close() //nolint:errcheck
-
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("non-200 response: %d", resp.StatusCode)
+			return fmt.Errorf("fetching chain CAR failed: setting up resumable reader: %w", err)
 		}
 
-		rd = resp.Body
-		l = resp.ContentLength
+		rd = rrd
+		l = rrd.ContentLength()
 	} else {
 		fname, err := homedir.Expand(fname)
 		if err != nil {
