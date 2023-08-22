@@ -2306,7 +2306,11 @@ Inputs:
     "value": "0x0",
     "data": "0x07"
   },
-  "string value"
+  {
+    "blockNumber": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "requireCanonical": true
+  }
 ]
 ```
 
@@ -2386,7 +2390,11 @@ Inputs:
 ```json
 [
   "0x0707070707070707070707070707070707070707",
-  "string value"
+  {
+    "blockNumber": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "requireCanonical": true
+  }
 ]
 ```
 
@@ -2519,7 +2527,11 @@ Inputs:
 ```json
 [
   "0x0707070707070707070707070707070707070707",
-  "string value"
+  {
+    "blockNumber": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "requireCanonical": true
+  }
 ]
 ```
 
@@ -2554,7 +2566,11 @@ Inputs:
 [
   "0x0707070707070707070707070707070707070707",
   "0x07",
-  "string value"
+  {
+    "blockNumber": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "requireCanonical": true
+  }
 ]
 ```
 
@@ -2724,7 +2740,11 @@ Inputs:
 ```json
 [
   "0x0707070707070707070707070707070707070707",
-  "string value"
+  {
+    "blockNumber": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "requireCanonical": true
+  }
 ]
 ```
 
