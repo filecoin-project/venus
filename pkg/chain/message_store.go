@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -386,12 +385,35 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 		return nil, errors.Errorf("failed to load state tree")
 	}
 
+	useIds := false
 	selectMsg := func(m *types.Message) (bool, error) {
 		var sender address.Address
 		if ts.Height() >= ms.fkCfg.UpgradeHyperdriveHeight {
-			sender, err = st.LookupID(m.From)
-			if err != nil {
-				return false, err
+			if useIds {
+				sender, err = st.LookupID(m.From)
+				if err != nil {
+					return false, errors.Errorf("failed to resolve sender: %w", err)
+				}
+			} else {
+				if m.From.Protocol() != address.ID {
+					// we haven't been told to use IDs, just use the robust addr
+					sender = m.From
+				} else {
+					// uh-oh, we actually have an ID-sender!
+					useIds = true
+					for robust, nonce := range applied {
+						resolved, err := st.LookupID(robust)
+						if err != nil {
+							return false, errors.Errorf("failed to resolve sender: %w", err)
+						}
+						applied[resolved] = nonce
+					}
+
+					sender, err = st.LookupID(m.From)
+					if err != nil {
+						return false, errors.Errorf("failed to resolve sender: %w", err)
+					}
+				}
 			}
 		} else {
 			sender = m.From
