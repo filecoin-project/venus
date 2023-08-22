@@ -99,7 +99,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	> StateReplay {[func(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error) <> func(context.Context, types.TipSetKey, cid.Cid) (*api.InvocResult, error)] base=func out type: #0 input; nested={[*types.InvocResult <> *api.InvocResult] base=pointed type; nested={[types.InvocResult <> api.InvocResult] base=struct field; nested={[types.InvocResult <> api.InvocResult] base=exported field type: #4 field named ExecutionTrace; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=struct field; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=exported fields count: 6 != 4; nested=nil}}}}}}
 	- SyncCheckBad
 	- SyncCheckpoint
-	- SyncIncomingBlocks
 	- SyncMarkBad
 	- SyncUnmarkAllBad
 	- SyncUnmarkBad
@@ -233,7 +232,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	> StateReplay {[func(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error) <> func(context.Context, types.TipSetKey, cid.Cid) (*api.InvocResult, error)] base=func out type: #0 input; nested={[*types.InvocResult <> *api.InvocResult] base=pointed type; nested={[types.InvocResult <> api.InvocResult] base=struct field; nested={[types.InvocResult <> api.InvocResult] base=exported field type: #4 field named ExecutionTrace; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=struct field; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=exported fields count: 6 != 4; nested=nil}}}}}}
 	- SyncCheckBad
 	- SyncCheckpoint
-	- SyncIncomingBlocks
 	- SyncMarkBad
 	- SyncUnmarkAllBad
 	- SyncUnmarkBad
