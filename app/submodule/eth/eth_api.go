@@ -89,8 +89,7 @@ type ethAPI struct {
 }
 
 func (a *ethAPI) start(ctx context.Context) error {
-	const ChainHeadConfidence = 1
-	ev, err := events.NewEventsWithConfidence(ctx, a.chain, ChainHeadConfidence)
+	ev, err := events.NewEvents(ctx, a.chain)
 	if err != nil {
 		return err
 	}

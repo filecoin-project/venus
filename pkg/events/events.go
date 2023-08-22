@@ -24,7 +24,7 @@ type Events struct {
 	*hcEvents
 }
 
-func NewEventsWithConfidence(ctx context.Context, api IEvent, gcConfidence abi.ChainEpoch) (*Events, error) {
+func newEventsWithConfidence(ctx context.Context, api IEvent, gcConfidence abi.ChainEpoch) (*Events, error) {
 	cache := newCache(api, gcConfidence)
 
 	ob := newObserver(cache, gcConfidence)
@@ -40,5 +40,5 @@ func NewEventsWithConfidence(ctx context.Context, api IEvent, gcConfidence abi.C
 
 func NewEvents(ctx context.Context, api IEvent) (*Events, error) {
 	gcConfidence := 2 * constants.ForkLengthThreshold
-	return NewEventsWithConfidence(ctx, api, gcConfidence)
+	return newEventsWithConfidence(ctx, api, gcConfidence)
 }
