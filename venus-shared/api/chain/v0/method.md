@@ -178,6 +178,7 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [ChainTipSetWeight](#chaintipsetweight)
   * [Concurrent](#concurrent)
   * [SetConcurrent](#setconcurrent)
+  * [SyncIncomingBlocks](#syncincomingblocks)
   * [SyncState](#syncstate)
   * [SyncSubmitBlock](#syncsubmitblock)
   * [SyncerTracker](#syncertracker)
@@ -5632,6 +5633,68 @@ Inputs:
 ```
 
 Response: `{}`
+
+### SyncIncomingBlocks
+SyncIncomingBlocks returns a channel streaming incoming, potentially not
+yet synced block headers.
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "Miner": "f01234",
+  "Ticket": {
+    "VRFProof": "Bw=="
+  },
+  "ElectionProof": {
+    "WinCount": 9,
+    "VRFProof": "Bw=="
+  },
+  "BeaconEntries": [
+    {
+      "Round": 42,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "WinPoStProof": [
+    {
+      "PoStProof": 8,
+      "ProofBytes": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "Parents": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  ],
+  "ParentWeight": "0",
+  "Height": 10101,
+  "ParentStateRoot": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "ParentMessageReceipts": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Messages": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "BLSAggregate": {
+    "Type": 2,
+    "Data": "Ynl0ZSBhcnJheQ=="
+  },
+  "Timestamp": 42,
+  "BlockSig": {
+    "Type": 2,
+    "Data": "Ynl0ZSBhcnJheQ=="
+  },
+  "ForkSignaling": 42,
+  "ParentBaseFee": "0"
+}
+```
 
 ### SyncState
 

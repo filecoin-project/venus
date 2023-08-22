@@ -16,4 +16,7 @@ type ISyncer interface {
 	ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (big.Int, error) //perm:read
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error              //perm:write
 	SyncState(ctx context.Context) (*types.SyncState, error)                     //perm:read
+	// SyncIncomingBlocks returns a channel streaming incoming, potentially not
+	// yet synced block headers.
+	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) //perm:read
 }

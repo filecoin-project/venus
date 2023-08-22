@@ -207,3 +207,7 @@ func (sa *syncerAPI) SyncState(ctx context.Context) (*types.SyncState, error) {
 
 	return syncState, nil
 }
+
+func (sa *syncerAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
+	return sa.syncer.ChainSyncManager.BlockProposer().IncomingBlocks(ctx)
+}

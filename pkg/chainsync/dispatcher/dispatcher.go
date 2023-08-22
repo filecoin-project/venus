@@ -8,6 +8,7 @@ import (
 	atmoic2 "sync/atomic"
 	"time"
 
+	"github.com/filecoin-project/pubsub"
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/streadway/handy/atomic"
@@ -22,6 +23,8 @@ const DefaultInQueueSize = 5
 
 // DefaultWorkQueueSize is the bucketSize of the work queue
 const DefaultWorkQueueSize = 15
+
+const LocalIncoming = "incoming"
 
 // dispatchSyncer is the interface of the logic syncing incoming chains
 type dispatchSyncer interface {
@@ -44,6 +47,7 @@ func NewDispatcherWithSizes(syncer dispatchSyncer, workQueueSize, inQueueSize in
 		registeredCb:    func(t *types.Target, err error) {},
 		cancelControler: list.New(),
 		maxCount:        1,
+		incomingPubsub:  pubsub.New(50),
 	}
 }
 
@@ -84,6 +88,8 @@ type Dispatcher struct {
 	lk              sync.Mutex
 	conCurrent      atomic.Int
 	maxCount        int64
+
+	incomingPubsub *pubsub.PubSub
 }
 
 // SyncTracker returns the target tracker of syncing
@@ -107,6 +113,7 @@ func (d *Dispatcher) SendGossipBlock(ci *types2.ChainInfo) error {
 }
 
 func (d *Dispatcher) addTracker(ci *types2.ChainInfo) error {
+	d.incomingPubsub.Pub(ci.Head.Blocks(), LocalIncoming)
 	d.incoming <- &types.Target{
 		ChainInfo: *ci,
 		Base:      d.syncer.Head(),
@@ -174,6 +181,41 @@ func (d *Dispatcher) Concurrent() int64 {
 	d.lk.Lock()
 	defer d.lk.Unlock()
 	return d.maxCount
+}
+
+func (d *Dispatcher) IncomingBlocks(ctx context.Context) (<-chan *types2.BlockHeader, error) {
+	sub := d.incomingPubsub.Sub(LocalIncoming)
+	out := make(chan *types2.BlockHeader, 32)
+
+	go func() {
+		defer func() {
+			close(out)
+
+			d.incomingPubsub.Unsub(sub)
+		}()
+
+		for {
+			select {
+			case val, ok := <-sub:
+				if !ok {
+					return
+				}
+				for _, blk := range val.([]*types2.BlockHeader) {
+					select {
+					case out <- blk:
+					case <-ctx.Done():
+						return
+					default:
+						log.Infof("incoming blocks subscription due to slow reader")
+					}
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return out, nil
 }
 
 func (d *Dispatcher) selectTarget(lastTarget *types.Target, ch <-chan struct{}) (*types.Target, bool) {
