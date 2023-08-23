@@ -7,10 +7,10 @@ import (
 
 	path "github.com/filecoin-project/venus/pkg/util/dag/oldpath"
 	resolver "github.com/filecoin-project/venus/pkg/util/dag/oldpath/oldresolver"
+	chunk "github.com/ipfs/boxo/chunker"
+	"github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/ipfs/go-cid"
-	chunk "github.com/ipfs/go-ipfs-chunker"
 	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs"
 	imp "github.com/ipfs/go-unixfs/importer"
 	uio "github.com/ipfs/go-unixfs/io"

@@ -8,8 +8,8 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	blockstore "github.com/ipfs/boxo/blockstore"
 	ds "github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
