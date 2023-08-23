@@ -912,7 +912,7 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 
 	requiredFunds := m.Message.RequiredFunds()
 	if big.Cmp(balance, requiredFunds) < 0 {
-		return fmt.Errorf("not enough funds (required: %s, balance: %s): %v", types.FIL(requiredFunds), types.FIL(balance), ErrNotEnoughFunds)
+		return fmt.Errorf("not enough funds (required: %s, balance: %s): %w", types.FIL(requiredFunds), types.FIL(balance), ErrNotEnoughFunds)
 	}
 
 	// add Value for soft failure check
@@ -944,7 +944,7 @@ func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS 
 	}
 
 	if snonce > m.Message.Nonce {
-		return false, fmt.Errorf("minimum expected nonce is %d: %v", snonce, ErrNonceTooLow)
+		return false, fmt.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
 	}
 
 	senderAct, err := mp.api.GetActorAfter(ctx, m.Message.From, curTS)
