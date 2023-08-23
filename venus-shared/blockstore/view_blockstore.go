@@ -6,11 +6,11 @@ import (
 	"fmt"
 
 	"github.com/dgraph-io/badger/v2"
+	dshelp "github.com/ipfs/boxo/datastore/dshelp"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/keytransform"
-	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	ipld "github.com/ipfs/go-ipld-format"
 )
 

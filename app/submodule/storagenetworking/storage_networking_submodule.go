@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/venus/app/submodule/network"
 
-	exchange "github.com/ipfs/go-ipfs-exchange-interface"
+	exchange "github.com/ipfs/boxo/exchange"
 )
 
 // StorageNetworkingSubmodule enhances the `Node` with data transfer capabilities.

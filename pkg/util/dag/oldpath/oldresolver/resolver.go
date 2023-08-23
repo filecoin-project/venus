@@ -8,10 +8,10 @@ import (
 
 	path "github.com/filecoin-project/venus/pkg/util/dag/oldpath"
 
+	dag "github.com/ipfs/boxo/ipld/merkledag"
 	cid "github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
-	dag "github.com/ipfs/go-merkledag"
 )
 
 var log = logging.Logger("pathresolv")

@@ -17,9 +17,9 @@ package blockstore
 import (
 	"context"
 
+	blockstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
 type BasicBlockstore = blockstore.Blockstore
