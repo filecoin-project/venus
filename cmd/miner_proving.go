@@ -145,6 +145,9 @@ var provingDeadlinesCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "View the current proving period deadlines information.",
 	},
+	Options: []cmds.Option{
+		cmds.BoolOption("all", "Count all sectors (only live sectors are counted by default)"),
+	},
 	Arguments: []cmds.Argument{
 		cmds.StringArg("address", true, false, "Address of miner to show"),
 	},
@@ -172,6 +175,7 @@ var provingDeadlinesCmd = &cmds.Command{
 		tw := tabwriter.NewWriter(buf, 2, 4, 2, ' ', 0)
 		_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors (faults)\tproven partitions")
 
+		all, _ := req.Options["all"].(bool)
 		for dlIdx, deadline := range deadlines {
 			partitions, err := api.StateMinerPartitions(ctx, maddr, uint64(dlIdx), types.EmptyTSK)
 			if err != nil {
@@ -183,16 +187,31 @@ var provingDeadlinesCmd = &cmds.Command{
 				return err
 			}
 
+			var partitionCount int
 			sectors := uint64(0)
 			faults := uint64(0)
 
 			for _, partition := range partitions {
-				sc, err := partition.AllSectors.Count()
-				if err != nil {
-					return err
-				}
+				if !all {
+					sc, err := partition.LiveSectors.Count()
+					if err != nil {
+						return err
+					}
 
-				sectors += sc
+					if sc > 0 {
+						partitionCount++
+					}
+
+					sectors += sc
+				} else {
+					sc, err := partition.AllSectors.Count()
+					if err != nil {
+						return err
+					}
+
+					partitionCount++
+					sectors += sc
+				}
 
 				fc, err := partition.FaultySectors.Count()
 				if err != nil {
@@ -206,7 +225,7 @@ var provingDeadlinesCmd = &cmds.Command{
 			if di.Index == uint64(dlIdx) {
 				cur += "\t(current)"
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, len(partitions), sectors, faults, provenPartitions, cur)
+			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, partitionCount, sectors, faults, provenPartitions, cur)
 		}
 		if err := tw.Flush(); err != nil {
 			return err
