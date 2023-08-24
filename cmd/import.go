@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/httpreader"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/filecoin-project/venus/pkg/httpreader"
 
 	"github.com/DataDog/zstd"
 	"github.com/filecoin-project/venus/pkg/chain"
