@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	multisig11 "github.com/filecoin-project/go-state-types/builtin/v11/multisig"
 	init12 "github.com/filecoin-project/go-state-types/builtin/v12/init"
+	multisig12 "github.com/filecoin-project/go-state-types/builtin/v12/multisig"
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -19,9 +19,9 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/types"
 )
 
-type message11 struct{ message0 }
+type message12 struct{ message0 }
 
-func (m message11) Create(
+func (m message12) Create(
 	signers []address.Address, threshold uint64,
 	unlockStart, unlockDuration abi.ChainEpoch,
 	initialAmount abi.TokenAmount,
@@ -42,7 +42,7 @@ func (m message11) Create(
 	}
 
 	// Set up constructor parameters for multisig
-	msigParams := &multisig11.ConstructorParams{
+	msigParams := &multisig12.ConstructorParams{
 		Signers:               signers,
 		NumApprovalsThreshold: threshold,
 		UnlockDuration:        unlockDuration,
@@ -54,7 +54,7 @@ func (m message11) Create(
 		return nil, actErr
 	}
 
-	code, ok := actors.GetActorCodeID(actorstypes.Version11, manifest.MultisigKey)
+	code, ok := actors.GetActorCodeID(actorstypes.Version12, manifest.MultisigKey)
 	if !ok {
 		return nil, fmt.Errorf("failed to get multisig code ID")
 	}

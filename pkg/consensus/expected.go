@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
@@ -112,8 +113,7 @@ type Expected struct {
 	// processor is what we use to process messages and pay rewards
 	processor Processor
 
-	// calculate chain randomness ticket/beacon
-	rnd ChainRandomness
+	beacon beacon.Schedule
 
 	// fork for vm process and block validator
 	fork fork.IFork
@@ -135,7 +135,7 @@ type Expected struct {
 func NewExpected(cs cbor.IpldStore,
 	bs blockstoreutil.Blockstore,
 	chainState *chain.Store,
-	rnd ChainRandomness,
+	beacon beacon.Schedule,
 	messageStore *chain.MessageStore,
 	fork fork.IFork,
 	gasPirceSchedule *gas.PricesSchedule,
@@ -153,7 +153,7 @@ func NewExpected(cs cbor.IpldStore,
 		bstore:           bs,
 		chainState:       chainState,
 		messageStore:     messageStore,
-		rnd:              rnd,
+		beacon:           beacon,
 		fork:             fork,
 		gasPirceSchedule: gasPirceSchedule,
 		blockValidator:   blockValidator,
@@ -195,6 +195,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, cb 
 		return cid.Undef, cid.Undef, nil
 	}
 
+	random := chain.NewChainRandomnessSource(c.chainState, ts.Key(), c.beacon, c.fork.GetNetworkVersion)
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 			dertail, err := c.chainState.GetCirculatingSupplyDetailed(ctx, epoch, tree)
@@ -205,7 +206,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, cb 
 		},
 		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, c.chainState, c.fork, ts),
 		NetworkVersion:      c.fork.GetNetworkVersion(ctx, ts.At(0).Height),
-		Rnd:                 NewHeadRandomness(c.rnd, ts.Key()),
+		Rnd:                 random,
 		BaseFee:             ts.At(0).ParentBaseFee,
 		Fork:                c.fork,
 		Epoch:               ts.At(0).Height,

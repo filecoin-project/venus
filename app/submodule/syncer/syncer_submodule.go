@@ -110,11 +110,10 @@ func NewSyncerSubmodule(ctx context.Context,
 		return nil, errors.Wrap(err, "failed to register block validator")
 	}
 
-	rnd := chn.API()
 	nodeConsensus := consensus.NewExpected(cborStore,
 		blockstore.Blockstore,
 		chn.ChainReader,
-		rnd,
+		chn.Drand,
 		chn.MessageStore,
 		chn.Fork,
 		gasPriceSchedule,
@@ -125,7 +124,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		config.Repo().Config().FevmConfig.EnableEthRPC,
 	)
 
-	stmgr, err := statemanger.NewStateManager(chn.ChainReader, chn.MessageStore, nodeConsensus, rnd,
+	stmgr, err := statemanger.NewStateManager(chn.ChainReader, chn.MessageStore, nodeConsensus, chn.Drand,
 		chn.Fork, gasPriceSchedule, chn.SystemCall, config.Repo().Config().NetworkParams.ActorDebugging)
 	if err != nil {
 		return nil, err

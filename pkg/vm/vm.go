@@ -61,3 +61,5 @@ type (
 )
 
 var ResolveToDeterministicAddress = vmcontext.ResolveToDeterministicAddress
+
+var DrawRandomnessFromDigest = vmcontext.DrawRandomnessFromDigest

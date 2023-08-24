@@ -53,9 +53,9 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeSkyrHeight:        -19,
 				UpgradeSharkHeight:       -20,
 				UpgradeHyggeHeight:       -21,
-				// TODO: set upgrade height
-				UpgradeLightningHeight: 50,
-				UpgradeThunderHeight:   50 + 360,
+				UpgradeLightningHeight:   50,
+				UpgradeThunderHeight:     50 + 360,
+				UpgradeWatermelonHeight:  999999999999999,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,

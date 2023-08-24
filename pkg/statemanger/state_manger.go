@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/fork"
@@ -57,10 +58,10 @@ var _ IStateManager = &Stmgr{}
 var log = logging.Logger("statemanager")
 
 type Stmgr struct {
-	cs  *chain.Store
-	ms  *chain.MessageStore
-	cp  consensus.StateTransformer
-	rnd consensus.ChainRandomness
+	cs     *chain.Store
+	ms     *chain.MessageStore
+	cp     consensus.StateTransformer
+	beacon beacon.Schedule
 
 	fork         fork.IFork
 	gasSchedule  *gas.PricesSchedule
@@ -87,7 +88,7 @@ type Stmgr struct {
 func NewStateManager(cs *chain.Store,
 	ms *chain.MessageStore,
 	cp consensus.StateTransformer,
-	rnd consensus.ChainRandomness,
+	beacon beacon.Schedule,
 	fork fork.IFork,
 	gasSchedule *gas.PricesSchedule,
 	syscallsImpl vm.SyscallsImpl,
@@ -108,7 +109,7 @@ func NewStateManager(cs *chain.Store,
 		ms:             ms,
 		fork:           fork,
 		cp:             cp,
-		rnd:            rnd,
+		beacon:         beacon,
 		gasSchedule:    gasSchedule,
 		syscallsImpl:   syscallsImpl,
 		stCache:        make(map[types.TipSetKey]stateComputeResult),
@@ -586,6 +587,7 @@ func ComputeState(ctx context.Context, s *Stmgr, height abi.ChainEpoch, msgs []*
 		// future. It's not guaranteed to be accurate... but that's fine.
 	}
 
+	random := chain.NewChainRandomnessSource(s.cs, ts.Key(), s.beacon, s.GetNetworkVersion)
 	buffStore := blockstoreutil.NewTieredBstore(s.cs.Blockstore(), blockstoreutil.NewTemporarySync())
 	vmopt := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
@@ -598,7 +600,7 @@ func ComputeState(ctx context.Context, s *Stmgr, height abi.ChainEpoch, msgs []*
 		PRoot:               base,
 		Epoch:               ts.Height(),
 		Timestamp:           ts.MinTimestamp(),
-		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
+		Rnd:                 random,
 		Bsstore:             buffStore,
 		SysCallsImpl:        s.syscallsImpl,
 		GasPriceSchedule:    s.gasSchedule,
