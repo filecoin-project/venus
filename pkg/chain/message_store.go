@@ -392,7 +392,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 			if useIds {
 				sender, err = st.LookupID(m.From)
 				if err != nil {
-					return false, errors.Errorf("failed to resolve sender: %w", err)
+					return false, fmt.Errorf("failed to resolve sender: %w", err)
 				}
 			} else {
 				if m.From.Protocol() != address.ID {
@@ -404,14 +404,14 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 					for robust, nonce := range applied {
 						resolved, err := st.LookupID(robust)
 						if err != nil {
-							return false, errors.Errorf("failed to resolve sender: %w", err)
+							return false, fmt.Errorf("failed to resolve sender: %w", err)
 						}
 						applied[resolved] = nonce
 					}
 
 					sender, err = st.LookupID(m.From)
 					if err != nil {
-						return false, errors.Errorf("failed to resolve sender: %w", err)
+						return false, fmt.Errorf("failed to resolve sender: %w", err)
 					}
 				}
 			}
