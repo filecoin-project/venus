@@ -43,7 +43,7 @@ require (
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
 	github.com/filecoin-project/specs-actors/v8 v8.0.1
 	github.com/filecoin-project/specs-storage v0.4.1
-	github.com/filecoin-project/test-vectors/schema v0.0.5
+	github.com/filecoin-project/test-vectors/schema v0.0.6-0.20230822140104-bed37e1ca04f
 	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/go-errors/errors v1.0.1
 	github.com/golang/mock v1.6.0

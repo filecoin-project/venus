@@ -103,7 +103,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) // load genesis from car
 
 	// chain fork
-	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
+	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network, chainDs)
 	faultChecker := consensusfault.NewFaultChecker(chainStore, chainFork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, impl.ProofVerifier)
 	if err != nil {
@@ -258,7 +258,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) // load genesis from car
 
 	// chain fork
-	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
+	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network, chainDs)
 	faultChecker := consensusfault.NewFaultChecker(chainStore, chainFork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, impl.ProofVerifier)
 	if err != nil {

@@ -27,7 +27,9 @@ import (
 	blockstore "github.com/ipfs/boxo/blockstore"
 	ipfsblock "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	dstore "github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -56,6 +58,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/repo"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -493,9 +496,47 @@ type versionSpec struct {
 }
 
 type Migration struct {
-	upgrade       MigrationFunc
-	preMigrations []PreMigration
-	cache         *nv16.MemMigrationCache
+	upgrade              MigrationFunc
+	preMigrations        []PreMigration
+	cache                *nv16.MemMigrationCache
+	migrationResultCache *migrationResultCache
+}
+
+type migrationResultCache struct {
+	ds        dstore.Batching
+	keyPrefix string
+}
+
+func (m *migrationResultCache) keyForMigration(root cid.Cid) dstore.Key {
+	str := fmt.Sprintf("%s/%s", m.keyPrefix, root)
+	return dstore.NewKey(str)
+}
+
+func (m *migrationResultCache) Get(ctx context.Context, root cid.Cid) (cid.Cid, bool, error) {
+	k := m.keyForMigration(root)
+
+	bs, err := m.ds.Get(ctx, k)
+	if ipld.IsNotFound(err) {
+		return cid.Undef, false, nil
+	} else if err != nil {
+		return cid.Undef, false, fmt.Errorf("error loading migration result: %w", err)
+	}
+
+	c, err := cid.Parse(bs)
+	if err != nil {
+		return cid.Undef, false, fmt.Errorf("error parsing migration result: %w", err)
+	}
+
+	return c, true, nil
+}
+
+func (m *migrationResultCache) Store(ctx context.Context, root cid.Cid, resultCid cid.Cid) error {
+	k := m.keyForMigration(root)
+	if err := m.ds.Put(ctx, k, resultCid.Bytes()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type ChainFork struct {
@@ -517,15 +558,24 @@ type ChainFork struct {
 	// upgrade param
 	networkType types.NetworkType
 	forkUpgrade *config.ForkUpgradeConfig
+
+	metadataDs repo.Datastore
 }
 
-func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore, bs blockstoreutil.Blockstore, networkParams *config.NetworkParamsConfig) (*ChainFork, error) {
+func NewChainFork(ctx context.Context,
+	cr chainReader,
+	ipldstore cbor.IpldStore,
+	bs blockstoreutil.Blockstore,
+	networkParams *config.NetworkParamsConfig,
+	metadataDs dstore.Batching,
+) (*ChainFork, error) {
 	fork := &ChainFork{
 		cr:          cr,
 		bs:          bs,
 		ipldstore:   ipldstore,
 		networkType: networkParams.NetworkType,
 		forkUpgrade: networkParams.ForkUpgradeParam,
+		metadataDs:  metadataDs,
 	}
 
 	// If we have upgrades, make sure they're in-order and make sense.
@@ -546,6 +596,10 @@ func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore,
 					upgrade:       upgrade.Migration,
 					preMigrations: upgrade.PreMigrations,
 					cache:         nv16.NewMemMigrationCache(),
+					migrationResultCache: &migrationResultCache{
+						keyPrefix: fmt.Sprintf("/migration-cache/nv%d", upgrade.Network),
+						ds:        metadataDs,
+					},
 				}
 				stateMigrations[upgrade.Height] = migration
 			}
@@ -581,9 +635,16 @@ func (c *ChainFork) StateTree(ctx context.Context, st cid.Cid) (*vmstate.State, 
 
 func (c *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	retCid := root
-	var err error
 	u := c.stateMigrations[height]
 	if u != nil && u.upgrade != nil {
+		migCid, ok, err := u.migrationResultCache.Get(ctx, root)
+		if err == nil && ok {
+			log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
+			return migCid, nil
+		} else if err != nil {
+			log.Errorw("failed to lookup previous migration result", "err", err)
+		}
+
 		startTime := time.Now()
 		log.Warnw("STARTING migration", "height", height, "from", root)
 		// Yes, we clone the cache, even for the final upgrade epoch. Why? Reverts. We may
@@ -604,6 +665,11 @@ func (c *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, height a
 			"to", retCid,
 			"duration", time.Since(startTime),
 		)
+
+		// Only set if migration ran, we do not want a root => root mapping
+		if err := u.migrationResultCache.Store(ctx, root, retCid); err != nil {
+			log.Errorw("failed to store migration result", "err", err)
+		}
 	}
 
 	return retCid, nil
