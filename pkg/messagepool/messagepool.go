@@ -93,6 +93,7 @@ var (
 	ErrRBFTooLowPremium       = errors.New("replace by fee has too low GasPremium")
 	ErrTooManyPendingMessages = errors.New("too many pending messages for actor")
 	ErrNonceGap               = errors.New("unfulfilled nonce gap")
+	ErrExistingNonce          = errors.New("message with nonce already exists")
 )
 
 const (
@@ -300,7 +301,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 			}
 		} else {
 			return false, fmt.Errorf("message from %s with nonce %d already in mpool: %w",
-				m.Message.From, m.Message.Nonce, ErrSoftValidationFailure)
+				m.Message.From, m.Message.Nonce, ErrExistingNonce)
 		}
 
 		ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.RequiredFunds().Int)
@@ -912,7 +913,7 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 
 	requiredFunds := m.Message.RequiredFunds()
 	if big.Cmp(balance, requiredFunds) < 0 {
-		return fmt.Errorf("not enough funds (required: %s, balance: %s): %v", types.FIL(requiredFunds), types.FIL(balance), ErrNotEnoughFunds)
+		return fmt.Errorf("not enough funds (required: %s, balance: %s): %w", types.FIL(requiredFunds), types.FIL(balance), ErrNotEnoughFunds)
 	}
 
 	// add Value for soft failure check
@@ -944,7 +945,7 @@ func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS 
 	}
 
 	if snonce > m.Message.Nonce {
-		return false, fmt.Errorf("minimum expected nonce is %d: %v", snonce, ErrNonceTooLow)
+		return false, fmt.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
 	}
 
 	senderAct, err := mp.api.GetActorAfter(ctx, m.Message.From, curTS)
