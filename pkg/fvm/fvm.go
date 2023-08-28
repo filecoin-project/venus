@@ -53,7 +53,7 @@ var (
 )
 
 type FvmExtern struct { // nolint
-	Rand
+	vm.ChainRandomness
 	blockstoreutil.Blockstore
 	epoch            abi.ChainEpoch
 	lbState          vm.LookbackStateGetter
@@ -321,7 +321,7 @@ func defaultFVMOpts(ctx context.Context, opts *vm.VmOption) (*ffi.FVMOpts, error
 	return &ffi.FVMOpts{
 		FVMVersion: 0,
 		Externs: &FvmExtern{
-			Rand:             NewWrapperRand(opts.Rnd),
+			ChainRandomness:  opts.Rnd,
 			Blockstore:       opts.Bsstore,
 			epoch:            opts.Epoch,
 			lbState:          opts.LookbackStateGetter,

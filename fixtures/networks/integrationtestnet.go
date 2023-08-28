@@ -48,9 +48,9 @@ func IntegrationNet() *NetworkConf {
 				UpgradeSkyrHeight:        1960320,
 				UpgradeSharkHeight:       2383680,
 				UpgradeHyggeHeight:       2683348,
-				// TODO: set correct upgrade height
-				UpgradeLightningHeight: 999999999999999,
-				UpgradeThunderHeight:   999999999999999 + 1,
+				UpgradeLightningHeight:   2809800,
+				UpgradeThunderHeight:     2809800 + 2880*21,
+				UpgradeWatermelonHeight:  999999999999999,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:          address.Testnet,

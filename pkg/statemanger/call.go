@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/fvm"
 
-	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -139,6 +138,7 @@ func (s *Stmgr) callInternal(ctx context.Context, msg *types.Message, priorMsgs 
 		)
 	}
 
+	random := chain.NewChainRandomnessSource(s.cs, ts.Key(), s.beacon, s.GetNetworkVersion)
 	buffStore := blockstoreutil.NewTieredBstore(s.cs.Blockstore(), blockstoreutil.NewTemporarySync())
 	vmopt := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
@@ -151,7 +151,7 @@ func (s *Stmgr) callInternal(ctx context.Context, msg *types.Message, priorMsgs 
 		PRoot:               stateCid,
 		Epoch:               ts.Height(),
 		Timestamp:           ts.MinTimestamp(),
-		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
+		Rnd:                 random,
 		Bsstore:             buffStore,
 		SysCallsImpl:        s.syscallsImpl,
 		GasPriceSchedule:    s.gasSchedule,

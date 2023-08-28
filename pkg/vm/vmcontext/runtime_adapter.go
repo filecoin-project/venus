@@ -162,19 +162,29 @@ func (a *runtimeAdapter) NetworkVersion() network.Version {
 
 func (a *runtimeAdapter) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	opt := a.ctx.vm.vmOption
-	res, err := opt.Rnd.ChainGetRandomnessFromBeacon(a.Context(), personalization, randEpoch, entropy)
+	digest, err := opt.Rnd.GetBeaconRandomness(a.Context(), randEpoch)
 	if err != nil {
 		panic(aerrors.Fatalf("could not get beacon randomness: %s", err))
 	}
+	res, err := DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
+	if err != nil {
+		panic(aerrors.Fatalf("could not draw beacon randomness: %s", err))
+	}
+
 	return res
 }
 
 func (a *runtimeAdapter) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	opt := a.ctx.vm.vmOption
-	res, err := opt.Rnd.ChainGetRandomnessFromTickets(a.Context(), personalization, randEpoch, entropy)
+	digest, err := opt.Rnd.GetChainRandomness(a.Context(), randEpoch)
 	if err != nil {
 		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}
+	res, err := DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
+	if err != nil {
+		panic(aerrors.Fatalf("could not draw ticket randomness: %s", err))
+	}
+
 	return res
 }
 

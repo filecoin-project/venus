@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
 )
 
 type fixedRand struct{}
@@ -19,10 +18,12 @@ func NewFixedRand() vmcontext.HeadChainRandomness {
 	return &fixedRand{}
 }
 
-func (r *fixedRand) ChainGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
+var fixedBytes = []byte("i_am_random_____i_am_random_____")
+
+func (r *fixedRand) GetBeaconRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
+	return *(*[32]byte)(fixedBytes), nil // 32 bytes.
 }
 
-func (r *fixedRand) ChainGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
+func (r *fixedRand) GetChainRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
+	return *(*[32]byte)(fixedBytes), nil // 32 bytes.
 }

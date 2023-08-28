@@ -259,47 +259,49 @@ func (s *IMinerStateStruct) StateVerifiedClientStatus(p0 context.Context, p1 add
 
 type IChainInfoStruct struct {
 	Internal struct {
-		BlockTime                     func(ctx context.Context) time.Duration                                                                                                                      `perm:"read"`
-		ChainExport                   func(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)                                                                          `perm:"read"`
-		ChainGetBlock                 func(ctx context.Context, id cid.Cid) (*types.BlockHeader, error)                                                                                            `perm:"read"`
-		ChainGetBlockMessages         func(ctx context.Context, bid cid.Cid) (*types.BlockMessages, error)                                                                                         `perm:"read"`
-		ChainGetEvents                func(context.Context, cid.Cid) ([]types.Event, error)                                                                                                        `perm:"read"`
-		ChainGetGenesis               func(context.Context) (*types.TipSet, error)                                                                                                                 `perm:"read"`
-		ChainGetMessage               func(ctx context.Context, msgID cid.Cid) (*types.Message, error)                                                                                             `perm:"read"`
-		ChainGetMessagesInTipset      func(ctx context.Context, key types.TipSetKey) ([]types.MessageCID, error)                                                                                   `perm:"read"`
-		ChainGetParentMessages        func(ctx context.Context, bcid cid.Cid) ([]types.MessageCID, error)                                                                                          `perm:"read"`
-		ChainGetParentReceipts        func(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error)                                                                                     `perm:"read"`
-		ChainGetPath                  func(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error)                                                             `perm:"read"`
-		ChainGetReceipts              func(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error)                                                                                        `perm:"read"`
-		ChainGetTipSet                func(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)                                                                                        `perm:"read"`
-		ChainGetTipSetAfterHeight     func(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)                                                                 `perm:"read"`
-		ChainGetTipSetByHeight        func(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)                                                                 `perm:"read"`
-		ChainHead                     func(ctx context.Context) (*types.TipSet, error)                                                                                                             `perm:"read"`
-		ChainList                     func(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error)                                                                       `perm:"read"`
-		ChainNotify                   func(ctx context.Context) (<-chan []*types.HeadChange, error)                                                                                                `perm:"read"`
-		ChainSetHead                  func(ctx context.Context, key types.TipSetKey) error                                                                                                         `perm:"admin"`
-		GetActor                      func(ctx context.Context, addr address.Address) (*types.Actor, error)                                                                                        `perm:"read"`
-		GetEntry                      func(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)                                                                   `perm:"read"`
-		GetFullBlock                  func(ctx context.Context, id cid.Cid) (*types.FullBlock, error)                                                                                              `perm:"read"`
-		GetParentStateRootActor       func(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error)                                                                      `perm:"read"`
-		ProtocolParameters            func(ctx context.Context) (*types.ProtocolParams, error)                                                                                                     `perm:"read"`
-		ResolveToKeyAddr              func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)                                                                   `perm:"read"`
-		StateActorCodeCIDs            func(context.Context, network.Version) (map[string]cid.Cid, error)                                                                                           `perm:"read"`
-		StateActorManifestCID         func(context.Context, network.Version) (cid.Cid, error)                                                                                                      `perm:"read"`
-		StateCall                     func(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error)                                                               `perm:"read"`
-		StateCompute                  func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*types.ComputeStateOutput, error)                                                  `perm:"read"`
-		StateGetBeaconEntry           func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)                                                                                  `perm:"read"`
-		StateGetNetworkParams         func(ctx context.Context) (*types.NetworkParams, error)                                                                                                      `perm:"read"`
-		StateGetRandomnessFromBeacon  func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
-		StateGetRandomnessFromTickets func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
-		StateNetworkName              func(ctx context.Context) (types.NetworkName, error)                                                                                                         `perm:"read"`
-		StateNetworkVersion           func(ctx context.Context, tsk types.TipSetKey) (network.Version, error)                                                                                      `perm:"read"`
-		StateReplay                   func(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error)                                                                                  `perm:"read"`
-		StateSearchMsg                func(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)                             `perm:"read"`
-		StateVerifiedRegistryRootKey  func(ctx context.Context, tsk types.TipSetKey) (address.Address, error)                                                                                      `perm:"read"`
-		StateVerifierStatus           func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)                                                              `perm:"read"`
-		StateWaitMsg                  func(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)                                `perm:"read"`
-		VerifyEntry                   func(parent, child *types.BeaconEntry, height abi.ChainEpoch) bool                                                                                           `perm:"read"`
+		BlockTime                           func(ctx context.Context) time.Duration                                                                                                                      `perm:"read"`
+		ChainExport                         func(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)                                                                          `perm:"read"`
+		ChainGetBlock                       func(ctx context.Context, id cid.Cid) (*types.BlockHeader, error)                                                                                            `perm:"read"`
+		ChainGetBlockMessages               func(ctx context.Context, bid cid.Cid) (*types.BlockMessages, error)                                                                                         `perm:"read"`
+		ChainGetEvents                      func(context.Context, cid.Cid) ([]types.Event, error)                                                                                                        `perm:"read"`
+		ChainGetGenesis                     func(context.Context) (*types.TipSet, error)                                                                                                                 `perm:"read"`
+		ChainGetMessage                     func(ctx context.Context, msgID cid.Cid) (*types.Message, error)                                                                                             `perm:"read"`
+		ChainGetMessagesInTipset            func(ctx context.Context, key types.TipSetKey) ([]types.MessageCID, error)                                                                                   `perm:"read"`
+		ChainGetParentMessages              func(ctx context.Context, bcid cid.Cid) ([]types.MessageCID, error)                                                                                          `perm:"read"`
+		ChainGetParentReceipts              func(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error)                                                                                     `perm:"read"`
+		ChainGetPath                        func(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error)                                                             `perm:"read"`
+		ChainGetReceipts                    func(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error)                                                                                        `perm:"read"`
+		ChainGetTipSet                      func(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)                                                                                        `perm:"read"`
+		ChainGetTipSetAfterHeight           func(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)                                                                 `perm:"read"`
+		ChainGetTipSetByHeight              func(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)                                                                 `perm:"read"`
+		ChainHead                           func(ctx context.Context) (*types.TipSet, error)                                                                                                             `perm:"read"`
+		ChainList                           func(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error)                                                                       `perm:"read"`
+		ChainNotify                         func(ctx context.Context) (<-chan []*types.HeadChange, error)                                                                                                `perm:"read"`
+		ChainSetHead                        func(ctx context.Context, key types.TipSetKey) error                                                                                                         `perm:"admin"`
+		GetActor                            func(ctx context.Context, addr address.Address) (*types.Actor, error)                                                                                        `perm:"read"`
+		GetEntry                            func(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)                                                                   `perm:"read"`
+		GetFullBlock                        func(ctx context.Context, id cid.Cid) (*types.FullBlock, error)                                                                                              `perm:"read"`
+		GetParentStateRootActor             func(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error)                                                                      `perm:"read"`
+		ProtocolParameters                  func(ctx context.Context) (*types.ProtocolParams, error)                                                                                                     `perm:"read"`
+		ResolveToKeyAddr                    func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)                                                                   `perm:"read"`
+		StateActorCodeCIDs                  func(context.Context, network.Version) (map[string]cid.Cid, error)                                                                                           `perm:"read"`
+		StateActorManifestCID               func(context.Context, network.Version) (cid.Cid, error)                                                                                                      `perm:"read"`
+		StateCall                           func(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error)                                                               `perm:"read"`
+		StateCompute                        func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*types.ComputeStateOutput, error)                                                  `perm:"read"`
+		StateGetBeaconEntry                 func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)                                                                                  `perm:"read"`
+		StateGetNetworkParams               func(ctx context.Context) (*types.NetworkParams, error)                                                                                                      `perm:"read"`
+		StateGetRandomnessDigestFromBeacon  func(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error)                                                             `perm:"read"`
+		StateGetRandomnessDigestFromTickets func(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error)                                                             `perm:"read"`
+		StateGetRandomnessFromBeacon        func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
+		StateGetRandomnessFromTickets       func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
+		StateNetworkName                    func(ctx context.Context) (types.NetworkName, error)                                                                                                         `perm:"read"`
+		StateNetworkVersion                 func(ctx context.Context, tsk types.TipSetKey) (network.Version, error)                                                                                      `perm:"read"`
+		StateReplay                         func(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error)                                                                                  `perm:"read"`
+		StateSearchMsg                      func(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)                             `perm:"read"`
+		StateVerifiedRegistryRootKey        func(ctx context.Context, tsk types.TipSetKey) (address.Address, error)                                                                                      `perm:"read"`
+		StateVerifierStatus                 func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)                                                              `perm:"read"`
+		StateWaitMsg                        func(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)                                `perm:"read"`
+		VerifyEntry                         func(parent, child *types.BeaconEntry, height abi.ChainEpoch) bool                                                                                           `perm:"read"`
 	}
 }
 
@@ -395,6 +397,12 @@ func (s *IChainInfoStruct) StateGetBeaconEntry(p0 context.Context, p1 abi.ChainE
 }
 func (s *IChainInfoStruct) StateGetNetworkParams(p0 context.Context) (*types.NetworkParams, error) {
 	return s.Internal.StateGetNetworkParams(p0)
+}
+func (s *IChainInfoStruct) StateGetRandomnessDigestFromBeacon(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) {
+	return s.Internal.StateGetRandomnessDigestFromBeacon(p0, p1, p2)
+}
+func (s *IChainInfoStruct) StateGetRandomnessDigestFromTickets(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) {
+	return s.Internal.StateGetRandomnessDigestFromTickets(p0, p1, p2)
 }
 func (s *IChainInfoStruct) StateGetRandomnessFromBeacon(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) {
 	return s.Internal.StateGetRandomnessFromBeacon(p0, p1, p2, p3, p4)

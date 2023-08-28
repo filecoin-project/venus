@@ -542,7 +542,7 @@ func (bv *BlockValidator) ValidateBlockWinner(ctx context.Context, waddr address
 		return fmt.Errorf("failed to marshal miner address to cbor: %s", err)
 	}
 
-	vrfBase, err := chain.DrawRandomness(rBeacon.Data, acrypto.DomainSeparationTag_ElectionProofProduction, blk.Height, buf.Bytes())
+	vrfBase, err := chain.DrawRandomnessFromBase(rBeacon.Data, acrypto.DomainSeparationTag_ElectionProofProduction, blk.Height, buf.Bytes())
 	if err != nil {
 		return fmt.Errorf("could not draw randomness: %s", err)
 	}
@@ -700,7 +700,7 @@ func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network
 		rbase = &blk.BeaconEntries[len(blk.BeaconEntries)-1]
 	}
 
-	rand, err := chain.DrawRandomness(rbase.Data, acrypto.DomainSeparationTag_WinningPoStChallengeSeed, blk.Height, buf.Bytes())
+	rand, err := chain.DrawRandomnessFromBase(rbase.Data, acrypto.DomainSeparationTag_WinningPoStChallengeSeed, blk.Height, buf.Bytes())
 	if err != nil {
 		return fmt.Errorf("failed to get randomness for verifying winning post proof: %v", err)
 	}

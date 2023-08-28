@@ -49,6 +49,8 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [StateCompute](#statecompute)
   * [StateGetBeaconEntry](#stategetbeaconentry)
   * [StateGetNetworkParams](#stategetnetworkparams)
+  * [StateGetRandomnessDigestFromBeacon](#stategetrandomnessdigestfrombeacon)
+  * [StateGetRandomnessDigestFromTickets](#stategetrandomnessdigestfromtickets)
   * [StateGetRandomnessFromBeacon](#stategetrandomnessfrombeacon)
   * [StateGetRandomnessFromTickets](#stategetrandomnessfromtickets)
   * [StateNetworkName](#statenetworkname)
@@ -1259,7 +1261,7 @@ Perms: read
 Inputs:
 ```json
 [
-  18
+  21
 ]
 ```
 
@@ -1274,7 +1276,7 @@ Perms: read
 Inputs:
 ```json
 [
-  18
+  21
 ]
 ```
 
@@ -1746,11 +1748,58 @@ Response:
     "UpgradeSharkHeight": 10101,
     "UpgradeHyggeHeight": 10101,
     "UpgradeLightningHeight": 10101,
-    "UpgradeThunderHeight": 10101
+    "UpgradeThunderHeight": 10101,
+    "UpgradeWatermelonHeight": 10101
   },
   "Eip155ChainID": 123
 }
 ```
+
+### StateGetRandomnessDigestFromBeacon
+StateGetRandomnessDigestFromBeacon is used to sample the beacon for randomness.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"Bw=="`
+
+### StateGetRandomnessDigestFromTickets
+StateGetRandomnessDigestFromTickets is used to sample the chain for randomness.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"Bw=="`
 
 ### StateGetRandomnessFromBeacon
 
@@ -1828,7 +1877,7 @@ Inputs:
 ]
 ```
 
-Response: `18`
+Response: `21`
 
 ### StateReplay
 

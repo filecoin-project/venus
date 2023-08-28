@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/test-vectors/schema"
 )
@@ -25,14 +24,6 @@ type RecordingRand struct {
 	head     types.TipSetKey
 	lk       sync.Mutex
 	recorded schema.Randomness
-}
-
-func (r *RecordingRand) ChainGetRandomnessFromBeacon(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return r.getChainRandomness(ctx, pers, round, entropy)
-}
-
-func (r *RecordingRand) ChainGetRandomnessFromTickets(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return r.getChainRandomness(ctx, pers, round, entropy)
 }
 
 var _ vmcontext.HeadChainRandomness = (*RecordingRand)(nil)
@@ -51,31 +42,20 @@ func (r *RecordingRand) loadHead() {
 	}
 	r.head = head.Key()
 }
-
-func (r *RecordingRand) GetChainRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return r.getChainRandomness(ctx, pers, round, entropy)
-}
-
-func (r *RecordingRand) GetChainRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return r.getChainRandomness(ctx, pers, round, entropy)
-}
-
-func (r *RecordingRand) getChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *RecordingRand) GetChainRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
 	r.once.Do(r.loadHead)
-	// FullNode's StateGetRandomnessFromTickets handles whether we should be looking forward or back
-	ret, err := r.api.StateGetRandomnessFromTickets(ctx, pers, round, entropy, r.head)
+	// FullNode's v1 ChainGetRandomnessFromTickets handles whether we should be looking forward or back
+	ret, err := r.api.StateGetRandomnessDigestFromTickets(ctx, round, r.head)
 	if err != nil {
-		return ret, err
+		return [32]byte{}, err
 	}
 
-	r.reporter.Logf("fetched and recorded chain randomness for: dst=%d, epoch=%d, entropy=%x, result=%x", pers, round, entropy, ret)
+	r.reporter.Logf("fetched and recorded chain randomness for: epoch=%d, result=%x", round, ret)
 
 	match := schema.RandomnessMatch{
 		On: schema.RandomnessRule{
-			Kind:                schema.RandomnessChain,
-			DomainSeparationTag: int64(pers),
-			Epoch:               int64(round),
-			Entropy:             entropy,
+			Kind:  schema.RandomnessChain,
+			Epoch: int64(round),
 		},
 		Return: []byte(ret),
 	}
@@ -83,36 +63,22 @@ func (r *RecordingRand) getChainRandomness(ctx context.Context, pers crypto.Doma
 	r.recorded = append(r.recorded, match)
 	r.lk.Unlock()
 
-	return ret, err
+	return *(*[32]byte)(ret), err
 }
 
-func (r *RecordingRand) GetBeaconRandomnessV3(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return r.getBeaconRandomness(ctx, pers, round, entropy)
-}
-
-func (r *RecordingRand) GetBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return r.getBeaconRandomness(ctx, pers, round, entropy)
-}
-
-func (r *RecordingRand) GetBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return r.getBeaconRandomness(ctx, pers, round, entropy)
-}
-
-func (r *RecordingRand) getBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *RecordingRand) GetBeaconRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
 	r.once.Do(r.loadHead)
-	ret, err := r.api.StateGetRandomnessFromBeacon(ctx, pers, round, entropy, r.head)
+	ret, err := r.api.StateGetRandomnessDigestFromBeacon(ctx, round, r.head)
 	if err != nil {
-		return ret, err
+		return [32]byte{}, err
 	}
 
-	r.reporter.Logf("fetched and recorded beacon randomness for: dst=%d, epoch=%d, entropy=%x, result=%x", pers, round, entropy, ret)
+	r.reporter.Logf("fetched and recorded beacon randomness for: epoch=%d,  result=%x", round, ret)
 
 	match := schema.RandomnessMatch{
 		On: schema.RandomnessRule{
-			Kind:                schema.RandomnessBeacon,
-			DomainSeparationTag: int64(pers),
-			Epoch:               int64(round),
-			Entropy:             entropy,
+			Kind:  schema.RandomnessBeacon,
+			Epoch: int64(round),
 		},
 		Return: []byte(ret),
 	}
@@ -120,7 +86,7 @@ func (r *RecordingRand) getBeaconRandomness(ctx context.Context, pers crypto.Dom
 	r.recorded = append(r.recorded, match)
 	r.lk.Unlock()
 
-	return ret, err
+	return *(*[32]byte)(ret), err
 }
 
 func (r *RecordingRand) Recorded() schema.Randomness {

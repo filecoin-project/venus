@@ -143,7 +143,7 @@ func VersionForNetwork(ver network.Version) (StateTreeVersion, error) {
 		return StateTreeVersion3, nil
 	case network.Version13, network.Version14, network.Version15, network.Version16, network.Version17:
 		return StateTreeVersion4, nil
-	case network.Version18, network.Version19, network.Version20:
+	case network.Version18, network.Version19, network.Version20, network.Version21:
 		return StateTreeVersion5, nil
 	default:
 		panic(fmt.Sprintf("unsupported network version %d", ver))

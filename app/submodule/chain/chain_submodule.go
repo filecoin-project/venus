@@ -68,7 +68,7 @@ func NewChainSubmodule(ctx context.Context,
 	}
 
 	messageStore := chain.NewMessageStore(config.Repo().Datastore(), repo.Config().NetworkParams.ForkUpgradeParam)
-	fork, err := fork.NewChainFork(ctx, chainStore, cbor.NewCborStore(config.Repo().Datastore()), config.Repo().Datastore(), repo.Config().NetworkParams)
+	fork, err := fork.NewChainFork(ctx, chainStore, cbor.NewCborStore(config.Repo().Datastore()), config.Repo().Datastore(), repo.Config().NetworkParams, config.Repo().MetaDatastore())
 	if err != nil {
 		return nil, err
 	}
