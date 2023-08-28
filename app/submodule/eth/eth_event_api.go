@@ -222,7 +222,7 @@ func (e *ethEventAPI) installEthFilterSpec(ctx context.Context, filterSpec *type
 			return nil, fmt.Errorf("must not specify block hash and from/to block")
 		}
 
-		// TODO: derive a tipset hash from eth hash - might need to push this down into the EventFilterManager
+		tipsetCid = filterSpec.BlockHash.ToCid()
 	} else {
 		if filterSpec.FromBlock == nil || *filterSpec.FromBlock == "latest" {
 			ts, err := e.ChainAPI.ChainHead(ctx)
