@@ -14,7 +14,7 @@ import (
 	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
 	carv2 "github.com/ipld/go-car/v2"
-	mh "github.com/multiformats/go-multihash"
+	"github.com/multiformats/go-multicodec"
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
@@ -813,7 +813,7 @@ func (store *Store) GenesisRootCid() cid.Cid {
 }
 
 func recurseLinks(ctx context.Context, bs blockstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
-	if root.Prefix().Codec != cid.DagCBOR {
+	if multicodec.Code(root.Prefix().Codec) != multicodec.DagCbor {
 		return in, nil
 	}
 
@@ -949,14 +949,13 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 				prefix := c.Prefix()
 
 				// Don't include identity CIDs.
-				if prefix.MhType == mh.IDENTITY {
+				if multicodec.Code(prefix.MhType) == multicodec.Identity {
 					continue
 				}
 
-				// We only include raw and dagcbor, for now.
-				// Raw for "code" CIDs.
-				switch prefix.Codec {
-				case cid.Raw, cid.DagCBOR:
+				// We only include raw, cbor, and dagcbor, for now.
+				switch multicodec.Code(prefix.Codec) {
+				case multicodec.Cbor, multicodec.DagCbor, multicodec.Raw:
 				default:
 					continue
 				}

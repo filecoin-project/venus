@@ -29,7 +29,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
-	mh "github.com/multiformats/go-multihash"
+	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 
@@ -1360,15 +1360,15 @@ func (c *ChainFork) UpgradeRefuel(ctx context.Context, cache MigrationCache, roo
 }
 
 func linksForObj(blk ipfsblock.Block, cb func(cid.Cid)) error {
-	switch blk.Cid().Prefix().Codec {
-	case cid.DagCBOR:
+	switch multicodec.Code(blk.Cid().Prefix().Codec) {
+	case multicodec.DagCbor:
 		err := cbg.ScanForLinks(bytes.NewReader(blk.RawData()), cb)
 		if err != nil {
 			return fmt.Errorf("cbg.ScanForLinks: %v", err)
 		}
 		return nil
-	case cid.Raw:
-		// We implicitly have all children of raw blocks.
+	case multicodec.Raw, multicodec.Cbor:
+		// We implicitly have all children of raw/cbor blocks.
 		return nil
 	default:
 		return fmt.Errorf("vm flush copy method only supports dag cbor")
@@ -1394,14 +1394,17 @@ func copyRec(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid, 
 		}
 
 		prefix := link.Prefix()
-		if prefix.Codec == cid.FilCommitmentSealed || prefix.Codec == cid.FilCommitmentUnsealed {
+		codec := multicodec.Code(prefix.Codec)
+		switch codec {
+		case multicodec.FilCommitmentSealed, cid.FilCommitmentUnsealed:
 			return
 		}
 
 		// We always have blocks inlined into CIDs, but we may not have their children.
-		if prefix.MhType == mh.IDENTITY {
+		if multicodec.Code(prefix.MhType) == multicodec.Identity {
 			// Unless the inlined block has no children.
-			if prefix.Codec == cid.Raw {
+			switch codec {
+			case multicodec.Raw, multicodec.Cbor:
 				return
 			}
 		} else {

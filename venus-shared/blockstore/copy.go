@@ -7,7 +7,7 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	mh "github.com/multiformats/go-multihash"
+	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 )
@@ -137,14 +137,17 @@ func copyRec(ctx context.Context, from, to Blockstore, root cid.Cid, cp func(blo
 		}
 
 		prefix := link.Prefix()
-		if prefix.Codec == cid.FilCommitmentSealed || prefix.Codec == cid.FilCommitmentUnsealed {
+		codec := multicodec.Code(prefix.Codec)
+		switch codec {
+		case multicodec.FilCommitmentSealed, cid.FilCommitmentUnsealed:
 			return
 		}
 
 		// We always have blocks inlined into CIDs, but we may not have their children.
-		if prefix.MhType == mh.IDENTITY {
+		if multicodec.Code(prefix.MhType) == multicodec.Identity {
 			// Unless the inlined block has no children.
-			if prefix.Codec == cid.Raw {
+			switch codec {
+			case multicodec.Raw, multicodec.Cbor:
 				return
 			}
 		} else {
