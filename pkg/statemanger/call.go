@@ -51,8 +51,8 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
-func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, applyTsMessages bool) (*types.InvocResult, error) {
-	return s.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, s.GetNetworkVersion, true, applyTsMessages)
+func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, applyTSMessages bool) (*types.InvocResult, error) {
+	return s.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, s.GetNetworkVersion, true, applyTSMessages)
 }
 
 // CallAtStateAndVersion allows you to specify a message to execute on the given stateCid and network version.
@@ -123,14 +123,14 @@ func (s *Stmgr) callInternal(ctx context.Context, msg *types.Message, priorMsgs 
 	if applyTSMessages {
 		priorMsgs = append(tsMsgs, priorMsgs...)
 	} else {
-		var filteredTsMsgs []types.ChainMsg
+		var filteredTSMsgs []types.ChainMsg
 		for _, tsMsg := range tsMsgs {
 			//TODO we should technically be normalizing the filecoin address of from when we compare here
 			if tsMsg.VMMessage().From == msg.VMMessage().From {
-				filteredTsMsgs = append(filteredTsMsgs, tsMsg)
+				filteredTSMsgs = append(filteredTSMsgs, tsMsg)
 			}
 		}
-		priorMsgs = append(filteredTsMsgs, priorMsgs...)
+		priorMsgs = append(filteredTSMsgs, priorMsgs...)
 	}
 
 	// Technically, the tipset we're passing in here should be ts+1, but that may not exist.
