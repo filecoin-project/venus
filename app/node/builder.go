@@ -167,7 +167,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	if nd.eth, err = eth.NewEthSubModule(ctx, b.repo.Config(), nd.chain, nd.mpool, sqlitePath); err != nil {
+	if nd.eth, err = eth.NewEthSubModule(ctx, b.repo.Config(), nd.chain, nd.mpool, sqlitePath, nd.syncer.API()); err != nil {
 		return nil, err
 	}
 
