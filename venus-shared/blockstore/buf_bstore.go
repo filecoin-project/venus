@@ -57,6 +57,8 @@ var (
 	_ Viewer     = (*BufferedBS)(nil)
 )
 
+func (bs *BufferedBS) Flush(ctx context.Context) error { return bs.write.Flush(ctx) }
+
 func (bs *BufferedBS) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	a, err := bs.read.AllKeysChan(ctx)
 	if err != nil {

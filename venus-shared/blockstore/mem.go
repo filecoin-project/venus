@@ -18,6 +18,8 @@ func NewMemory() MemBlockstore {
 // MemBlockstore is a terminal blockstore that keeps blocks in memory.
 type MemBlockstore map[string]blocks.Block
 
+func (m MemBlockstore) Flush(context.Context) error { return nil }
+
 func (m MemBlockstore) DeleteBlock(ctx context.Context, c cid.Cid) error {
 	delete(m, genKey(c))
 	return nil

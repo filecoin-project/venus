@@ -196,6 +196,14 @@ func (b *BadgerBlockstore) View(ctx context.Context, cid cid.Cid, fn func([]byte
 	})
 }
 
+func (b *BadgerBlockstore) Flush(context.Context) error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	return b.DB.Sync()
+}
+
 // Has implements blockstore.Has.
 func (b *BadgerBlockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	if atomic.LoadInt64(&b.state) != stateOpen {
