@@ -51,8 +51,8 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
-func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*types.InvocResult, error) {
-	return s.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, s.GetNetworkVersion, true, true)
+func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, applyTsMessages bool) (*types.InvocResult, error) {
+	return s.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, s.GetNetworkVersion, true, applyTsMessages)
 }
 
 // CallAtStateAndVersion allows you to specify a message to execute on the given stateCid and network version.
@@ -116,12 +116,21 @@ func (s *Stmgr) callInternal(ctx context.Context, msg *types.Message, priorMsgs 
 	if stateCid == cid.Undef {
 		stateCid = ts.ParentState()
 	}
+	tsMsgs, err := s.ms.MessagesForTipset(ts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup messages for parent tipset: %w", err)
+	}
 	if applyTSMessages {
-		tsMsgs, err := s.ms.MessagesForTipset(ts)
-		if err != nil {
-			return nil, fmt.Errorf("failed to lookup messages for parent tipset: %w", err)
-		}
 		priorMsgs = append(tsMsgs, priorMsgs...)
+	} else {
+		var filteredTsMsgs []types.ChainMsg
+		for _, tsMsg := range tsMsgs {
+			//TODO we should technically be normalizing the filecoin address of from when we compare here
+			if tsMsg.VMMessage().From == msg.VMMessage().From {
+				filteredTsMsgs = append(filteredTsMsgs, tsMsg)
+			}
+		}
+		priorMsgs = append(filteredTsMsgs, priorMsgs...)
 	}
 
 	// Technically, the tipset we're passing in here should be ts+1, but that may not exist.

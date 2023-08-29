@@ -7,6 +7,7 @@ import (
 	"math"
 	stdbig "math/big"
 	"math/rand"
+	"os"
 	"sort"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -242,10 +243,15 @@ func (mp *MessagePool) GasEstimateCallWithGas(
 		priorMsgs = append(priorMsgs, m)
 	}
 
+	applyTsMessages := true
+	if os.Getenv("VENUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
+		applyTsMessages = false
+	}
+
 	// Try calling until we find a height with no migration.
 	var res *types.InvocResult
 	for {
-		res, err = mp.sm.CallWithGas(ctx, &msg, priorMsgs, ts)
+		res, err = mp.sm.CallWithGas(ctx, &msg, priorMsgs, ts, applyTsMessages)
 		if err != fork.ErrExpensiveFork {
 			break
 		}
@@ -267,11 +273,16 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 	msg.GasFeeCap = big.Zero()
 	msg.GasPremium = big.Zero()
 
+	applyTsMessages := true
+	if os.Getenv("VENUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
+		applyTsMessages = false
+	}
+
 	// Try calling until we find a height with no migration.
 	var res *types.InvocResult
 	var err error
 	for {
-		res, err = mp.sm.CallWithGas(ctx, &msg, priorMsgs, ts)
+		res, err = mp.sm.CallWithGas(ctx, &msg, priorMsgs, ts, applyTsMessages)
 		if err != fork.ErrExpensiveFork {
 			break
 		}

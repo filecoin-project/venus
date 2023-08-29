@@ -903,10 +903,15 @@ func (a *ethAPI) applyMessage(ctx context.Context, msg *types.Message, tsk types
 		return nil, fmt.Errorf("failed to got tipset %v", err)
 	}
 
+		applyTsMessages := true
+	if os.Getenv("VENUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
+		applyTsMessages = false
+	}
+
 	// Try calling until we find a height with no migration.
 	var res *types.InvocResult
 	for {
-		res, err = a.em.chainModule.Stmgr.CallWithGas(ctx, msg, []types.ChainMsg{}, ts)
+		res, err = a.em.chainModule.Stmgr.CallWithGas(ctx, msg, []types.ChainMsg{}, ts ,applyTsMessages)
 		if err != fork.ErrExpensiveFork {
 			break
 		}
@@ -984,10 +989,15 @@ func gasSearch(
 	high := msg.GasLimit
 	low := msg.GasLimit
 
+	applyTsMessages := true
+	if os.Getenv("VENUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
+		applyTsMessages = false
+	}
+
 	canSucceed := func(limit int64) (bool, error) {
 		msg.GasLimit = limit
 
-		res, err := smgr.CallWithGas(ctx, &msg, priorMsgs, ts)
+		res, err := smgr.CallWithGas(ctx, &msg, priorMsgs, ts, applyTsMessages)
 		if err != nil {
 			return false, fmt.Errorf("CallWithGas failed: %w", err)
 		}
