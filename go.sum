@@ -447,7 +447,6 @@ github.com/filecoin-project/go-state-types v0.1.5/go.mod h1:UwGVoMsULoCK+bWjEdd/
 github.com/filecoin-project/go-state-types v0.1.6/go.mod h1:UwGVoMsULoCK+bWjEdd/xLCvLAQFBC7EDT477SKml+Q=
 github.com/filecoin-project/go-state-types v0.1.10/go.mod h1:UwGVoMsULoCK+bWjEdd/xLCvLAQFBC7EDT477SKml+Q=
 github.com/filecoin-project/go-state-types v0.1.12/go.mod h1:n/kujdC9JphvYTrmaD1+vJpvDPy/DwzckoMzP0nBKWI=
-github.com/filecoin-project/go-state-types v0.11.0-rc2/go.mod h1:SyNPwTsU7I22gL2r0OAPcImvLoTVfgRwdK/Y5rR1zz8=
 github.com/filecoin-project/go-state-types v0.11.1 h1:GDtCN9V18bYVwXDZe+vJXc6Ck+qY9OUaQqpoVlp1FAk=
 github.com/filecoin-project/go-state-types v0.11.1/go.mod h1:SyNPwTsU7I22gL2r0OAPcImvLoTVfgRwdK/Y5rR1zz8=
 github.com/filecoin-project/go-statemachine v0.0.0-20200925024713-05bd7c71fbfe/go.mod h1:FGwQgZAt2Gh5mjlwJUlVB62JeYdo+if0xWxSEfBD9ig=
@@ -882,8 +881,8 @@ github.com/ipfs-force-community/go-jsonrpc v0.1.7/go.mod h1:jBSvPTl8V1N7gSTuCR4b
 github.com/ipfs-force-community/metrics v1.0.1-0.20211022060227-11142a08b729/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
 github.com/ipfs-force-community/metrics v1.0.1-0.20230626064437-eed34cb166f5 h1:fn4G/yeHNX4rVdHH/KELwxjcnbx5327hQBw4eXs5TEI=
 github.com/ipfs-force-community/metrics v1.0.1-0.20230626064437-eed34cb166f5/go.mod h1:yi9gw+y+UjzWjaYZG2xgnH0T6PcmwHRKhDkbylp9qxc=
-github.com/ipfs-force-community/sophon-auth v1.13.0-rc1 h1:d4N2I7QDlK0WNgvaMb3Z+FEAUnhR3Ts5MYwhAb9ZCWM=
-github.com/ipfs-force-community/sophon-auth v1.13.0-rc1/go.mod h1:+S04oHCcJS6hylIv1kb74mA/m7qe41m6Py1hTFLM6rE=
+github.com/ipfs-force-community/sophon-auth v1.13.0 h1:dCH5J3jbkyidNzHpJK3lIfzzJoPLqN30AM960cU6nVM=
+github.com/ipfs-force-community/sophon-auth v1.13.0/go.mod h1:+S04oHCcJS6hylIv1kb74mA/m7qe41m6Py1hTFLM6rE=
 github.com/ipfs/bbloom v0.0.1/go.mod h1:oqo8CVWsJFMOZqTglBG4wydCE4IQA/G2/SEofB0rjUI=
 github.com/ipfs/bbloom v0.0.4 h1:Gi+8EGJ2y5qiD5FbsbpX/TMNcJw8gSqr7eyjHa4Fhvs=
 github.com/ipfs/bbloom v0.0.4/go.mod h1:cS9YprKXpoZ9lT0n/Mw/a6/aFV6DTjTLYHeA+gyqMG0=
