@@ -33,8 +33,7 @@ import (
 	"go.opencensus.io/trace"
 )
 
-// const execTraceCacheSize = 16
-var defaultExecTraceCacheSize = 16
+var execTraceCacheSize = 16
 
 // stateManagerAPI defines the methods needed from StateManager
 // todo remove this code and add private interface in market and paychanel package
@@ -94,11 +93,11 @@ func NewStateManager(cs *chain.Store,
 	syscallsImpl vm.SyscallsImpl,
 	actorDebugging bool,
 ) (*Stmgr, error) {
-	log.Debugf("execTraceCache size: %d", defaultExecTraceCacheSize)
+	log.Debugf("execTraceCache size: %d", execTraceCacheSize)
 	var execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
 	var err error
-	if defaultExecTraceCacheSize > 0 {
-		execTraceCache, err = lru.NewARC[types.TipSetKey, tipSetCacheEntry](defaultExecTraceCacheSize)
+	if execTraceCacheSize > 0 {
+		execTraceCache, err = lru.NewARC[types.TipSetKey, tipSetCacheEntry](execTraceCacheSize)
 		if err != nil {
 			return nil, err
 		}
@@ -120,12 +119,12 @@ func NewStateManager(cs *chain.Store,
 }
 
 func init() {
-	if s := os.Getenv("VENUS_EXEC_TRACE_CACHE"); s != "" {
+	if s := os.Getenv("VENUS_EXEC_TRACE_CACHE_SIZE"); s != "" {
 		letc, err := strconv.Atoi(s)
 		if err != nil {
-			log.Errorf("failed to parse 'VENUS_EXEC_TRACE_CACHE' env var: %s", err)
+			log.Errorf("failed to parse 'VENUS_EXEC_TRACE_CACHE_SIZE' env var: %s", err)
 		} else {
-			defaultExecTraceCacheSize = letc
+			execTraceCacheSize = letc
 		}
 	}
 }
@@ -489,7 +488,7 @@ func (s *Stmgr) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, 
 
 	tsKey := ts.Key()
 
-	if defaultExecTraceCacheSize > 0 {
+	if execTraceCacheSize > 0 {
 		// check if we have the trace for this tipset in the cache
 		s.execTraceCacheLock.Lock()
 		if entry, ok := s.execTraceCache.Get(tsKey); ok {
@@ -529,7 +528,7 @@ func (s *Stmgr) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, 
 		return cid.Undef, nil, err
 	}
 
-	if defaultExecTraceCacheSize > 0 {
+	if execTraceCacheSize > 0 {
 		invocTraceCopy := makeDeepCopy(invocTrace)
 
 		s.execTraceCacheLock.Lock()

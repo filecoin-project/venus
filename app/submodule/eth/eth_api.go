@@ -398,7 +398,7 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 	}
 	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return types.EthUint64(0), fmt.Errorf("cannot parse block param: %v, %v", blkParam, err)
+		return types.EthUint64(0), fmt.Errorf("failed to process block param: %v, %w", blkParam, err)
 	}
 
 	// First, handle the case where the "sender" is an EVM actor.
@@ -486,7 +486,7 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 
 	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse block param: %v, %v", blkParam, err)
+		return nil, fmt.Errorf("failed to process block param: %v, %w", blkParam, err)
 	}
 
 	// StateManager.Call will panic if there is no parent
@@ -565,7 +565,7 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, position types.EthBytes, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error) {
 	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse block param: %v, %v", blkParam, err)
+		return nil, fmt.Errorf("failed to process block param: %v, %w", blkParam, err)
 	}
 
 	l := len(position)
@@ -661,7 +661,7 @@ func (a *ethAPI) EthGetBalance(ctx context.Context, address types.EthAddress, bl
 
 	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return types.EthBigInt{}, fmt.Errorf("cannot parse block param: %v, %v", blkParam, err)
+		return types.EthBigInt{}, fmt.Errorf("failed to process block param: %v, %w", blkParam, err)
 	}
 
 	_, view, err := a.em.chainModule.Stmgr.StateView(ctx, ts)
@@ -940,10 +940,15 @@ func (a *ethAPI) applyMessage(ctx context.Context, msg *types.Message, tsk types
 		return nil, fmt.Errorf("failed to got tipset %v", err)
 	}
 
+	applyTSMessages := true
+	if os.Getenv("VENUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
+		applyTSMessages = false
+	}
+
 	// Try calling until we find a height with no migration.
 	var res *types.InvocResult
 	for {
-		res, err = a.em.chainModule.Stmgr.CallWithGas(ctx, msg, []types.ChainMsg{}, ts)
+		res, err = a.em.chainModule.Stmgr.CallWithGas(ctx, msg, []types.ChainMsg{}, ts, applyTSMessages)
 		if err != fork.ErrExpensiveFork {
 			break
 		}
@@ -1021,10 +1026,15 @@ func gasSearch(
 	high := msg.GasLimit
 	low := msg.GasLimit
 
+	applyTSMessages := true
+	if os.Getenv("VENUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
+		applyTSMessages = false
+	}
+
 	canSucceed := func(limit int64) (bool, error) {
 		msg.GasLimit = limit
 
-		res, err := smgr.CallWithGas(ctx, &msg, priorMsgs, ts)
+		res, err := smgr.CallWithGas(ctx, &msg, priorMsgs, ts, applyTSMessages)
 		if err != nil {
 			return false, fmt.Errorf("CallWithGas failed: %w", err)
 		}
@@ -1129,7 +1139,7 @@ func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam types.E
 	}
 	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse block param: %v, %v", blkParam, err)
+		return nil, fmt.Errorf("failed to process block param: %v, %w", blkParam, err)
 	}
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
