@@ -409,6 +409,8 @@ func (n *NetworkStore) HashOnRead(enabled bool) {
 	// todo
 }
 
+func (n *NetworkStore) Flush(context.Context) error { return nil }
+
 func (n *NetworkStore) Stop(ctx context.Context) error {
 	close(n.closing)
 

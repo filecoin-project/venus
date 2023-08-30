@@ -22,6 +22,8 @@ type TxBlockstore struct {
 	keyTransform *keytransform.PrefixTransform
 }
 
+func (txBlockstore *TxBlockstore) Flush(context.Context) error { return nil }
+
 func (txBlockstore *TxBlockstore) DeleteBlock(ctx context.Context, cid cid.Cid) error {
 	return errors.New("readonly blocksgtore")
 }
