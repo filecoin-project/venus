@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/venus/venus-shared/types/gateway"
@@ -93,14 +92,14 @@ func init() {
 	}
 	addExample(constants.TestNetworkVersion)
 	addExample(actors.Version6)
-	allocationID := verifreg.AllocationId(0)
+	allocationID := types.AllocationId(0)
 	addExample(allocationID)
 	addExample(&allocationID)
-	addExample(map[verifreg.AllocationId]verifreg.Allocation{})
-	claimID := verifreg.ClaimId(0)
+	addExample(map[types.AllocationId]types.Allocation{})
+	claimID := types.ClaimId(0)
 	addExample(claimID)
 	addExample(&claimID)
-	addExample(map[verifreg.ClaimId]verifreg.Claim{})
+	addExample(map[types.ClaimId]types.Claim{})
 	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
 	clientEvent := retrievalmarket.ClientEventDealAccepted
 	addExample(bitfield.NewFromSet([]uint64{5}))

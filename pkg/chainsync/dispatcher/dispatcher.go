@@ -205,8 +205,6 @@ func (d *Dispatcher) IncomingBlocks(ctx context.Context) (<-chan *types2.BlockHe
 					case out <- blk:
 					case <-ctx.Done():
 						return
-					default:
-						log.Infof("incoming blocks subscription due to slow reader")
 					}
 				}
 			case <-ctx.Done():
