@@ -12,10 +12,10 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	verifregtypes "github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/types"
 
 	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
