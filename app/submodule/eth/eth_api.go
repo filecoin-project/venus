@@ -684,6 +684,43 @@ func (a *ethAPI) EthChainId(ctx context.Context) (types.EthUint64, error) {
 	return types.EthUint64(types2.Eip155ChainID), nil
 }
 
+func (a *ethAPI) EthSyncing(ctx context.Context) (types.EthSyncingResult, error) {
+	state, err := a.em.syncAPI.SyncState(ctx)
+	if err != nil {
+		return types.EthSyncingResult{}, fmt.Errorf("failed calling SyncState: %w", err)
+	}
+
+	if len(state.ActiveSyncs) == 0 {
+		return types.EthSyncingResult{}, errors.New("no active syncs, try again")
+	}
+
+	working := -1
+	for i, ss := range state.ActiveSyncs {
+		if ss.Stage == types.StageIdle {
+			continue
+		}
+		working = i
+
+	}
+	if working == -1 {
+		working = len(state.ActiveSyncs) - 1
+	}
+
+	ss := state.ActiveSyncs[working]
+	if ss.Base == nil || ss.Target == nil {
+		return types.EthSyncingResult{}, errors.New("missing syncing information, try again")
+	}
+
+	res := types.EthSyncingResult{
+		DoneSync:      ss.Stage == types.StageSyncComplete,
+		CurrentBlock:  types.EthUint64(ss.Height),
+		StartingBlock: types.EthUint64(ss.Base.Height()),
+		HighestBlock:  types.EthUint64(ss.Target.Height()),
+	}
+
+	return res, nil
+}
+
 func (a *ethAPI) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.EthFeeHistory, error) {
 	params, err := jsonrpc.DecodeParams[types.EthFeeHistoryParams](p)
 	if err != nil {

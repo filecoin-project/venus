@@ -93,6 +93,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [EthMaxPriorityFeePerGas](#ethmaxpriorityfeepergas)
   * [EthProtocolVersion](#ethprotocolversion)
   * [EthSendRawTransaction](#ethsendrawtransaction)
+  * [EthSyncing](#ethsyncing)
   * [FilecoinAddressToEthAddress](#filecoinaddresstoethaddress)
   * [NetListening](#netlistening)
   * [NetVersion](#netversion)
@@ -2942,6 +2943,15 @@ Inputs:
 ```
 
 Response: `"0x0707070707070707070707070707070707070707070707070707070707070707"`
+
+### EthSyncing
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `false`
 
 ### FilecoinAddressToEthAddress
 FilecoinAddressToEthAddress converts an f410 or f0 Filecoin Address to an EthAddress

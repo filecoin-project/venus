@@ -44,6 +44,7 @@ type (
 	EthSubscriptionID       = types.EthSubscriptionID
 	EthSubscriptionParams   = types.EthSubscriptionParams
 	EthSubscriptionResponse = types.EthSubscriptionResponse
+	EthSyncingResult        = types.EthSyncingResult
 	EthTopicSpec            = types.EthTopicSpec
 	EthTxReceipt            = types.EthTxReceipt
 	EthUint64               = types.EthUint64

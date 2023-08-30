@@ -47,6 +47,7 @@ type IETH interface {
 	EthGetStorageAt(ctx context.Context, address types.EthAddress, position types.EthBytes, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error) //perm:read
 	EthGetBalance(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBigInt, error)                           //perm:read
 	EthChainId(ctx context.Context) (types.EthUint64, error)                                                                                             //perm:read
+	EthSyncing(ctx context.Context) (types.EthSyncingResult, error)                                                                                      //perm:read
 	NetVersion(ctx context.Context) (string, error)                                                                                                      //perm:read
 	NetListening(ctx context.Context) (bool, error)                                                                                                      //perm:read
 	EthProtocolVersion(ctx context.Context) (types.EthUint64, error)                                                                                     //perm:read
