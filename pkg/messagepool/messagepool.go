@@ -1523,7 +1523,7 @@ func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to
 		}
 	}
 
-	revert, apply, err := chain.ReorgOps(mp.api.LoadTipSet, from, to)
+	revert, apply, err := chain.ReorgOps(ctx, mp.api.LoadTipSet, from, to)
 	if err != nil {
 		return fmt.Errorf("failed to compute reorg ops for mpool pending messages: %v", err)
 	}

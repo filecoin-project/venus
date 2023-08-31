@@ -668,7 +668,7 @@ func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey,
 		return nil, fmt.Errorf("loading to tipset %s: %w", to, err)
 	}
 
-	revert, apply, err := chain.ReorgOps(cia.chain.ChainReader.GetTipSet, fts, tts)
+	revert, apply, err := chain.ReorgOps(ctx, cia.chain.ChainReader.GetTipSet, fts, tts)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tipset branches: %w", err)
 	}

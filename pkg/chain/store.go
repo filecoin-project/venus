@@ -1138,6 +1138,15 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 	circ := big.Zero()
 	unCirc := big.Zero()
 	err := st.ForEach(func(a address.Address, actor *types.Actor) error {
+		// this can be a lengthy operation, we need to cancel early when
+		// the context is cancelled to avoid resource exhaustion
+		select {
+		case <-ctx.Done():
+			// this will cause ForEach to return
+			return ctx.Err()
+		default:
+		}
+
 		switch {
 		case actor.Balance.IsZero():
 			// Do nothing for zero-balance actors
@@ -1239,8 +1248,8 @@ func (store *Store) Stop() {
 
 // ReorgOps used to reorganize the blockchain. Whenever a new tipset is approved,
 // the new tipset compared with the local tipset to obtain which tipset need to be revert and which tipsets are applied
-func (store *Store) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
-	return ReorgOps(store.GetTipSet, a, b)
+func (store *Store) ReorgOps(ctx context.Context, a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
+	return ReorgOps(ctx, store.GetTipSet, a, b)
 }
 
 // ReorgOps takes two tipsets (which can be at different heights), and walks
@@ -1252,15 +1261,27 @@ func (store *Store) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.TipS
 //
 // If an error happens along the way, we return the error with nil slices.
 // todo should move this code into store.ReorgOps. anywhere use this function should invoke store.ReorgOps
-func ReorgOps(lts func(context.Context, types.TipSetKey) (*types.TipSet, error), a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
+func ReorgOps(ctx context.Context,
+	lts func(ctx context.Context, _ types.TipSetKey) (*types.TipSet, error),
+	a, b *types.TipSet,
+) ([]*types.TipSet, []*types.TipSet, error) {
 	left := a
 	right := b
 
 	var leftChain, rightChain []*types.TipSet
 	for !left.Equals(right) {
+		// this can take a long time and lot of memory if the tipsets are far apart
+		// since it can be reached through remote calls, we need to
+		// cancel early when possible to prevent resource exhaustion.
+		select {
+		case <-ctx.Done():
+			return nil, nil, ctx.Err()
+		default:
+		}
+
 		if left.Height() > right.Height() {
 			leftChain = append(leftChain, left)
-			par, err := lts(context.TODO(), left.Parents())
+			par, err := lts(ctx, left.Parents())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1268,7 +1289,7 @@ func ReorgOps(lts func(context.Context, types.TipSetKey) (*types.TipSet, error),
 			left = par
 		} else {
 			rightChain = append(rightChain, right)
-			par, err := lts(context.TODO(), right.Parents())
+			par, err := lts(ctx, right.Parents())
 			if err != nil {
 				log.Infof("failed to fetch right.Parents: %s", err)
 				return nil, nil, err
