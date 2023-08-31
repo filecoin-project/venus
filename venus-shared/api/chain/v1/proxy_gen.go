@@ -878,6 +878,8 @@ type IETHStruct struct {
 		EthProtocolVersion                     func(ctx context.Context) (types.EthUint64, error)                                                                                        `perm:"read"`
 		EthSendRawTransaction                  func(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error)                                                                    `perm:"read"`
 		EthSyncing                             func(ctx context.Context) (types.EthSyncingResult, error)                                                                                 `perm:"read"`
+		EthTraceBlock                          func(ctx context.Context, blkNum string) ([]*types.EthTraceBlock, error)                                                                  `perm:"read"`
+		EthTraceReplayBlockTransactions        func(ctx context.Context, blkNum string, traceTypes []string) ([]*types.EthTraceReplayBlockTransaction, error)                            `perm:"read"`
 		FilecoinAddressToEthAddress            func(ctx context.Context, filecoinAddress address.Address) (types.EthAddress, error)                                                      `perm:"read"`
 		NetListening                           func(ctx context.Context) (bool, error)                                                                                                   `perm:"read"`
 		NetVersion                             func(ctx context.Context) (string, error)                                                                                                 `perm:"read"`
@@ -968,6 +970,12 @@ func (s *IETHStruct) EthSendRawTransaction(p0 context.Context, p1 types.EthBytes
 }
 func (s *IETHStruct) EthSyncing(p0 context.Context) (types.EthSyncingResult, error) {
 	return s.Internal.EthSyncing(p0)
+}
+func (s *IETHStruct) EthTraceBlock(p0 context.Context, p1 string) ([]*types.EthTraceBlock, error) {
+	return s.Internal.EthTraceBlock(p0, p1)
+}
+func (s *IETHStruct) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*types.EthTraceReplayBlockTransaction, error) {
+	return s.Internal.EthTraceReplayBlockTransactions(p0, p1, p2)
 }
 func (s *IETHStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (types.EthAddress, error) {
 	return s.Internal.FilecoinAddressToEthAddress(p0, p1)

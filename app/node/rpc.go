@@ -193,12 +193,24 @@ func aliasETHAPI(rpcServer *jsonrpc.RPCServer) {
 	rpcServer.AliasMethod("eth_maxPriorityFeePerGas", "Filecoin.EthMaxPriorityFeePerGas")
 	rpcServer.AliasMethod("eth_gasPrice", "Filecoin.EthGasPrice")
 	rpcServer.AliasMethod("eth_sendRawTransaction", "Filecoin.EthSendRawTransaction")
+	rpcServer.AliasMethod("eth_estimateGas", "Filecoin.EthEstimateGas")
+	rpcServer.AliasMethod("eth_call", "Filecoin.EthCall")
+
+	rpcServer.AliasMethod("eth_getLogs", "Filecoin.EthGetLogs")
+	rpcServer.AliasMethod("eth_getFilterChanges", "Filecoin.EthGetFilterChanges")
+	rpcServer.AliasMethod("eth_getFilterLogs", "Filecoin.EthGetFilterLogs")
+	rpcServer.AliasMethod("eth_newFilter", "Filecoin.EthNewFilter")
+	rpcServer.AliasMethod("eth_newBlockFilter", "Filecoin.EthNewBlockFilter")
+	rpcServer.AliasMethod("eth_newPendingTransactionFilter", "Filecoin.EthNewPendingTransactionFilter")
+	rpcServer.AliasMethod("eth_uninstallFilter", "Filecoin.EthUninstallFilter")
+	rpcServer.AliasMethod("eth_subscribe", "Filecoin.EthSubscribe")
+	rpcServer.AliasMethod("eth_unsubscribe", "Filecoin.EthUnsubscribe")
+
+	rpcServer.AliasMethod("trace_block", "Filecoin.EthTraceBlock")
+	rpcServer.AliasMethod("trace_replayBlockTransactions", "Filecoin.EthTraceReplayBlockTransactions")
 
 	rpcServer.AliasMethod("net_version", "Filecoin.NetVersion")
 	rpcServer.AliasMethod("net_listening", "Filecoin.NetListening")
 
 	rpcServer.AliasMethod("web3_clientVersion", "Filecoin.Web3ClientVersion")
-
-	rpcServer.AliasMethod("eth_estimateGas", "Filecoin.EthEstimateGas")
-	rpcServer.AliasMethod("eth_call", "Filecoin.EthCall")
 }

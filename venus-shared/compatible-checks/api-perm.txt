@@ -67,6 +67,8 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- IMinerState.StateMinerSectorSize
 	- IMinerState.StateMinerWorkerAddress
 	- EthSubscriber.EthSubscription
+	- IETH.EthTraceBlock
+	- IETH.EthTraceReplayBlockTransactions
 	- IMessagePool.GasBatchEstimateMessageGas
 	- IMessagePool.MpoolDeleteByAdress
 	- IMessagePool.MpoolPublishByAddr

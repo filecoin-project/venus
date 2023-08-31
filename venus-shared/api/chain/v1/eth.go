@@ -62,6 +62,13 @@ type IETH interface {
 
 	// Returns the client version
 	Web3ClientVersion(ctx context.Context) (string, error) //perm:read
+
+	// TraceAPI related methods
+	//
+	// Returns traces created at given block
+	EthTraceBlock(ctx context.Context, blkNum string) ([]*types.EthTraceBlock, error) //perm:read
+	// Replays all transactions in a block returning the requested traces for each transaction
+	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*types.EthTraceReplayBlockTransaction, error) //perm:read
 }
 
 type IETHEvent interface {
