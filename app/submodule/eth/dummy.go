@@ -145,6 +145,14 @@ func (e *ethAPIDummy) Web3ClientVersion(ctx context.Context) (string, error) {
 	return "", ErrModuleDisabled
 }
 
+func (e *ethAPIDummy) EthTraceBlock(ctx context.Context, blkNum string) ([]*types.EthTraceBlock, error) {
+	return nil, ErrModuleDisabled
+}
+
+func (e *ethAPIDummy) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*types.EthTraceReplayBlockTransaction, error) {
+	return nil, ErrModuleDisabled
+}
+
 func (e *ethAPIDummy) start(_ context.Context) error {
 	return nil
 }

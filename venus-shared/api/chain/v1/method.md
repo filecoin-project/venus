@@ -94,6 +94,8 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [EthProtocolVersion](#ethprotocolversion)
   * [EthSendRawTransaction](#ethsendrawtransaction)
   * [EthSyncing](#ethsyncing)
+  * [EthTraceBlock](#ethtraceblock)
+  * [EthTraceReplayBlockTransactions](#ethtracereplayblocktransactions)
   * [FilecoinAddressToEthAddress](#filecoinaddresstoethaddress)
   * [NetListening](#netlistening)
   * [NetVersion](#netversion)
@@ -2844,6 +2846,99 @@ Perms: read
 Inputs: `[]`
 
 Response: `false`
+
+### EthTraceBlock
+TraceAPI related methods
+
+Returns traces created at given block
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+[
+  {
+    "action": {
+      "callType": "string value",
+      "from": "0x0707070707070707070707070707070707070707",
+      "to": "0x0707070707070707070707070707070707070707",
+      "gas": "0x5",
+      "input": "0x07",
+      "value": "0x0"
+    },
+    "result": {
+      "gasUsed": "0x5",
+      "output": "0x07"
+    },
+    "subtraces": 123,
+    "traceAddress": [
+      123
+    ],
+    "Type": "string value",
+    "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "blockNumber": 9,
+    "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "transactionPosition": 123
+  }
+]
+```
+
+### EthTraceReplayBlockTransactions
+Replays all transactions in a block returning the requested traces for each transaction
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value",
+  [
+    "string value"
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "output": "0x07",
+    "stateDiff": "string value",
+    "trace": [
+      {
+        "action": {
+          "callType": "string value",
+          "from": "0x0707070707070707070707070707070707070707",
+          "to": "0x0707070707070707070707070707070707070707",
+          "gas": "0x5",
+          "input": "0x07",
+          "value": "0x0"
+        },
+        "result": {
+          "gasUsed": "0x5",
+          "output": "0x07"
+        },
+        "subtraces": 123,
+        "traceAddress": [
+          123
+        ],
+        "Type": "string value"
+      }
+    ],
+    "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "vmTrace": "string value"
+  }
+]
+```
 
 ### FilecoinAddressToEthAddress
 FilecoinAddressToEthAddress converts an f410 or f0 Filecoin Address to an EthAddress

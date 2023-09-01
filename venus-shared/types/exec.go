@@ -18,18 +18,6 @@ type GasTrace struct {
 	TimeTaken  time.Duration `json:"tt"`
 }
 
-type MessageTrace struct {
-	From        address.Address
-	To          address.Address
-	Value       abi.TokenAmount
-	Method      abi.MethodNum
-	Params      []byte
-	ParamsCodec uint64
-	GasLimit    uint64
-	ReadOnly    bool
-	CodeCid     cid.Cid
-}
-
 type ReturnTrace struct {
 	ExitCode    exitcode.ExitCode
 	Return      []byte
@@ -43,8 +31,35 @@ type ExecutionTrace struct {
 	Subcalls   []ExecutionTrace `cborgen:"maxlen=1000000000"`
 }
 
+func (et ExecutionTrace) SumGas() GasTrace {
+	return SumGas(et.GasCharges)
+}
+
+func SumGas(charges []*GasTrace) GasTrace {
+	var out GasTrace
+	for _, gc := range charges {
+		out.TotalGas += gc.TotalGas
+		out.ComputeGas += gc.ComputeGas
+		out.StorageGas += gc.StorageGas
+	}
+
+	return out
+}
+
 func (gt *GasTrace) MarshalJSON() ([]byte, error) {
 	type GasTraceCopy GasTrace
 	cpy := (*GasTraceCopy)(gt)
 	return json.Marshal(cpy)
+}
+
+type MessageTrace struct {
+	From        address.Address
+	To          address.Address
+	Value       abi.TokenAmount
+	Method      abi.MethodNum
+	Params      []byte
+	ParamsCodec uint64
+	GasLimit    uint64
+	ReadOnly    bool
+	CodeCid     cid.Cid
 }

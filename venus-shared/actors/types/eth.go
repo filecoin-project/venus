@@ -17,6 +17,7 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -985,4 +986,58 @@ func (e *EthBlockNumberOrHash) UnmarshalJSON(b []byte) error {
 	}
 
 	return errors.New("invalid block param")
+}
+
+type EthTrace struct {
+	Action       EthTraceAction `json:"action"`
+	Result       EthTraceResult `json:"result"`
+	Subtraces    int            `json:"subtraces"`
+	TraceAddress []int          `json:"traceAddress"`
+	Type         string         `json:"Type"`
+
+	Parent *EthTrace `json:"-"`
+
+	// if a subtrace makes a call to GetBytecode, we store a pointer to that subtrace here
+	// which we then lookup when checking for delegatecall (InvokeContractDelegate)
+	LastByteCode *EthTrace `json:"-"`
+}
+
+func (t *EthTrace) SetCallType(callType string) {
+	t.Action.CallType = callType
+	t.Type = callType
+}
+
+type EthTraceBlock struct {
+	*EthTrace
+	BlockHash           EthHash `json:"blockHash"`
+	BlockNumber         int64   `json:"blockNumber"`
+	TransactionHash     EthHash `json:"transactionHash"`
+	TransactionPosition int     `json:"transactionPosition"`
+}
+
+type EthTraceReplayBlockTransaction struct {
+	Output          EthBytes    `json:"output"`
+	StateDiff       *string     `json:"stateDiff"`
+	Trace           []*EthTrace `json:"trace"`
+	TransactionHash EthHash     `json:"transactionHash"`
+	VMTrace         *string     `json:"vmTrace"`
+}
+
+type EthTraceAction struct {
+	CallType string     `json:"callType"`
+	From     EthAddress `json:"from"`
+	To       EthAddress `json:"to"`
+	Gas      EthUint64  `json:"gas"`
+	Input    EthBytes   `json:"input"`
+	Value    EthBigInt  `json:"value"`
+
+	FilecoinMethod  abi.MethodNum   `json:"-"`
+	FilecoinCodeCid cid.Cid         `json:"-"`
+	FilecoinFrom    address.Address `json:"-"`
+	FilecoinTo      address.Address `json:"-"`
+}
+
+type EthTraceResult struct {
+	GasUsed EthUint64 `json:"gasUsed"`
+	Output  EthBytes  `json:"output"`
 }

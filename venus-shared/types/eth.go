@@ -24,30 +24,35 @@ var (
 )
 
 type (
-	EthAddress              = types.EthAddress
-	EthAddressList          = types.EthAddressList
-	EthBigInt               = types.EthBigInt
-	EthBlock                = types.EthBlock
-	EthBlockNumberOrHash    = types.EthBlockNumberOrHash
-	EthBytes                = types.EthBytes
-	EthCall                 = types.EthCall
-	EthFeeHistory           = types.EthFeeHistory
-	EthFeeHistoryParams     = types.EthFeeHistoryParams
-	EthFilterID             = types.EthFilterID
-	EthFilterResult         = types.EthFilterResult
-	EthFilterSpec           = types.EthFilterSpec
-	EthHash                 = types.EthHash
-	EthHashList             = types.EthHashList
-	EthLog                  = types.EthLog
-	EthNonce                = types.EthNonce
-	EthSubscribeParams      = types.EthSubscribeParams
-	EthSubscriptionID       = types.EthSubscriptionID
-	EthSubscriptionParams   = types.EthSubscriptionParams
-	EthSubscriptionResponse = types.EthSubscriptionResponse
-	EthSyncingResult        = types.EthSyncingResult
-	EthTopicSpec            = types.EthTopicSpec
-	EthTxReceipt            = types.EthTxReceipt
-	EthUint64               = types.EthUint64
+	EthAddress                     = types.EthAddress
+	EthAddressList                 = types.EthAddressList
+	EthBigInt                      = types.EthBigInt
+	EthBlock                       = types.EthBlock
+	EthBlockNumberOrHash           = types.EthBlockNumberOrHash
+	EthBytes                       = types.EthBytes
+	EthCall                        = types.EthCall
+	EthFeeHistory                  = types.EthFeeHistory
+	EthFeeHistoryParams            = types.EthFeeHistoryParams
+	EthFilterID                    = types.EthFilterID
+	EthFilterResult                = types.EthFilterResult
+	EthFilterSpec                  = types.EthFilterSpec
+	EthHash                        = types.EthHash
+	EthHashList                    = types.EthHashList
+	EthLog                         = types.EthLog
+	EthNonce                       = types.EthNonce
+	EthSubscribeParams             = types.EthSubscribeParams
+	EthSubscriptionID              = types.EthSubscriptionID
+	EthSubscriptionParams          = types.EthSubscriptionParams
+	EthSubscriptionResponse        = types.EthSubscriptionResponse
+	EthSyncingResult               = types.EthSyncingResult
+	EthTopicSpec                   = types.EthTopicSpec
+	EthTrace                       = types.EthTrace
+	EthTraceAction                 = types.EthTraceAction
+	EthTraceBlock                  = types.EthTraceBlock
+	EthTraceReplayBlockTransaction = types.EthTraceReplayBlockTransaction
+	EthTraceResult                 = types.EthTraceResult
+	EthTxReceipt                   = types.EthTxReceipt
+	EthUint64                      = types.EthUint64
 )
 
 var (
