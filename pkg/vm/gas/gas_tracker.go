@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/multiformats/go-multicodec"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
 
@@ -55,35 +56,17 @@ func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
 	toUse := gasCharge.Total()
 	// code for https://github.com/filecoin-project/venus/issues/4610
 	if EnableDetailedTracing {
-		var callers [10]uintptr
-		cout := 0 // gruntime.Callers(2+skip, callers[:])
-
 		now := time.Now()
 		if t.LastGasCharge != nil {
 			t.LastGasCharge.TimeTaken = now.Sub(t.LastGasChargeTime)
 		}
 
 		gasTrace := types.GasTrace{
-			Name:  gasCharge.Name,
-			Extra: gasCharge.Extra,
+			Name: gasCharge.Name,
 
 			TotalGas:   toUse,
 			ComputeGas: gasCharge.ComputeGas,
 			StorageGas: gasCharge.StorageGas,
-
-			// TotalVirtualGas:   gasCharge.VirtualCompute*GasComputeMulti + gasCharge.VirtualStorage*GasStorageMulti,
-			TotalVirtualGas:   gasCharge.VirtualCompute + gasCharge.VirtualStorage,
-			VirtualComputeGas: gasCharge.VirtualCompute,
-			VirtualStorageGas: gasCharge.VirtualStorage,
-
-			Callers: callers[:cout],
-		}
-
-		if gasTrace.VirtualStorageGas == 0 {
-			gasTrace.VirtualStorageGas = gasTrace.StorageGas
-		}
-		if gasTrace.VirtualComputeGas == 0 {
-			gasTrace.VirtualComputeGas = gasTrace.ComputeGas
 		}
 
 		t.ExecutionTrace.GasCharges = append(t.ExecutionTrace.GasCharges, &gasTrace)
@@ -99,4 +82,32 @@ func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
 	}
 	t.GasUsed += toUse
 	return true
+}
+
+func (t *GasTracker) FillMessageTrace(msg *types.Message) {
+	paramsCodec := uint64(0)
+	if len(msg.Params) > 0 {
+		paramsCodec = uint64(multicodec.Cbor)
+	}
+
+	t.ExecutionTrace.Msg = types.MessageTrace{
+		From:        msg.From,
+		To:          msg.To,
+		Value:       msg.Value,
+		Method:      msg.Method,
+		Params:      msg.Params,
+		ParamsCodec: paramsCodec,
+	}
+}
+
+func (t *GasTracker) FillReturnTrace(ret []byte, code exitcode.ExitCode) {
+	retCodec := uint64(0)
+	if len(ret) > 0 {
+		retCodec = uint64(multicodec.Cbor)
+	}
+	t.ExecutionTrace.MsgRct = types.ReturnTrace{
+		ExitCode:    code,
+		Return:      ret,
+		ReturnCodec: retCodec,
+	}
 }

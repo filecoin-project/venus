@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/fvm"
 	market1 "github.com/filecoin-project/venus/pkg/market"
 	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
 	"github.com/filecoin-project/venus/pkg/state/tree"
@@ -57,6 +56,10 @@ func main() {
 				types.PaymentInfo{},
 				types.Event{},
 				types.EventEntry{},
+				types.GasTrace{},
+				types.MessageTrace{},
+				types.ReturnTrace{},
+				types.ExecutionTrace{},
 			},
 		},
 		{
@@ -111,13 +114,6 @@ func main() {
 			dir: "../pkg/chain",
 			types: []interface{}{
 				chain.TSState{},
-			},
-		},
-		{
-			dir: "../pkg/fvm",
-			types: []interface{}{
-				fvm.FvmExecutionTrace{},
-				fvm.FvmGasCharge{},
 			},
 		},
 		{
