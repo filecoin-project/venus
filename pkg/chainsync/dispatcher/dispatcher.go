@@ -3,12 +3,14 @@ package dispatcher
 import (
 	"container/list"
 	"context"
+	"fmt"
 	"runtime/debug"
 	"sync"
 	atmoic2 "sync/atomic"
 	"time"
 
 	"github.com/filecoin-project/pubsub"
+	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/streadway/handy/atomic"
@@ -30,15 +32,16 @@ const LocalIncoming = "incoming"
 type dispatchSyncer interface {
 	Head() *types2.TipSet
 	HandleNewTipSet(context.Context, *types.Target) error
+	ValidateMsgMeta(ctx context.Context, fblk *types2.FullBlock) error
 }
 
 // NewDispatcher creates a new syncing dispatcher with default queue sizes.
-func NewDispatcher(catchupSyncer dispatchSyncer) *Dispatcher {
-	return NewDispatcherWithSizes(catchupSyncer, DefaultWorkQueueSize, DefaultInQueueSize)
+func NewDispatcher(catchupSyncer dispatchSyncer, chainStore *chain.Store) *Dispatcher {
+	return NewDispatcherWithSizes(catchupSyncer, chainStore, DefaultWorkQueueSize, DefaultInQueueSize)
 }
 
 // NewDispatcherWithSizes creates a new syncing dispatcher.
-func NewDispatcherWithSizes(syncer dispatchSyncer, workQueueSize, inQueueSize int) *Dispatcher {
+func NewDispatcherWithSizes(syncer dispatchSyncer, chainStore *chain.Store, workQueueSize, inQueueSize int) *Dispatcher {
 	return &Dispatcher{
 		workTracker:     types.NewTargetTracker(workQueueSize),
 		syncer:          syncer,
@@ -48,6 +51,7 @@ func NewDispatcherWithSizes(syncer dispatchSyncer, workQueueSize, inQueueSize in
 		cancelControler: list.New(),
 		maxCount:        1,
 		incomingPubsub:  pubsub.New(50),
+		chainStore:      chainStore,
 	}
 }
 
@@ -90,35 +94,62 @@ type Dispatcher struct {
 	maxCount        int64
 
 	incomingPubsub *pubsub.PubSub
+	chainStore     *chain.Store
 }
 
-// SyncTracker returns the target tracker of syncing
+// SyncTracker returnss the target tracker of syncing
 func (d *Dispatcher) SyncTracker() *types.TargetTracker {
 	return d.workTracker
 }
 
+func (d *Dispatcher) sendHead(ci *types2.ChainInfo) error {
+	ctx := context.Background()
+	fts := ci.FullTipSet
+	if fts == nil {
+		return fmt.Errorf("got nil tipset")
+	}
+
+	for _, b := range fts.Blocks {
+		if err := d.syncer.ValidateMsgMeta(ctx, b); err != nil {
+			log.Warnf("invalid block %s received: %s", b.Cid(), err)
+			return fmt.Errorf("validate block %s message meta failed: %v", b.Cid(), err)
+		}
+	}
+
+	for _, b := range fts.Blocks {
+		_, err := d.chainStore.PutObject(ctx, b.Header)
+		if err != nil {
+			return fmt.Errorf("fail to save block to tipset")
+		}
+	}
+
+	d.incomingPubsub.Pub(fts.TipSet().Blocks(), LocalIncoming)
+
+	return d.addTracker(ci)
+}
+
 // SendHello handles chain information from bootstrap peers.
 func (d *Dispatcher) SendHello(ci *types2.ChainInfo) error {
-	return d.addTracker(ci)
+	return d.sendHead(ci)
 }
 
 // SendOwnBlock handles chain info from a node's own mining system
 func (d *Dispatcher) SendOwnBlock(ci *types2.ChainInfo) error {
-	return d.addTracker(ci)
+	return d.sendHead(ci)
 }
 
 // SendGossipBlock handles chain info from new blocks sent on pubsub
 func (d *Dispatcher) SendGossipBlock(ci *types2.ChainInfo) error {
-	return d.addTracker(ci)
+	return d.sendHead(ci)
 }
 
 func (d *Dispatcher) addTracker(ci *types2.ChainInfo) error {
-	d.incomingPubsub.Pub(ci.Head.Blocks(), LocalIncoming)
 	d.incoming <- &types.Target{
-		ChainInfo: *ci,
-		Base:      d.syncer.Head(),
-		Current:   d.syncer.Head(),
-		Start:     time.Now(),
+		Head:    ci.FullTipSet.TipSet(),
+		Base:    d.syncer.Head(),
+		Current: d.syncer.Head(),
+		Start:   time.Now(),
+		Sender:  ci.Sender,
 	}
 	return nil
 }
@@ -152,7 +183,7 @@ func (d *Dispatcher) processIncoming(ctx context.Context) {
 			// Sort new targets by putting on work queue.
 			if d.workTracker.Add(target) {
 				log.Infow("received new tipset", "height", target.Head.Height(), "blocks", target.Head.Len(), "from",
-					target.ChainInfo.Sender, "current work len", d.workTracker.Len(), "incoming channel len", len(d.incoming))
+					target.Sender, "current work len", d.workTracker.Len(), "incoming channel len", len(d.incoming))
 			}
 		}
 	}

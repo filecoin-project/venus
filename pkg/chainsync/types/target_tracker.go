@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -30,7 +31,8 @@ type Target struct {
 	Start   time.Time
 	End     time.Time
 	Err     error
-	types.ChainInfo
+	Head    *types.TipSet
+	Sender  peer.ID
 }
 
 // IsNeighbor the target t is neighbor or not
@@ -242,11 +244,11 @@ func (tq *TargetTracker) Add(t *Target) bool {
 			return false
 		}
 	} else {
-		delete(tq.targetSet, replaceTarget.ChainInfo.Head.String())
+		delete(tq.targetSet, replaceTarget.Head.String())
 		tq.q[replaceIndex] = t
 	}
 
-	tq.targetSet[t.ChainInfo.Head.String()] = t
+	tq.targetSet[t.Head.String()] = t
 	sortTarget(tq.q)
 	// update lowweight
 	tq.lowWeight = tq.q[len(tq.q)-1].Head.At(0).ParentWeight
@@ -388,7 +390,7 @@ func (tq *TargetTracker) Remove(t *Target) {
 	t.End = time.Now()
 	if tq.history.Len() > tq.historySize {
 		tq.history.Remove(tq.history.Front()) // remove olddest
-		popKey := tq.history.Front().Value.(*Target).ChainInfo.Head.String()
+		popKey := tq.history.Front().Value.(*Target).Head.String()
 		delete(tq.targetSet, popKey)
 	}
 	tq.history.PushBack(t)

@@ -53,20 +53,20 @@ func TestLoadFork(t *testing.T) {
 	right := builder.AppendManyOn(ctx, 3, base)
 
 	leftTarget := &types.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types2.NewChainInfo("", "", left),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    left,
 	}
 	rightTarget := &types.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types2.NewChainInfo("", "", right),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    right,
 	}
 	// Sync the two branches, which stores all blocks in the underlying stores.
 	// stm: @CHAINSYNC_SYNCER_HANDLE_NEW_TIP_SET_001, @CHAINSYNC_SYNCER_SET_HEAD_001

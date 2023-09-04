@@ -32,13 +32,14 @@ func (sa *syncerAPI) SyncerTracker(ctx context.Context) *types.TargetTracker {
 	}
 	convertTarget := func(src *syncTypes.Target) *types.Target {
 		return &types.Target{
-			State:     convertSyncStateStage(src.State),
-			Base:      src.Base,
-			Current:   src.Current,
-			Start:     src.Start,
-			End:       src.End,
-			Err:       src.Err,
-			ChainInfo: src.ChainInfo,
+			State:   convertSyncStateStage(src.State),
+			Base:    src.Base,
+			Current: src.Current,
+			Start:   src.Start,
+			End:     src.End,
+			Err:     src.Err,
+			Head:    src.Head,
+			Sender:  src.Sender,
 		}
 	}
 	for _, target := range tracker.History() {
@@ -136,16 +137,11 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 		return fmt.Errorf("provided messages did not match block: %v", err)
 	}
 
-	ts, err := types.NewTipSet([]*types.BlockHeader{blk.Header})
-	if err != nil {
-		return fmt.Errorf("somehow failed to make a tipset out of a single block: %v", err)
-	}
-
 	if _, err := chainModule.ChainReader.PutObject(ctx, blk.Header); err != nil {
 		return err
 	}
 	localPeer := sa.syncer.NetworkModule.Network.GetPeerID()
-	ci := types.NewChainInfo(localPeer, localPeer, ts)
+	ci := types.NewChainInfo(localPeer, localPeer, &types.FullTipSet{Blocks: []*types.FullBlock{fb}})
 	if err := sa.syncer.SyncProvider.HandleNewTipSet(ci); err != nil {
 		return fmt.Errorf("sync to submitted block failed: %v", err)
 	}
