@@ -1,10 +1,15 @@
 package gateway
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/venus-shared/types"
+)
+
+var (
+	ErrNoConnection = fmt.Errorf("no connection")
 )
 
 type RequestEvent struct {
