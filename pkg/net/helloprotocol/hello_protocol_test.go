@@ -34,7 +34,7 @@ type mockHelloCallback struct {
 }
 
 func (msb *mockHelloCallback) HelloCallback(ci *types.ChainInfo) {
-	msb.Called(ci.Sender, ci.Head.Key())
+	msb.Called(ci.Sender, ci.FullTipSet.TipSet().Key())
 }
 
 func TestHelloHandshake(t *testing.T) {

@@ -54,7 +54,10 @@ func NewManager(
 	}
 
 	return Manager{
-		dispatcher: dispatcher.NewDispatcher(chainSyncer),
+		dispatcher: dispatcher.NewDispatcher(struct {
+			*syncer.Syncer
+			*consensus.BlockValidator
+		}{Syncer: chainSyncer, BlockValidator: hv}, submodule.ChainReader),
 	}, nil
 }
 

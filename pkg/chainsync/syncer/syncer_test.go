@@ -34,12 +34,12 @@ func TestOneBlock(t *testing.T) {
 	builder, syncer := setup(ctx, t)
 	t1 := builder.AppendOn(ctx, builder.Genesis(), 1)
 	target := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", t1),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    t1,
 	}
 
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target))
@@ -58,12 +58,12 @@ func TestMultiBlockTip(t *testing.T) {
 
 	tip := builder.AppendOn(ctx, genesis, 2)
 	target := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", tip),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    tip,
 	}
 
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target))
@@ -88,38 +88,38 @@ func TestChainIncremental(t *testing.T) {
 	t4 := builder.AppendOn(ctx, t3, 2)
 
 	target1 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", t1),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    t1,
 	}
 
 	target2 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", t2),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    t2,
 	}
 
 	target3 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", t3),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    t3,
 	}
 	target4 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", t4),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    t4,
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target1))
 	assert.NoError(t, builder.FlushHead(ctx))
@@ -154,12 +154,12 @@ func TestChainJump(t *testing.T) {
 	t4 := builder.AppendOn(ctx, t3, 2)
 
 	target1 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", t4),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    t4,
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target1))
 	assert.NoError(t, builder.FlushHead(ctx))
@@ -186,12 +186,12 @@ func TestIgnoreLightFork(t *testing.T) {
 
 	// Sync heaviest branch first.
 	target4 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", t4),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    t4,
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target4))
 	assert.NoError(t, builder.FlushHead(ctx))
@@ -201,12 +201,12 @@ func TestIgnoreLightFork(t *testing.T) {
 	// Lighter fork is processed but not change head.
 
 	forkHeadTarget := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", forkHead),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    forkHead,
 	}
 	assert.Error(t, syncer.HandleNewTipSet(ctx, forkHeadTarget))
 	assert.NoError(t, builder.FlushHead(ctx))
@@ -233,12 +233,12 @@ func TestAcceptHeavierFork(t *testing.T) {
 	fork3 := builder.AppendOn(ctx, fork2, 1)
 
 	main4Target := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", main4),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    main4,
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, main4Target))
 	assert.NoError(t, builder.FlushHead(ctx))
@@ -247,12 +247,12 @@ func TestAcceptHeavierFork(t *testing.T) {
 
 	// Heavier fork updates head3
 	fork3Target := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", fork3),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    fork3,
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, fork3Target))
 	assert.NoError(t, builder.FlushHead(ctx))
@@ -270,12 +270,12 @@ func TestRejectFinalityFork(t *testing.T) {
 
 	head := builder.AppendManyOn(ctx, int(policy.ChainFinality+2), genesis)
 	target := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", head),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    head,
 	}
 	assert.NoError(t, s.HandleNewTipSet(ctx, target))
 
@@ -287,12 +287,12 @@ func TestRejectFinalityFork(t *testing.T) {
 	})
 	forkFinalityHead := builder.AppendManyOn(ctx, int(policy.ChainFinality), forkFinalityBase)
 	forkHeadTarget := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", forkFinalityHead),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    forkFinalityHead,
 	}
 	assert.Error(t, s.HandleNewTipSet(ctx, forkHeadTarget))
 }
@@ -305,12 +305,12 @@ func TestNoUncessesaryFetch(t *testing.T) {
 
 	head := builder.AppendManyOn(ctx, 4, genesis)
 	target := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", head),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    head,
 	}
 	assert.NoError(t, s.HandleNewTipSet(ctx, target))
 
@@ -332,12 +332,12 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	require.NoError(t, err)
 
 	target2 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", head),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    head,
 	}
 	err = newSyncer.HandleNewTipSet(ctx, target2)
 	assert.Contains(t, err.Error(), "do not sync to a target has synced before")
@@ -367,12 +367,12 @@ func TestSubsetParent(t *testing.T) {
 	tipA1A2 := builder.AppendOn(ctx, genesis, 2)
 	tipB1B2B3 := builder.AppendOn(ctx, tipA1A2, 3)
 	target1 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", tipB1B2B3),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    tipB1B2B3,
 	}
 	require.NoError(t, s.HandleNewTipSet(ctx, target1))
 
@@ -382,12 +382,12 @@ func TestSubsetParent(t *testing.T) {
 	tipC1C2 := builder.AppendOn(ctx, tipB1B2, 2)
 
 	target2 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", tipC1C2),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    tipC1C2,
 	}
 	assert.NoError(t, s.HandleNewTipSet(ctx, target2))
 
@@ -397,24 +397,24 @@ func TestSubsetParent(t *testing.T) {
 	tipD1OnC1 := builder.AppendOn(ctx, tipC1, 1)
 
 	target3 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", tipD1OnC1),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    tipD1OnC1,
 	}
 	assert.NoError(t, s.HandleNewTipSet(ctx, target3))
 
 	// A full parent also works fine: {C1, C2} -> D1
 	tipD1OnC1C2 := builder.AppendOn(ctx, tipC1C2, 1)
 	target4 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", tipD1OnC1C2),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    tipD1OnC1C2,
 	}
 	assert.NoError(t, s.HandleNewTipSet(ctx, target4))
 }
@@ -436,24 +436,24 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 	b1 := shadowBuilder.AppendOn(ctx, genesis, 1)
 	b2 := shadowBuilder.AppendOn(ctx, b1, 1)
 	target1 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", b2),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    b2,
 	}
 	assert.Error(t, syncer.HandleNewTipSet(ctx, target1))
 
 	// Make the same block available from the syncer's builder
 	builder.AppendBlockOn(ctx, genesis)
 	target2 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", b1),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    b1,
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target2))
 }
@@ -525,12 +525,12 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 
 	// Set up a fresh builder without any of this data
 	target1 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", link1),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    link1,
 	}
 	err = syncer.HandleNewTipSet(ctx, target1)
 	require.Error(t, err)
@@ -553,12 +553,12 @@ func TestStoresMessageReceipts(t *testing.T) {
 	})
 
 	target1 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *types.NewChainInfo("", "", t1),
+		Base:    nil,
+		Current: nil,
+		Start:   time.Time{},
+		End:     time.Time{},
+		Err:     nil,
+		Head:    t1,
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target1))
 

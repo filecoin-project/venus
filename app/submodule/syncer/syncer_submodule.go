@@ -207,11 +207,13 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 
 		blkSvc := blockservice.New(syncer.BlockstoreModule.Blockstore, syncer.NetworkModule.Bitswap)
 
-		if _, err := syncer.NetworkModule.FetchMessagesByCids(ctx, blkSvc, bm.BlsMessages); err != nil {
+		blsMsgs, err := syncer.NetworkModule.FetchMessagesByCids(ctx, blkSvc, bm.BlsMessages)
+		if err != nil {
 			log.Errorf("fetch block bls messages failed:%s", err.Error())
 			return
 		}
-		if _, err := syncer.NetworkModule.FetchSignedMessagesByCids(ctx, blkSvc, bm.SecpkMessages); err != nil {
+		secpMsgs, err := syncer.NetworkModule.FetchSignedMessagesByCids(ctx, blkSvc, bm.SecpkMessages)
+		if err != nil {
 			log.Errorf("fetch block signed messages failed:%s", err.Error())
 			return
 		}
@@ -224,8 +226,12 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 
 		syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "new-block", 20)
 
-		ts, _ := types.NewTipSet([]*types.BlockHeader{header})
-		chainInfo := types.NewChainInfo(source, sender, ts)
+		fullBlock := &types.FullBlock{
+			Header:       header,
+			BLSMessages:  blsMsgs,
+			SECPMessages: secpMsgs,
+		}
+		chainInfo := types.NewChainInfo(source, sender, &types.FullTipSet{Blocks: []*types.FullBlock{fullBlock}})
 
 		if err = syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo); err != nil {
 			log.Errorf("failed to notify syncer of new block, block: %s", err)

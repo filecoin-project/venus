@@ -6760,10 +6760,103 @@ Inputs:
   {
     "Source": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "Sender": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Head": {
-      "Cids": null,
-      "Blocks": null,
-      "Height": 0
+    "FullTipSet": {
+      "Blocks": [
+        {
+          "Header": {
+            "Miner": "f01234",
+            "Ticket": {
+              "VRFProof": "Bw=="
+            },
+            "ElectionProof": {
+              "WinCount": 9,
+              "VRFProof": "Bw=="
+            },
+            "BeaconEntries": [
+              {
+                "Round": 42,
+                "Data": "Ynl0ZSBhcnJheQ=="
+              }
+            ],
+            "WinPoStProof": [
+              {
+                "PoStProof": 8,
+                "ProofBytes": "Ynl0ZSBhcnJheQ=="
+              }
+            ],
+            "Parents": [
+              {
+                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+              }
+            ],
+            "ParentWeight": "0",
+            "Height": 10101,
+            "ParentStateRoot": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "ParentMessageReceipts": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Messages": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "BLSAggregate": {
+              "Type": 2,
+              "Data": "Ynl0ZSBhcnJheQ=="
+            },
+            "Timestamp": 42,
+            "BlockSig": {
+              "Type": 2,
+              "Data": "Ynl0ZSBhcnJheQ=="
+            },
+            "ForkSignaling": 42,
+            "ParentBaseFee": "0"
+          },
+          "BLSMessages": [
+            {
+              "CID": {
+                "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+              },
+              "Version": 42,
+              "To": "f01234",
+              "From": "f01234",
+              "Nonce": 42,
+              "Value": "0",
+              "GasLimit": 9,
+              "GasFeeCap": "0",
+              "GasPremium": "0",
+              "Method": 1,
+              "Params": "Ynl0ZSBhcnJheQ=="
+            }
+          ],
+          "SECPMessages": [
+            {
+              "Message": {
+                "CID": {
+                  "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+                },
+                "Version": 42,
+                "To": "f01234",
+                "From": "f01234",
+                "Nonce": 42,
+                "Value": "0",
+                "GasLimit": 9,
+                "GasFeeCap": "0",
+                "GasPremium": "0",
+                "Method": 1,
+                "Params": "Ynl0ZSBhcnJheQ=="
+              },
+              "Signature": {
+                "Type": 2,
+                "Data": "Ynl0ZSBhcnJheQ=="
+              },
+              "CID": {
+                "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+              }
+            }
+          ]
+        }
+      ]
     }
   }
 ]
@@ -7011,13 +7104,12 @@ Response:
       "Start": "0001-01-01T00:00:00Z",
       "End": "0001-01-01T00:00:00Z",
       "Err": {},
-      "Source": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "Sender": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
       "Head": {
         "Cids": null,
         "Blocks": null,
         "Height": 0
-      }
+      },
+      "Sender": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
     }
   ],
   "Buckets": [
@@ -7036,13 +7128,12 @@ Response:
       "Start": "0001-01-01T00:00:00Z",
       "End": "0001-01-01T00:00:00Z",
       "Err": {},
-      "Source": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "Sender": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
       "Head": {
         "Cids": null,
         "Blocks": null,
         "Height": 0
-      }
+      },
+      "Sender": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
     }
   ]
 }

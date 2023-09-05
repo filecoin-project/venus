@@ -344,7 +344,12 @@ type Target struct {
 	Start   time.Time
 	End     time.Time
 	Err     error
-	ChainInfo
+	Head    *TipSet
+	Sender  peer.ID
+}
+
+func (target *Target) String() string {
+	return fmt.Sprintf("{sender:%s height=%d head=%s}", target.Sender, target.Head.Height(), target.Head.Key())
 }
 
 type TargetTracker struct {

@@ -169,7 +169,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 		return fmt.Errorf("block was from the future (now=%d, blk=%d): %v", now, blk.Timestamp, ErrTemporal)
 	}
 	if blk.Timestamp > now {
-		logExpect.Warn("Got block from the future, but within threshold", blk.Timestamp, time.Now().Unix())
+		logExpect.Warn("Got block from the future, but within threshold ", blk.Timestamp, time.Now().Unix())
 	}
 
 	// get parent beacon

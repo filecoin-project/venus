@@ -8,6 +8,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/testhelpers"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -36,12 +38,18 @@ func (fs *mockSyncer) HandleNewTipSet(_ context.Context, ci *syncTypes.Target) e
 	return nil
 }
 
+func (fs *mockSyncer) ValidateMsgMeta(ctx context.Context, fblk *types.FullBlock) error {
+	return nil
+}
+
 func TestDispatchStartHappy(t *testing.T) {
 	tf.UnitTest(t)
 	s := &mockSyncer{
 		headsCalled: make([]*types.TipSet, 0),
 	}
-	testDispatch := dispatcher.NewDispatcher(s)
+	builder := chain.NewBuilder(t, address.Undef)
+
+	testDispatch := dispatcher.NewDispatcher(s, builder.Store())
 
 	cis := []*types.ChainInfo{
 		// We need to put these in priority order to avoid a race.
@@ -69,7 +77,7 @@ func TestDispatchStartHappy(t *testing.T) {
 	waitCh := make(chan struct{})
 	// stm: @CHAINSYNC_DISPATCHER_REGISTER_CALLBACK_001
 	testDispatch.RegisterCallback(func(target *syncTypes.Target, _ error) {
-		if target.Head.Key().Equals(cis[4].Head.Key()) {
+		if target.Head.Key().Equals(cis[4].FullTipSet.TipSet().Key()) {
 			waitCh <- struct{}{}
 		}
 	})
@@ -93,10 +101,10 @@ func TestQueueHappy(t *testing.T) {
 	testQ := syncTypes.NewTargetTracker(20)
 
 	// Add syncRequests out of order
-	sR0 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 0, 1001))}
-	sR1 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 1, 1001))}
-	sR2 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 2, 1001))}
-	sR47 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 47, 1001))}
+	sR0 := &syncTypes.Target{Head: chainInfoWithHeightAndWeight(t, 0, 1001).FullTipSet.TipSet()}
+	sR1 := &syncTypes.Target{Head: chainInfoWithHeightAndWeight(t, 1, 1001).FullTipSet.TipSet()}
+	sR2 := &syncTypes.Target{Head: chainInfoWithHeightAndWeight(t, 2, 1001).FullTipSet.TipSet()}
+	sR47 := &syncTypes.Target{Head: chainInfoWithHeightAndWeight(t, 47, 1001).FullTipSet.TipSet()}
 
 	testQ.Add(sR2)
 	testQ.Add(sR47)
@@ -108,7 +116,7 @@ func TestQueueHappy(t *testing.T) {
 	// Pop in order
 	out0 := requirePop(t, testQ)
 
-	weight := out0.ChainInfo.Head.ParentWeight()
+	weight := out0.Head.ParentWeight()
 	assert.Equal(t, int64(1001), weight.Int.Int64())
 }
 
@@ -117,8 +125,8 @@ func TestQueueDuplicates(t *testing.T) {
 	testQ := syncTypes.NewTargetTracker(20)
 
 	// Add syncRequests with same height
-	sR0 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 0, 1001))}
-	sR0dup := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 0, 1001))}
+	sR0 := &syncTypes.Target{Head: chainInfoWithHeightAndWeight(t, 0, 1001).FullTipSet.TipSet()}
+	sR0dup := &syncTypes.Target{Head: chainInfoWithHeightAndWeight(t, 0, 1001).FullTipSet.TipSet()}
 
 	testQ.Add(sR0)
 	testQ.Add(sR0dup)
@@ -128,15 +136,15 @@ func TestQueueDuplicates(t *testing.T) {
 
 	// Pop
 	first := requirePop(t, testQ)
-	assert.Equal(t, abi.ChainEpoch(0), first.ChainInfo.Head.Height())
+	assert.Equal(t, abi.ChainEpoch(0), first.Head.Height())
 	testQ.Remove(first)
 }
 
 func TestQueueEmptyPopErrors(t *testing.T) {
 	tf.UnitTest(t)
 	testQ := syncTypes.NewTargetTracker(20)
-	sR0 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 0, 1002))}
-	sR47 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 47, 1001))}
+	sR0 := &syncTypes.Target{Head: chainInfoWithHeightAndWeight(t, 0, 1002).FullTipSet.TipSet()}
+	sR47 := &syncTypes.Target{Head: chainInfoWithHeightAndWeight(t, 47, 1001).FullTipSet.TipSet()}
 
 	// Add 2
 	testQ.Add(sR47)
@@ -187,8 +195,9 @@ func chainInfoWithHeightAndWeight(t *testing.T, h int, weight int64) *types.Chai
 			Data: []byte{0x4},
 		},
 	}
-	b, _ := types.NewTipSet([]*types.BlockHeader{blk})
 	return &types.ChainInfo{
-		Head: b,
+		FullTipSet: &types.FullTipSet{
+			Blocks: []*types.FullBlock{{Header: blk}},
+		},
 	}
 }
