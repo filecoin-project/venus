@@ -149,11 +149,24 @@ func (s *IProxyStruct) RegisterReverse(p0 context.Context, p1 gatewayTypes.HostK
 	return s.Internal.RegisterReverse(p0, p1, p2)
 }
 
+type IClusterStruct struct {
+	Internal struct {
+		Join        func(ctx context.Context, address string) error `perm:"admin"`
+		MemberInfos func(ctx context.Context) ([]MemberInfo, error) `perm:"read"`
+	}
+}
+
+func (s *IClusterStruct) Join(p0 context.Context, p1 string) error { return s.Internal.Join(p0, p1) }
+func (s *IClusterStruct) MemberInfos(p0 context.Context) ([]MemberInfo, error) {
+	return s.Internal.MemberInfos(p0)
+}
+
 type IGatewayStruct struct {
 	IProofEventStruct
 	IWalletEventStruct
 	IMarketEventStruct
 	IProxyStruct
+	IClusterStruct
 
 	Internal struct {
 		Version func(ctx context.Context) (types.Version, error) `perm:"read"`

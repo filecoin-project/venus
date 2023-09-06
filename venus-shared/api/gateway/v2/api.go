@@ -9,6 +9,7 @@ type IGateway interface {
 	IWalletEvent
 	IMarketEvent
 	IProxy
+	ICluster
 
 	api.Version
 }

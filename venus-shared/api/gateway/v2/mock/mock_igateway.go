@@ -13,8 +13,9 @@ import (
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	network "github.com/filecoin-project/go-state-types/network"
 	proof "github.com/filecoin-project/go-state-types/proof"
+	gateway "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
 	types "github.com/filecoin-project/venus/venus-shared/types"
-	gateway "github.com/filecoin-project/venus/venus-shared/types/gateway"
+	gateway0 "github.com/filecoin-project/venus/venus-shared/types/gateway"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
 )
@@ -71,6 +72,20 @@ func (mr *MockIGatewayMockRecorder) ComputeProof(arg0, arg1, arg2, arg3, arg4, a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ComputeProof", reflect.TypeOf((*MockIGateway)(nil).ComputeProof), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
+// Join mocks base method.
+func (m *MockIGateway) Join(arg0 context.Context, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Join", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Join indicates an expected call of Join.
+func (mr *MockIGatewayMockRecorder) Join(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Join", reflect.TypeOf((*MockIGateway)(nil).Join), arg0, arg1)
+}
+
 // ListConnectedMiners mocks base method.
 func (m *MockIGateway) ListConnectedMiners(arg0 context.Context) ([]address.Address, error) {
 	m.ctrl.T.Helper()
@@ -87,10 +102,10 @@ func (mr *MockIGatewayMockRecorder) ListConnectedMiners(arg0 interface{}) *gomoc
 }
 
 // ListMarketConnectionsState mocks base method.
-func (m *MockIGateway) ListMarketConnectionsState(arg0 context.Context) ([]gateway.MarketConnectionState, error) {
+func (m *MockIGateway) ListMarketConnectionsState(arg0 context.Context) ([]gateway0.MarketConnectionState, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMarketConnectionsState", arg0)
-	ret0, _ := ret[0].([]gateway.MarketConnectionState)
+	ret0, _ := ret[0].([]gateway0.MarketConnectionState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -102,10 +117,10 @@ func (mr *MockIGatewayMockRecorder) ListMarketConnectionsState(arg0 interface{})
 }
 
 // ListMinerConnection mocks base method.
-func (m *MockIGateway) ListMinerConnection(arg0 context.Context, arg1 address.Address) (*gateway.MinerState, error) {
+func (m *MockIGateway) ListMinerConnection(arg0 context.Context, arg1 address.Address) (*gateway0.MinerState, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMinerConnection", arg0, arg1)
-	ret0, _ := ret[0].(*gateway.MinerState)
+	ret0, _ := ret[0].(*gateway0.MinerState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -117,10 +132,10 @@ func (mr *MockIGatewayMockRecorder) ListMinerConnection(arg0, arg1 interface{}) 
 }
 
 // ListWalletInfo mocks base method.
-func (m *MockIGateway) ListWalletInfo(arg0 context.Context) ([]*gateway.WalletDetail, error) {
+func (m *MockIGateway) ListWalletInfo(arg0 context.Context) ([]*gateway0.WalletDetail, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListWalletInfo", arg0)
-	ret0, _ := ret[0].([]*gateway.WalletDetail)
+	ret0, _ := ret[0].([]*gateway0.WalletDetail)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -132,10 +147,10 @@ func (mr *MockIGatewayMockRecorder) ListWalletInfo(arg0 interface{}) *gomock.Cal
 }
 
 // ListWalletInfoByWallet mocks base method.
-func (m *MockIGateway) ListWalletInfoByWallet(arg0 context.Context, arg1 string) (*gateway.WalletDetail, error) {
+func (m *MockIGateway) ListWalletInfoByWallet(arg0 context.Context, arg1 string) (*gateway0.WalletDetail, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListWalletInfoByWallet", arg0, arg1)
-	ret0, _ := ret[0].(*gateway.WalletDetail)
+	ret0, _ := ret[0].(*gateway0.WalletDetail)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -147,10 +162,10 @@ func (mr *MockIGatewayMockRecorder) ListWalletInfoByWallet(arg0, arg1 interface{
 }
 
 // ListenMarketEvent mocks base method.
-func (m *MockIGateway) ListenMarketEvent(arg0 context.Context, arg1 *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error) {
+func (m *MockIGateway) ListenMarketEvent(arg0 context.Context, arg1 *gateway0.MarketRegisterPolicy) (<-chan *gateway0.RequestEvent, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListenMarketEvent", arg0, arg1)
-	ret0, _ := ret[0].(<-chan *gateway.RequestEvent)
+	ret0, _ := ret[0].(<-chan *gateway0.RequestEvent)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -162,10 +177,10 @@ func (mr *MockIGatewayMockRecorder) ListenMarketEvent(arg0, arg1 interface{}) *g
 }
 
 // ListenProofEvent mocks base method.
-func (m *MockIGateway) ListenProofEvent(arg0 context.Context, arg1 *gateway.ProofRegisterPolicy) (<-chan *gateway.RequestEvent, error) {
+func (m *MockIGateway) ListenProofEvent(arg0 context.Context, arg1 *gateway0.ProofRegisterPolicy) (<-chan *gateway0.RequestEvent, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListenProofEvent", arg0, arg1)
-	ret0, _ := ret[0].(<-chan *gateway.RequestEvent)
+	ret0, _ := ret[0].(<-chan *gateway0.RequestEvent)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -177,10 +192,10 @@ func (mr *MockIGatewayMockRecorder) ListenProofEvent(arg0, arg1 interface{}) *go
 }
 
 // ListenWalletEvent mocks base method.
-func (m *MockIGateway) ListenWalletEvent(arg0 context.Context, arg1 *gateway.WalletRegisterPolicy) (<-chan *gateway.RequestEvent, error) {
+func (m *MockIGateway) ListenWalletEvent(arg0 context.Context, arg1 *gateway0.WalletRegisterPolicy) (<-chan *gateway0.RequestEvent, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListenWalletEvent", arg0, arg1)
-	ret0, _ := ret[0].(<-chan *gateway.RequestEvent)
+	ret0, _ := ret[0].(<-chan *gateway0.RequestEvent)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -191,8 +206,23 @@ func (mr *MockIGatewayMockRecorder) ListenWalletEvent(arg0, arg1 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListenWalletEvent", reflect.TypeOf((*MockIGateway)(nil).ListenWalletEvent), arg0, arg1)
 }
 
+// MemberInfos mocks base method.
+func (m *MockIGateway) MemberInfos(arg0 context.Context) ([]gateway.MemberInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MemberInfos", arg0)
+	ret0, _ := ret[0].([]gateway.MemberInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MemberInfos indicates an expected call of MemberInfos.
+func (mr *MockIGatewayMockRecorder) MemberInfos(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MemberInfos", reflect.TypeOf((*MockIGateway)(nil).MemberInfos), arg0)
+}
+
 // RegisterReverse mocks base method.
-func (m *MockIGateway) RegisterReverse(arg0 context.Context, arg1 gateway.HostKey, arg2 string) error {
+func (m *MockIGateway) RegisterReverse(arg0 context.Context, arg1 gateway0.HostKey, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterReverse", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -220,7 +250,7 @@ func (mr *MockIGatewayMockRecorder) RemoveAddress(arg0, arg1, arg2 interface{}) 
 }
 
 // ResponseMarketEvent mocks base method.
-func (m *MockIGateway) ResponseMarketEvent(arg0 context.Context, arg1 *gateway.ResponseEvent) error {
+func (m *MockIGateway) ResponseMarketEvent(arg0 context.Context, arg1 *gateway0.ResponseEvent) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ResponseMarketEvent", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -234,7 +264,7 @@ func (mr *MockIGatewayMockRecorder) ResponseMarketEvent(arg0, arg1 interface{}) 
 }
 
 // ResponseProofEvent mocks base method.
-func (m *MockIGateway) ResponseProofEvent(arg0 context.Context, arg1 *gateway.ResponseEvent) error {
+func (m *MockIGateway) ResponseProofEvent(arg0 context.Context, arg1 *gateway0.ResponseEvent) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ResponseProofEvent", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -248,7 +278,7 @@ func (mr *MockIGatewayMockRecorder) ResponseProofEvent(arg0, arg1 interface{}) *
 }
 
 // ResponseWalletEvent mocks base method.
-func (m *MockIGateway) ResponseWalletEvent(arg0 context.Context, arg1 *gateway.ResponseEvent) error {
+func (m *MockIGateway) ResponseWalletEvent(arg0 context.Context, arg1 *gateway0.ResponseEvent) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ResponseWalletEvent", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -262,10 +292,10 @@ func (mr *MockIGatewayMockRecorder) ResponseWalletEvent(arg0, arg1 interface{}) 
 }
 
 // SectorsUnsealPiece mocks base method.
-func (m *MockIGateway) SectorsUnsealPiece(arg0 context.Context, arg1 address.Address, arg2 cid.Cid, arg3 abi.SectorNumber, arg4 types.UnpaddedByteIndex, arg5 abi.UnpaddedPieceSize, arg6 string) (gateway.UnsealState, error) {
+func (m *MockIGateway) SectorsUnsealPiece(arg0 context.Context, arg1 address.Address, arg2 cid.Cid, arg3 abi.SectorNumber, arg4 types.UnpaddedByteIndex, arg5 abi.UnpaddedPieceSize, arg6 string) (gateway0.UnsealState, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SectorsUnsealPiece", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(gateway.UnsealState)
+	ret0, _ := ret[0].(gateway0.UnsealState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

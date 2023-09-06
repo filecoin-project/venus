@@ -6,6 +6,9 @@ curl http://<ip>:<port>/rpc/v2 -X POST -H "Content-Type: application/json"  -H "
 ```
 # Groups
 
+* [Cluster](#cluster)
+  * [Join](#join)
+  * [MemberInfos](#memberinfos)
 * [Gateway](#gateway)
   * [Version](#version)
 * [MarketClient](#marketclient)
@@ -34,6 +37,42 @@ curl http://<ip>:<port>/rpc/v2 -X POST -H "Content-Type: application/json"  -H "
   * [RemoveAddress](#removeaddress)
   * [ResponseWalletEvent](#responsewalletevent)
   * [SupportNewAccount](#supportnewaccount)
+
+## Cluster
+
+### Join
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
+### MemberInfos
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  {
+    "Name": "string value",
+    "Address": "string value",
+    "Meta": {
+      "string value": "string value"
+    }
+  }
+]
+```
 
 ## Gateway
 
