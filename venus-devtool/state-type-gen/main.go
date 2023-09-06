@@ -130,7 +130,7 @@ var getStateTypesIncludePkgs = func() []string {
 	aliasVesion := map[string]actors.Version{
 		"paych": actors.Version8,
 	}
-	for _, pkg := range []string{"market", "miner", "verifreg", "paych", "multisig"} {
+	for _, pkg := range []string{"market", "miner", "verifreg", "paych", "multisig", "datacap"} {
 		if v, ok := aliasVesion[pkg]; ok {
 			pkgs = append(pkgs, fmt.Sprintf("v%v/%s", v, pkg))
 		} else {

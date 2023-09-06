@@ -3,10 +3,32 @@ package types
 
 import (
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	"github.com/filecoin-project/go-state-types/builtin/v9/datacap"
 	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v9/multisig"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+)
+
+////////// datacap //////////
+
+type (
+	BurnFromParams          = datacap.BurnFromParams
+	BurnFromReturn          = datacap.BurnFromReturn
+	BurnParams              = datacap.BurnParams
+	BurnReturn              = datacap.BurnReturn
+	DecreaseAllowanceParams = datacap.DecreaseAllowanceParams
+	DestroyParams           = datacap.DestroyParams
+	GetAllowanceParams      = datacap.GetAllowanceParams
+	IncreaseAllowanceParams = datacap.IncreaseAllowanceParams
+	MintParams              = datacap.MintParams
+	MintReturn              = datacap.MintReturn
+	RevokeAllowanceParams   = datacap.RevokeAllowanceParams
+	TokenState              = datacap.TokenState
+	TransferFromParams      = datacap.TransferFromParams
+	TransferFromReturn      = datacap.TransferFromReturn
+	TransferParams          = datacap.TransferParams
+	TransferReturn          = datacap.TransferReturn
 )
 
 ////////// market //////////
