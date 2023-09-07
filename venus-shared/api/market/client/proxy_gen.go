@@ -31,14 +31,17 @@ type IMarketClientStruct struct {
 		ClientGetDealInfo                         func(context.Context, cid.Cid) (*client.DealInfo, error)                                                         `perm:"read"`
 		ClientGetDealStatus                       func(ctx context.Context, statusCode uint64) (string, error)                                                     `perm:"read"`
 		ClientGetDealUpdates                      func(ctx context.Context) (<-chan client.DealInfo, error)                                                        `perm:"write"`
+		ClientGetPieceInfo                        func(ctx context.Context, pieceCID cid.Cid) (*client.ClientPieceInfo, error)                                     `perm:"read"`
 		ClientGetRetrievalUpdates                 func(ctx context.Context) (<-chan client.RetrievalInfo, error)                                                   `perm:"write"`
 		ClientGetVerifiedDealDistribution         func(ctx context.Context, providers []address.Address, client address.Address) (*client.DealDistribution, error) `perm:"read"`
 		ClientHasLocal                            func(ctx context.Context, root cid.Cid) (bool, error)                                                            `perm:"write"`
 		ClientImport                              func(ctx context.Context, ref client.FileRef) (*client.ImportRes, error)                                         `perm:"admin"`
+		ClientImportPieceInfos                    func(ctx context.Context, pis []*client.ClientPieceInfo) error                                                   `perm:"write"`
 		ClientListDataTransfers                   func(ctx context.Context) ([]market.DataTransferChannel, error)                                                  `perm:"write"`
 		ClientListDeals                           func(ctx context.Context) ([]client.DealInfo, error)                                                             `perm:"write"`
 		ClientListImports                         func(ctx context.Context) ([]client.Import, error)                                                               `perm:"write"`
 		ClientListOfflineDeals                    func(ctx context.Context) ([]client.DealInfo, error)                                                             `perm:"read"`
+		ClientListPieceInfo                       func(ctx context.Context) ([]*client.ClientPieceInfo, error)                                                     `perm:"read"`
 		ClientListRetrievals                      func(ctx context.Context) ([]client.RetrievalInfo, error)                                                        `perm:"write"`
 		ClientMinerQueryOffer                     func(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (client.QueryOffer, error)        `perm:"read"`
 		ClientQueryAsk                            func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error)                   `perm:"read"`
@@ -101,6 +104,9 @@ func (s *IMarketClientStruct) ClientGetDealStatus(p0 context.Context, p1 uint64)
 func (s *IMarketClientStruct) ClientGetDealUpdates(p0 context.Context) (<-chan client.DealInfo, error) {
 	return s.Internal.ClientGetDealUpdates(p0)
 }
+func (s *IMarketClientStruct) ClientGetPieceInfo(p0 context.Context, p1 cid.Cid) (*client.ClientPieceInfo, error) {
+	return s.Internal.ClientGetPieceInfo(p0, p1)
+}
 func (s *IMarketClientStruct) ClientGetRetrievalUpdates(p0 context.Context) (<-chan client.RetrievalInfo, error) {
 	return s.Internal.ClientGetRetrievalUpdates(p0)
 }
@@ -113,6 +119,9 @@ func (s *IMarketClientStruct) ClientHasLocal(p0 context.Context, p1 cid.Cid) (bo
 func (s *IMarketClientStruct) ClientImport(p0 context.Context, p1 client.FileRef) (*client.ImportRes, error) {
 	return s.Internal.ClientImport(p0, p1)
 }
+func (s *IMarketClientStruct) ClientImportPieceInfos(p0 context.Context, p1 []*client.ClientPieceInfo) error {
+	return s.Internal.ClientImportPieceInfos(p0, p1)
+}
 func (s *IMarketClientStruct) ClientListDataTransfers(p0 context.Context) ([]market.DataTransferChannel, error) {
 	return s.Internal.ClientListDataTransfers(p0)
 }
@@ -124,6 +133,9 @@ func (s *IMarketClientStruct) ClientListImports(p0 context.Context) ([]client.Im
 }
 func (s *IMarketClientStruct) ClientListOfflineDeals(p0 context.Context) ([]client.DealInfo, error) {
 	return s.Internal.ClientListOfflineDeals(p0)
+}
+func (s *IMarketClientStruct) ClientListPieceInfo(p0 context.Context) ([]*client.ClientPieceInfo, error) {
+	return s.Internal.ClientListPieceInfo(p0)
 }
 func (s *IMarketClientStruct) ClientListRetrievals(p0 context.Context) ([]client.RetrievalInfo, error) {
 	return s.Internal.ClientListRetrievals(p0)

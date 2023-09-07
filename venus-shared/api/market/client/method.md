@@ -20,14 +20,17 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [ClientGetDealInfo](#clientgetdealinfo)
   * [ClientGetDealStatus](#clientgetdealstatus)
   * [ClientGetDealUpdates](#clientgetdealupdates)
+  * [ClientGetPieceInfo](#clientgetpieceinfo)
   * [ClientGetRetrievalUpdates](#clientgetretrievalupdates)
   * [ClientGetVerifiedDealDistribution](#clientgetverifieddealdistribution)
   * [ClientHasLocal](#clienthaslocal)
   * [ClientImport](#clientimport)
+  * [ClientImportPieceInfos](#clientimportpieceinfos)
   * [ClientListDataTransfers](#clientlistdatatransfers)
   * [ClientListDeals](#clientlistdeals)
   * [ClientListImports](#clientlistimports)
   * [ClientListOfflineDeals](#clientlistofflinedeals)
+  * [ClientListPieceInfo](#clientlistpieceinfo)
   * [ClientListRetrievals](#clientlistretrievals)
   * [ClientMinerQueryOffer](#clientminerqueryoffer)
   * [ClientQueryAsk](#clientqueryask)
@@ -545,6 +548,35 @@ Response:
 }
 ```
 
+### ClientGetPieceInfo
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "ID": 42,
+  "PieceCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "PieceSize": 42,
+  "PayloadCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "PayloadSize": 42
+}
+```
+
 ### ClientGetRetrievalUpdates
 ClientGetRetrievalUpdates returns status of updated retrieval deals
 
@@ -705,6 +737,32 @@ Response:
   "ImportID": 1234
 }
 ```
+
+### ClientImportPieceInfos
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  [
+    {
+      "ID": 42,
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PieceSize": 42,
+      "PayloadCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PayloadSize": 42
+    }
+  ]
+]
+```
+
+Response: `{}`
 
 ### ClientListDataTransfers
 ClientListTransfers returns the status of all ongoing transfers of data
@@ -955,6 +1013,30 @@ Response:
         ]
       }
     }
+  }
+]
+```
+
+### ClientListPieceInfo
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  {
+    "ID": 42,
+    "PieceCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "PieceSize": 42,
+    "PayloadCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "PayloadSize": 42
   }
 ]
 ```

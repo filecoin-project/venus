@@ -236,6 +236,21 @@ func (mr *MockIMarketClientMockRecorder) ClientGetDealUpdates(arg0 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientGetDealUpdates", reflect.TypeOf((*MockIMarketClient)(nil).ClientGetDealUpdates), arg0)
 }
 
+// ClientGetPieceInfo mocks base method.
+func (m *MockIMarketClient) ClientGetPieceInfo(arg0 context.Context, arg1 cid.Cid) (*client.ClientPieceInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientGetPieceInfo", arg0, arg1)
+	ret0, _ := ret[0].(*client.ClientPieceInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClientGetPieceInfo indicates an expected call of ClientGetPieceInfo.
+func (mr *MockIMarketClientMockRecorder) ClientGetPieceInfo(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientGetPieceInfo", reflect.TypeOf((*MockIMarketClient)(nil).ClientGetPieceInfo), arg0, arg1)
+}
+
 // ClientGetRetrievalUpdates mocks base method.
 func (m *MockIMarketClient) ClientGetRetrievalUpdates(arg0 context.Context) (<-chan client.RetrievalInfo, error) {
 	m.ctrl.T.Helper()
@@ -296,6 +311,20 @@ func (mr *MockIMarketClientMockRecorder) ClientImport(arg0, arg1 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientImport", reflect.TypeOf((*MockIMarketClient)(nil).ClientImport), arg0, arg1)
 }
 
+// ClientImportPieceInfos mocks base method.
+func (m *MockIMarketClient) ClientImportPieceInfos(arg0 context.Context, arg1 []*client.ClientPieceInfo) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientImportPieceInfos", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ClientImportPieceInfos indicates an expected call of ClientImportPieceInfos.
+func (mr *MockIMarketClientMockRecorder) ClientImportPieceInfos(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientImportPieceInfos", reflect.TypeOf((*MockIMarketClient)(nil).ClientImportPieceInfos), arg0, arg1)
+}
+
 // ClientListDataTransfers mocks base method.
 func (m *MockIMarketClient) ClientListDataTransfers(arg0 context.Context) ([]market.DataTransferChannel, error) {
 	m.ctrl.T.Helper()
@@ -354,6 +383,21 @@ func (m *MockIMarketClient) ClientListOfflineDeals(arg0 context.Context) ([]clie
 func (mr *MockIMarketClientMockRecorder) ClientListOfflineDeals(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientListOfflineDeals", reflect.TypeOf((*MockIMarketClient)(nil).ClientListOfflineDeals), arg0)
+}
+
+// ClientListPieceInfo mocks base method.
+func (m *MockIMarketClient) ClientListPieceInfo(arg0 context.Context) ([]*client.ClientPieceInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientListPieceInfo", arg0)
+	ret0, _ := ret[0].([]*client.ClientPieceInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClientListPieceInfo indicates an expected call of ClientListPieceInfo.
+func (mr *MockIMarketClientMockRecorder) ClientListPieceInfo(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientListPieceInfo", reflect.TypeOf((*MockIMarketClient)(nil).ClientListPieceInfo), arg0)
 }
 
 // ClientListRetrievals mocks base method.

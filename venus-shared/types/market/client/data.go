@@ -96,3 +96,11 @@ type DataCIDSize struct {
 	PieceSize   abi.PaddedPieceSize
 	PieceCID    cid.Cid
 }
+
+type ClientPieceInfo struct {
+	ID          uint64
+	PieceCID    cid.Cid
+	PieceSize   uint64
+	PayloadCID  cid.Cid
+	PayloadSize uint64
+}

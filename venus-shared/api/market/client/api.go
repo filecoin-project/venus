@@ -94,5 +94,9 @@ type IMarketClient interface {
 	ClientGetVerifiedDealDistribution(ctx context.Context, providers []address.Address, client address.Address) (*client.DealDistribution, error) //perm:read
 	ClientListOfflineDeals(ctx context.Context) ([]client.DealInfo, error)                                                                        //perm:read
 
+	ClientImportPieceInfos(ctx context.Context, pis []*client.ClientPieceInfo) error           //perm:write
+	ClientGetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*client.ClientPieceInfo, error) //perm:read
+	ClientListPieceInfo(ctx context.Context) ([]*client.ClientPieceInfo, error)                //perm:read
+
 	api.Version
 }
