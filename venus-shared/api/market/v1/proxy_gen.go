@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	"github.com/google/uuid"
 	cid "github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -29,6 +30,7 @@ type IMarketStruct struct {
 		ActorUpsert                             func(context.Context, market.User) (bool, error)                                                                                                                                                    `perm:"admin"`
 		AddFsPieceStorage                       func(ctx context.Context, name string, path string, readonly bool) error                                                                                                                            `perm:"admin"`
 		AddS3PieceStorage                       func(ctx context.Context, name, endpoit, bucket, subdir, accessKey, secretKey, token string, readonly bool) error                                                                                   `perm:"admin"`
+		AssignDirectDeals                       func(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DirectDealInfo, error)                                                                       `perm:"read"`
 		AssignUnPackedDeals                     func(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                  `perm:"write"`
 		DagstoreDestroyShard                    func(ctx context.Context, key string) error                                                                                                                                                         `perm:"admin"`
 		DagstoreGC                              func(ctx context.Context) ([]market.DagstoreShardResult, error)                                                                                                                                     `perm:"admin"`
@@ -63,10 +65,14 @@ type IMarketStruct struct {
 		DealsSetPieceCidBlocklist               func(context.Context, address.Address, []cid.Cid) error                                                                                                                                             `perm:"write"`
 		DealsSetPublishMsgPeriod                func(context.Context, address.Address, time.Duration) error                                                                                                                                         `perm:"write"`
 		GetDeals                                func(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*market.DealInfo, error)                                                                                               `perm:"read"`
+		GetDirectDeal                           func(ctx context.Context, id uuid.UUID) (*market.DirectDeal, error)                                                                                                                                 `perm:"read"`
+		GetDirectDealByAllocatinoID             func(ctx context.Context, id uint64) (*market.DirectDeal, error)                                                                                                                                    `perm:"read"`
 		GetRetrievalDealStatistic               func(ctx context.Context, miner address.Address) (*market.RetrievalDealStatistic, error)                                                                                                            `perm:"read"`
 		GetStorageDealStatistic                 func(ctx context.Context, miner address.Address) (*market.StorageDealStatistic, error)                                                                                                              `perm:"read"`
 		GetUnPackedDeals                        func(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                                   `perm:"read"`
 		ID                                      func(context.Context) (peer.ID, error)                                                                                                                                                              `perm:"read"`
+		ImportDirectDeal                        func(ctx context.Context, deal *market.DirectDealParams) error                                                                                                                                      `perm:"write"`
+		ListDirectDeals                         func(ctx context.Context, queryParams market.DirectDealQueryParams) ([]*market.DirectDeal, error)                                                                                                   `perm:"read"`
 		ListPieceStorageInfos                   func(ctx context.Context) market.PieceStorageInfos                                                                                                                                                  `perm:"read"`
 		ListenMarketEvent                       func(ctx context.Context, policy *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error)                                                                                               `perm:"read"`
 		MarkDealsAsPacking                      func(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                                                                                          `perm:"write"`
@@ -111,6 +117,7 @@ type IMarketStruct struct {
 		PiecesListCidInfos                      func(ctx context.Context) ([]cid.Cid, error)                                                                                                                                                        `perm:"read"`
 		PiecesListPieces                        func(ctx context.Context) ([]cid.Cid, error)                                                                                                                                                        `perm:"read"`
 		ReleaseDeals                            func(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                                                                                          `perm:"write"`
+		ReleaseDirectDeals                      func(ctx context.Context, miner address.Address, allocationIDs []types.AllocationId) error                                                                                                          `perm:"write"`
 		RemovePieceStorage                      func(ctx context.Context, name string) error                                                                                                                                                        `perm:"admin"`
 		ResponseMarketEvent                     func(ctx context.Context, resp *gateway.ResponseEvent) error                                                                                                                                        `perm:"read"`
 		SectorGetExpectedSealDuration           func(context.Context, address.Address) (time.Duration, error)                                                                                                                                       `perm:"read"`
@@ -142,6 +149,9 @@ func (s *IMarketStruct) AddFsPieceStorage(p0 context.Context, p1 string, p2 stri
 }
 func (s *IMarketStruct) AddS3PieceStorage(p0 context.Context, p1, p2, p3, p4, p5, p6, p7 string, p8 bool) error {
 	return s.Internal.AddS3PieceStorage(p0, p1, p2, p3, p4, p5, p6, p7, p8)
+}
+func (s *IMarketStruct) AssignDirectDeals(p0 context.Context, p1 abi.SectorID, p2 abi.SectorSize, p3 *market.GetDealSpec) ([]*market.DirectDealInfo, error) {
+	return s.Internal.AssignDirectDeals(p0, p1, p2, p3)
 }
 func (s *IMarketStruct) AssignUnPackedDeals(p0 context.Context, p1 abi.SectorID, p2 abi.SectorSize, p3 *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) {
 	return s.Internal.AssignUnPackedDeals(p0, p1, p2, p3)
@@ -245,6 +255,12 @@ func (s *IMarketStruct) DealsSetPublishMsgPeriod(p0 context.Context, p1 address.
 func (s *IMarketStruct) GetDeals(p0 context.Context, p1 address.Address, p2, p3 int) ([]*market.DealInfo, error) {
 	return s.Internal.GetDeals(p0, p1, p2, p3)
 }
+func (s *IMarketStruct) GetDirectDeal(p0 context.Context, p1 uuid.UUID) (*market.DirectDeal, error) {
+	return s.Internal.GetDirectDeal(p0, p1)
+}
+func (s *IMarketStruct) GetDirectDealByAllocatinoID(p0 context.Context, p1 uint64) (*market.DirectDeal, error) {
+	return s.Internal.GetDirectDealByAllocatinoID(p0, p1)
+}
 func (s *IMarketStruct) GetRetrievalDealStatistic(p0 context.Context, p1 address.Address) (*market.RetrievalDealStatistic, error) {
 	return s.Internal.GetRetrievalDealStatistic(p0, p1)
 }
@@ -255,6 +271,12 @@ func (s *IMarketStruct) GetUnPackedDeals(p0 context.Context, p1 address.Address,
 	return s.Internal.GetUnPackedDeals(p0, p1, p2)
 }
 func (s *IMarketStruct) ID(p0 context.Context) (peer.ID, error) { return s.Internal.ID(p0) }
+func (s *IMarketStruct) ImportDirectDeal(p0 context.Context, p1 *market.DirectDealParams) error {
+	return s.Internal.ImportDirectDeal(p0, p1)
+}
+func (s *IMarketStruct) ListDirectDeals(p0 context.Context, p1 market.DirectDealQueryParams) ([]*market.DirectDeal, error) {
+	return s.Internal.ListDirectDeals(p0, p1)
+}
 func (s *IMarketStruct) ListPieceStorageInfos(p0 context.Context) market.PieceStorageInfos {
 	return s.Internal.ListPieceStorageInfos(p0)
 }
@@ -386,6 +408,9 @@ func (s *IMarketStruct) PiecesListPieces(p0 context.Context) ([]cid.Cid, error) 
 }
 func (s *IMarketStruct) ReleaseDeals(p0 context.Context, p1 address.Address, p2 []abi.DealID) error {
 	return s.Internal.ReleaseDeals(p0, p1, p2)
+}
+func (s *IMarketStruct) ReleaseDirectDeals(p0 context.Context, p1 address.Address, p2 []types.AllocationId) error {
+	return s.Internal.ReleaseDirectDeals(p0, p1, p2)
 }
 func (s *IMarketStruct) RemovePieceStorage(p0 context.Context, p1 string) error {
 	return s.Internal.RemovePieceStorage(p0, p1)

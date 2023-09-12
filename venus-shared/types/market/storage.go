@@ -148,3 +148,92 @@ type ImportDataResult struct {
 	// deal import failed
 	Message string
 }
+
+type DirectDealState int
+
+const (
+	DealAllocation DirectDealState = iota + 1
+	DealSealing
+	DealActive
+	DealExpired
+	DealSlashed
+	DealError
+	// DealWaitForData
+)
+
+func (d DirectDealState) String() string {
+	switch d {
+	case DealAllocation:
+		return "DealAllocation"
+	// case DealWaitForData:
+	// 	return "DealWaitForData"
+	case DealSealing:
+		return "DealSealing"
+	case DealActive:
+		return "DealActive"
+	case DealExpired:
+		return "DealExpired"
+	case DealSlashed:
+		return "DealSlashed"
+	case DealError:
+		return "DealError"
+	}
+
+	return ""
+}
+
+type DirectDeal struct {
+	ID        uuid.UUID
+	PieceCID  cid.Cid
+	PieceSize abi.PaddedPieceSize
+	Client    address.Address
+	Provider  address.Address
+
+	PayloadSize uint64
+
+	State DirectDealState
+
+	AllocationID uint64
+	ClaimID      uint64
+
+	SectorID abi.SectorNumber
+	Offset   abi.PaddedPieceSize
+	Length   abi.PaddedPieceSize
+
+	StartEpoch abi.ChainEpoch
+	EndEpoch   abi.ChainEpoch
+
+	Message string
+
+	TimeStamp
+}
+
+type DirectDealParams struct {
+	// Commp will not be calculated and verified
+	SkipCommP bool
+	// not copy car file to piece storage
+	NoCopyCarFile bool
+	// skip generate index
+	SkipGenerateIndex bool
+
+	DealParams []DirectDealParam
+}
+
+type DirectDealParam struct {
+	// car file path
+	FilePath string
+	DealUUID uuid.UUID
+
+	AllocationID uint64
+	PieceCID     cid.Cid
+	Client       address.Address
+}
+
+type DirectDealQueryParams struct {
+	Provider address.Address
+	Client   address.Address
+	State    *DirectDealState
+
+	Page
+	Asc bool
+}

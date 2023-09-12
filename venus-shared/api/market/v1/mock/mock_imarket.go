@@ -16,11 +16,13 @@ import (
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	verifreg "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	types "github.com/filecoin-project/venus/venus-shared/actors/types"
 	types0 "github.com/filecoin-project/venus/venus-shared/types"
 	gateway "github.com/filecoin-project/venus/venus-shared/types/gateway"
 	market "github.com/filecoin-project/venus/venus-shared/types/market"
 	gomock "github.com/golang/mock/gomock"
+	uuid "github.com/google/uuid"
 	cid "github.com/ipfs/go-cid"
 	peer "github.com/libp2p/go-libp2p/core/peer"
 )
@@ -148,6 +150,21 @@ func (m *MockIMarket) AddS3PieceStorage(arg0 context.Context, arg1, arg2, arg3, 
 func (mr *MockIMarketMockRecorder) AddS3PieceStorage(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddS3PieceStorage", reflect.TypeOf((*MockIMarket)(nil).AddS3PieceStorage), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
+}
+
+// AssignDirectDeals mocks base method.
+func (m *MockIMarket) AssignDirectDeals(arg0 context.Context, arg1 abi.SectorID, arg2 abi.SectorSize, arg3 *market.GetDealSpec) ([]*market.DirectDealInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AssignDirectDeals", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]*market.DirectDealInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AssignDirectDeals indicates an expected call of AssignDirectDeals.
+func (mr *MockIMarketMockRecorder) AssignDirectDeals(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AssignDirectDeals", reflect.TypeOf((*MockIMarket)(nil).AssignDirectDeals), arg0, arg1, arg2, arg3)
 }
 
 // AssignUnPackedDeals mocks base method.
@@ -644,6 +661,36 @@ func (mr *MockIMarketMockRecorder) GetDeals(arg0, arg1, arg2, arg3 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeals", reflect.TypeOf((*MockIMarket)(nil).GetDeals), arg0, arg1, arg2, arg3)
 }
 
+// GetDirectDeal mocks base method.
+func (m *MockIMarket) GetDirectDeal(arg0 context.Context, arg1 uuid.UUID) (*market.DirectDeal, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDirectDeal", arg0, arg1)
+	ret0, _ := ret[0].(*market.DirectDeal)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDirectDeal indicates an expected call of GetDirectDeal.
+func (mr *MockIMarketMockRecorder) GetDirectDeal(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDirectDeal", reflect.TypeOf((*MockIMarket)(nil).GetDirectDeal), arg0, arg1)
+}
+
+// GetDirectDealByAllocatinoID mocks base method.
+func (m *MockIMarket) GetDirectDealByAllocatinoID(arg0 context.Context, arg1 uint64) (*market.DirectDeal, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDirectDealByAllocatinoID", arg0, arg1)
+	ret0, _ := ret[0].(*market.DirectDeal)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDirectDealByAllocatinoID indicates an expected call of GetDirectDealByAllocatinoID.
+func (mr *MockIMarketMockRecorder) GetDirectDealByAllocatinoID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDirectDealByAllocatinoID", reflect.TypeOf((*MockIMarket)(nil).GetDirectDealByAllocatinoID), arg0, arg1)
+}
+
 // GetRetrievalDealStatistic mocks base method.
 func (m *MockIMarket) GetRetrievalDealStatistic(arg0 context.Context, arg1 address.Address) (*market.RetrievalDealStatistic, error) {
 	m.ctrl.T.Helper()
@@ -702,6 +749,35 @@ func (m *MockIMarket) ID(arg0 context.Context) (peer.ID, error) {
 func (mr *MockIMarketMockRecorder) ID(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockIMarket)(nil).ID), arg0)
+}
+
+// ImportDirectDeal mocks base method.
+func (m *MockIMarket) ImportDirectDeal(arg0 context.Context, arg1 *market.DirectDealParams) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ImportDirectDeal", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ImportDirectDeal indicates an expected call of ImportDirectDeal.
+func (mr *MockIMarketMockRecorder) ImportDirectDeal(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImportDirectDeal", reflect.TypeOf((*MockIMarket)(nil).ImportDirectDeal), arg0, arg1)
+}
+
+// ListDirectDeals mocks base method.
+func (m *MockIMarket) ListDirectDeals(arg0 context.Context, arg1 market.DirectDealQueryParams) ([]*market.DirectDeal, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListDirectDeals", arg0, arg1)
+	ret0, _ := ret[0].([]*market.DirectDeal)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListDirectDeals indicates an expected call of ListDirectDeals.
+func (mr *MockIMarketMockRecorder) ListDirectDeals(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDirectDeals", reflect.TypeOf((*MockIMarket)(nil).ListDirectDeals), arg0, arg1)
 }
 
 // ListPieceStorageInfos mocks base method.
@@ -1348,6 +1424,20 @@ func (m *MockIMarket) ReleaseDeals(arg0 context.Context, arg1 address.Address, a
 func (mr *MockIMarketMockRecorder) ReleaseDeals(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseDeals", reflect.TypeOf((*MockIMarket)(nil).ReleaseDeals), arg0, arg1, arg2)
+}
+
+// ReleaseDirectDeals mocks base method.
+func (m *MockIMarket) ReleaseDirectDeals(arg0 context.Context, arg1 address.Address, arg2 []verifreg.AllocationId) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReleaseDirectDeals", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReleaseDirectDeals indicates an expected call of ReleaseDirectDeals.
+func (mr *MockIMarketMockRecorder) ReleaseDirectDeals(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseDirectDeals", reflect.TypeOf((*MockIMarket)(nil).ReleaseDirectDeals), arg0, arg1, arg2)
 }
 
 // RemovePieceStorage mocks base method.

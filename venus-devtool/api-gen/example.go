@@ -271,6 +271,8 @@ func init() {
 	uuidTmp := auuid.MustParse("102334ec-35a3-4b36-be9f-02883844503a")
 	addExample(&uuidTmp)
 
+	addExample(market.DirectDealState(1))
+
 	// eth types
 	ethint := types.EthUint64(5)
 	addExample(ethint)

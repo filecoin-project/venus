@@ -3,6 +3,7 @@ package market
 import (
 	"github.com/ipfs/go-cid"
 
+	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -65,6 +66,18 @@ type DealInfoIncludePath struct {
 	TotalStorageFee abi.TokenAmount
 	FastRetrieval   bool
 	PublishCid      cid.Cid
+}
+
+type DirectDealInfo struct {
+	AllocationID types.AllocationId
+	PieceCID     cid.Cid
+	PieceSize    abi.PaddedPieceSize
+	Client       address.Address
+	Provider     address.Address
+	Offset       abi.PaddedPieceSize
+	Length       abi.PaddedPieceSize
+	StartEpoch   abi.ChainEpoch
+	EndEpoch     abi.ChainEpoch
 }
 
 type PieceInfo struct {
