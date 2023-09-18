@@ -766,7 +766,7 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	return nil
 }
 
-var lengthBufMinerDeal = []byte{152, 24}
+var lengthBufMinerDeal = []byte{152, 25}
 
 func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -777,6 +777,19 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	cw := cbg.NewCborWriter(w)
 
 	if _, err := cw.Write(lengthBufMinerDeal); err != nil {
+		return err
+	}
+
+	// t.ID (uuid.UUID) (array)
+	if len(t.ID) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.ID was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajByteString, uint64(len(t.ID))); err != nil {
+		return err
+	}
+
+	if _, err := cw.Write(t.ID[:]); err != nil {
 		return err
 	}
 
@@ -996,10 +1009,33 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 24 {
+	if extra != 25 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
+	// t.ID (uuid.UUID) (array)
+
+	maj, extra, err = cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+
+	if extra > cbg.ByteArrayMaxLen {
+		return fmt.Errorf("t.ID: byte array too large (%d)", extra)
+	}
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+
+	if extra != 16 {
+		return fmt.Errorf("expected array to have 16 elements")
+	}
+
+	t.ID = [16]uint8{}
+
+	if _, err := io.ReadFull(cr, t.ID[:]); err != nil {
+		return err
+	}
 	// t.ClientDealProposal (market.ClientDealProposal) (struct)
 
 	{
