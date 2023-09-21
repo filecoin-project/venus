@@ -134,7 +134,7 @@ var newMinerCmd = &cmds.Command{
 			return fmt.Errorf("getting network version: %v", err)
 		}
 
-		spt, err := miner.SealProofTypeFromSectorSize(ssize, nv)
+		spt, err := miner.SealProofTypeFromSectorSize(ssize, nv, false)
 		if err != nil {
 			return fmt.Errorf("getting seal proof type: %v", err)
 		}
