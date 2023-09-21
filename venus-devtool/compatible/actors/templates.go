@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/filecoin-project/venus/venus-devtool/util"
 )
 
 const (
@@ -154,6 +156,13 @@ func fetchOne(srcDir, dstDir string, rel string, replacers [][2]string) error {
 	}
 
 	data = filterSamePkg(data)
+
+	if !strings.HasSuffix(dstPath, ".template") && !strings.HasSuffix(dstPath, ".md") {
+		data, err = util.FmtFile("", data)
+		if err != nil {
+			return err
+		}
+	}
 
 	_, err = io.Copy(fdst, bytes.NewReader(data))
 	if err != nil {
