@@ -599,7 +599,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 	}
 
 	// setup Storage Miners
-	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template.Miners, template.NetworkVersion, para)
+	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template.Miners, template.NetworkVersion, para, false)
 	if err != nil {
 		return nil, fmt.Errorf("setup miners failed: %w", err)
 	}

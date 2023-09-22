@@ -168,7 +168,6 @@ var replicaCmd = &cli.Command{
 			if strings.Contains(dir, "builtin") && strings.HasSuffix(file, ".go") {
 				pf := file[:strings.LastIndex(file, ".go")]
 				if strings.Contains(dir, pf) {
-					fmt.Println("path:", path)
 					return true
 				}
 			}
@@ -180,6 +179,15 @@ var replicaCmd = &cli.Command{
 
 			// skip test file
 			if strings.HasSuffix(path, "test.go") {
+				return true
+			}
+
+			// skip aerrors/error.go or aerrors/wrap.go
+			if strings.Contains(path, "aerrors/error.go") || strings.Contains(path, "aerrors/wrap.go") {
+				return true
+			}
+
+			if strings.Contains(path, "builtin/registry.go") {
 				return true
 			}
 
@@ -219,6 +227,7 @@ var replicaCmd = &cli.Command{
 			{"\"github.com/filecoin-project/lotus/chain/types\"", "\"github.com/filecoin-project/venus/venus-shared/actors/types\""},
 			{"\"github.com/filecoin-project/lotus/blockstore\"", "blockstore \"github.com/filecoin-project/venus/pkg/util/blockstoreutil\""},
 			{"golang.org/x/xerrors", "fmt"},
+			{"xerrors.Errorf", "fmt.Errorf"},
 		}
 
 		for _, file := range files {
