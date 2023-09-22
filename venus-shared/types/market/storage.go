@@ -128,6 +128,7 @@ type StorageDealQueryParams struct {
 	PieceCID string
 
 	Page
+	Asc bool
 }
 
 type ImportDataRef struct {
