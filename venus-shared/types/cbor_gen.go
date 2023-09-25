@@ -90,9 +90,11 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.Parents {
-		if err := cbg.WriteCid(w, v); err != nil {
-			return xerrors.Errorf("failed writing cid field t.Parents: %w", err)
+
+		if err := cbg.WriteCid(cw, v); err != nil {
+			return xerrors.Errorf("failed to write cid field v: %w", err)
 		}
+
 	}
 
 	// t.ParentWeight (big.Int) (struct)
@@ -248,13 +250,22 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		var v BeaconEntry
-		if err := v.UnmarshalCBOR(cr); err != nil {
-			return err
+			{
+
+				if err := t.BeaconEntries[i].UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.BeaconEntries[i]: %w", err)
+				}
+
+			}
 		}
-
-		t.BeaconEntries[i] = v
 	}
 
 	// t.WinPoStProof ([]proof.PoStProof) (slice)
@@ -277,13 +288,22 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		var v proof.PoStProof
-		if err := v.UnmarshalCBOR(cr); err != nil {
-			return err
+			{
+
+				if err := t.WinPoStProof[i].UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.WinPoStProof[i]: %w", err)
+				}
+
+			}
 		}
-
-		t.WinPoStProof[i] = v
 	}
 
 	// t.Parents ([]cid.Cid) (slice)
@@ -306,12 +326,25 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		c, err := cbg.ReadCid(cr)
-		if err != nil {
-			return xerrors.Errorf("reading cid field t.Parents failed: %w", err)
+			{
+
+				c, err := cbg.ReadCid(cr)
+				if err != nil {
+					return xerrors.Errorf("failed to read cid field t.Parents[i]: %w", err)
+				}
+
+				t.Parents[i] = c
+
+			}
 		}
-		t.Parents[i] = c
 	}
 
 	// t.ParentWeight (big.Int) (struct)
@@ -853,9 +886,11 @@ func (t *BlockMsg) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.BlsMessages {
-		if err := cbg.WriteCid(w, v); err != nil {
-			return xerrors.Errorf("failed writing cid field t.BlsMessages: %w", err)
+
+		if err := cbg.WriteCid(cw, v); err != nil {
+			return xerrors.Errorf("failed to write cid field v: %w", err)
 		}
+
 	}
 
 	// t.SecpkMessages ([]cid.Cid) (slice)
@@ -867,9 +902,11 @@ func (t *BlockMsg) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.SecpkMessages {
-		if err := cbg.WriteCid(w, v); err != nil {
-			return xerrors.Errorf("failed writing cid field t.SecpkMessages: %w", err)
+
+		if err := cbg.WriteCid(cw, v); err != nil {
+			return xerrors.Errorf("failed to write cid field v: %w", err)
 		}
+
 	}
 	return nil
 }
@@ -936,12 +973,25 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		c, err := cbg.ReadCid(cr)
-		if err != nil {
-			return xerrors.Errorf("reading cid field t.BlsMessages failed: %w", err)
+			{
+
+				c, err := cbg.ReadCid(cr)
+				if err != nil {
+					return xerrors.Errorf("failed to read cid field t.BlsMessages[i]: %w", err)
+				}
+
+				t.BlsMessages[i] = c
+
+			}
 		}
-		t.BlsMessages[i] = c
 	}
 
 	// t.SecpkMessages ([]cid.Cid) (slice)
@@ -964,12 +1014,25 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		c, err := cbg.ReadCid(cr)
-		if err != nil {
-			return xerrors.Errorf("reading cid field t.SecpkMessages failed: %w", err)
+			{
+
+				c, err := cbg.ReadCid(cr)
+				if err != nil {
+					return xerrors.Errorf("failed to read cid field t.SecpkMessages[i]: %w", err)
+				}
+
+				t.SecpkMessages[i] = c
+
+			}
 		}
-		t.SecpkMessages[i] = c
 	}
 
 	return nil
@@ -998,9 +1061,11 @@ func (t *ExpTipSet) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.Cids {
-		if err := cbg.WriteCid(w, v); err != nil {
-			return xerrors.Errorf("failed writing cid field t.Cids: %w", err)
+
+		if err := cbg.WriteCid(cw, v); err != nil {
+			return xerrors.Errorf("failed to write cid field v: %w", err)
 		}
+
 	}
 
 	// t.Blocks ([]*types.BlockHeader) (slice)
@@ -1073,12 +1138,25 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		c, err := cbg.ReadCid(cr)
-		if err != nil {
-			return xerrors.Errorf("reading cid field t.Cids failed: %w", err)
+			{
+
+				c, err := cbg.ReadCid(cr)
+				if err != nil {
+					return xerrors.Errorf("failed to read cid field t.Cids[i]: %w", err)
+				}
+
+				t.Cids[i] = c
+
+			}
 		}
-		t.Cids[i] = c
 	}
 
 	// t.Blocks ([]*types.BlockHeader) (slice)
@@ -1101,13 +1179,32 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		var v BlockHeader
-		if err := v.UnmarshalCBOR(cr); err != nil {
-			return err
+			{
+
+				b, err := cr.ReadByte()
+				if err != nil {
+					return err
+				}
+				if b != cbg.CborNull[0] {
+					if err := cr.UnreadByte(); err != nil {
+						return err
+					}
+					t.Blocks[i] = new(BlockHeader)
+					if err := t.Blocks[i].UnmarshalCBOR(cr); err != nil {
+						return xerrors.Errorf("unmarshaling t.Blocks[i] pointer: %w", err)
+					}
+				}
+
+			}
 		}
-
-		t.Blocks[i] = &v
 	}
 
 	// t.Height (abi.ChainEpoch) (int64)
@@ -1243,13 +1340,32 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		var v paych.SignedVoucher
-		if err := v.UnmarshalCBOR(cr); err != nil {
-			return err
+			{
+
+				b, err := cr.ReadByte()
+				if err != nil {
+					return err
+				}
+				if b != cbg.CborNull[0] {
+					if err := cr.UnreadByte(); err != nil {
+						return err
+					}
+					t.Vouchers[i] = new(paych.SignedVoucher)
+					if err := t.Vouchers[i].UnmarshalCBOR(cr); err != nil {
+						return xerrors.Errorf("unmarshaling t.Vouchers[i] pointer: %w", err)
+					}
+				}
+
+			}
 		}
-
-		t.Vouchers[i] = &v
 	}
 
 	return nil
@@ -1348,13 +1464,22 @@ func (t *Event) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		var v EventEntry
-		if err := v.UnmarshalCBOR(cr); err != nil {
-			return err
+			{
+
+				if err := t.Entries[i].UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.Entries[i]: %w", err)
+				}
+
+			}
 		}
-
-		t.Entries[i] = v
 	}
 
 	return nil
@@ -1387,7 +1512,7 @@ func (t *EventEntry) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Key))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Key)); err != nil {
+	if _, err := cw.WriteString(string(t.Key)); err != nil {
 		return err
 	}
 
@@ -1518,7 +1643,7 @@ func (t *GasTrace) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Name))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Name)); err != nil {
+	if _, err := cw.WriteString(string(t.Name)); err != nil {
 		return err
 	}
 
@@ -2171,13 +2296,32 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		var v GasTrace
-		if err := v.UnmarshalCBOR(cr); err != nil {
-			return err
+			{
+
+				b, err := cr.ReadByte()
+				if err != nil {
+					return err
+				}
+				if b != cbg.CborNull[0] {
+					if err := cr.UnreadByte(); err != nil {
+						return err
+					}
+					t.GasCharges[i] = new(GasTrace)
+					if err := t.GasCharges[i].UnmarshalCBOR(cr); err != nil {
+						return xerrors.Errorf("unmarshaling t.GasCharges[i] pointer: %w", err)
+					}
+				}
+
+			}
 		}
-
-		t.GasCharges[i] = &v
 	}
 
 	// t.Subcalls ([]types.ExecutionTrace) (slice)
@@ -2200,13 +2344,22 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		var v ExecutionTrace
-		if err := v.UnmarshalCBOR(cr); err != nil {
-			return err
+			{
+
+				if err := t.Subcalls[i].UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.Subcalls[i]: %w", err)
+				}
+
+			}
 		}
-
-		t.Subcalls[i] = v
 	}
 
 	return nil

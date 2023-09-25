@@ -32,7 +32,7 @@ require (
 	github.com/filecoin-project/go-fil-markets v1.27.0-rc1
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.12.1
+	github.com/filecoin-project/go-state-types v0.12.3
 	github.com/filecoin-project/pubsub v1.0.0
 	github.com/filecoin-project/specs-actors v0.9.15
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
@@ -93,7 +93,7 @@ require (
 	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
 	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
-	github.com/whyrusleeping/cbor-gen v0.0.0-20230126041949-52956bd4c9aa
+	github.com/whyrusleeping/cbor-gen v0.0.0-20230923211252-36a87e1ba72f
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	github.com/zyedidia/generic v1.2.1

@@ -55,7 +55,7 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeHyggeHeight:       -21,
 				UpgradeLightningHeight:   -22,
 				UpgradeThunderHeight:     -23,
-				UpgradeWatermelonHeight:  900,
+				UpgradeWatermelonHeight:  400,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,

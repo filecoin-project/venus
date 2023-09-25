@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 
 	"github.com/filecoin-project/go-address"
@@ -21,6 +22,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	market12 "github.com/filecoin-project/go-state-types/builtin/v12/market"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/state/tree"
@@ -519,25 +521,22 @@ func (msa *minerStateAPI) StateComputeDataCID(ctx context.Context, maddr address
 		return cid.Cid{}, err
 	}
 
-	var ccparams []byte
 	if nv < network.Version13 {
-		ccparams, err = actors.SerializeParams(&market2.ComputeDataCommitmentParams{
-			DealIDs:    deals,
-			SectorType: sectorType,
-		})
+		return msa.stateComputeDataCIDv1(ctx, maddr, sectorType, deals, tsk)
+	} else if nv < network.Version21 {
+		return msa.stateComputeDataCIDv2(ctx, maddr, sectorType, deals, tsk)
 	} else {
-		ccparams, err = actors.SerializeParams(&market5.ComputeDataCommitmentParams{
-			Inputs: []*market5.SectorDataSpec{
-				{
-					DealIDs:    deals,
-					SectorType: sectorType,
-				},
-			},
-		})
+		return msa.stateComputeDataCIDv3(ctx, maddr, sectorType, deals, tsk)
 	}
+}
 
-	if err != nil {
-		return cid.Undef, fmt.Errorf("computing params for ComputeDataCommitment: %w", err)
+func (msa *minerStateAPI) stateComputeDataCIDv1(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {
+	ccparams, actorErr := actors.SerializeParams(&market2.ComputeDataCommitmentParams{
+		DealIDs:    deals,
+		SectorType: sectorType,
+	})
+	if actorErr != nil {
+		return cid.Undef, fmt.Errorf("computing params for ComputeDataCommitment: %v", actorErr)
 	}
 
 	ccmt := &types.Message{
@@ -555,25 +554,97 @@ func (msa *minerStateAPI) StateComputeDataCID(ctx context.Context, maddr address
 		return cid.Undef, fmt.Errorf("receipt for ComputeDataCommitment had exit code %d", r.MsgRct.ExitCode)
 	}
 
-	if nv < network.Version13 {
-		var c cbg.CborCid
-		if err := c.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
-			return cid.Undef, fmt.Errorf("failed to unmarshal CBOR to CborCid: %w", err)
-		}
+	var c cbg.CborCid
+	if err := c.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
+		return cid.Undef, fmt.Errorf("failed to unmarshal CBOR to CborCid: %w", err)
+	}
 
-		return cid.Cid(c), nil
+	return cid.Cid(c), nil
+}
+
+func (msa *minerStateAPI) stateComputeDataCIDv2(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {
+	var err error
+	ccparams, err := actors.SerializeParams(&market5.ComputeDataCommitmentParams{
+		Inputs: []*market5.SectorDataSpec{
+			{
+				DealIDs:    deals,
+				SectorType: sectorType,
+			},
+		},
+	})
+
+	if err != nil {
+		return cid.Undef, fmt.Errorf("computing params for ComputeDataCommitment: %w", err)
+	}
+	ccmt := &types.Message{
+		To:     market.Address,
+		From:   maddr,
+		Value:  types.NewInt(0),
+		Method: market.Methods.ComputeDataCommitment,
+		Params: ccparams,
+	}
+	r, err := msa.API().StateCall(ctx, ccmt, tsk)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("calling ComputeDataCommitment: %w", err)
+	}
+	if r.MsgRct.ExitCode != 0 {
+		return cid.Undef, fmt.Errorf("receipt for ComputeDataCommitment had exit code %d", r.MsgRct.ExitCode)
 	}
 
 	var cr market5.ComputeDataCommitmentReturn
 	if err := cr.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
 		return cid.Undef, fmt.Errorf("failed to unmarshal CBOR to CborCid: %w", err)
 	}
-
 	if len(cr.CommDs) != 1 {
 		return cid.Undef, fmt.Errorf("CommD output must have 1 entry")
 	}
-
 	return cid.Cid(cr.CommDs[0]), nil
+}
+
+func (msa *minerStateAPI) stateComputeDataCIDv3(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {
+	if len(deals) == 0 {
+		return cid.Undef, nil
+	}
+
+	var err error
+	ccparams, err := actors.SerializeParams(&market12.VerifyDealsForActivationParams{
+		Sectors: []market12.SectorDeals{{
+			SectorType:   sectorType,
+			SectorExpiry: math.MaxInt64,
+			DealIDs:      deals,
+		}},
+	})
+
+	if err != nil {
+		return cid.Undef, fmt.Errorf("computing params for VerifyDealsForActivation: %w", err)
+	}
+	ccmt := &types.Message{
+		To:     market.Address,
+		From:   maddr,
+		Value:  types.NewInt(0),
+		Method: market.Methods.VerifyDealsForActivation,
+		Params: ccparams,
+	}
+	r, err := msa.API().StateCall(ctx, ccmt, tsk)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("calling VerifyDealsForActivation: %w", err)
+	}
+	if r.MsgRct.ExitCode != 0 {
+		return cid.Undef, fmt.Errorf("receipt for VerifyDealsForActivation had exit code %d", r.MsgRct.ExitCode)
+	}
+
+	var cr market12.VerifyDealsForActivationReturn
+	if err := cr.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
+		return cid.Undef, fmt.Errorf("failed to unmarshal CBOR to VerifyDealsForActivationReturn: %w", err)
+	}
+	if len(cr.UnsealedCIDs) != 1 {
+		return cid.Undef, fmt.Errorf("Sectors output must have 1 entry")
+	}
+	ucid := cr.UnsealedCIDs[0]
+	if ucid == nil {
+		return cid.Undef, fmt.Errorf("computed data CID is nil")
+	}
+	return *ucid, nil
 }
 
 var (
