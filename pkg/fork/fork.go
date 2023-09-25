@@ -638,7 +638,7 @@ func (c *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, height a
 	u := c.stateMigrations[height]
 	if u != nil && u.upgrade != nil {
 		migCid, ok, err := u.migrationResultCache.Get(ctx, root)
-		if err == nil && ok {
+		if err == nil && ok && !constants.NoMigrationResultCache {
 			log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
 			return migCid, nil
 		} else if err != nil {
