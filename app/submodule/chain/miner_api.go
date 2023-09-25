@@ -638,7 +638,7 @@ func (msa *minerStateAPI) stateComputeDataCIDv3(ctx context.Context, maddr addre
 		return cid.Undef, fmt.Errorf("failed to unmarshal CBOR to VerifyDealsForActivationReturn: %w", err)
 	}
 	if len(cr.UnsealedCIDs) != 1 {
-		return cid.Undef, fmt.Errorf("Sectors output must have 1 entry")
+		return cid.Undef, fmt.Errorf("sectors output must have 1 entry")
 	}
 	ucid := cr.UnsealedCIDs[0]
 	if ucid == nil {
