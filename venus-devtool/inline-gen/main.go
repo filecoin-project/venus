@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -21,7 +20,7 @@ const (
 var data = map[string]interface{}{}
 
 func main() {
-	db, err := ioutil.ReadFile(os.Args[2])
+	db, err := os.ReadFile(os.Args[2])
 	if err != nil {
 		log.Fatalf("Error reading file: %v", err)
 	}
@@ -46,7 +45,7 @@ func processFile(path string, info os.FileInfo, err error) error {
 		return nil
 	}
 
-	fileBytes, err := ioutil.ReadFile(path)
+	fileBytes, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
@@ -85,7 +84,7 @@ func processFile(path string, info os.FileInfo, err error) error {
 	}
 
 	if len(outLines) != len(lines) {
-		err = ioutil.WriteFile(path, []byte(strings.Join(outLines, "\n")), 0)
+		err = os.WriteFile(path, []byte(strings.Join(outLines, "\n")), 0)
 		if err != nil {
 			return fmt.Errorf("writing file: %v", err)
 		}
