@@ -167,7 +167,7 @@ func (t *MsgInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.ChannelID))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.ChannelID)); err != nil {
+	if _, err := cw.WriteString(string(t.ChannelID)); err != nil {
 		return err
 	}
 
@@ -190,7 +190,7 @@ func (t *MsgInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Err))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Err)); err != nil {
+	if _, err := cw.WriteString(string(t.Err)); err != nil {
 		return err
 	}
 
@@ -307,7 +307,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.ChannelID))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.ChannelID)); err != nil {
+	if _, err := cw.WriteString(string(t.ChannelID)); err != nil {
 		return err
 	}
 
@@ -512,13 +512,32 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
 
-		var v VoucherInfo
-		if err := v.UnmarshalCBOR(cr); err != nil {
-			return err
+			{
+
+				b, err := cr.ReadByte()
+				if err != nil {
+					return err
+				}
+				if b != cbg.CborNull[0] {
+					if err := cr.UnreadByte(); err != nil {
+						return err
+					}
+					t.Vouchers[i] = new(VoucherInfo)
+					if err := t.Vouchers[i].UnmarshalCBOR(cr); err != nil {
+						return xerrors.Errorf("unmarshaling t.Vouchers[i] pointer: %w", err)
+					}
+				}
+
+			}
 		}
-
-		t.Vouchers[i] = &v
 	}
 
 	// t.NextLane (uint64) (uint64)
@@ -823,7 +842,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Miner))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Miner)); err != nil {
+	if _, err := cw.WriteString(string(t.Miner)); err != nil {
 		return err
 	}
 
@@ -835,7 +854,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Client))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Client)); err != nil {
+	if _, err := cw.WriteString(string(t.Client)); err != nil {
 		return err
 	}
 
@@ -853,7 +872,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.PiecePath))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.PiecePath)); err != nil {
+	if _, err := cw.WriteString(string(t.PiecePath)); err != nil {
 		return err
 	}
 
@@ -871,7 +890,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.MetadataPath))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.MetadataPath)); err != nil {
+	if _, err := cw.WriteString(string(t.MetadataPath)); err != nil {
 		return err
 	}
 
@@ -899,7 +918,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Message))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Message)); err != nil {
+	if _, err := cw.WriteString(string(t.Message)); err != nil {
 		return err
 	}
 
@@ -954,7 +973,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.PieceStatus))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.PieceStatus)); err != nil {
+	if _, err := cw.WriteString(string(t.PieceStatus)); err != nil {
 		return err
 	}
 
@@ -966,7 +985,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.InboundCAR))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.InboundCAR)); err != nil {
+	if _, err := cw.WriteString(string(t.InboundCAR)); err != nil {
 		return err
 	}
 
@@ -1520,7 +1539,7 @@ func (t *ProviderDealState) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Receiver))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Receiver)); err != nil {
+	if _, err := cw.WriteString(string(t.Receiver)); err != nil {
 		return err
 	}
 
@@ -1543,7 +1562,7 @@ func (t *ProviderDealState) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Message))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Message)); err != nil {
+	if _, err := cw.WriteString(string(t.Message)); err != nil {
 		return err
 	}
 

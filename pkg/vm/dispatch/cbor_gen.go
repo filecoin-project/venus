@@ -40,7 +40,7 @@ func (t *SimpleParams) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Name))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Name)); err != nil {
+	if _, err := cw.WriteString(string(t.Name)); err != nil {
 		return err
 	}
 	return nil
