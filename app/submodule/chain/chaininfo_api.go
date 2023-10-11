@@ -386,7 +386,7 @@ func (cia *chainInfoAPI) StateGetRandomnessFromTickets(ctx context.Context, pers
 	}
 
 	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand, cia.chain.Fork.GetNetworkVersion)
-	digest, err := r.GetBeaconRandomness(ctx, randEpoch)
+	digest, err := r.GetChainRandomness(ctx, randEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("getting chain randomness: %w", err)
 	}
