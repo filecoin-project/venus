@@ -39,7 +39,7 @@ func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error)
 		SubscribtionCtx:      ctx,
 	}
 
-	if !cfg.EnableEthRPC || cfg.Event.EnableRealTimeFilterAPI {
+	if !cfg.EnableEthRPC || cfg.Event.DisableRealTimeFilterAPI {
 		// all event functionality is disabled
 		// the historic filter API relies on the real time one
 		return ee, nil
@@ -53,7 +53,7 @@ func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error)
 
 	// Enable indexing of actor events
 	var eventIndex *filter.EventIndex
-	if !cfg.Event.EnableHistoricFilterAPI {
+	if !cfg.Event.DisableHistoricFilterAPI {
 		var dbPath string
 		if len(cfg.Event.DatabasePath) == 0 {
 			dbPath = filepath.Join(ee.em.sqlitePath, "events.db")
@@ -119,7 +119,7 @@ type ethEventAPI struct {
 }
 
 func (e *ethEventAPI) Start(ctx context.Context) error {
-	if !e.em.cfg.FevmConfig.Event.EnableRealTimeFilterAPI {
+	if e.em.cfg.FevmConfig.Event.DisableRealTimeFilterAPI {
 		return nil
 	}
 
