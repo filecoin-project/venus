@@ -69,8 +69,9 @@ func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error)
 	}
 
 	ee.EventFilterManager = &filter.EventFilterManager{
-		ChainStore: bsstore,
-		EventIndex: eventIndex, // will be nil unless EnableHistoricFilterAPI is true
+		MessageStore: ee.em.chainModule.MessageStore,
+		ChainStore:   bsstore,
+		EventIndex:   eventIndex, // will be nil unless EnableHistoricFilterAPI is true
 		AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
 			// we only want to match using f4 addresses
 			idAddr, err := address.NewIDAddress(uint64(emitter))
