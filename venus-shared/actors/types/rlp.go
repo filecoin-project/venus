@@ -155,6 +155,9 @@ func decodeLength(data []byte, lenInBytes int) (length int, err error) {
 	if err := binary.Read(r, binary.BigEndian, &decodedLength); err != nil {
 		return 0, fmt.Errorf("invalid rlp data: cannot parse string length: %w", err)
 	}
+	if decodedLength < 0 {
+		return 0, fmt.Errorf("invalid rlp data: negative string length")
+	}
 
 	totalLength := lenInBytes + int(decodedLength)
 	if totalLength < 0 || totalLength > len(data) {

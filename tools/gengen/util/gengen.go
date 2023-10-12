@@ -7,14 +7,14 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	bserv "github.com/ipfs/go-blockservice"
+	bserv "github.com/ipfs/boxo/blockservice"
+	blockstore "github.com/ipfs/boxo/blockstore"
+	offline "github.com/ipfs/boxo/exchange/offline"
+	dag "github.com/ipfs/boxo/ipld/merkledag"
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
-	dag "github.com/ipfs/go-merkledag"
 	car "github.com/ipld/go-car"
 
 	"github.com/filecoin-project/venus/pkg/crypto"

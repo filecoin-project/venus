@@ -24,17 +24,20 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
 	gstStore "github.com/filecoin-project/go-state-types/store"
+	blockstore "github.com/ipfs/boxo/blockstore"
 	ipfsblock "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	dstore "github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
-	mh "github.com/multiformats/go-multihash"
+	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 
 	nv18 "github.com/filecoin-project/go-state-types/builtin/v10/migration"
 	nv19 "github.com/filecoin-project/go-state-types/builtin/v11/migration"
+	nv21 "github.com/filecoin-project/go-state-types/builtin/v12/migration"
 	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/go-state-types/migration"
 	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
@@ -55,6 +58,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/repo"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -385,6 +389,17 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			Height:    upgradeHeight.UpgradeThunderHeight,
 			Network:   network.Version20,
 			Migration: nil,
+		}, {
+			Height:    upgradeHeight.UpgradeWatermelonHeight,
+			Network:   network.Version21,
+			Migration: cf.UpgradeActorsV12,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV12,
+				StartWithin:     120,
+				DontStartWithin: 15,
+				StopWithin:      10,
+			}},
+			Expensive: true,
 		},
 	}
 
@@ -481,9 +496,47 @@ type versionSpec struct {
 }
 
 type Migration struct {
-	upgrade       MigrationFunc
-	preMigrations []PreMigration
-	cache         *nv16.MemMigrationCache
+	upgrade              MigrationFunc
+	preMigrations        []PreMigration
+	cache                *nv16.MemMigrationCache
+	migrationResultCache *migrationResultCache
+}
+
+type migrationResultCache struct {
+	ds        dstore.Batching
+	keyPrefix string
+}
+
+func (m *migrationResultCache) keyForMigration(root cid.Cid) dstore.Key {
+	str := fmt.Sprintf("%s/%s", m.keyPrefix, root)
+	return dstore.NewKey(str)
+}
+
+func (m *migrationResultCache) Get(ctx context.Context, root cid.Cid) (cid.Cid, bool, error) {
+	k := m.keyForMigration(root)
+
+	bs, err := m.ds.Get(ctx, k)
+	if ipld.IsNotFound(err) {
+		return cid.Undef, false, nil
+	} else if err != nil {
+		return cid.Undef, false, fmt.Errorf("error loading migration result: %w", err)
+	}
+
+	c, err := cid.Parse(bs)
+	if err != nil {
+		return cid.Undef, false, fmt.Errorf("error parsing migration result: %w", err)
+	}
+
+	return c, true, nil
+}
+
+func (m *migrationResultCache) Store(ctx context.Context, root cid.Cid, resultCid cid.Cid) error {
+	k := m.keyForMigration(root)
+	if err := m.ds.Put(ctx, k, resultCid.Bytes()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type ChainFork struct {
@@ -505,15 +558,24 @@ type ChainFork struct {
 	// upgrade param
 	networkType types.NetworkType
 	forkUpgrade *config.ForkUpgradeConfig
+
+	metadataDs repo.Datastore
 }
 
-func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore, bs blockstoreutil.Blockstore, networkParams *config.NetworkParamsConfig) (*ChainFork, error) {
+func NewChainFork(ctx context.Context,
+	cr chainReader,
+	ipldstore cbor.IpldStore,
+	bs blockstoreutil.Blockstore,
+	networkParams *config.NetworkParamsConfig,
+	metadataDs dstore.Batching,
+) (*ChainFork, error) {
 	fork := &ChainFork{
 		cr:          cr,
 		bs:          bs,
 		ipldstore:   ipldstore,
 		networkType: networkParams.NetworkType,
 		forkUpgrade: networkParams.ForkUpgradeParam,
+		metadataDs:  metadataDs,
 	}
 
 	// If we have upgrades, make sure they're in-order and make sense.
@@ -534,6 +596,10 @@ func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore,
 					upgrade:       upgrade.Migration,
 					preMigrations: upgrade.PreMigrations,
 					cache:         nv16.NewMemMigrationCache(),
+					migrationResultCache: &migrationResultCache{
+						keyPrefix: fmt.Sprintf("/migration-cache/nv%d", upgrade.Network),
+						ds:        metadataDs,
+					},
 				}
 				stateMigrations[upgrade.Height] = migration
 			}
@@ -569,9 +635,16 @@ func (c *ChainFork) StateTree(ctx context.Context, st cid.Cid) (*vmstate.State, 
 
 func (c *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	retCid := root
-	var err error
 	u := c.stateMigrations[height]
 	if u != nil && u.upgrade != nil {
+		migCid, ok, err := u.migrationResultCache.Get(ctx, root)
+		if err == nil && ok && !constants.NoMigrationResultCache {
+			log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
+			return migCid, nil
+		} else if err != nil {
+			log.Errorw("failed to lookup previous migration result", "err", err)
+		}
+
 		startTime := time.Now()
 		log.Warnw("STARTING migration", "height", height, "from", root)
 		// Yes, we clone the cache, even for the final upgrade epoch. Why? Reverts. We may
@@ -592,6 +665,11 @@ func (c *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, height a
 			"to", retCid,
 			"duration", time.Since(startTime),
 		)
+
+		// Only set if migration ran, we do not want a root => root mapping
+		if err := u.migrationResultCache.Store(ctx, root, retCid); err != nil {
+			log.Errorw("failed to store migration result", "err", err)
+		}
 	}
 
 	return retCid, nil
@@ -1360,15 +1438,15 @@ func (c *ChainFork) UpgradeRefuel(ctx context.Context, cache MigrationCache, roo
 }
 
 func linksForObj(blk ipfsblock.Block, cb func(cid.Cid)) error {
-	switch blk.Cid().Prefix().Codec {
-	case cid.DagCBOR:
+	switch multicodec.Code(blk.Cid().Prefix().Codec) {
+	case multicodec.DagCbor:
 		err := cbg.ScanForLinks(bytes.NewReader(blk.RawData()), cb)
 		if err != nil {
 			return fmt.Errorf("cbg.ScanForLinks: %v", err)
 		}
 		return nil
-	case cid.Raw:
-		// We implicitly have all children of raw blocks.
+	case multicodec.Raw, multicodec.Cbor:
+		// We implicitly have all children of raw/cbor blocks.
 		return nil
 	default:
 		return fmt.Errorf("vm flush copy method only supports dag cbor")
@@ -1394,14 +1472,17 @@ func copyRec(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid, 
 		}
 
 		prefix := link.Prefix()
-		if prefix.Codec == cid.FilCommitmentSealed || prefix.Codec == cid.FilCommitmentUnsealed {
+		codec := multicodec.Code(prefix.Codec)
+		switch codec {
+		case multicodec.FilCommitmentSealed, cid.FilCommitmentUnsealed:
 			return
 		}
 
 		// We always have blocks inlined into CIDs, but we may not have their children.
-		if prefix.MhType == mh.IDENTITY {
+		if multicodec.Code(prefix.MhType) == multicodec.Identity {
 			// Unless the inlined block has no children.
-			if prefix.Codec == cid.Raw {
+			switch codec {
+			case multicodec.Raw, multicodec.Cbor:
 				return
 			}
 		} else {
@@ -2552,6 +2633,122 @@ func (c *ChainFork) upgradeActorsV11Common(
 	if err := writeStore.Flush(ctx); err != nil {
 		return cid.Undef, fmt.Errorf("writeStore flush failed: %w", err)
 	}
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, fmt.Errorf("writeStore shutdown failed: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) PreUpgradeActorsV12(ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := MigrationMaxWorkerCount
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	nv := c.GetNetworkVersion(ctx, epoch)
+	lbts, lbRoot, err := c.cr.GetLookbackTipSetForRound(ctx, ts, epoch, nv)
+	if err != nil {
+		return fmt.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5,
+	}
+
+	_, err = c.upgradeActorsV12Common(ctx, cache, lbRoot, epoch, lbts, config)
+	return err
+}
+
+func (c *ChainFork) UpgradeActorsV12(ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+) (cid.Cid, error) {
+	// Use all the CPUs except 2.
+	workerCount := MigrationMaxWorkerCount - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+	newRoot, err := c.upgradeActorsV12Common(ctx, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("migrating actors v11 state: %w", err)
+	}
+	return newRoot, nil
+}
+
+func (c *ChainFork) upgradeActorsV12Common(
+	ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+	config migration.Config,
+) (cid.Cid, error) {
+	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB/4)
+	adtStore := adt.WrapStore(ctx, cbor.NewCborStore(writeStore))
+
+	// ensure that the manifest is loaded in the blockstore
+	if err := actors.LoadBundles(ctx, writeStore, actorstypes.Version12); err != nil {
+		return cid.Undef, fmt.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot vmstate.StateRoot
+	if err := adtStore.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, fmt.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != vmstate.StateTreeVersion5 {
+		return cid.Undef, fmt.Errorf(
+			"expected state root version 5 for actors v12 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version12)
+	if !ok {
+		return cid.Undef, fmt.Errorf("no manifest CID for v12 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv21.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
+		migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("upgrading to actors v12: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := adtStore.Put(ctx, &vmstate.StateRoot{
+		Version: vmstate.StateTreeVersion5,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, fmt.Errorf("writeStore flush failed: %w", err)
+	}
+
 	if err := writeStore.Shutdown(ctx); err != nil {
 		return cid.Undef, fmt.Errorf("writeStore shutdown failed: %w", err)
 	}

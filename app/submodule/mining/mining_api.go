@@ -94,7 +94,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		return nil, fmt.Errorf("failed to marshal miner address: %v", err)
 	}
 
-	prand, err := chain.DrawRandomness(rbase.Data, acrypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
+	prand, err := chain.DrawRandomnessFromBase(rbase.Data, acrypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get randomness for winning post: %v", err)
 	}

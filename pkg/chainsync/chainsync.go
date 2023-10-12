@@ -25,6 +25,7 @@ type BlockProposer interface {
 	SendHello(ci *types2.ChainInfo) error
 	SendOwnBlock(ci *types2.ChainInfo) error
 	SendGossipBlock(ci *types2.ChainInfo) error
+	IncomingBlocks(ctx context.Context) (<-chan *types2.BlockHeader, error)
 }
 
 var _ = (BlockProposer)((*dispatcher.Dispatcher)(nil))
@@ -53,7 +54,10 @@ func NewManager(
 	}
 
 	return Manager{
-		dispatcher: dispatcher.NewDispatcher(chainSyncer),
+		dispatcher: dispatcher.NewDispatcher(struct {
+			*syncer.Syncer
+			*consensus.BlockValidator
+		}{Syncer: chainSyncer, BlockValidator: hv}, submodule.ChainReader),
 	}, nil
 }
 

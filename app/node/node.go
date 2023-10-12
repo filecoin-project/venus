@@ -138,6 +138,10 @@ func (node *Node) ConfigModule() *configModule.ConfigModule {
 	return node.configModule
 }
 
+func (node *Node) Sync() *syncer2.SyncerSubmodule {
+	return node.syncer
+}
+
 func (node *Node) Repo() repo.Repo {
 	return node.repo
 }

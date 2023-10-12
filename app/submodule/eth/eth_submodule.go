@@ -18,6 +18,7 @@ func NewEthSubModule(ctx context.Context,
 	chainModule *chain.ChainSubmodule,
 	mpoolModule *mpool.MessagePoolSubmodule,
 	sqlitePath string,
+	syncAPI v1api.ISyncer,
 ) (*EthSubModule, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	em := &EthSubModule{
@@ -27,6 +28,7 @@ func NewEthSubModule(ctx context.Context,
 		sqlitePath:  sqlitePath,
 		ctx:         ctx,
 		cancel:      cancel,
+		syncAPI:     syncAPI,
 	}
 	ee, err := newEthEventAPI(ctx, em)
 	if err != nil {
@@ -66,8 +68,9 @@ type EthSubModule struct { // nolint
 	ethEventAPI   *ethEventAPI
 	ethAPIAdapter ethAPIAdapter
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx     context.Context
+	cancel  context.CancelFunc
+	syncAPI v1api.ISyncer
 }
 
 func (em *EthSubModule) Start(_ context.Context) error {

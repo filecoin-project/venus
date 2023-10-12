@@ -91,7 +91,14 @@ func mkFakedSigSyscalls(sys vmcontext.SyscallsImpl) vmcontext.SyscallsImpl {
 }
 
 // Note: Much of this is brittle, if the methodNum / param / return changes, it will break things
-func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, miners []Miner, nv network.Version, para *config.ForkUpgradeConfig) (cid.Cid, error) {
+func SetupStorageMiners(ctx context.Context,
+	cs *chain.Store,
+	sroot cid.Cid,
+	miners []Miner,
+	nv network.Version,
+	para *config.ForkUpgradeConfig,
+	synthetic bool,
+) (cid.Cid, error) {
 	cst := cbor.NewCborStore(cs.Blockstore())
 	av, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
@@ -140,14 +147,18 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		sectorWeight []abi.StoragePower
 	}, len(miners))
 
-	maxPeriods := policy.GetMaxSectorExpirationExtension() / minertypes.WPoStProvingPeriod
+	maxLifetime, err := policy.GetMaxSectorExpirationExtension(nv)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to get max extension: %w", err)
+	}
+	maxPeriods := maxLifetime / minertypes.WPoStProvingPeriod
 	rawPow, qaPow := big.NewInt(0), big.NewInt(0)
 	for i, m := range miners {
 		// Create miner through power actor
 		i := i
 		m := m
 
-		spt, err := miner.SealProofTypeFromSectorSize(m.SectorSize, nv)
+		spt, err := miner.SealProofTypeFromSectorSize(m.SectorSize, nv, synthetic)
 		if err != nil {
 			return cid.Undef, err
 		}
@@ -635,16 +646,16 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
 
-func (fr *fakeRand) ChainGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (fr *fakeRand) GetBeaconRandomness(ctx context.Context, randEpoch abi.ChainEpoch) ([32]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
-	return out, nil
+	return *(*[32]byte)(out), nil
 }
 
-func (fr *fakeRand) ChainGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (fr *fakeRand) GetChainRandomness(ctx context.Context, randEpoch abi.ChainEpoch) ([32]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
-	return out, nil
+	return *(*[32]byte)(out), nil
 }
 
 func currentTotalPower(ctx context.Context, vmi vm.Interface, maddr address.Address) (*power0.CurrentTotalPowerReturn, error) {

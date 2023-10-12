@@ -15,10 +15,10 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/types"
 
-	builtin11 "github.com/filecoin-project/go-state-types/builtin"
+	builtin12 "github.com/filecoin-project/go-state-types/builtin"
 )
 
-var Methods = builtin11.MethodsEVM
+var Methods = builtin12.MethodsEVM
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
@@ -34,6 +34,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		case actorstypes.Version11:
 			return load11(store, act.Head)
 
+		case actorstypes.Version12:
+			return load12(store, act.Head)
+
 		}
 	}
 
@@ -48,6 +51,9 @@ func MakeState(store adt.Store, av actorstypes.Version, bytecode cid.Cid) (State
 
 	case actorstypes.Version11:
 		return make11(store, bytecode)
+
+	case actorstypes.Version12:
+		return make12(store, bytecode)
 
 	default:
 		return nil, fmt.Errorf("evm actor only valid for actors v10 and above, got %d", av)

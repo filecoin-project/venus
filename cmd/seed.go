@@ -599,7 +599,7 @@ var preSealCmd = &cmds.Command{
 			nv = network.Version(ver)
 		}
 
-		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, nv)
+		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, nv, false)
 		if err != nil {
 			return err
 		}

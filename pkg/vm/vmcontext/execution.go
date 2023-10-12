@@ -132,6 +132,10 @@ func init() {
 		if err != nil {
 			panic(err)
 		}
+		if available > 24 {
+			vmlog.Warnf("LOTUS_FVM_CONCURRENCY is set to a high value that can cause chain sync panics on network "+
+				"migrations/upgrades, recommend 24 or less during network upgrades, current value: %v", available)
+		}
 	}
 
 	priority := DefaultPriorityExecutionLanes

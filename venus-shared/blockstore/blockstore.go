@@ -17,9 +17,9 @@ package blockstore
 import (
 	"context"
 
+	blockstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
 type BasicBlockstore = blockstore.Blockstore
@@ -51,6 +51,7 @@ type Blockstore interface {
 	blockstore.Blockstore
 	blockstore.Viewer
 	BatchDeleter
+	Flusher
 }
 
 // Alias so other packages don't have to import go-ipfs-blockstore
@@ -64,6 +65,10 @@ type (
 
 type BatchDeleter interface {
 	DeleteMany(ctx context.Context, cids []cid.Cid) error
+}
+
+type Flusher interface {
+	Flush(context.Context) error
 }
 
 var (
@@ -92,6 +97,13 @@ type adaptedBlockstore struct {
 }
 
 var _ Blockstore = (*adaptedBlockstore)(nil)
+
+func (a *adaptedBlockstore) Flush(ctx context.Context) error {
+	if flusher, canFlush := a.Blockstore.(Flusher); canFlush {
+		return flusher.Flush(ctx)
+	}
+	return nil
+}
 
 func (a *adaptedBlockstore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) error {
 	blk, err := a.Get(ctx, cid)

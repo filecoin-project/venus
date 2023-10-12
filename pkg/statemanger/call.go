@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/fvm"
 
-	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -52,8 +51,8 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
-func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*types.InvocResult, error) {
-	return s.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, s.GetNetworkVersion, true, true)
+func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, applyTSMessages bool) (*types.InvocResult, error) {
+	return s.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, s.GetNetworkVersion, true, applyTSMessages)
 }
 
 // CallAtStateAndVersion allows you to specify a message to execute on the given stateCid and network version.
@@ -117,12 +116,21 @@ func (s *Stmgr) callInternal(ctx context.Context, msg *types.Message, priorMsgs 
 	if stateCid == cid.Undef {
 		stateCid = ts.ParentState()
 	}
+	tsMsgs, err := s.ms.MessagesForTipset(ts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup messages for parent tipset: %w", err)
+	}
 	if applyTSMessages {
-		tsMsgs, err := s.ms.MessagesForTipset(ts)
-		if err != nil {
-			return nil, fmt.Errorf("failed to lookup messages for parent tipset: %w", err)
-		}
 		priorMsgs = append(tsMsgs, priorMsgs...)
+	} else {
+		var filteredTSMsgs []types.ChainMsg
+		for _, tsMsg := range tsMsgs {
+			//TODO we should technically be normalizing the filecoin address of from when we compare here
+			if tsMsg.VMMessage().From == msg.VMMessage().From {
+				filteredTSMsgs = append(filteredTSMsgs, tsMsg)
+			}
+		}
+		priorMsgs = append(filteredTSMsgs, priorMsgs...)
 	}
 
 	// Technically, the tipset we're passing in here should be ts+1, but that may not exist.
@@ -139,6 +147,7 @@ func (s *Stmgr) callInternal(ctx context.Context, msg *types.Message, priorMsgs 
 		)
 	}
 
+	random := chain.NewChainRandomnessSource(s.cs, ts.Key(), s.beacon, s.GetNetworkVersion)
 	buffStore := blockstoreutil.NewTieredBstore(s.cs.Blockstore(), blockstoreutil.NewTemporarySync())
 	vmopt := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
@@ -151,7 +160,7 @@ func (s *Stmgr) callInternal(ctx context.Context, msg *types.Message, priorMsgs 
 		PRoot:               stateCid,
 		Epoch:               ts.Height(),
 		Timestamp:           ts.MinTimestamp(),
-		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
+		Rnd:                 random,
 		Bsstore:             buffStore,
 		SysCallsImpl:        s.syscallsImpl,
 		GasPriceSchedule:    s.gasSchedule,

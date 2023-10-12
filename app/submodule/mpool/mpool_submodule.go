@@ -130,6 +130,7 @@ func (mp *MessagePoolSubmodule) Validate(ctx context.Context, pid peer.ID, msg *
 
 	if err := mp.MPool.Add(ctx, m); err != nil {
 		log.Debugf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
+
 		switch {
 		case errors.Is(err, messagepool.ErrSoftValidationFailure):
 			fallthrough
@@ -139,10 +140,21 @@ func (mp *MessagePoolSubmodule) Validate(ctx context.Context, pid peer.ID, msg *
 			fallthrough
 		case errors.Is(err, messagepool.ErrNonceGap):
 			fallthrough
+		case errors.Is(err, messagepool.ErrGasFeeCapTooLow):
+			fallthrough
 		case errors.Is(err, messagepool.ErrNonceTooLow):
+			fallthrough
+		case errors.Is(err, messagepool.ErrNotEnoughFunds):
 			fallthrough
 		case errors.Is(err, messagepool.ErrExistingNonce):
 			return pubsub.ValidationIgnore
+
+		case errors.Is(err, messagepool.ErrMessageTooBig):
+			fallthrough
+		case errors.Is(err, messagepool.ErrMessageValueTooHigh):
+			fallthrough
+		case errors.Is(err, messagepool.ErrInvalidToAddr):
+			fallthrough
 		default:
 			return pubsub.ValidationReject
 		}

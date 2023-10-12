@@ -59,7 +59,7 @@ func TestWalletBalance(t *testing.T) {
 
 	t.Log("[success] not found, zero")
 	balance := cmdClient.RunSuccess(ctx, "wallet", "balance", addr.String()).ReadStdout()
-	assert.Equal(t, "0 FIL\n", balance)
+	assert.Equal(t, "0 FIL (warning: may display 0 if chain sync in progress)\n", balance)
 
 	t.Log("[success] balance 1394000000000000000000000000")
 	balance = cmdClient.RunSuccess(ctx, "wallet", "balance", builtin.RewardActorAddr.String()).ReadStdout()
@@ -69,7 +69,7 @@ func TestWalletBalance(t *testing.T) {
 	var addrNew cmd.AddressResult
 	cmdClient.RunSuccessFirstLine(ctx, "wallet", "new")
 	balance = cmdClient.RunSuccess(ctx, "wallet", "balance", addrNew.Address.String()).ReadStdout()
-	assert.Equal(t, "0 FIL\n", balance)
+	assert.Equal(t, "0 FIL (warning: may display 0 if chain sync in progress)\n", balance)
 }
 
 func TestWalletLoadFromFile(t *testing.T) {

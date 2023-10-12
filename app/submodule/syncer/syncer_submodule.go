@@ -34,7 +34,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/boxo/blockservice"
 )
 
 var log = logging.Logger("sync.module") // nolint: deadcode
@@ -110,11 +110,10 @@ func NewSyncerSubmodule(ctx context.Context,
 		return nil, errors.Wrap(err, "failed to register block validator")
 	}
 
-	rnd := chn.API()
 	nodeConsensus := consensus.NewExpected(cborStore,
 		blockstore.Blockstore,
 		chn.ChainReader,
-		rnd,
+		chn.Drand,
 		chn.MessageStore,
 		chn.Fork,
 		gasPriceSchedule,
@@ -125,7 +124,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		config.Repo().Config().FevmConfig.EnableEthRPC,
 	)
 
-	stmgr, err := statemanger.NewStateManager(chn.ChainReader, chn.MessageStore, nodeConsensus, rnd,
+	stmgr, err := statemanger.NewStateManager(chn.ChainReader, chn.MessageStore, nodeConsensus, chn.Drand,
 		chn.Fork, gasPriceSchedule, chn.SystemCall, config.Repo().Config().NetworkParams.ActorDebugging)
 	if err != nil {
 		return nil, err
@@ -208,11 +207,13 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 
 		blkSvc := blockservice.New(syncer.BlockstoreModule.Blockstore, syncer.NetworkModule.Bitswap)
 
-		if _, err := syncer.NetworkModule.FetchMessagesByCids(ctx, blkSvc, bm.BlsMessages); err != nil {
+		blsMsgs, err := syncer.NetworkModule.FetchMessagesByCids(ctx, blkSvc, bm.BlsMessages)
+		if err != nil {
 			log.Errorf("fetch block bls messages failed:%s", err.Error())
 			return
 		}
-		if _, err := syncer.NetworkModule.FetchSignedMessagesByCids(ctx, blkSvc, bm.SecpkMessages); err != nil {
+		secpMsgs, err := syncer.NetworkModule.FetchSignedMessagesByCids(ctx, blkSvc, bm.SecpkMessages)
+		if err != nil {
 			log.Errorf("fetch block signed messages failed:%s", err.Error())
 			return
 		}
@@ -225,8 +226,12 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 
 		syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "new-block", 20)
 
-		ts, _ := types.NewTipSet([]*types.BlockHeader{header})
-		chainInfo := types.NewChainInfo(source, sender, ts)
+		fullBlock := &types.FullBlock{
+			Header:       header,
+			BLSMessages:  blsMsgs,
+			SECPMessages: secpMsgs,
+		}
+		chainInfo := types.NewChainInfo(source, sender, &types.FullTipSet{Blocks: []*types.FullBlock{fullBlock}})
 
 		if err = syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo); err != nil {
 			log.Errorf("failed to notify syncer of new block, block: %s", err)

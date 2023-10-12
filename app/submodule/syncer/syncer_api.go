@@ -32,13 +32,14 @@ func (sa *syncerAPI) SyncerTracker(ctx context.Context) *types.TargetTracker {
 	}
 	convertTarget := func(src *syncTypes.Target) *types.Target {
 		return &types.Target{
-			State:     convertSyncStateStage(src.State),
-			Base:      src.Base,
-			Current:   src.Current,
-			Start:     src.Start,
-			End:       src.End,
-			Err:       src.Err,
-			ChainInfo: src.ChainInfo,
+			State:   convertSyncStateStage(src.State),
+			Base:    src.Base,
+			Current: src.Current,
+			Start:   src.Start,
+			End:     src.End,
+			Err:     src.Err,
+			Head:    src.Head,
+			Sender:  src.Sender,
 		}
 	}
 	for _, target := range tracker.History() {
@@ -103,9 +104,16 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 	}
 
 	if !constants.NoSlashFilter {
-		if err := sa.syncer.SlashFilter.MinedBlock(ctx, blk.Header, parent.Height); err != nil {
-			log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-			return fmt.Errorf("<!!> SLASH FILTER ERROR: %v", err)
+		witness, fault, err := sa.syncer.SlashFilter.MinedBlock(ctx, blk.Header, parent.Height)
+		if err != nil {
+			log.Errorf("<!!> SLASH FILTER ERRORED: %s", err)
+			// Return an error here, because it's _probably_ wiser to not submit this block
+			return fmt.Errorf("<!!> SLASH FILTER ERRORED: %w", err)
+		}
+
+		if fault {
+			log.Errorf("<!!> SLASH FILTER DETECTED FAULT due to witness %s", witness)
+			return fmt.Errorf("<!!> SLASH FILTER DETECTED FAULT due to witness %s", witness)
 		}
 	}
 
@@ -129,16 +137,11 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 		return fmt.Errorf("provided messages did not match block: %v", err)
 	}
 
-	ts, err := types.NewTipSet([]*types.BlockHeader{blk.Header})
-	if err != nil {
-		return fmt.Errorf("somehow failed to make a tipset out of a single block: %v", err)
-	}
-
 	if _, err := chainModule.ChainReader.PutObject(ctx, blk.Header); err != nil {
 		return err
 	}
 	localPeer := sa.syncer.NetworkModule.Network.GetPeerID()
-	ci := types.NewChainInfo(localPeer, localPeer, ts)
+	ci := types.NewChainInfo(localPeer, localPeer, &types.FullTipSet{Blocks: []*types.FullBlock{fb}})
 	if err := sa.syncer.SyncProvider.HandleNewTipSet(ci); err != nil {
 		return fmt.Errorf("sync to submitted block failed: %v", err)
 	}
@@ -206,4 +209,8 @@ func (sa *syncerAPI) SyncState(ctx context.Context) (*types.SyncState, error) {
 	}
 
 	return syncState, nil
+}
+
+func (sa *syncerAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
+	return sa.syncer.ChainSyncManager.BlockProposer().IncomingBlocks(ctx)
 }

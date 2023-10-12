@@ -65,7 +65,7 @@ func (e *ethAPIDummy) EthGetTransactionByHashLimited(ctx context.Context, txHash
 	return nil, ErrModuleDisabled
 }
 
-func (e *ethAPIDummy) EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkOpt string) (types.EthUint64, error) {
+func (e *ethAPIDummy) EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthUint64, error) {
 	return 0, ErrModuleDisabled
 }
 
@@ -85,15 +85,15 @@ func (e *ethAPIDummy) EthGetTransactionByBlockNumberAndIndex(ctx context.Context
 	return types.EthTx{}, ErrModuleDisabled
 }
 
-func (e *ethAPIDummy) EthGetCode(ctx context.Context, address types.EthAddress, blkOpt string) (types.EthBytes, error) {
+func (e *ethAPIDummy) EthGetCode(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error) {
 	return nil, ErrModuleDisabled
 }
 
-func (e *ethAPIDummy) EthGetStorageAt(ctx context.Context, address types.EthAddress, position types.EthBytes, blkParam string) (types.EthBytes, error) {
+func (e *ethAPIDummy) EthGetStorageAt(ctx context.Context, address types.EthAddress, position types.EthBytes, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error) {
 	return nil, ErrModuleDisabled
 }
 
-func (e *ethAPIDummy) EthGetBalance(ctx context.Context, address types.EthAddress, blkParam string) (types.EthBigInt, error) {
+func (e *ethAPIDummy) EthGetBalance(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBigInt, error) {
 	return types.EthBigIntZero, ErrModuleDisabled
 }
 
@@ -103,6 +103,10 @@ func (e *ethAPIDummy) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (t
 
 func (e *ethAPIDummy) EthChainId(ctx context.Context) (types.EthUint64, error) {
 	return 0, ErrModuleDisabled
+}
+
+func (e *ethAPIDummy) EthSyncing(ctx context.Context) (types.EthSyncingResult, error) {
+	return types.EthSyncingResult{}, ErrModuleDisabled
 }
 
 func (e *ethAPIDummy) NetVersion(ctx context.Context) (string, error) {
@@ -125,7 +129,7 @@ func (e *ethAPIDummy) EthEstimateGas(ctx context.Context, tx types.EthCall) (typ
 	return 0, ErrModuleDisabled
 }
 
-func (e *ethAPIDummy) EthCall(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error) {
+func (e *ethAPIDummy) EthCall(ctx context.Context, tx types.EthCall, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error) {
 	return nil, ErrModuleDisabled
 }
 
@@ -139,6 +143,14 @@ func (e *ethAPIDummy) EthSendRawTransaction(ctx context.Context, rawTx types.Eth
 
 func (e *ethAPIDummy) Web3ClientVersion(ctx context.Context) (string, error) {
 	return "", ErrModuleDisabled
+}
+
+func (e *ethAPIDummy) EthTraceBlock(ctx context.Context, blkNum string) ([]*types.EthTraceBlock, error) {
+	return nil, ErrModuleDisabled
+}
+
+func (e *ethAPIDummy) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*types.EthTraceReplayBlockTransaction, error) {
+	return nil, ErrModuleDisabled
 }
 
 func (e *ethAPIDummy) start(_ context.Context) error {

@@ -7,11 +7,11 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/util/dag"
+	"github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
 
-	bserv "github.com/ipfs/go-blockservice"
+	bserv "github.com/ipfs/boxo/blockservice"
 )
 
 type IDagService interface {

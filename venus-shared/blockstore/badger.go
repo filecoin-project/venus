@@ -8,12 +8,12 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
+	blockstore "github.com/ipfs/boxo/blockstore"
+	dshelp "github.com/ipfs/boxo/datastore/dshelp"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/keytransform"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 )
@@ -196,6 +196,14 @@ func (b *BadgerBlockstore) View(ctx context.Context, cid cid.Cid, fn func([]byte
 	})
 }
 
+func (b *BadgerBlockstore) Flush(context.Context) error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	return b.DB.Sync()
+}
+
 // Has implements blockstore.Has.
 func (b *BadgerBlockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	if atomic.LoadInt64(&b.state) != stateOpen {
@@ -309,6 +317,20 @@ func (b *BadgerBlockstore) Put(ctx context.Context, block blocks.Block) error {
 		return nil
 	}
 
+	// Check if we have it before writing it.
+	switch err := b.DB.View(func(txn *badger.Txn) error {
+		_, err := txn.Get(key.Bytes())
+		return err
+	}); err {
+	case badger.ErrKeyNotFound:
+	case nil:
+		b.cache.Add(key.String(), block)
+		// Already exists, skip the put.
+		return nil
+	default:
+		return err
+	}
+
 	err := b.DB.Update(func(txn *badger.Txn) error {
 		err := txn.Set(key.Bytes(), block.RawData())
 		if err == nil {
@@ -336,6 +358,20 @@ func (b *BadgerBlockstore) PutMany(ctx context.Context, blks []blocks.Block) err
 		key := b.ConvertKey(block.Cid())
 		if _, ok := b.cache.Get(key.String()); ok {
 			continue
+		}
+
+		// Check if we have it before writing it.
+		switch err := b.DB.View(func(txn *badger.Txn) error {
+			_, err := txn.Get(key.Bytes())
+			return err
+		}); err {
+		case badger.ErrKeyNotFound:
+		case nil:
+			// skipped because we already have it.
+			continue
+		default:
+			// Something is actually wrong
+			return err
 		}
 
 		if err := batch.Set(key.Bytes(), block.RawData()); err != nil {

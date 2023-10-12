@@ -86,7 +86,7 @@ api-diff:
 api-perm:
 	cd venus-devtool && $(GO) run ./compatible/apis/*.go perm > ../venus-shared/compatible-checks/api-perm.txt
 
-compatible-actor: actor-templates actor-sources actor-render
+compatible-actor: actor-templates actor-sources actor-render actor-replica
 
 actor-templates:
 	cd venus-devtool && $(GO) run ./compatible/actors/*.go templates --dst ../venus-shared/actors/ > ../venus-shared/compatible-checks/actor-templates.txt

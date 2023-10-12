@@ -8,6 +8,7 @@ import (
 	"math/rand"
 
 	"github.com/filecoin-project/venus/pkg/beacon"
+	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -43,34 +44,15 @@ func (g *GenesisRandomnessSource) ChainGetRandomnessFromTickets(ctx context.Cont
 	return out, nil
 }
 
-func (g *GenesisRandomnessSource) GetChainRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
-	return out, nil
-}
-
-func (g *GenesisRandomnessSource) GetChainRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
-	return out, nil
-}
-
-func (g *GenesisRandomnessSource) GetBeaconRandomnessV3(ctx context.Context, pers crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (g *GenesisRandomnessSource) GetBeaconRandomness(ctx context.Context, randEpoch abi.ChainEpoch) ([32]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
-	return out, nil
+	return *(*[32]byte)(out), nil
 }
-
-func (g *GenesisRandomnessSource) GetBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (g *GenesisRandomnessSource) GetChainRandomness(ctx context.Context, randEpoch abi.ChainEpoch) ([32]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
-	return out, nil
-}
-
-func (g *GenesisRandomnessSource) GetBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
-	return out, nil
+	return *(*[32]byte)(out), nil
 }
 
 // Computes a random seed from raw ticket bytes.
@@ -82,14 +64,7 @@ func MakeRandomSeed(rawVRFProof types.VRFPi) (RandomSeed, error) {
 
 ///// GetRandomnessFromTickets derivation /////
 
-// RandomnessSource provides randomness to actors.
-type RandomnessSource interface {
-	GetChainRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetChainRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomnessV3(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error)
-}
+type RandomnessSource = vm.ChainRandomness
 
 type TipSetByHeight interface {
 	GetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
@@ -140,7 +115,7 @@ func (c *ChainRandomnessSource) GetBeaconRandomnessTipset(ctx context.Context, r
 // Note that this may produce the same value for different, neighbouring epochs when the epoch references a round
 // in which no blocks were produced (an empty tipset or "null block"). A caller desiring a unique see for each epoch
 // should blend in some distinguishing value (such as the epoch itself) into a hash of this ticket.
-func (c *ChainRandomnessSource) GetChainRandomness(ctx context.Context, epoch abi.ChainEpoch, lookback bool) (types.Ticket, error) {
+func (c *ChainRandomnessSource) getChainRandomness(ctx context.Context, epoch abi.ChainEpoch, lookback bool) (types.Ticket, error) {
 	if !c.head.IsEmpty() {
 		start, err := c.reader.GetTipSet(ctx, c.head)
 		if err != nil {
@@ -169,74 +144,78 @@ func (c *ChainRandomnessSource) GetChainRandomness(ctx context.Context, epoch ab
 }
 
 // network v0-12
-func (c *ChainRandomnessSource) GetChainRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	ticket, err := c.GetChainRandomness(ctx, round, true)
+func (c *ChainRandomnessSource) GetChainRandomnessV1(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
+	ticket, err := c.getChainRandomness(ctx, round, true)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
-	// if at (or just past -- for null epochs) appropriate epoch
-	// or at genesis (works for negative epochs)
-	return DrawRandomness(ticket.VRFProof, pers, round, entropy)
+
+	return blake2b.Sum256(ticket.VRFProof), nil
 }
 
 // network v13 and on
-func (c *ChainRandomnessSource) GetChainRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	ticket, err := c.GetChainRandomness(ctx, round, false)
+func (c *ChainRandomnessSource) GetChainRandomnessV2(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
+	ticket, err := c.getChainRandomness(ctx, round, false)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
-	// if at (or just past -- for null epochs) appropriate epoch
-	// or at genesis (works for negative epochs)
-	return DrawRandomness(ticket.VRFProof, pers, round, entropy)
+
+	return blake2b.Sum256(ticket.VRFProof), nil
+}
+
+func (c *ChainRandomnessSource) GetChainRandomness(ctx context.Context, filecoinEpoch abi.ChainEpoch) ([32]byte, error) {
+	nv := c.networkVersionGetter(ctx, filecoinEpoch)
+
+	if nv >= network.Version13 {
+		return c.GetChainRandomnessV2(ctx, filecoinEpoch)
+	}
+
+	return c.GetChainRandomnessV2(ctx, filecoinEpoch)
 }
 
 // network v0-12
-func (c *ChainRandomnessSource) GetBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (c *ChainRandomnessSource) GetBeaconRandomnessV1(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
 	randTS, err := c.GetBeaconRandomnessTipset(ctx, round, true)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
 	be, err := FindLatestDRAND(ctx, randTS, c.reader)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
-	// if at (or just past -- for null epochs) appropriate epoch
-	// or at genesis (works for negative epochs)
-	return DrawRandomness(be.Data, pers, round, entropy)
+	return blake2b.Sum256(be.Data), nil
 }
 
 // network v13
-func (c *ChainRandomnessSource) GetBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (c *ChainRandomnessSource) GetBeaconRandomnessV2(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
 	randTS, err := c.GetBeaconRandomnessTipset(ctx, round, false)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
 	be, err := FindLatestDRAND(ctx, randTS, c.reader)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
-	// if at (or just past -- for null epochs) appropriate epoch
-	// or at genesis (works for negative epochs)
-	return DrawRandomness(be.Data, pers, round, entropy)
+	return blake2b.Sum256(be.Data), nil
 }
 
 // network v14 and on
-func (c *ChainRandomnessSource) GetBeaconRandomnessV3(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (c *ChainRandomnessSource) GetBeaconRandomnessV3(ctx context.Context, filecoinEpoch abi.ChainEpoch) ([32]byte, error) {
 	if filecoinEpoch < 0 {
-		return c.GetBeaconRandomnessV2(ctx, pers, filecoinEpoch, entropy)
+		return c.GetBeaconRandomnessV2(ctx, filecoinEpoch)
 	}
 
 	be, err := c.extractBeaconEntryForEpoch(ctx, filecoinEpoch)
 	if err != nil {
 		log.Errorf("failed to get beacon entry as expected: %s", err)
-		return nil, err
+		return [32]byte{}, err
 	}
 
-	return DrawRandomness(be.Data, pers, filecoinEpoch, entropy)
+	return blake2b.Sum256(be.Data), nil
 }
 
 func (c *ChainRandomnessSource) extractBeaconEntryForEpoch(ctx context.Context, filecoinEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
@@ -268,6 +247,17 @@ func (c *ChainRandomnessSource) extractBeaconEntryForEpoch(ctx context.Context, 
 	return nil, fmt.Errorf("didn't find beacon for round %d (epoch %d)", round, filecoinEpoch)
 }
 
+func (c *ChainRandomnessSource) GetBeaconRandomness(ctx context.Context, randEpoch abi.ChainEpoch) ([32]byte, error) {
+	rnv := c.networkVersionGetter(ctx, randEpoch)
+	if rnv >= network.Version14 {
+		return c.GetBeaconRandomnessV3(ctx, randEpoch)
+	} else if rnv == network.Version13 {
+		return c.GetBeaconRandomnessV2(ctx, randEpoch)
+	}
+
+	return c.GetBeaconRandomnessV1(ctx, randEpoch)
+}
+
 // BlendEntropy get randomness with chain value. sha256(buf(tag, seed, epoch, entropy))
 func BlendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	buffer := bytes.Buffer{}
@@ -291,23 +281,8 @@ func BlendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, epoch abi.Cha
 	return bufHash[:], nil
 }
 
-func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	h := blake2b.New256()
-	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
-		return nil, fmt.Errorf("deriving randomness: %s", err)
-	}
-	VRFDigest := blake2b.Sum256(rbase)
-	_, err := h.Write(VRFDigest[:])
-	if err != nil {
-		return nil, fmt.Errorf("hashing VRFDigest: %s", err)
-	}
-	if err := binary.Write(h, binary.BigEndian, round); err != nil {
-		return nil, fmt.Errorf("deriving randomness: %s", err)
-	}
-	_, err = h.Write(entropy)
-	if err != nil {
-		return nil, fmt.Errorf("hashing entropy: %s", err)
-	}
-
-	return h.Sum(nil), nil
+func DrawRandomnessFromBase(rbase []byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return DrawRandomnessFromDigest(blake2b.Sum256(rbase), pers, round, entropy)
 }
+
+var DrawRandomnessFromDigest = vm.DrawRandomnessFromDigest

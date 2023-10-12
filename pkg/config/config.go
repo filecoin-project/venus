@@ -41,6 +41,7 @@ type Config struct {
 	RateLimitCfg  *RateLimitCfg        `json:"rateLimit"`
 	FevmConfig    *FevmConfig          `json:"fevm"`
 	PubsubConfig  *PubsubConfig        `json:"pubsub"`
+	FaultReporter *FaultReporterConfig `json:"faultReporter"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -333,6 +334,7 @@ type ForkUpgradeConfig struct {
 	UpgradeHyggeHeight         abi.ChainEpoch `json:"upgradeHyggeHeight"`
 	UpgradeLightningHeight     abi.ChainEpoch `json:"upgradeLightningHeight"`
 	UpgradeThunderHeight       abi.ChainEpoch `json:"upgradeThunderHeight"`
+	UpgradeWatermelonHeight    abi.ChainEpoch `json:"upgradeWatermelonHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -364,6 +366,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeHyggeHeight:       2683348,
 	UpgradeLightningHeight:   2809800,
 	UpgradeThunderHeight:     2809800 + 2880*21,
+	UpgradeWatermelonHeight:  999999999999999,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
@@ -479,6 +482,30 @@ func newPubsubConfig() *PubsubConfig {
 	return &PubsubConfig{Bootstrapper: false}
 }
 
+type FaultReporterConfig struct {
+	// EnableConsensusFaultReporter controls whether the node will monitor and
+	// report consensus faults. When enabled, the node will watch for malicious
+	// behaviors like double-mining and parent grinding, and submit reports to the
+	// network. This can earn reporter rewards, but is not guaranteed. Nodes should
+	// enable fault reporting with care, as it may increase resource usage, and may
+	// generate gas fees without earning rewards.
+	EnableConsensusFaultReporter bool `json:"enableConsensusFaultReporter"`
+
+	// ConsensusFaultReporterDataDir is the path where fault reporter state will be
+	// persisted. This directory should have adequate space and permissions for the
+	// node process.
+	ConsensusFaultReporterDataDir string `json:"consensusFaultReporterDataDir"`
+
+	// ConsensusFaultReporterAddress is the wallet address used for submitting
+	// ReportConsensusFault messages. It will pay for gas fees, and receive any
+	// rewards. This address should have adequate funds to cover gas fees.
+	ConsensusFaultReporterAddress string `json:"consensusFaultReporterAddress"`
+}
+
+func newFaultReporterConfig() *FaultReporterConfig {
+	return &FaultReporterConfig{}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -495,6 +522,7 @@ func NewDefaultConfig() *Config {
 		RateLimitCfg:  newRateLimitConfig(),
 		FevmConfig:    newFevmConfig(),
 		PubsubConfig:  newPubsubConfig(),
+		FaultReporter: newFaultReporterConfig(),
 	}
 }
 

@@ -15,10 +15,10 @@ import (
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	verifregtypes "github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/types"
 
 	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"

@@ -15,6 +15,8 @@ type SyncStore struct {
 	bs MemBlockstore // specifically use a memStore to save indirection overhead.
 }
 
+func (m *SyncStore) Flush(context.Context) error { return nil }
+
 func (m *SyncStore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	bstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-cid"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 )

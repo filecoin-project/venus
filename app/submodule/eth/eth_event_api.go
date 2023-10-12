@@ -26,8 +26,6 @@ import (
 	"github.com/zyedidia/generic/queue"
 )
 
-const ChainHeadConfidence = 1
-
 var _ v1.IETHEvent = (*ethEventAPI)(nil)
 
 func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error) {
@@ -128,7 +126,7 @@ func (e *ethEventAPI) Start(ctx context.Context) error {
 	// Start garbage collection for filters
 	go e.GC(ctx, time.Duration(e.em.cfg.FevmConfig.Event.FilterTTL))
 
-	ev, err := events.NewEventsWithConfidence(ctx, e.ChainAPI, ChainHeadConfidence)
+	ev, err := events.NewEvents(ctx, e.ChainAPI)
 	if err != nil {
 		return err
 	}
@@ -224,7 +222,7 @@ func (e *ethEventAPI) installEthFilterSpec(ctx context.Context, filterSpec *type
 			return nil, fmt.Errorf("must not specify block hash and from/to block")
 		}
 
-		// TODO: derive a tipset hash from eth hash - might need to push this down into the EventFilterManager
+		tipsetCid = filterSpec.BlockHash.ToCid()
 	} else {
 		if filterSpec.FromBlock == nil || *filterSpec.FromBlock == "latest" {
 			ts, err := e.ChainAPI.ChainHead(ctx)

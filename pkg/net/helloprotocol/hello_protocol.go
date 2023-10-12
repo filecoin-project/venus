@@ -157,20 +157,6 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	fullTipSet, err := h.loadLocalFullTipset(ctx, types.NewTipSetKey(hello.HeaviestTipSetCids...))
 	if err != nil {
 		fullTipSet, err = h.exchange.GetFullTipSet(ctx, []peer.ID{from}, types.NewTipSetKey(hello.HeaviestTipSetCids...)) //nolint
-		if err == nil {
-			for _, b := range fullTipSet.Blocks {
-				_, err = h.chainStore.PutObject(ctx, b.Header)
-				if err != nil {
-					log.Errorf("fail to save block to tipset")
-					return
-				}
-				_, err = h.messageStore.StoreMessages(ctx, b.SECPMessages, b.BLSMessages)
-				if err != nil {
-					log.Errorf("fail to save block to tipset")
-					return
-				}
-			}
-		}
 		h.host.ConnManager().TagPeer(from, "new-block", 40)
 	}
 	if err != nil {
@@ -183,7 +169,7 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	}
 
 	// notify the local node of the new `block.ChainInfo`
-	ci := types.NewChainInfo(from, from, fullTipSet.TipSet())
+	ci := types.NewChainInfo(from, from, fullTipSet)
 	h.peerDiscovered(ci)
 }
 

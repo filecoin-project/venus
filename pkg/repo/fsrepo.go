@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo/fskeystore"
 
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
+	bstore "github.com/ipfs/boxo/blockstore"
 
 	badgerds "github.com/ipfs/go-ds-badger2"
 	lockfile "github.com/ipfs/go-fs-lock"
@@ -24,7 +24,7 @@ import (
 )
 
 // Version is the version of repo schema that this code understands.
-const LatestVersion uint = 11
+const LatestVersion uint = 12
 
 const (
 	// apiFile is the filename containing the filecoin node's api address.

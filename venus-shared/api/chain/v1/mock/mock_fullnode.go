@@ -501,7 +501,7 @@ func (mr *MockFullNodeMockRecorder) EthBlockNumber(arg0 interface{}) *gomock.Cal
 }
 
 // EthCall mocks base method.
-func (m *MockFullNode) EthCall(arg0 context.Context, arg1 types.EthCall, arg2 string) (types.EthBytes, error) {
+func (m *MockFullNode) EthCall(arg0 context.Context, arg1 types.EthCall, arg2 types.EthBlockNumberOrHash) (types.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthCall", arg0, arg1, arg2)
 	ret0, _ := ret[0].(types.EthBytes)
@@ -576,7 +576,7 @@ func (mr *MockFullNodeMockRecorder) EthGasPrice(arg0 interface{}) *gomock.Call {
 }
 
 // EthGetBalance mocks base method.
-func (m *MockFullNode) EthGetBalance(arg0 context.Context, arg1 types.EthAddress, arg2 string) (types.EthBigInt, error) {
+func (m *MockFullNode) EthGetBalance(arg0 context.Context, arg1 types.EthAddress, arg2 types.EthBlockNumberOrHash) (types.EthBigInt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBalance", arg0, arg1, arg2)
 	ret0, _ := ret[0].(types.EthBigInt)
@@ -651,7 +651,7 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockTransactionCountByNumber(arg0, ar
 }
 
 // EthGetCode mocks base method.
-func (m *MockFullNode) EthGetCode(arg0 context.Context, arg1 types.EthAddress, arg2 string) (types.EthBytes, error) {
+func (m *MockFullNode) EthGetCode(arg0 context.Context, arg1 types.EthAddress, arg2 types.EthBlockNumberOrHash) (types.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetCode", arg0, arg1, arg2)
 	ret0, _ := ret[0].(types.EthBytes)
@@ -726,7 +726,7 @@ func (mr *MockFullNodeMockRecorder) EthGetMessageCidByTransactionHash(arg0, arg1
 }
 
 // EthGetStorageAt mocks base method.
-func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 types.EthAddress, arg2 types.EthBytes, arg3 string) (types.EthBytes, error) {
+func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 types.EthAddress, arg2 types.EthBytes, arg3 types.EthBlockNumberOrHash) (types.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetStorageAt", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(types.EthBytes)
@@ -801,7 +801,7 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByHashLimited(arg0, arg1, a
 }
 
 // EthGetTransactionCount mocks base method.
-func (m *MockFullNode) EthGetTransactionCount(arg0 context.Context, arg1 types.EthAddress, arg2 string) (types.EthUint64, error) {
+func (m *MockFullNode) EthGetTransactionCount(arg0 context.Context, arg1 types.EthAddress, arg2 types.EthBlockNumberOrHash) (types.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionCount", arg0, arg1, arg2)
 	ret0, _ := ret[0].(types.EthUint64)
@@ -963,6 +963,51 @@ func (m *MockFullNode) EthSubscribe(arg0 context.Context, arg1 jsonrpc.RawParams
 func (mr *MockFullNodeMockRecorder) EthSubscribe(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSubscribe", reflect.TypeOf((*MockFullNode)(nil).EthSubscribe), arg0, arg1)
+}
+
+// EthSyncing mocks base method.
+func (m *MockFullNode) EthSyncing(arg0 context.Context) (types.EthSyncingResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthSyncing", arg0)
+	ret0, _ := ret[0].(types.EthSyncingResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthSyncing indicates an expected call of EthSyncing.
+func (mr *MockFullNodeMockRecorder) EthSyncing(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSyncing", reflect.TypeOf((*MockFullNode)(nil).EthSyncing), arg0)
+}
+
+// EthTraceBlock mocks base method.
+func (m *MockFullNode) EthTraceBlock(arg0 context.Context, arg1 string) ([]*types.EthTraceBlock, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthTraceBlock", arg0, arg1)
+	ret0, _ := ret[0].([]*types.EthTraceBlock)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthTraceBlock indicates an expected call of EthTraceBlock.
+func (mr *MockFullNodeMockRecorder) EthTraceBlock(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceBlock", reflect.TypeOf((*MockFullNode)(nil).EthTraceBlock), arg0, arg1)
+}
+
+// EthTraceReplayBlockTransactions mocks base method.
+func (m *MockFullNode) EthTraceReplayBlockTransactions(arg0 context.Context, arg1 string, arg2 []string) ([]*types.EthTraceReplayBlockTransaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthTraceReplayBlockTransactions", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*types.EthTraceReplayBlockTransaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthTraceReplayBlockTransactions indicates an expected call of EthTraceReplayBlockTransactions.
+func (mr *MockFullNodeMockRecorder) EthTraceReplayBlockTransactions(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceReplayBlockTransactions", reflect.TypeOf((*MockFullNode)(nil).EthTraceReplayBlockTransactions), arg0, arg1, arg2)
 }
 
 // EthUninstallFilter mocks base method.
@@ -2480,6 +2525,36 @@ func (mr *MockFullNodeMockRecorder) StateGetNetworkParams(arg0 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetNetworkParams", reflect.TypeOf((*MockFullNode)(nil).StateGetNetworkParams), arg0)
 }
 
+// StateGetRandomnessDigestFromBeacon mocks base method.
+func (m *MockFullNode) StateGetRandomnessDigestFromBeacon(arg0 context.Context, arg1 abi.ChainEpoch, arg2 types0.TipSetKey) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessDigestFromBeacon", arg0, arg1, arg2)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessDigestFromBeacon indicates an expected call of StateGetRandomnessDigestFromBeacon.
+func (mr *MockFullNodeMockRecorder) StateGetRandomnessDigestFromBeacon(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessDigestFromBeacon", reflect.TypeOf((*MockFullNode)(nil).StateGetRandomnessDigestFromBeacon), arg0, arg1, arg2)
+}
+
+// StateGetRandomnessDigestFromTickets mocks base method.
+func (m *MockFullNode) StateGetRandomnessDigestFromTickets(arg0 context.Context, arg1 abi.ChainEpoch, arg2 types0.TipSetKey) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessDigestFromTickets", arg0, arg1, arg2)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessDigestFromTickets indicates an expected call of StateGetRandomnessDigestFromTickets.
+func (mr *MockFullNodeMockRecorder) StateGetRandomnessDigestFromTickets(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessDigestFromTickets", reflect.TypeOf((*MockFullNode)(nil).StateGetRandomnessDigestFromTickets), arg0, arg1, arg2)
+}
+
 // StateGetRandomnessFromBeacon mocks base method.
 func (m *MockFullNode) StateGetRandomnessFromBeacon(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 types0.TipSetKey) (abi.Randomness, error) {
 	m.ctrl.T.Helper()
@@ -3108,6 +3183,21 @@ func (m *MockFullNode) StateWaitMsg(arg0 context.Context, arg1 cid.Cid, arg2 uin
 func (mr *MockFullNodeMockRecorder) StateWaitMsg(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateWaitMsg", reflect.TypeOf((*MockFullNode)(nil).StateWaitMsg), arg0, arg1, arg2, arg3, arg4)
+}
+
+// SyncIncomingBlocks mocks base method.
+func (m *MockFullNode) SyncIncomingBlocks(arg0 context.Context) (<-chan *types0.BlockHeader, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SyncIncomingBlocks", arg0)
+	ret0, _ := ret[0].(<-chan *types0.BlockHeader)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SyncIncomingBlocks indicates an expected call of SyncIncomingBlocks.
+func (mr *MockFullNodeMockRecorder) SyncIncomingBlocks(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncIncomingBlocks", reflect.TypeOf((*MockFullNode)(nil).SyncIncomingBlocks), arg0)
 }
 
 // SyncState mocks base method.

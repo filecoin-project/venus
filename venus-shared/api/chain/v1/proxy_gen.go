@@ -259,47 +259,49 @@ func (s *IMinerStateStruct) StateVerifiedClientStatus(p0 context.Context, p1 add
 
 type IChainInfoStruct struct {
 	Internal struct {
-		BlockTime                     func(ctx context.Context) time.Duration                                                                                                                      `perm:"read"`
-		ChainExport                   func(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)                                                                          `perm:"read"`
-		ChainGetBlock                 func(ctx context.Context, id cid.Cid) (*types.BlockHeader, error)                                                                                            `perm:"read"`
-		ChainGetBlockMessages         func(ctx context.Context, bid cid.Cid) (*types.BlockMessages, error)                                                                                         `perm:"read"`
-		ChainGetEvents                func(context.Context, cid.Cid) ([]types.Event, error)                                                                                                        `perm:"read"`
-		ChainGetGenesis               func(context.Context) (*types.TipSet, error)                                                                                                                 `perm:"read"`
-		ChainGetMessage               func(ctx context.Context, msgID cid.Cid) (*types.Message, error)                                                                                             `perm:"read"`
-		ChainGetMessagesInTipset      func(ctx context.Context, key types.TipSetKey) ([]types.MessageCID, error)                                                                                   `perm:"read"`
-		ChainGetParentMessages        func(ctx context.Context, bcid cid.Cid) ([]types.MessageCID, error)                                                                                          `perm:"read"`
-		ChainGetParentReceipts        func(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error)                                                                                     `perm:"read"`
-		ChainGetPath                  func(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error)                                                             `perm:"read"`
-		ChainGetReceipts              func(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error)                                                                                        `perm:"read"`
-		ChainGetTipSet                func(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)                                                                                        `perm:"read"`
-		ChainGetTipSetAfterHeight     func(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)                                                                 `perm:"read"`
-		ChainGetTipSetByHeight        func(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)                                                                 `perm:"read"`
-		ChainHead                     func(ctx context.Context) (*types.TipSet, error)                                                                                                             `perm:"read"`
-		ChainList                     func(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error)                                                                       `perm:"read"`
-		ChainNotify                   func(ctx context.Context) (<-chan []*types.HeadChange, error)                                                                                                `perm:"read"`
-		ChainSetHead                  func(ctx context.Context, key types.TipSetKey) error                                                                                                         `perm:"admin"`
-		GetActor                      func(ctx context.Context, addr address.Address) (*types.Actor, error)                                                                                        `perm:"read"`
-		GetEntry                      func(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)                                                                   `perm:"read"`
-		GetFullBlock                  func(ctx context.Context, id cid.Cid) (*types.FullBlock, error)                                                                                              `perm:"read"`
-		GetParentStateRootActor       func(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error)                                                                      `perm:"read"`
-		ProtocolParameters            func(ctx context.Context) (*types.ProtocolParams, error)                                                                                                     `perm:"read"`
-		ResolveToKeyAddr              func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)                                                                   `perm:"read"`
-		StateActorCodeCIDs            func(context.Context, network.Version) (map[string]cid.Cid, error)                                                                                           `perm:"read"`
-		StateActorManifestCID         func(context.Context, network.Version) (cid.Cid, error)                                                                                                      `perm:"read"`
-		StateCall                     func(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error)                                                               `perm:"read"`
-		StateCompute                  func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*types.ComputeStateOutput, error)                                                  `perm:"read"`
-		StateGetBeaconEntry           func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)                                                                                  `perm:"read"`
-		StateGetNetworkParams         func(ctx context.Context) (*types.NetworkParams, error)                                                                                                      `perm:"read"`
-		StateGetRandomnessFromBeacon  func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
-		StateGetRandomnessFromTickets func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
-		StateNetworkName              func(ctx context.Context) (types.NetworkName, error)                                                                                                         `perm:"read"`
-		StateNetworkVersion           func(ctx context.Context, tsk types.TipSetKey) (network.Version, error)                                                                                      `perm:"read"`
-		StateReplay                   func(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error)                                                                                  `perm:"read"`
-		StateSearchMsg                func(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)                             `perm:"read"`
-		StateVerifiedRegistryRootKey  func(ctx context.Context, tsk types.TipSetKey) (address.Address, error)                                                                                      `perm:"read"`
-		StateVerifierStatus           func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)                                                              `perm:"read"`
-		StateWaitMsg                  func(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)                                `perm:"read"`
-		VerifyEntry                   func(parent, child *types.BeaconEntry, height abi.ChainEpoch) bool                                                                                           `perm:"read"`
+		BlockTime                           func(ctx context.Context) time.Duration                                                                                                                      `perm:"read"`
+		ChainExport                         func(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)                                                                          `perm:"read"`
+		ChainGetBlock                       func(ctx context.Context, id cid.Cid) (*types.BlockHeader, error)                                                                                            `perm:"read"`
+		ChainGetBlockMessages               func(ctx context.Context, bid cid.Cid) (*types.BlockMessages, error)                                                                                         `perm:"read"`
+		ChainGetEvents                      func(context.Context, cid.Cid) ([]types.Event, error)                                                                                                        `perm:"read"`
+		ChainGetGenesis                     func(context.Context) (*types.TipSet, error)                                                                                                                 `perm:"read"`
+		ChainGetMessage                     func(ctx context.Context, msgID cid.Cid) (*types.Message, error)                                                                                             `perm:"read"`
+		ChainGetMessagesInTipset            func(ctx context.Context, key types.TipSetKey) ([]types.MessageCID, error)                                                                                   `perm:"read"`
+		ChainGetParentMessages              func(ctx context.Context, bcid cid.Cid) ([]types.MessageCID, error)                                                                                          `perm:"read"`
+		ChainGetParentReceipts              func(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error)                                                                                     `perm:"read"`
+		ChainGetPath                        func(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error)                                                             `perm:"read"`
+		ChainGetReceipts                    func(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error)                                                                                        `perm:"read"`
+		ChainGetTipSet                      func(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)                                                                                        `perm:"read"`
+		ChainGetTipSetAfterHeight           func(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)                                                                 `perm:"read"`
+		ChainGetTipSetByHeight              func(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)                                                                 `perm:"read"`
+		ChainHead                           func(ctx context.Context) (*types.TipSet, error)                                                                                                             `perm:"read"`
+		ChainList                           func(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error)                                                                       `perm:"read"`
+		ChainNotify                         func(ctx context.Context) (<-chan []*types.HeadChange, error)                                                                                                `perm:"read"`
+		ChainSetHead                        func(ctx context.Context, key types.TipSetKey) error                                                                                                         `perm:"admin"`
+		GetActor                            func(ctx context.Context, addr address.Address) (*types.Actor, error)                                                                                        `perm:"read"`
+		GetEntry                            func(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)                                                                   `perm:"read"`
+		GetFullBlock                        func(ctx context.Context, id cid.Cid) (*types.FullBlock, error)                                                                                              `perm:"read"`
+		GetParentStateRootActor             func(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error)                                                                      `perm:"read"`
+		ProtocolParameters                  func(ctx context.Context) (*types.ProtocolParams, error)                                                                                                     `perm:"read"`
+		ResolveToKeyAddr                    func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)                                                                   `perm:"read"`
+		StateActorCodeCIDs                  func(context.Context, network.Version) (map[string]cid.Cid, error)                                                                                           `perm:"read"`
+		StateActorManifestCID               func(context.Context, network.Version) (cid.Cid, error)                                                                                                      `perm:"read"`
+		StateCall                           func(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error)                                                               `perm:"read"`
+		StateCompute                        func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*types.ComputeStateOutput, error)                                                  `perm:"read"`
+		StateGetBeaconEntry                 func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)                                                                                  `perm:"read"`
+		StateGetNetworkParams               func(ctx context.Context) (*types.NetworkParams, error)                                                                                                      `perm:"read"`
+		StateGetRandomnessDigestFromBeacon  func(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error)                                                             `perm:"read"`
+		StateGetRandomnessDigestFromTickets func(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error)                                                             `perm:"read"`
+		StateGetRandomnessFromBeacon        func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
+		StateGetRandomnessFromTickets       func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
+		StateNetworkName                    func(ctx context.Context) (types.NetworkName, error)                                                                                                         `perm:"read"`
+		StateNetworkVersion                 func(ctx context.Context, tsk types.TipSetKey) (network.Version, error)                                                                                      `perm:"read"`
+		StateReplay                         func(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error)                                                                                  `perm:"read"`
+		StateSearchMsg                      func(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)                             `perm:"read"`
+		StateVerifiedRegistryRootKey        func(ctx context.Context, tsk types.TipSetKey) (address.Address, error)                                                                                      `perm:"read"`
+		StateVerifierStatus                 func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)                                                              `perm:"read"`
+		StateWaitMsg                        func(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)                                `perm:"read"`
+		VerifyEntry                         func(parent, child *types.BeaconEntry, height abi.ChainEpoch) bool                                                                                           `perm:"read"`
 	}
 }
 
@@ -395,6 +397,12 @@ func (s *IChainInfoStruct) StateGetBeaconEntry(p0 context.Context, p1 abi.ChainE
 }
 func (s *IChainInfoStruct) StateGetNetworkParams(p0 context.Context) (*types.NetworkParams, error) {
 	return s.Internal.StateGetNetworkParams(p0)
+}
+func (s *IChainInfoStruct) StateGetRandomnessDigestFromBeacon(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) {
+	return s.Internal.StateGetRandomnessDigestFromBeacon(p0, p1, p2)
+}
+func (s *IChainInfoStruct) StateGetRandomnessDigestFromTickets(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) {
+	return s.Internal.StateGetRandomnessDigestFromTickets(p0, p1, p2)
 }
 func (s *IChainInfoStruct) StateGetRandomnessFromBeacon(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) {
 	return s.Internal.StateGetRandomnessFromBeacon(p0, p1, p2, p3, p4)
@@ -728,6 +736,7 @@ type ISyncerStruct struct {
 		ChainTipSetWeight        func(ctx context.Context, tsk types.TipSetKey) (big.Int, error) `perm:"read"`
 		Concurrent               func(ctx context.Context) int64                                 `perm:"read"`
 		SetConcurrent            func(ctx context.Context, concurrent int64) error               `perm:"admin"`
+		SyncIncomingBlocks       func(ctx context.Context) (<-chan *types.BlockHeader, error)    `perm:"read"`
 		SyncState                func(ctx context.Context) (*types.SyncState, error)             `perm:"read"`
 		SyncSubmitBlock          func(ctx context.Context, blk *types.BlockMsg) error            `perm:"write"`
 		SyncerTracker            func(ctx context.Context) *types.TargetTracker                  `perm:"read"`
@@ -743,6 +752,9 @@ func (s *ISyncerStruct) ChainTipSetWeight(p0 context.Context, p1 types.TipSetKey
 func (s *ISyncerStruct) Concurrent(p0 context.Context) int64 { return s.Internal.Concurrent(p0) }
 func (s *ISyncerStruct) SetConcurrent(p0 context.Context, p1 int64) error {
 	return s.Internal.SetConcurrent(p0, p1)
+}
+func (s *ISyncerStruct) SyncIncomingBlocks(p0 context.Context) (<-chan *types.BlockHeader, error) {
+	return s.Internal.SyncIncomingBlocks(p0)
 }
 func (s *ISyncerStruct) SyncState(p0 context.Context) (*types.SyncState, error) {
 	return s.Internal.SyncState(p0)
@@ -838,37 +850,40 @@ func (s *ICommonStruct) Version(p0 context.Context) (types.Version, error) {
 
 type IETHStruct struct {
 	Internal struct {
-		EthAccounts                            func(ctx context.Context) ([]types.EthAddress, error)                                                                 `perm:"read"`
-		EthAddressToFilecoinAddress            func(ctx context.Context, ethAddress types.EthAddress) (address.Address, error)                                       `perm:"read"`
-		EthBlockNumber                         func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
-		EthCall                                func(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error)                                  `perm:"read"`
-		EthChainId                             func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
-		EthEstimateGas                         func(ctx context.Context, tx types.EthCall) (types.EthUint64, error)                                                  `perm:"read"`
-		EthFeeHistory                          func(ctx context.Context, p jsonrpc.RawParams) (types.EthFeeHistory, error)                                           `perm:"read"`
-		EthGasPrice                            func(ctx context.Context) (types.EthBigInt, error)                                                                    `perm:"read"`
-		EthGetBalance                          func(ctx context.Context, address types.EthAddress, blkParam string) (types.EthBigInt, error)                         `perm:"read"`
-		EthGetBlockByHash                      func(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error)                             `perm:"read"`
-		EthGetBlockByNumber                    func(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error)                                     `perm:"read"`
-		EthGetBlockTransactionCountByHash      func(ctx context.Context, blkHash types.EthHash) (types.EthUint64, error)                                             `perm:"read"`
-		EthGetBlockTransactionCountByNumber    func(ctx context.Context, blkNum types.EthUint64) (types.EthUint64, error)                                            `perm:"read"`
-		EthGetCode                             func(ctx context.Context, address types.EthAddress, blkOpt string) (types.EthBytes, error)                            `perm:"read"`
-		EthGetMessageCidByTransactionHash      func(ctx context.Context, txHash *types.EthHash) (*cid.Cid, error)                                                    `perm:"read"`
-		EthGetStorageAt                        func(ctx context.Context, address types.EthAddress, position types.EthBytes, blkParam string) (types.EthBytes, error) `perm:"read"`
-		EthGetTransactionByBlockHashAndIndex   func(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error)                        `perm:"read"`
-		EthGetTransactionByBlockNumberAndIndex func(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error)                       `perm:"read"`
-		EthGetTransactionByHash                func(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error)                                                `perm:"read"`
-		EthGetTransactionByHashLimited         func(ctx context.Context, txHash *types.EthHash, limit abi.ChainEpoch) (*types.EthTx, error)                          `perm:"read"`
-		EthGetTransactionCount                 func(ctx context.Context, sender types.EthAddress, blkOpt string) (types.EthUint64, error)                            `perm:"read"`
-		EthGetTransactionHashByCid             func(ctx context.Context, cid cid.Cid) (*types.EthHash, error)                                                        `perm:"read"`
-		EthGetTransactionReceipt               func(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error)                                          `perm:"read"`
-		EthGetTransactionReceiptLimited        func(ctx context.Context, txHash types.EthHash, limit abi.ChainEpoch) (*types.EthTxReceipt, error)                    `perm:"read"`
-		EthMaxPriorityFeePerGas                func(ctx context.Context) (types.EthBigInt, error)                                                                    `perm:"read"`
-		EthProtocolVersion                     func(ctx context.Context) (types.EthUint64, error)                                                                    `perm:"read"`
-		EthSendRawTransaction                  func(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error)                                                `perm:"read"`
-		FilecoinAddressToEthAddress            func(ctx context.Context, filecoinAddress address.Address) (types.EthAddress, error)                                  `perm:"read"`
-		NetListening                           func(ctx context.Context) (bool, error)                                                                               `perm:"read"`
-		NetVersion                             func(ctx context.Context) (string, error)                                                                             `perm:"read"`
-		Web3ClientVersion                      func(ctx context.Context) (string, error)                                                                             `perm:"read"`
+		EthAccounts                            func(ctx context.Context) ([]types.EthAddress, error)                                                                                     `perm:"read"`
+		EthAddressToFilecoinAddress            func(ctx context.Context, ethAddress types.EthAddress) (address.Address, error)                                                           `perm:"read"`
+		EthBlockNumber                         func(ctx context.Context) (types.EthUint64, error)                                                                                        `perm:"read"`
+		EthCall                                func(ctx context.Context, tx types.EthCall, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error)                                  `perm:"read"`
+		EthChainId                             func(ctx context.Context) (types.EthUint64, error)                                                                                        `perm:"read"`
+		EthEstimateGas                         func(ctx context.Context, tx types.EthCall) (types.EthUint64, error)                                                                      `perm:"read"`
+		EthFeeHistory                          func(ctx context.Context, p jsonrpc.RawParams) (types.EthFeeHistory, error)                                                               `perm:"read"`
+		EthGasPrice                            func(ctx context.Context) (types.EthBigInt, error)                                                                                        `perm:"read"`
+		EthGetBalance                          func(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBigInt, error)                         `perm:"read"`
+		EthGetBlockByHash                      func(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error)                                                 `perm:"read"`
+		EthGetBlockByNumber                    func(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error)                                                         `perm:"read"`
+		EthGetBlockTransactionCountByHash      func(ctx context.Context, blkHash types.EthHash) (types.EthUint64, error)                                                                 `perm:"read"`
+		EthGetBlockTransactionCountByNumber    func(ctx context.Context, blkNum types.EthUint64) (types.EthUint64, error)                                                                `perm:"read"`
+		EthGetCode                             func(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error)                          `perm:"read"`
+		EthGetMessageCidByTransactionHash      func(ctx context.Context, txHash *types.EthHash) (*cid.Cid, error)                                                                        `perm:"read"`
+		EthGetStorageAt                        func(ctx context.Context, address types.EthAddress, position types.EthBytes, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error) `perm:"read"`
+		EthGetTransactionByBlockHashAndIndex   func(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error)                                            `perm:"read"`
+		EthGetTransactionByBlockNumberAndIndex func(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error)                                           `perm:"read"`
+		EthGetTransactionByHash                func(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error)                                                                    `perm:"read"`
+		EthGetTransactionByHashLimited         func(ctx context.Context, txHash *types.EthHash, limit abi.ChainEpoch) (*types.EthTx, error)                                              `perm:"read"`
+		EthGetTransactionCount                 func(ctx context.Context, sender types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthUint64, error)                          `perm:"read"`
+		EthGetTransactionHashByCid             func(ctx context.Context, cid cid.Cid) (*types.EthHash, error)                                                                            `perm:"read"`
+		EthGetTransactionReceipt               func(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error)                                                              `perm:"read"`
+		EthGetTransactionReceiptLimited        func(ctx context.Context, txHash types.EthHash, limit abi.ChainEpoch) (*types.EthTxReceipt, error)                                        `perm:"read"`
+		EthMaxPriorityFeePerGas                func(ctx context.Context) (types.EthBigInt, error)                                                                                        `perm:"read"`
+		EthProtocolVersion                     func(ctx context.Context) (types.EthUint64, error)                                                                                        `perm:"read"`
+		EthSendRawTransaction                  func(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error)                                                                    `perm:"read"`
+		EthSyncing                             func(ctx context.Context) (types.EthSyncingResult, error)                                                                                 `perm:"read"`
+		EthTraceBlock                          func(ctx context.Context, blkNum string) ([]*types.EthTraceBlock, error)                                                                  `perm:"read"`
+		EthTraceReplayBlockTransactions        func(ctx context.Context, blkNum string, traceTypes []string) ([]*types.EthTraceReplayBlockTransaction, error)                            `perm:"read"`
+		FilecoinAddressToEthAddress            func(ctx context.Context, filecoinAddress address.Address) (types.EthAddress, error)                                                      `perm:"read"`
+		NetListening                           func(ctx context.Context) (bool, error)                                                                                                   `perm:"read"`
+		NetVersion                             func(ctx context.Context) (string, error)                                                                                                 `perm:"read"`
+		Web3ClientVersion                      func(ctx context.Context) (string, error)                                                                                                 `perm:"read"`
 	}
 }
 
@@ -881,7 +896,7 @@ func (s *IETHStruct) EthAddressToFilecoinAddress(p0 context.Context, p1 types.Et
 func (s *IETHStruct) EthBlockNumber(p0 context.Context) (types.EthUint64, error) {
 	return s.Internal.EthBlockNumber(p0)
 }
-func (s *IETHStruct) EthCall(p0 context.Context, p1 types.EthCall, p2 string) (types.EthBytes, error) {
+func (s *IETHStruct) EthCall(p0 context.Context, p1 types.EthCall, p2 types.EthBlockNumberOrHash) (types.EthBytes, error) {
 	return s.Internal.EthCall(p0, p1, p2)
 }
 func (s *IETHStruct) EthChainId(p0 context.Context) (types.EthUint64, error) {
@@ -896,7 +911,7 @@ func (s *IETHStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ty
 func (s *IETHStruct) EthGasPrice(p0 context.Context) (types.EthBigInt, error) {
 	return s.Internal.EthGasPrice(p0)
 }
-func (s *IETHStruct) EthGetBalance(p0 context.Context, p1 types.EthAddress, p2 string) (types.EthBigInt, error) {
+func (s *IETHStruct) EthGetBalance(p0 context.Context, p1 types.EthAddress, p2 types.EthBlockNumberOrHash) (types.EthBigInt, error) {
 	return s.Internal.EthGetBalance(p0, p1, p2)
 }
 func (s *IETHStruct) EthGetBlockByHash(p0 context.Context, p1 types.EthHash, p2 bool) (types.EthBlock, error) {
@@ -911,13 +926,13 @@ func (s *IETHStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ty
 func (s *IETHStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 types.EthUint64) (types.EthUint64, error) {
 	return s.Internal.EthGetBlockTransactionCountByNumber(p0, p1)
 }
-func (s *IETHStruct) EthGetCode(p0 context.Context, p1 types.EthAddress, p2 string) (types.EthBytes, error) {
+func (s *IETHStruct) EthGetCode(p0 context.Context, p1 types.EthAddress, p2 types.EthBlockNumberOrHash) (types.EthBytes, error) {
 	return s.Internal.EthGetCode(p0, p1, p2)
 }
 func (s *IETHStruct) EthGetMessageCidByTransactionHash(p0 context.Context, p1 *types.EthHash) (*cid.Cid, error) {
 	return s.Internal.EthGetMessageCidByTransactionHash(p0, p1)
 }
-func (s *IETHStruct) EthGetStorageAt(p0 context.Context, p1 types.EthAddress, p2 types.EthBytes, p3 string) (types.EthBytes, error) {
+func (s *IETHStruct) EthGetStorageAt(p0 context.Context, p1 types.EthAddress, p2 types.EthBytes, p3 types.EthBlockNumberOrHash) (types.EthBytes, error) {
 	return s.Internal.EthGetStorageAt(p0, p1, p2, p3)
 }
 func (s *IETHStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 types.EthHash, p2 types.EthUint64) (types.EthTx, error) {
@@ -932,7 +947,7 @@ func (s *IETHStruct) EthGetTransactionByHash(p0 context.Context, p1 *types.EthHa
 func (s *IETHStruct) EthGetTransactionByHashLimited(p0 context.Context, p1 *types.EthHash, p2 abi.ChainEpoch) (*types.EthTx, error) {
 	return s.Internal.EthGetTransactionByHashLimited(p0, p1, p2)
 }
-func (s *IETHStruct) EthGetTransactionCount(p0 context.Context, p1 types.EthAddress, p2 string) (types.EthUint64, error) {
+func (s *IETHStruct) EthGetTransactionCount(p0 context.Context, p1 types.EthAddress, p2 types.EthBlockNumberOrHash) (types.EthUint64, error) {
 	return s.Internal.EthGetTransactionCount(p0, p1, p2)
 }
 func (s *IETHStruct) EthGetTransactionHashByCid(p0 context.Context, p1 cid.Cid) (*types.EthHash, error) {
@@ -952,6 +967,15 @@ func (s *IETHStruct) EthProtocolVersion(p0 context.Context) (types.EthUint64, er
 }
 func (s *IETHStruct) EthSendRawTransaction(p0 context.Context, p1 types.EthBytes) (types.EthHash, error) {
 	return s.Internal.EthSendRawTransaction(p0, p1)
+}
+func (s *IETHStruct) EthSyncing(p0 context.Context) (types.EthSyncingResult, error) {
+	return s.Internal.EthSyncing(p0)
+}
+func (s *IETHStruct) EthTraceBlock(p0 context.Context, p1 string) ([]*types.EthTraceBlock, error) {
+	return s.Internal.EthTraceBlock(p0, p1)
+}
+func (s *IETHStruct) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*types.EthTraceReplayBlockTransaction, error) {
+	return s.Internal.EthTraceReplayBlockTransactions(p0, p1, p2)
 }
 func (s *IETHStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (types.EthAddress, error) {
 	return s.Internal.FilecoinAddressToEthAddress(p0, p1)

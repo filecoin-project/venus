@@ -913,7 +913,7 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 
 	requiredFunds := m.Message.RequiredFunds()
 	if big.Cmp(balance, requiredFunds) < 0 {
-		return fmt.Errorf("not enough funds (required: %s, balance: %s): %v", types.FIL(requiredFunds), types.FIL(balance), ErrNotEnoughFunds)
+		return fmt.Errorf("not enough funds (required: %s, balance: %s): %w", types.FIL(requiredFunds), types.FIL(balance), ErrNotEnoughFunds)
 	}
 
 	// add Value for soft failure check
@@ -945,7 +945,7 @@ func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS 
 	}
 
 	if snonce > m.Message.Nonce {
-		return false, fmt.Errorf("minimum expected nonce is %d: %v", snonce, ErrNonceTooLow)
+		return false, fmt.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
 	}
 
 	senderAct, err := mp.api.GetActorAfter(ctx, m.Message.From, curTS)
@@ -1523,7 +1523,7 @@ func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to
 		}
 	}
 
-	revert, apply, err := chain.ReorgOps(mp.api.LoadTipSet, from, to)
+	revert, apply, err := chain.ReorgOps(ctx, mp.api.LoadTipSet, from, to)
 	if err != nil {
 		return fmt.Errorf("failed to compute reorg ops for mpool pending messages: %v", err)
 	}

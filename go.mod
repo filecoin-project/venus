@@ -22,7 +22,7 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v1.1.0
-	github.com/filecoin-project/go-amt-ipld/v4 v4.0.0
+	github.com/filecoin-project/go-amt-ipld/v4 v4.2.0
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils v0.1.3
@@ -32,7 +32,7 @@ require (
 	github.com/filecoin-project/go-fil-markets v1.28.2
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.11.1
+	github.com/filecoin-project/go-state-types v0.12.4
 	github.com/filecoin-project/pubsub v1.0.0
 	github.com/filecoin-project/specs-actors v0.9.15
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
@@ -43,7 +43,7 @@ require (
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
 	github.com/filecoin-project/specs-actors/v8 v8.0.1
 	github.com/filecoin-project/specs-storage v0.4.1
-	github.com/filecoin-project/test-vectors/schema v0.0.5
+	github.com/filecoin-project/test-vectors/schema v0.0.6-0.20230822140104-bed37e1ca04f
 	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/go-errors/errors v1.0.1
 	github.com/golang/mock v1.6.0
@@ -57,29 +57,23 @@ require (
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/ipfs-force-community/metrics v1.0.1-0.20230626064437-eed34cb166f5
 	github.com/ipfs-force-community/sophon-auth v1.13.0
-	github.com/ipfs/boxo v0.8.0
-	github.com/ipfs/go-blockservice v0.5.0
+	github.com/ipfs/boxo v0.10.1
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/go-datastore v0.6.0
 	github.com/ipfs/go-ds-badger2 v0.1.3
+	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-fs-lock v0.0.7
 	github.com/ipfs/go-graphsync v0.14.6
-	github.com/ipfs/go-ipfs-blockstore v1.3.0
-	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
 	github.com/ipfs/go-ipfs-cmds v0.8.1
-	github.com/ipfs/go-ipfs-ds-help v1.1.0
-	github.com/ipfs/go-ipfs-exchange-interface v0.2.0
-	github.com/ipfs/go-ipfs-exchange-offline v0.3.0
 	github.com/ipfs/go-ipld-cbor v0.0.6
-	github.com/ipfs/go-ipld-format v0.4.0
+	github.com/ipfs/go-ipld-format v0.5.0
 	github.com/ipfs/go-libipfs v0.7.0
 	github.com/ipfs/go-log v1.0.5
 	github.com/ipfs/go-log/v2 v2.5.1
-	github.com/ipfs/go-merkledag v0.10.0
 	github.com/ipfs/go-unixfs v0.4.5
-	github.com/ipld/go-car v0.5.0
-	github.com/ipld/go-car/v2 v2.9.1-0.20230325062757-fff0e4397a3d
+	github.com/ipld/go-car v0.6.1
+	github.com/ipld/go-car/v2 v2.10.1
 	github.com/jbenet/goprocess v0.1.4
 	github.com/libp2p/go-libp2p v0.27.8
 	github.com/libp2p/go-libp2p-kad-dht v0.21.1
@@ -97,8 +91,9 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/raulk/clock v1.1.0
 	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
-	github.com/stretchr/testify v1.8.3
-	github.com/whyrusleeping/cbor-gen v0.0.0-20230126041949-52956bd4c9aa
+	github.com/stretchr/testify v1.8.4
+	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
+	github.com/whyrusleeping/cbor-gen v0.0.0-20230923211252-36a87e1ba72f
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	github.com/zyedidia/generic v1.2.1
@@ -117,6 +112,17 @@ require (
 	gorm.io/driver/mysql v1.1.1
 	gorm.io/gorm v1.21.12
 	gotest.tools v2.2.0+incompatible
+)
+
+require (
+	github.com/ipfs/go-blockservice v0.5.0 // indirect
+	github.com/ipfs/go-ipfs-blockstore v1.3.0 // indirect
+	github.com/ipfs/go-ipfs-chunker v0.0.5 // indirect
+	github.com/ipfs/go-ipfs-ds-help v1.1.0 // indirect
+	github.com/ipfs/go-ipfs-exchange-interface v0.2.0 // indirect
+	github.com/ipfs/go-merkledag v0.11.0 // indirect
+	github.com/petar/GoLLRB v0.0.0-20210522233825-ae3b015fd3e9 // indirect
+	github.com/whyrusleeping/cbor v0.0.0-20171005072247-63513f603b11 // indirect
 )
 
 require (
@@ -202,7 +208,7 @@ require (
 	github.com/ipfs/go-ipfs-posinfo v0.0.1 // indirect
 	github.com/ipfs/go-ipfs-pq v0.0.3 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.3 // indirect
-	github.com/ipfs/go-ipld-legacy v0.1.1 // indirect
+	github.com/ipfs/go-ipld-legacy v0.2.1 // indirect
 	github.com/ipfs/go-ipns v0.3.0 // indirect
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
 	github.com/ipfs/go-peertaskqueue v0.8.1 // indirect
@@ -252,7 +258,7 @@ require (
 	github.com/multiformats/go-base36 v0.2.0 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
 	github.com/multiformats/go-multibase v0.2.0 // indirect
-	github.com/multiformats/go-multicodec v0.8.1 // indirect
+	github.com/multiformats/go-multicodec v0.9.0
 	github.com/multiformats/go-multistream v0.4.1 // indirect
 	github.com/nikkolasg/hexjson v0.1.0 // indirect
 	github.com/onsi/ginkgo/v2 v2.9.2 // indirect

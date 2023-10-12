@@ -386,13 +386,12 @@ func (cia *chainInfoAPI) StateGetRandomnessFromTickets(ctx context.Context, pers
 	}
 
 	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand, cia.chain.Fork.GetNetworkVersion)
-	rnv := cia.chain.Fork.GetNetworkVersion(ctx, randEpoch)
-
-	if rnv >= network.Version13 {
-		return r.GetChainRandomnessV2(ctx, personalization, randEpoch, entropy)
+	digest, err := r.GetChainRandomness(ctx, randEpoch)
+	if err != nil {
+		return nil, fmt.Errorf("getting chain randomness: %w", err)
 	}
 
-	return r.GetChainRandomnessV1(ctx, personalization, randEpoch, entropy)
+	return chain.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
 }
 
 // StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
@@ -402,15 +401,41 @@ func (cia *chainInfoAPI) StateGetRandomnessFromBeacon(ctx context.Context, perso
 		return nil, fmt.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand, cia.chain.Fork.GetNetworkVersion)
-	rnv := cia.chain.Fork.GetNetworkVersion(ctx, randEpoch)
-
-	if rnv >= network.Version14 {
-		return r.GetBeaconRandomnessV3(ctx, personalization, randEpoch, entropy)
-	} else if rnv == network.Version13 {
-		return r.GetBeaconRandomnessV2(ctx, personalization, randEpoch, entropy)
+	digest, err := r.GetBeaconRandomness(ctx, randEpoch)
+	if err != nil {
+		return nil, fmt.Errorf("getting beacon randomness: %w", err)
 	}
 
-	return r.GetBeaconRandomnessV1(ctx, personalization, randEpoch, entropy)
+	return chain.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
+}
+
+func (cia *chainInfoAPI) StateGetRandomnessDigestFromTickets(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) {
+	ts, err := cia.ChainGetTipSet(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand, cia.chain.Fork.GetNetworkVersion)
+	ret, err := r.GetChainRandomness(ctx, randEpoch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get randomness digest from tickets: %w", err)
+	}
+
+	return ret[:], nil
+}
+
+func (cia *chainInfoAPI) StateGetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) {
+	ts, err := cia.ChainGetTipSet(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand, cia.chain.Fork.GetNetworkVersion)
+	ret, err := r.GetBeaconRandomness(ctx, randEpoch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get randomness digest from beacon: %w", err)
+	}
+
+	return ret[:], nil
 }
 
 // StateNetworkVersion returns the network version at the given tipset
@@ -643,7 +668,7 @@ func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey,
 		return nil, fmt.Errorf("loading to tipset %s: %w", to, err)
 	}
 
-	revert, apply, err := chain.ReorgOps(cia.chain.ChainReader.GetTipSet, fts, tts)
+	revert, apply, err := chain.ReorgOps(ctx, cia.chain.ChainReader.GetTipSet, fts, tts)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tipset branches: %w", err)
 	}
@@ -696,6 +721,7 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 			UpgradeHyggeHeight:       cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight,
 			UpgradeLightningHeight:   cfg.NetworkParams.ForkUpgradeParam.UpgradeLightningHeight,
 			UpgradeThunderHeight:     cfg.NetworkParams.ForkUpgradeParam.UpgradeThunderHeight,
+			UpgradeWatermelonHeight:  cfg.NetworkParams.ForkUpgradeParam.UpgradeWatermelonHeight,
 		},
 		Eip155ChainID: cfg.NetworkParams.Eip155ChainID,
 	}

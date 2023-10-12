@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
+	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -134,20 +134,20 @@ var newMinerCmd = &cmds.Command{
 			return fmt.Errorf("getting network version: %v", err)
 		}
 
-		spt, err := miner.SealProofTypeFromSectorSize(ssize, nv)
+		spt, err := miner.WindowPoStProofTypeFromSectorSize(ssize, nv)
 		if err != nil {
-			return fmt.Errorf("getting seal proof type: %v", err)
+			return fmt.Errorf("getting post proof type: %v", err)
 		}
 
 		peerID, err := env.(*node.Env).NetworkAPI.ID(ctx)
 		if err != nil {
 			return err
 		}
-		params, err := actors.SerializeParams(&power2.CreateMinerParams{
-			Owner:         owner,
-			Worker:        worker,
-			SealProofType: spt,
-			Peer:          abi.PeerID(peerID),
+		params, err := actors.SerializeParams(&power6.CreateMinerParams{
+			Owner:               owner,
+			Worker:              worker,
+			WindowPoStProofType: spt,
+			Peer:                abi.PeerID(peerID),
 		})
 		if err != nil {
 			return err
@@ -196,7 +196,7 @@ var newMinerCmd = &cmds.Command{
 			return fmt.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode)
 		}
 
-		var retval power2.CreateMinerReturn
+		var retval power6.CreateMinerReturn
 		if err := retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)); err != nil {
 			return err
 		}

@@ -11,6 +11,7 @@ import (
 	types2 "github.com/filecoin-project/venus/venus-shared/actors/types"
 	"github.com/filecoin-project/venus/venus-shared/utils"
 
+	"github.com/filecoin-project/venus/pkg/chainsync/slashfilter"
 	"github.com/filecoin-project/venus/pkg/util/ulimit"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
@@ -293,6 +294,13 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	if _, ok := req.Options[ELStdout].(bool); ok {
 		_ = re.Emit("--" + ELStdout + " option is deprecated\n")
+	}
+
+	if config.FaultReporter.EnableConsensusFaultReporter {
+		if err := slashfilter.SlashConsensus(req.Context, config.FaultReporter, fcn.Wallet().API(),
+			fcn.Chain().API(), fcn.Mpool().API(), fcn.Sync().API()); err != nil {
+			return fmt.Errorf("run consensus fault reporter failed: %v", err)
+		}
 	}
 
 	// Start the node.

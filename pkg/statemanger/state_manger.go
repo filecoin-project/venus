@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/fork"
@@ -32,8 +33,7 @@ import (
 	"go.opencensus.io/trace"
 )
 
-// const execTraceCacheSize = 16
-var defaultExecTraceCacheSize = 16
+var execTraceCacheSize = 16
 
 // stateManagerAPI defines the methods needed from StateManager
 // todo remove this code and add private interface in market and paychanel package
@@ -57,10 +57,10 @@ var _ IStateManager = &Stmgr{}
 var log = logging.Logger("statemanager")
 
 type Stmgr struct {
-	cs  *chain.Store
-	ms  *chain.MessageStore
-	cp  consensus.StateTransformer
-	rnd consensus.ChainRandomness
+	cs     *chain.Store
+	ms     *chain.MessageStore
+	cp     consensus.StateTransformer
+	beacon beacon.Schedule
 
 	fork         fork.IFork
 	gasSchedule  *gas.PricesSchedule
@@ -87,17 +87,17 @@ type Stmgr struct {
 func NewStateManager(cs *chain.Store,
 	ms *chain.MessageStore,
 	cp consensus.StateTransformer,
-	rnd consensus.ChainRandomness,
+	beacon beacon.Schedule,
 	fork fork.IFork,
 	gasSchedule *gas.PricesSchedule,
 	syscallsImpl vm.SyscallsImpl,
 	actorDebugging bool,
 ) (*Stmgr, error) {
-	log.Debugf("execTraceCache size: %d", defaultExecTraceCacheSize)
+	log.Debugf("execTraceCache size: %d", execTraceCacheSize)
 	var execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
 	var err error
-	if defaultExecTraceCacheSize > 0 {
-		execTraceCache, err = lru.NewARC[types.TipSetKey, tipSetCacheEntry](defaultExecTraceCacheSize)
+	if execTraceCacheSize > 0 {
+		execTraceCache, err = lru.NewARC[types.TipSetKey, tipSetCacheEntry](execTraceCacheSize)
 		if err != nil {
 			return nil, err
 		}
@@ -108,7 +108,7 @@ func NewStateManager(cs *chain.Store,
 		ms:             ms,
 		fork:           fork,
 		cp:             cp,
-		rnd:            rnd,
+		beacon:         beacon,
 		gasSchedule:    gasSchedule,
 		syscallsImpl:   syscallsImpl,
 		stCache:        make(map[types.TipSetKey]stateComputeResult),
@@ -119,12 +119,12 @@ func NewStateManager(cs *chain.Store,
 }
 
 func init() {
-	if s := os.Getenv("VENUS_EXEC_TRACE_CACHE"); s != "" {
+	if s := os.Getenv("VENUS_EXEC_TRACE_CACHE_SIZE"); s != "" {
 		letc, err := strconv.Atoi(s)
 		if err != nil {
-			log.Errorf("failed to parse 'VENUS_EXEC_TRACE_CACHE' env var: %s", err)
+			log.Errorf("failed to parse 'VENUS_EXEC_TRACE_CACHE_SIZE' env var: %s", err)
 		} else {
-			defaultExecTraceCacheSize = letc
+			execTraceCacheSize = letc
 		}
 	}
 }
@@ -488,7 +488,7 @@ func (s *Stmgr) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, 
 
 	tsKey := ts.Key()
 
-	if defaultExecTraceCacheSize > 0 {
+	if execTraceCacheSize > 0 {
 		// check if we have the trace for this tipset in the cache
 		s.execTraceCacheLock.Lock()
 		if entry, ok := s.execTraceCache.Get(tsKey); ok {
@@ -528,7 +528,7 @@ func (s *Stmgr) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, 
 		return cid.Undef, nil, err
 	}
 
-	if defaultExecTraceCacheSize > 0 {
+	if execTraceCacheSize > 0 {
 		invocTraceCopy := makeDeepCopy(invocTrace)
 
 		s.execTraceCacheLock.Lock()
@@ -572,7 +572,7 @@ func ComputeState(ctx context.Context, s *Stmgr, height abi.ChainEpoch, msgs []*
 
 	base, trace, err := s.ExecutionTrace(ctx, ts)
 	if err != nil {
-		return cid.Undef, nil, err
+		return cid.Undef, nil, fmt.Errorf("failed to compute base state: %w", err)
 	}
 
 	for i := ts.Height(); i < height; i++ {
@@ -586,6 +586,7 @@ func ComputeState(ctx context.Context, s *Stmgr, height abi.ChainEpoch, msgs []*
 		// future. It's not guaranteed to be accurate... but that's fine.
 	}
 
+	random := chain.NewChainRandomnessSource(s.cs, ts.Key(), s.beacon, s.GetNetworkVersion)
 	buffStore := blockstoreutil.NewTieredBstore(s.cs.Blockstore(), blockstoreutil.NewTemporarySync())
 	vmopt := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
@@ -598,7 +599,7 @@ func ComputeState(ctx context.Context, s *Stmgr, height abi.ChainEpoch, msgs []*
 		PRoot:               base,
 		Epoch:               ts.Height(),
 		Timestamp:           ts.MinTimestamp(),
-		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
+		Rnd:                 random,
 		Bsstore:             buffStore,
 		SysCallsImpl:        s.syscallsImpl,
 		GasPriceSchedule:    s.gasSchedule,
@@ -625,6 +626,21 @@ func ComputeState(ctx context.Context, s *Stmgr, height abi.ChainEpoch, msgs []*
 		if ret.Receipt.ExitCode != 0 {
 			log.Infof("compute state apply message %d failed (exit: %d): %s", i, ret.Receipt.ExitCode, ret.ActorErr)
 		}
+
+		ir := &types.InvocResult{
+			MsgCid:         msg.Cid(),
+			Msg:            msg,
+			MsgRct:         &ret.Receipt,
+			ExecutionTrace: ret.GasTracker.ExecutionTrace,
+			Duration:       ret.Duration,
+		}
+		if ret.ActorErr != nil {
+			ir.Error = ret.ActorErr.Error()
+		}
+		if !ret.OutPuts.Refund.Nil() {
+			ir.GasCost = MakeMsgGasCost(msg, ret)
+		}
+		trace = append(trace, ir)
 	}
 
 	root, err := vmi.Flush(ctx)

@@ -12,15 +12,15 @@ func ButterflySnapNet() *NetworkConf {
 	return &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWD5mtdmjHQ1Puj9Md7SEfoa7kWMpwqUhAKsyYsBP56LQC",
-				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWEoYPkm6o87ES6AppFY7d7WHJUQg7XVPRAyQZjEU31efQ",
+				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWRaoPgwJuZdPSN4A2iTeh8xzkZGCEBxan9vMkidHisUgn",
+				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWMjLCZeEf3VzSWvQYuhe9VzCcrN6RENX9FgmQqiJfQDWs",
 			},
 			Period: "30s",
 		},
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.NetworkButterfly,
-			GenesisNetworkVersion: network.Version18,
+			GenesisNetworkVersion: network.Version20,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -53,9 +53,9 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeSkyrHeight:        -19,
 				UpgradeSharkHeight:       -20,
 				UpgradeHyggeHeight:       -21,
-				// TODO: set upgrade height
-				UpgradeLightningHeight: 50,
-				UpgradeThunderHeight:   50 + 360,
+				UpgradeLightningHeight:   -22,
+				UpgradeThunderHeight:     -23,
+				UpgradeWatermelonHeight:  400,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,

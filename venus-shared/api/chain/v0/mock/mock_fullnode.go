@@ -2433,6 +2433,21 @@ func (mr *MockFullNodeMockRecorder) StateWaitMsgLimited(arg0, arg1, arg2, arg3 i
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateWaitMsgLimited", reflect.TypeOf((*MockFullNode)(nil).StateWaitMsgLimited), arg0, arg1, arg2, arg3)
 }
 
+// SyncIncomingBlocks mocks base method.
+func (m *MockFullNode) SyncIncomingBlocks(arg0 context.Context) (<-chan *types0.BlockHeader, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SyncIncomingBlocks", arg0)
+	ret0, _ := ret[0].(<-chan *types0.BlockHeader)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SyncIncomingBlocks indicates an expected call of SyncIncomingBlocks.
+func (mr *MockFullNodeMockRecorder) SyncIncomingBlocks(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncIncomingBlocks", reflect.TypeOf((*MockFullNode)(nil).SyncIncomingBlocks), arg0)
+}
+
 // SyncState mocks base method.
 func (m *MockFullNode) SyncState(arg0 context.Context) (*types0.SyncState, error) {
 	m.ctrl.T.Helper()

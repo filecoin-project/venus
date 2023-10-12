@@ -1,21 +1,26 @@
+// FETCHED FROM LOTUS: manifest.go
+
 package actors
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"sync"
 
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	"github.com/filecoin-project/go-state-types/manifest"
-	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"fmt"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
+
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 )
 
-var manifestCids map[actorstypes.Version]cid.Cid = make(map[actorstypes.Version]cid.Cid)
-var manifests map[actorstypes.Version]map[string]cid.Cid = make(map[actorstypes.Version]map[string]cid.Cid)
-var actorMeta map[cid.Cid]actorEntry = make(map[cid.Cid]actorEntry)
+var manifestCids = make(map[actorstypes.Version]cid.Cid)
+var manifests = make(map[actorstypes.Version]map[string]cid.Cid)
+var actorMeta = make(map[cid.Cid]actorEntry)
 
 var (
 	manifestMx sync.RWMutex

@@ -2,11 +2,13 @@ package vmcontext
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"time"
 
+	"github.com/dchest/blake2b"
 	"github.com/filecoin-project/go-address"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -96,8 +98,28 @@ func TipSetGetterForTipset(tsGet func(context.Context, *types.TipSet, abi.ChainE
 
 // ChainRandomness define randomness method in filecoin
 type HeadChainRandomness interface {
-	ChainGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	ChainGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	GetChainRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error)
+	GetBeaconRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error)
+}
+
+func DrawRandomnessFromDigest(digest [32]byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	h := blake2b.New256()
+	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
+		return nil, fmt.Errorf("deriving randomness: %w", err)
+	}
+	_, err := h.Write(digest[:])
+	if err != nil {
+		return nil, fmt.Errorf("hashing VRFDigest: %w", err)
+	}
+	if err := binary.Write(h, binary.BigEndian, round); err != nil {
+		return nil, fmt.Errorf("deriving randomness: %w", err)
+	}
+	_, err = h.Write(entropy)
+	if err != nil {
+		return nil, fmt.Errorf("hashing entropy: %w", err)
+	}
+
+	return h.Sum(nil), nil
 }
 
 type Ret struct {

@@ -288,27 +288,27 @@ api.FullNode:
 	EthAccounts:	In=1,	Out=2,	CheckSum=d2d1b2a1ffc7dc9b28e8c64c79147670
 	EthAddressToFilecoinAddress:	In=2,	Out=2,	CheckSum=d1ca5904502264aa05b428089d46d660
 	EthBlockNumber:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
-	EthCall:	In=3,	Out=2,	CheckSum=64610416ed5674a0c717908d51904008
+	EthCall:	In=3,	Out=2,	CheckSum=4ad62b9ec4eb1da934580efa4878279a
 	EthChainId:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
 	EthEstimateGas:	In=2,	Out=2,	CheckSum=f4d63e320f2fb2778b210a925516a114
 	EthFeeHistory:	In=2,	Out=2,	CheckSum=6a4806cfbd9b939d6f7fc3fbe7dc1ff7
 	EthGasPrice:	In=1,	Out=2,	CheckSum=e2f5588dddfc36a9cdef0fad6f4db93e
-	EthGetBalance:	In=3,	Out=2,	CheckSum=a35a35a610cd3193c836ce7d61f5a05a
+	EthGetBalance:	In=3,	Out=2,	CheckSum=80912669b93ebbd53024dbc6b4f39d94
 	EthGetBlockByHash:	In=3,	Out=2,	CheckSum=606bca6c962d8e2d4e0b8bb14e8fa0a9
 	EthGetBlockByNumber:	In=3,	Out=2,	CheckSum=9d82b96bb03c2de85dc7a31e7d4c45d2
 	EthGetBlockTransactionCountByHash:	In=2,	Out=2,	CheckSum=aea75f99eaccb878b97512a29568c204
 	EthGetBlockTransactionCountByNumber:	In=2,	Out=2,	CheckSum=2c3bfb8fef7edce8563d84eab6e9bf4f
-	EthGetCode:	In=3,	Out=2,	CheckSum=cdfa3798431df16537bf990bfee6dbe1
+	EthGetCode:	In=3,	Out=2,	CheckSum=a186786e31338dc69207e934b426cc67
 	EthGetFilterChanges:	In=2,	Out=2,	CheckSum=7900665c8164ddcc00b0b3934b35dc45
 	EthGetFilterLogs:	In=2,	Out=2,	CheckSum=7900665c8164ddcc00b0b3934b35dc45
 	EthGetLogs:	In=2,	Out=2,	CheckSum=e4d62fd3240fe04e452a06683a49cfe3
 	EthGetMessageCidByTransactionHash:	In=2,	Out=2,	CheckSum=aed16e041ddddc1fce0509d5f544feab
-	EthGetStorageAt:	In=4,	Out=2,	CheckSum=e505cd577c7257ac17fe6f48e5ebbd42
+	EthGetStorageAt:	In=4,	Out=2,	CheckSum=b15694d484eed3dcc915e6470af5703c
 	EthGetTransactionByBlockHashAndIndex:	In=3,	Out=2,	CheckSum=35fd0ffaa59afd599520dd3ed67a6527
 	EthGetTransactionByBlockNumberAndIndex:	In=3,	Out=2,	CheckSum=2c5c65acee5e71e01e46588db4a35bf9
 	EthGetTransactionByHash:	In=2,	Out=2,	CheckSum=755c3f781b7b3b6ee99da45260296c3f
 	EthGetTransactionByHashLimited:	In=3,	Out=2,	CheckSum=7c1fa7b8fe17eaf73eaea1f6ccdf927b
-	EthGetTransactionCount:	In=3,	Out=2,	CheckSum=be1148526dd6b62c4f74ce21c9b6585e
+	EthGetTransactionCount:	In=3,	Out=2,	CheckSum=d4f884ecece2de5517137c49d12be2c9
 	EthGetTransactionHashByCid:	In=2,	Out=2,	CheckSum=89cd0fe449cbdd9630c413e6d0888da4
 	EthGetTransactionReceipt:	In=2,	Out=2,	CheckSum=af6d9dda90fdb0f9427498580b9481a6
 	EthGetTransactionReceiptLimited:	In=3,	Out=2,	CheckSum=99f66b4b8a94d6a6e61198953ddf75e8
@@ -319,6 +319,7 @@ api.FullNode:
 	EthProtocolVersion:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
 	EthSendRawTransaction:	In=2,	Out=2,	CheckSum=f63e0b205164d628bc8022b6d5a496f5
 	EthSubscribe:	In=2,	Out=2,	CheckSum=f63e0b205164d628bc8022b6d5a496f5
+	EthSyncing:	In=1,	Out=2,	CheckSum=2c17cf64e376c0e9d0d56053d33c0722
 	EthUninstallFilter:	In=2,	Out=2,	CheckSum=eaa6a477ffaae115413457bbdb11e339
 	EthUnsubscribe:	In=2,	Out=2,	CheckSum=eaa6a477ffaae115413457bbdb11e339
 	FilecoinAddressToEthAddress:	In=2,	Out=2,	CheckSum=13a0b5ce8f82604e17803a00c4086c4c
@@ -438,6 +439,8 @@ api.FullNode:
 	StateGetClaim:	In=4,	Out=2,	CheckSum=79bc50cf65a4d6b102267fd020b97510
 	StateGetClaims:	In=3,	Out=2,	CheckSum=06f189feb545746b5e123702405416fb
 	StateGetNetworkParams:	In=1,	Out=2,	CheckSum=7bc6ff254ba803762ffb166c6d96a921
+	StateGetRandomnessDigestFromBeacon:	In=3,	Out=2,	CheckSum=8e6f0d06d814b1f4799dad38392ae870
+	StateGetRandomnessDigestFromTickets:	In=3,	Out=2,	CheckSum=8e6f0d06d814b1f4799dad38392ae870
 	StateGetRandomnessFromBeacon:	In=5,	Out=2,	CheckSum=b98225c36bf011979dbcad0fb938e659
 	StateGetRandomnessFromTickets:	In=5,	Out=2,	CheckSum=b98225c36bf011979dbcad0fb938e659
 	StateListActors:	In=2,	Out=2,	CheckSum=57bcc4526adaf4b0582c0b117d39b042

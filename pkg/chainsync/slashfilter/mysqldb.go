@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var log = logging.Logger("mysql")
+var log = logging.Logger("slashfilter")
 
 type MysqlSlashFilter struct {
 	_db *gorm.DB
@@ -66,53 +66,63 @@ func NewMysqlSlashFilter(cfg config.MySQLConfig) (ISlashFilter, error) {
 }
 
 // checkSameHeightFault check whether the miner mined multi block on the same height
-func (f *MysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error {
+func (f *MysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) (cid.Cid, bool, error) {
 	var bk MinedBlock
 	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
 	if err == gorm.ErrRecordNotFound {
-		return nil
+		return cid.Undef, false, nil
 	}
 
 	other, err := cid.Decode(bk.Cid)
 	if err != nil {
-		return err
+		return cid.Undef, false, err
 	}
 
 	if other == bh.Cid() {
-		return nil
+		return cid.Undef, false, nil
 	}
+	log.Infof("produced block would trigger double-fork mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
 
-	return fmt.Errorf("produced block would trigger double-fork mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
+	return other, true, nil
 }
 
 // checkSameParentFault check whether the miner mined block on the same parent
-func (f *MysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
+func (f *MysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) (cid.Cid, bool, error) {
 	var bk MinedBlock
 	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and parent_key=?", bh.Miner.String(), types.NewTipSetKey(bh.Parents...).String()).Error
 	if err == gorm.ErrRecordNotFound {
-		return nil
+		return cid.Undef, false, nil
 	}
 
 	other, err := cid.Decode(bk.Cid)
 	if err != nil {
-		return err
+		return cid.Undef, false, err
 	}
 
 	if other == bh.Cid() {
-		return nil
+		return cid.Undef, false, nil
 	}
 
-	return fmt.Errorf("produced block would trigger time-offset mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
+	log.Infof("produced block would trigger time-offset mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
+	return other, true, nil
 }
 
 // MinedBlock check whether the block mined is slash
-func (f *MysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
-	if err := f.checkSameHeightFault(bh); err != nil {
-		return err
+func (f *MysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) (cid.Cid, bool, error) {
+	doubleForkWitness, doubleForkFault, err := f.checkSameHeightFault(bh)
+	if err != nil {
+		return cid.Undef, false, fmt.Errorf("check double-fork mining faults: %w", err)
+	}
+	if doubleForkFault {
+		return doubleForkWitness, doubleForkFault, nil
 	}
 
-	if err := f.checkSameParentFault(bh); err != nil {
-		return err
+	timeOffsetWitness, timeOffsetFault, err := f.checkSameParentFault(bh)
+	if err != nil {
+		return cid.Undef, false, fmt.Errorf("check time-offset mining faults: %w", err)
+	}
+	if timeOffsetFault {
+		return timeOffsetWitness, timeOffsetFault, nil
 	}
 
 	{
@@ -125,7 +135,7 @@ func (f *MysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader
 			// if exit
 			parent, err := cid.Decode(bk.Cid)
 			if err != nil {
-				return err
+				return cid.Undef, false, err
 			}
 
 			var found bool
@@ -136,16 +146,17 @@ func (f *MysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader
 			}
 
 			if !found {
-				return fmt.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
+				log.Infof("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
+				return parent, true, nil
 			}
 		} else if err != gorm.ErrRecordNotFound {
 			// other error except not found
-			return err
+			return cid.Undef, false, err
 		}
 		// if not exit good block
 	}
 
-	return f._db.Save(&MinedBlock{
+	return cid.Undef, false, f._db.Save(&MinedBlock{
 		ParentEpoch: int64(parentEpoch),
 		ParentKey:   types.NewTipSetKey(bh.Parents...).String(),
 		Epoch:       int64(bh.Height),
