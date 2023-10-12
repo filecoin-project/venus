@@ -11,12 +11,14 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 type MinerDeal struct {
+	ID uuid.UUID
 	types.ClientDealProposal
 	ProposalCid           cid.Cid
 	AddFundsCid           *cid.Cid
@@ -122,9 +124,11 @@ type StorageDealQueryParams struct {
 	Client            string
 	DiscardFailedDeal bool
 
-	DealID abi.DealID
+	DealID   abi.DealID
+	PieceCID string
 
 	Page
+	Asc bool
 }
 
 type ImportDataRef struct {

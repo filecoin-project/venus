@@ -12,4 +12,4 @@ var InsecurePoStValidation = os.Getenv("INSECURE_POST_VALIDATION") == "1"
 var NoSlashFilter = os.Getenv("VENUS_NO_SLASHFILTER") == "_yes_i_know_and_i_accept_that_may_loss_my_fil"
 
 // NoMigrationResultCache will not use cached migration results
-var NoMigrationResultCache = os.Getenv("VENUS_NOs_MIGRATION_RESULT_CACHE") == "1"
+var NoMigrationResultCache = os.Getenv("VENUS_NO_MIGRATION_RESULT_CACHE") == "1"

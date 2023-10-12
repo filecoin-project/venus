@@ -81,6 +81,7 @@ type NetworkSubmodule struct { //nolint
 
 	PeerMgr        peermgr.IPeerMgr
 	ExchangeClient filexchange.Client
+	exchangeServer filexchange.Server
 	// data transfer
 	DataTransfer     datatransfer.Manager
 	DataTransferHost dtnet.DataTransferNetwork
@@ -210,6 +211,7 @@ func NewNetworkSubmodule(ctx context.Context,
 	// build network
 	network := net.New(peerHost, rawHost, net.NewRouter(router), bandwidthTracker)
 	exchangeClient := filexchange.NewClient(peerHost, peerMgr)
+	exchangeServer := filexchange.NewServer(chainStore, messageStore, peerHost)
 	helloHandler := helloprotocol.NewHelloProtocolHandler(peerHost, peerMgr, exchangeClient, chainStore, messageStore, config.GenesisCid(), time.Duration(config.Repo().Config().NetworkParams.BlockDelay)*time.Second)
 	// build the network submdule
 	return &NetworkSubmodule{
@@ -221,6 +223,7 @@ func NewNetworkSubmodule(ctx context.Context,
 		Bitswap:          bswap,
 		GraphExchange:    gsync,
 		ExchangeClient:   exchangeClient,
+		exchangeServer:   exchangeServer,
 		Network:          network,
 		DataTransfer:     dt,
 		DataTransferHost: dtNet,
@@ -236,6 +239,9 @@ func (networkSubmodule *NetworkSubmodule) Start(ctx context.Context) error {
 	if !networkSubmodule.cfg.OfflineMode() {
 		go networkSubmodule.PeerMgr.Run(ctx)
 	}
+
+	networkSubmodule.exchangeServer.Register()
+
 	return nil
 }
 

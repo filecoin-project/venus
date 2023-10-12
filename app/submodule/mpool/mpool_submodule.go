@@ -146,8 +146,6 @@ func (mp *MessagePoolSubmodule) Validate(ctx context.Context, pid peer.ID, msg *
 			fallthrough
 		case errors.Is(err, messagepool.ErrNotEnoughFunds):
 			fallthrough
-		case errors.Is(err, messagepool.ErrGasFeeCapTooLow):
-			fallthrough
 		case errors.Is(err, messagepool.ErrExistingNonce):
 			return pubsub.ValidationIgnore
 

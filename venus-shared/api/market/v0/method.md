@@ -570,6 +570,7 @@ Inputs:
 [
   [
     {
+      "ID": "07070707-0707-0707-0707-070707070707",
       "Proposal": {
         "PieceCID": {
           "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -1287,6 +1288,7 @@ Inputs:
 Response:
 ```json
 {
+  "ID": "07070707-0707-0707-0707-070707070707",
   "Proposal": {
     "PieceCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -1363,6 +1365,7 @@ Inputs: `[]`
 Response:
 ```json
 {
+  "ID": "07070707-0707-0707-0707-070707070707",
   "Proposal": {
     "PieceCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -1542,6 +1545,7 @@ Inputs:
 ```json
 [
   {
+    "ID": "07070707-0707-0707-0707-070707070707",
     "Proposal": {
       "PieceCID": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -1710,8 +1714,10 @@ Inputs:
     "Client": "string value",
     "DiscardFailedDeal": true,
     "DealID": 5432,
+    "PieceCID": "string value",
     "Offset": 123,
-    "Limit": 123
+    "Limit": 123,
+    "Asc": true
   }
 ]
 ```
@@ -1720,6 +1726,7 @@ Response:
 ```json
 [
   {
+    "ID": "07070707-0707-0707-0707-070707070707",
     "Proposal": {
       "PieceCID": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
