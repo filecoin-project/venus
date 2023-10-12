@@ -540,10 +540,11 @@ func (msa *minerStateAPI) stateComputeDataCIDv1(ctx context.Context, maddr addre
 	}
 
 	ccmt := &types.Message{
-		To:     market.Address,
-		From:   maddr,
-		Value:  types.NewInt(0),
-		Method: market.Methods.ComputeDataCommitment,
+		To:    market.Address,
+		From:  maddr,
+		Value: types.NewInt(0),
+		// Hard coded, because the method has since been deprecated
+		Method: 8,
 		Params: ccparams,
 	}
 	r, err := msa.API().StateCall(ctx, ccmt, tsk)
@@ -577,10 +578,11 @@ func (msa *minerStateAPI) stateComputeDataCIDv2(ctx context.Context, maddr addre
 		return cid.Undef, fmt.Errorf("computing params for ComputeDataCommitment: %w", err)
 	}
 	ccmt := &types.Message{
-		To:     market.Address,
-		From:   maddr,
-		Value:  types.NewInt(0),
-		Method: market.Methods.ComputeDataCommitment,
+		To:    market.Address,
+		From:  maddr,
+		Value: types.NewInt(0),
+		// Hard coded, because the method has since been deprecated
+		Method: 8,
 		Params: ccparams,
 	}
 	r, err := msa.API().StateCall(ctx, ccmt, tsk)
