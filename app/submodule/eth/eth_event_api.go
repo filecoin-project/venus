@@ -37,9 +37,10 @@ func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error)
 		ChainAPI:             chainAPI,
 		MaxFilterHeightRange: abi.ChainEpoch(cfg.Event.MaxFilterHeightRange),
 		SubscribtionCtx:      ctx,
+		disable:              !cfg.EnableEthRPC || cfg.Event.DisableRealTimeFilterAPI,
 	}
 
-	if !cfg.EnableEthRPC || cfg.Event.DisableRealTimeFilterAPI {
+	if ee.disable {
 		// all event functionality is disabled
 		// the historic filter API relies on the real time one
 		return ee, nil
@@ -117,10 +118,12 @@ type ethEventAPI struct {
 	SubManager           *EthSubscriptionManager
 	MaxFilterHeightRange abi.ChainEpoch
 	SubscribtionCtx      context.Context
+
+	disable bool
 }
 
 func (e *ethEventAPI) Start(ctx context.Context) error {
-	if e.em.cfg.FevmConfig.Event.DisableRealTimeFilterAPI {
+	if e.disable {
 		return nil
 	}
 
