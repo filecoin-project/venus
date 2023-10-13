@@ -415,12 +415,15 @@ func newRateLimitConfig() *RateLimitCfg {
 }
 
 type EventConfig struct {
-	// EnableRealTimeFilterAPI enables APIs that can create and query filters for actor events as they are emitted.
-	EnableRealTimeFilterAPI bool `json:"enableRealTimeFilterAPI"`
+	// EnableEthRPC enables APIs that
+	// DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
+	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	DisableRealTimeFilterAPI bool `json:"disableRealTimeFilterAPI"`
 
-	// EnableHistoricFilterAPI enables APIs that can create and query filters for actor events that occurred in the past.
-	// A queryable index of events will be maintained.
-	EnableHistoricFilterAPI bool `json:"enableHistoricFilterAPI"`
+	// DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
+	// that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
+	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	DisableHistoricFilterAPI bool `json:"disableHistoricFilterAPI"`
 
 	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
 	// this time become eligible for automatic deletion.
@@ -463,12 +466,12 @@ func newFevmConfig() *FevmConfig {
 		EnableEthRPC:                 false,
 		EthTxHashMappingLifetimeDays: 0,
 		Event: EventConfig{
-			EnableRealTimeFilterAPI: false,
-			EnableHistoricFilterAPI: false,
-			FilterTTL:               Duration(time.Hour * 24),
-			MaxFilters:              100,
-			MaxFilterResults:        10000,
-			MaxFilterHeightRange:    2880, // conservative limit of one day
+			DisableRealTimeFilterAPI: false,
+			DisableHistoricFilterAPI: false,
+			FilterTTL:                Duration(time.Hour * 24),
+			MaxFilters:               100,
+			MaxFilterResults:         10000,
+			MaxFilterHeightRange:     2880, // conservative limit of one day
 		},
 	}
 }

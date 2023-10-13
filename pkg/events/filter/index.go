@@ -167,59 +167,58 @@ func (ei *EventIndex) migrateToVersion2(ctx context.Context, chainStore *chain.S
 
 	currTS := chainStore.GetHead()
 
-	for int64(currTS.Height()) >= minHeight.Int64 {
-		if currTS.Height() == 0 {
-			break
-		}
+	// minHeight > 0 说明 event 表里有数据，需要迁移数据
+	if minHeight.Int64 > 0 {
+		for int64(currTS.Height()) >= minHeight.Int64 {
+			if currTS.Height()%1000 == 0 {
+				log.Infof("Migrating height %d (remaining %d)", currTS.Height(), int64(currTS.Height())-minHeight.Int64)
+			}
 
-		if currTS.Height()%1000 == 0 {
-			log.Infof("Migrating height %d (remaining %d)", currTS.Height(), int64(currTS.Height())-minHeight.Int64)
-		}
+			tsKey := currTS.Parents()
+			currTS, err = chainStore.GetTipSet(ctx, tsKey)
+			if err != nil {
+				return fmt.Errorf("get tipset from key: %w", err)
+			}
+			log.Debugf("Migrating height %d", currTS.Height())
 
-		tsKey := currTS.Parents()
-		currTS, err = chainStore.GetTipSet(ctx, tsKey)
-		if err != nil {
-			return fmt.Errorf("get tipset from key: %w", err)
-		}
-		log.Debugf("Migrating height %d", currTS.Height())
+			tsKeyCid, err := currTS.Key().Cid()
+			if err != nil {
+				return fmt.Errorf("tipset key cid: %w", err)
+			}
 
-		tsKeyCid, err := currTS.Key().Cid()
-		if err != nil {
-			return fmt.Errorf("tipset key cid: %w", err)
-		}
+			// delete all events that are not in the canonical chain
+			_, err = stmtDeleteOffChainEvent.Exec(tsKeyCid.Bytes(), currTS.Height())
+			if err != nil {
+				return fmt.Errorf("delete off chain event: %w", err)
+			}
 
-		// delete all events that are not in the canonical chain
-		_, err = stmtDeleteOffChainEvent.Exec(tsKeyCid.Bytes(), currTS.Height())
-		if err != nil {
-			return fmt.Errorf("delete off chain event: %w", err)
-		}
+			// find the first eventID from the last time the tipset was applied
+			var eventID sql.NullInt64
+			err = stmtSelectEvent.QueryRow(tsKeyCid.Bytes()).Scan(&eventID)
+			if err != nil {
+				if err == sql.ErrNoRows {
+					continue
+				}
+				return fmt.Errorf("select event: %w", err)
+			}
 
-		// find the first eventID from the last time the tipset was applied
-		var eventID sql.NullInt64
-		err = stmtSelectEvent.QueryRow(tsKeyCid.Bytes()).Scan(&eventID)
-		if err != nil {
-			if err == sql.ErrNoRows {
+			// this tipset might not have any events which is ok
+			if !eventID.Valid {
 				continue
 			}
-			return fmt.Errorf("select event: %w", err)
-		}
+			log.Debugf("Deleting all events with id < %d at height %d", eventID.Int64, currTS.Height())
 
-		// this tipset might not have any events which is ok
-		if !eventID.Valid {
-			continue
-		}
-		log.Debugf("Deleting all events with id < %d at height %d", eventID.Int64, currTS.Height())
+			res, err := stmtDeleteEvent.Exec(tsKeyCid.Bytes(), eventID.Int64)
+			if err != nil {
+				return fmt.Errorf("delete event: %w", err)
+			}
 
-		res, err := stmtDeleteEvent.Exec(tsKeyCid.Bytes(), eventID.Int64)
-		if err != nil {
-			return fmt.Errorf("delete event: %w", err)
+			nrRowsAffected, err := res.RowsAffected()
+			if err != nil {
+				return fmt.Errorf("rows affected: %w", err)
+			}
+			log.Debugf("deleted %d events from tipset %s", nrRowsAffected, tsKeyCid.String())
 		}
-
-		nrRowsAffected, err := res.RowsAffected()
-		if err != nil {
-			return fmt.Errorf("rows affected: %w", err)
-		}
-		log.Debugf("deleted %d events from tipset %s", nrRowsAffected, tsKeyCid.String())
 	}
 
 	// delete all entries that have an event_id that doesn't exist (since we don't have a foreign
