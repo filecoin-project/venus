@@ -1,50 +1,102 @@
 # venus changelog
 
+## v1.14.0-rc1
+
+* fix duplicate actor events / 解决以太坊event 日志重复问题 [[#6104](https://github.com/filecoin-project/venus/pull/6104)]
+* Fix/wallet balance cmd [[#6107](https://github.com/filecoin-project/venus/pull/6107)]
+* add check before write badger / 添加检查已经存在，在写入之前 [[#6110](https://github.com/filecoin-project/venus/pull/6110)]
+* set gcConfidence = 2 * constants.ForkLengthThreshold /  设置gcConfidence的值为2 * constants.ForkLengthThreshold [[#6113](https://github.com/filecoin-project/venus/pull/6113)]
+* feat: Add EIP-1898 support needed for The Graph compatibility [[#6109](https://github.com/filecoin-project/venus/pull/6109)]
+* fix: add existing nonce error [[#6111](https://github.com/filecoin-project/venus/pull/6111)]
+* feat: api: add SyncIncomingBlocks [[#6115](https://github.com/filecoin-project/venus/pull/6115)]
+* feat: Implement a tooling for slasher [[#6119](https://github.com/filecoin-project/venus/pull/6119)]
+* chore: Output log when FVM_CONCURRENCY value is too large [[#6120](https://github.com/filecoin-project/venus/pull/6120)]
+* fix: Print only live sectors by default [[#6123](https://github.com/filecoin-project/venus/pull/6123)]
+* feat: migrate to boxo [[#6121](https://github.com/filecoin-project/venus/pull/6121)]
+* Auto-resume interrupted snapshot imports / 自动重链快照导入失败时 [[#6117](https://github.com/filecoin-project/venus/pull/6117)]
+* fix: DecodeRLP can panic [[#6125](https://github.com/filecoin-project/venus/pull/6125)]
+* feat: vm: allow raw cbor in state and use the new go-multicodec [[#6126](https://github.com/filecoin-project/venus/pull/6126)]
+* Feat/invert validation switch checks [[#6124](https://github.com/filecoin-project/venus/pull/6124)]
+* optimize LoadTipSetMessage / 优化LoadTipSetMessage [[#6118](https://github.com/filecoin-project/venus/pull/6118)]
+* Feat/nv skeleton [[#6134](https://github.com/filecoin-project/venus/pull/6134)]
+* feat: include extra messages in ComputeState InvocResult [[#6135](https://github.com/filecoin-project/venus/pull/6135)]
+* Feat/add eth syncing api [[#6136](https://github.com/filecoin-project/venus/pull/6136)]
+* Feat/make it optional to apply msg from ts when call with gas [[#6138](https://github.com/filecoin-project/venus/pull/6138)]
+* feat: Plumb through a proper Flush() method on all blockstores [[#6137](https://github.com/filecoin-project/venus/pull/6137)]
+* chore: Use type proxies instead of versioned GST imports [[#6139](https://github.com/filecoin-project/venus/pull/6139)]
+* feat: add PieceCID to StorageDealQueryParams [[#6143](https://github.com/filecoin-project/venus/pull/6143)]
+* fix: chain: cancel long operations upon ctx cancelation [[#6144](https://github.com/filecoin-project/venus/pull/6144)]
+* feat: vm: switch to the new exec trace format [[#6148](https://github.com/filecoin-project/venus/pull/6148)]
+* feat: eth trace api [[#6149](https://github.com/filecoin-project/venus/pull/6149)]
+* fix: typos [[#6146](https://github.com/filecoin-project/venus/pull/6146)]
+* chore(deps): bump actions/checkout from 3 to 4 [[#6151](https://github.com/filecoin-project/venus/pull/6151)]
+* refactor: verify and save block messages when receive new bock [[#6150](https://github.com/filecoin-project/venus/pull/6150)]
+* opt: generate datacap types to venus-shared [[#6152](https://github.com/filecoin-project/venus/pull/6152)]
+* feat: add id to MinerDeal [[#6158](https://github.com/filecoin-project/venus/pull/6158)]
+* Feat/synthetic po rep [[#6161](https://github.com/filecoin-project/venus/pull/6161)]
+* feat: add asc field to StorageDealQueryParams [[#6163](https://github.com/filecoin-project/venus/pull/6163)]
+* Chore/updates [[#6169](https://github.com/filecoin-project/venus/pull/6169)]
+* fix: support exchange protocols [[#6171](https://github.com/filecoin-project/venus/pull/6171)]
+* chore: remove ioutil [[#6174](https://github.com/filecoin-project/venus/pull/6174)]
+* feat: add bootstrap for mainnet [[#6173](https://github.com/filecoin-project/venus/pull/6173)]
+* Chore/updates [[#6175](https://github.com/filecoin-project/venus/pull/6175)]
+* chore: Remove PL's european bootstrap nodes from mainnet.pi [[#6177](https://github.com/filecoin-project/venus/pull/6177)]
+* fix: update GenesisNetworkVersion to Version20 [[#6178](https://github.com/filecoin-project/venus/pull/6178)]
+* fix: not use chain randomness [[#6179](https://github.com/filecoin-project/venus/pull/6179)]
+* chore(deps): bump golang.org/x/net from 0.11.0 to 0.17.0 in /venus-devtool [[#6181](https://github.com/filecoin-project/venus/pull/6181)]
+* chore(deps): bump golang.org/x/net from 0.11.0 to 0.17.0 [[#6180](https://github.com/filecoin-project/venus/pull/6180)]
+* Opt/limit partitions [[#6182](https://github.com/filecoin-project/venus/pull/6182)]
+* feat: migrate boostrap for config [[#6183](https://github.com/filecoin-project/venus/pull/6183)]
+* feat: implement nv21 [[#6114](https://github.com/filecoin-project/venus/pull/6114)]
+* fix: not save data to event table [[#6184](https://github.com/filecoin-project/venus/pull/6184)]
+* chore: update deps [[#6185](https://github.com/filecoin-project/venus/pull/6185)]
+* chore: Set calibration upgrade height [[#6186](https://github.com/filecoin-project/venus/pull/6186)]
+
 ## v1.13.0
 ## v1.13.0-rc1
 
 ### New Features
 
-* Feat/add sign type to wallet types by @LinZexiao in https://github.com/filecoin-project/venus/pull/6036
-* feat: upgrade builtin actors to v1.23.1 by @0x5459 in https://github.com/filecoin-project/venus/pull/6039
-* feat: Increase the environment variable to skip checking whether mine… by @simlecode in https://github.com/filecoin-project/venus/pull/6055
-* feat: modify query params for message and deal by @LinZexiao in https://github.com/filecoin-project/venus/pull/6066
-* feat: add bootstrap by @simlecode in https://github.com/filecoin-project/venus/pull/6084
-* feat: add proxy interface to gateway by @LinZexiao in https://github.com/filecoin-project/venus/pull/6089
-* feat(market): filter deals by sector lifetime by @0x5459 in https://github.com/filecoin-project/venus/pull/6093
-* feat: set tipset to the given epoch by default by @LinZexiao in https://github.com/filecoin-project/venus/pull/6099
-* feat: remove MinPeerThreshold in bootstrap config because it is not used /删除MinPeerThreshold字段从bootstrap配置，没有用到 by @elvin-du in https://github.com/filecoin-project/venus/pull/6063
-* feat: make execution trace configurable via env variable venus / 通过VENUS_EXEC_TRACE_CACHE环境变量谁知trace缓存大小 by @elvin-du in https://github.com/filecoin-project/venus/pull/6100
+* Feat/add sign type to wallet types [[#6036](https://github.com/filecoin-project/venus/pull/6036)]
+* feat: upgrade builtin actors to v1.23.1 [[#6039](https://github.com/filecoin-project/venus/pull/6039)]
+* feat: Increase the environment variable to skip checking whether mine… [[#6055](https://github.com/filecoin-project/venus/pull/6055)]
+* feat: modify query params for message and deal [[#6066](https://github.com/filecoin-project/venus/pull/6066)]
+* feat: add bootstrap [[#6084](https://github.com/filecoin-project/venus/pull/6084)]
+* feat: add proxy interface to gateway [[#6089](https://github.com/filecoin-project/venus/pull/6089)]
+* feat(market): filter deals by sector lifetime [[#6093](https://github.com/filecoin-project/venus/pull/6093)]
+* feat: set tipset to the given epoch by default [[#6099](https://github.com/filecoin-project/venus/pull/6099)]
+* feat: remove MinPeerThreshold in bootstrap config because it is not used /删除MinPeerThreshold字段从bootstrap配置，没有用到 [[#6063](https://github.com/filecoin-project/venus/pull/6063)]
+* feat: make execution trace configurable via env variable venus / 通过VENUS_EXEC_TRACE_CACHE环境变量谁知trace缓存大小 [[#6100](https://github.com/filecoin-project/venus/pull/6100)]
 
 ### Optimizations
 
-* opt: Adjust size flag to string type by @simlecode in https://github.com/filecoin-project/venus/pull/6102
+* opt: Adjust size flag to string type [[#6102](https://github.com/filecoin-project/venus/pull/6102)]
 
 ### Bug Fixes
 
-* fix: Unsubscribe required on exit by @simlecode in https://github.com/filecoin-project/venus/pull/6103
-* fix: ethtypes: handle length overflow case / 处理rlp长度越界问题 by @elvin-du in https://github.com/filecoin-project/venus/pull/6101
+* fix: Unsubscribe required on exit [[#6103](https://github.com/filecoin-project/venus/pull/6103)]
+* fix: ethtypes: handle length overflow case / 处理rlp长度越界问题 [[#6101](https://github.com/filecoin-project/venus/pull/6101)]
 
 ### Documentation and Chores
 
-* doc: add config desc / 添加config注释 by @elvin-du in https://github.com/filecoin-project/venus/pull/6062
-* doc: add design doc of sync/添加同步设计文档 by @elvin-du in https://github.com/filecoin-project/venus/pull/5989
+* doc: add config desc / 添加config注释 [[#6062](https://github.com/filecoin-project/venus/pull/6062)]
+* doc: add design doc of sync/添加同步设计文档 [[#5989](https://github.com/filecoin-project/venus/pull/5989)]
 
-* chore: correct god eye url and prioritize ftp by @LinZexiao in https://github.com/filecoin-project/venus/pull/6031
-* chore(deps): bump actions/setup-go from 3 to 4 by @dependabot in https://github.com/filecoin-project/venus/pull/6029
-* chore(deps): bump TheDoctor0/zip-release from 0.6.0 to 0.7.1 by @dependabot in https://github.com/filecoin-project/venus/pull/6028
-* chore: bump github.com/gin-gonic/gin from v1.9.0 to v1.9.1 by @simlecode in https://github.com/filecoin-project/venus/pull/6037
-* chore: update minimum Go version to 1.19 by @0x5459 in https://github.com/filecoin-project/venus/pull/6038
-* chore: Update issue template enhancement.yml by @Fatman13 in https://github.com/filecoin-project/venus/pull/6046
-* chore: fix bug issue template by @Fatman13 in https://github.com/filecoin-project/venus/pull/6047
-* chore: pick 10971,10955,10934 from lotus by @LinZexiao in https://github.com/filecoin-project/venus/pull/6078
-* chore(deps): bump github.com/libp2p/go-libp2p from 0.27.5 to 0.27.8 in /venus-devtool by @dependabot in https://github.com/filecoin-project/venus/pull/6091
-* chore(deps): bump github.com/libp2p/go-libp2p from 0.27.5 to 0.27.8 by @dependabot in https://github.com/filecoin-project/venus/pull/6090
-* chore: transport code by @simlecode in https://github.com/filecoin-project/venus/pull/6097
+* chore: correct god eye url and prioritize ftp [[#6031](https://github.com/filecoin-project/venus/pull/6031)]
+* chore(deps): bump actions/setup-go from 3 to 4 [[#6029](https://github.com/filecoin-project/venus/pull/6029)]
+* chore(deps): bump TheDoctor0/zip-release from 0.6.0 to 0.7.1 [[#6028](https://github.com/filecoin-project/venus/pull/6028)]
+* chore: bump github.com/gin-gonic/gin from v1.9.0 to v1.9.1 [[#6037](https://github.com/filecoin-project/venus/pull/6037)]
+* chore: update minimum Go version to 1.19 [[#6038](https://github.com/filecoin-project/venus/pull/6038)]
+* chore: Update issue template enhancement.yml [[#6046](https://github.com/filecoin-project/venus/pull/6046)]
+* chore: fix bug issue template [[#6047](https://github.com/filecoin-project/venus/pull/6047)]
+* chore: pick 10971,10955,10934 from lotus [[#6078](https://github.com/filecoin-project/venus/pull/6078)]
+* chore(deps): bump github.com/libp2p/go-libp2p from 0.27.5 to 0.27.8 in /venus-devtool [[#6091](https://github.com/filecoin-project/venus/pull/6091)]
+* chore(deps): bump github.com/libp2p/go-libp2p from 0.27.5 to 0.27.8 [[#6090](https://github.com/filecoin-project/venus/pull/6090)]
+* chore: transport code [[#6097](https://github.com/filecoin-project/venus/pull/6097)]
 
 ## v1.12.0
 
-* fix: compatible with older versions by @simlecode in [[#6024](https://github.com/filecoin-project/venus/pull/6024)]
+* fix: compatible with older versions [[#6024](https://github.com/filecoin-project/venus/pull/6024)]
 * chore: update github actions by @galargh in [[#6027](https://github.com/filecoin-project/venus/pull/6027)]
 
 ## v1.12.0-rc1
@@ -78,7 +130,7 @@
 
 ## v1.11.1
 
-* fix: windowPoST verify fail [[#fvm-1750](https://github.com/filecoin-project/ref-fvm/pull/1750)]
+* fix: windowPoST verify fail [[#1750](https://github.com/filecoin-project/ref-fvm/pull/1750)]
 
 ## v1.11.0
 
