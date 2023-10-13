@@ -330,6 +330,6 @@ require (
 
 replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.7
+	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.8-0.20230905031755-d9d242594c9b
 	github.com/filecoin-project/test-vectors => ./extern/test-vectors
 )
