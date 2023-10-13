@@ -588,8 +588,8 @@ github.com/influxdata/influxdb-client-go/v2 v2.2.2 h1:O0CGIuIwQafvAxttAJ/VqMKfbW
 github.com/influxdata/influxdb-client-go/v2 v2.2.2/go.mod h1:fa/d1lAdUHxuc1jedx30ZfNG573oQTQmUni3N6pcW+0=
 github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839 h1:W9WBk7wlPfJLvMCdtV4zPulc4uCPrlywQOmbFOhgQNU=
 github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839/go.mod h1:xaLFMmpvUxqXtVkUJfg9QmT88cDaCJ3ZKgdZ78oO8Qo=
-github.com/ipfs-force-community/go-jsonrpc v0.1.7 h1:e0ZTapGFhDY54j0QpRYN54Q3FHawUBQAM1KvXOzZtYY=
-github.com/ipfs-force-community/go-jsonrpc v0.1.7/go.mod h1:jBSvPTl8V1N7gSTuCR4bis8wnQnIjHbRPpROol6iQKM=
+github.com/ipfs-force-community/go-jsonrpc v0.1.8-0.20230905031755-d9d242594c9b h1:bsEpRCnrKsqw7j7ahWFTRSxAezb0XBqwgR5zfbFzN80=
+github.com/ipfs-force-community/go-jsonrpc v0.1.8-0.20230905031755-d9d242594c9b/go.mod h1:jBSvPTl8V1N7gSTuCR4bis8wnQnIjHbRPpROol6iQKM=
 github.com/ipfs-force-community/metrics v1.0.1-0.20231011024528-8c881d456601 h1:zxKQ30KAD6KfvSFAx9tuqQXLDsEHyF+eVaUBXXYC2bU=
 github.com/ipfs-force-community/metrics v1.0.1-0.20231011024528-8c881d456601/go.mod h1:wM6EmkEcnJgWOFcVytgvK0u15awEmt8He0f2kAdsFDA=
 github.com/ipfs-force-community/sophon-auth v1.14.0-rc1 h1:r+TSz2r6H7K0ZtsiyS4Hmmf1bM62e5vQiHA8SYPIBz4=
