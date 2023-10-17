@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strconv"
 
 	"github.com/filecoin-project/go-address"
@@ -38,22 +39,22 @@ var stateCmd = &cmds.Command{
 		Tagline: "Interact with and query venus chain state",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"wait-msg":        stateWaitMsgCmd,
-		"search-msg":      stateSearchMsgCmd,
-		"power":           statePowerCmd,
-		"sectors":         stateSectorsCmd,
-		"active-sectors":  stateActiveSectorsCmd,
-		"sector":          stateSectorCmd,
-		"get-actor":       stateGetActorCmd,
-		"lookup":          stateLookupIDCmd,
-		"sector-size":     stateSectorSizeCmd,
-		"get-deal":        stateGetDealSetCmd,
-		"miner-info":      stateMinerInfo,
-		"network-version": stateNtwkVersionCmd,
-		"list-actor":      stateListActorCmd,
-		"actor-cids":      stateSysActorCIDsCmd,
-		"replay":          stateReplayCmd,
-		"compute-state":   StateComputeStateCmd,
+		"wait-msg":       stateWaitMsgCmd,
+		"search-msg":     stateSearchMsgCmd,
+		"power":          statePowerCmd,
+		"sectors":        stateSectorsCmd,
+		"active-sectors": stateActiveSectorsCmd,
+		"sector":         stateSectorCmd,
+		"get-actor":      stateGetActorCmd,
+		"lookup":         stateLookupIDCmd,
+		"sector-size":    stateSectorSizeCmd,
+		"get-deal":       stateGetDealSetCmd,
+		"miner-info":     stateMinerInfo,
+		"network-info":   stateNtwkInfoCmd,
+		"list-actor":     stateListActorCmd,
+		"actor-cids":     stateSysActorCIDsCmd,
+		"replay":         stateReplayCmd,
+		"compute-state":  StateComputeStateCmd,
 	},
 }
 
@@ -535,24 +536,53 @@ var stateMinerInfo = &cmds.Command{
 	},
 }
 
-var stateNtwkVersionCmd = &cmds.Command{
+var stateNtwkInfoCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Returns the network version",
+		Tagline: "Returns the network info",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		ts, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
+		ctx := req.Context
+
+		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
 		if err != nil {
 			return err
 		}
 
-		nv, err := env.(*node.Env).ChainAPI.StateNetworkVersion(req.Context, ts.Key())
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
+
+		nv, err := env.(*node.Env).ChainAPI.StateNetworkVersion(ctx, ts.Key())
 		if err != nil {
 			return err
 		}
 
-		return re.Emit(fmt.Sprintf("Network Version: %d", nv))
+		params, err := getEnv(env).ChainAPI.StateGetNetworkParams(ctx)
+		if err != nil {
+			return err
+		}
+
+		partUpgradeHeight := func() []string {
+			var out []string
+			rv := reflect.ValueOf(params.ForkUpgradeParams)
+			rt := rv.Type()
+			numField := rt.NumField()
+			for i := numField - 3; i < numField; i++ {
+				out = append(out, fmt.Sprintf("%s: %v", rt.Field(i).Name, rv.Field(i).Interface()))
+			}
+			return out
+		}
+
+		writer.Println("Network Name:", params.NetworkName)
+		writer.Println("Network Version:", nv)
+		for _, one := range partUpgradeHeight() {
+			writer.Println(one)
+		}
+		writer.Println("BlockDelaySecs:", params.BlockDelaySecs)
+		writer.Println("PreCommitChallengeDelay:", params.PreCommitChallengeDelay)
+		writer.Println("Chain ID:", params.Eip155ChainID)
+
+		return re.Emit(buf)
 	},
-	Type: "",
 }
 
 var stateListActorCmd = &cmds.Command{
