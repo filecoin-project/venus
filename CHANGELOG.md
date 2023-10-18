@@ -1,5 +1,11 @@
 # venus changelog
 
+## v1.14.0-rc3
+
+* chore: reset butterflynet [[#6191](https://github.com/filecoin-project/venus/pull/6191)]
+* feat: add network info command [[#6193](https://github.com/filecoin-project/venus/pull/6193)]
+* chore: update go-state-types v0.12.5 [[#6194](https://github.com/filecoin-project/venus/pull/6194)]
+
 ## v1.14.0-rc1
 
 * fix duplicate actor events / 解决以太坊event 日志重复问题 [[#6104](https://github.com/filecoin-project/venus/pull/6104)]
