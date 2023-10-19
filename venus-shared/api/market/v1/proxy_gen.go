@@ -45,7 +45,7 @@ type IMarketStruct struct {
 		DealsConsiderUnverifiedStorageDeals     func(context.Context, address.Address) (bool, error)                                                                                                                                                `perm:"read"`
 		DealsConsiderVerifiedStorageDeals       func(context.Context, address.Address) (bool, error)                                                                                                                                                `perm:"read"`
 		DealsImport                             func(ctx context.Context, deals []*market.MinerDeal) error                                                                                                                                          `perm:"admin"`
-		DealsImportData                         func(ctx context.Context, dealPropCid cid.Cid, file string, skipCommP bool) error                                                                                                                   `perm:"admin"`
+		DealsImportData                         func(ctx context.Context, ref market.ImportDataRef, skipCommP bool) error                                                                                                                           `perm:"admin"`
 		DealsMaxProviderCollateralMultiplier    func(context.Context, address.Address) (uint64, error)                                                                                                                                              `perm:"read"`
 		DealsMaxPublishFee                      func(context.Context, address.Address) (types.FIL, error)                                                                                                                                           `perm:"read"`
 		DealsMaxStartDelay                      func(context.Context, address.Address) (time.Duration, error)                                                                                                                                       `perm:"read"`
@@ -191,8 +191,8 @@ func (s *IMarketStruct) DealsConsiderVerifiedStorageDeals(p0 context.Context, p1
 func (s *IMarketStruct) DealsImport(p0 context.Context, p1 []*market.MinerDeal) error {
 	return s.Internal.DealsImport(p0, p1)
 }
-func (s *IMarketStruct) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string, p3 bool) error {
-	return s.Internal.DealsImportData(p0, p1, p2, p3)
+func (s *IMarketStruct) DealsImportData(p0 context.Context, p1 market.ImportDataRef, p2 bool) error {
+	return s.Internal.DealsImportData(p0, p1, p2)
 }
 func (s *IMarketStruct) DealsMaxProviderCollateralMultiplier(p0 context.Context, p1 address.Address) (uint64, error) {
 	return s.Internal.DealsMaxProviderCollateralMultiplier(p0, p1)
