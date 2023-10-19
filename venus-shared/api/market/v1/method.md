@@ -457,6 +457,7 @@ Inputs:
         "ProposalCID": {
           "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
         },
+        "UUID": "07070707-0707-0707-0707-070707070707",
         "File": "string value"
       }
     ],
@@ -469,9 +470,7 @@ Response:
 ```json
 [
   {
-    "ProposalCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
+    "Target": "string value",
     "Message": "string value"
   }
 ]
@@ -651,9 +650,12 @@ Inputs:
 ```json
 [
   {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    "ProposalCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "UUID": "07070707-0707-0707-0707-070707070707",
+    "File": "string value"
   },
-  "string value",
   true
 ]
 ```
