@@ -133,6 +133,7 @@ type StorageDealQueryParams struct {
 
 type ImportDataRef struct {
 	ProposalCID cid.Cid
+	UUID        uuid.UUID
 	File        string
 }
 
@@ -142,7 +143,8 @@ type ImportDataRefs struct {
 }
 
 type ImportDataResult struct {
-	ProposalCID cid.Cid
+	// Target may deal proposal cid or deal uuid
+	Target string
 	// deal import failed
 	Message string
 }
