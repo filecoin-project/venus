@@ -48,6 +48,7 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [DealsSetPieceCidBlocklist](#dealssetpiececidblocklist)
   * [DealsSetPublishMsgPeriod](#dealssetpublishmsgperiod)
   * [GetDeals](#getdeals)
+  * [GetPiecesContainingBlock](#getpiecescontainingblock)
   * [GetRetrievalDealStatistic](#getretrievaldealstatistic)
   * [GetStorageDealStatistic](#getstoragedealstatistic)
   * [GetUnPackedDeals](#getunpackeddeals)
@@ -957,6 +958,29 @@ Response:
     },
     "FastRetrieval": true,
     "Status": "Undefine"
+  }
+]
+```
+
+### GetPiecesContainingBlock
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   }
 ]
 ```

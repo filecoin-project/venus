@@ -644,6 +644,21 @@ func (mr *MockIMarketMockRecorder) GetDeals(arg0, arg1, arg2, arg3 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeals", reflect.TypeOf((*MockIMarket)(nil).GetDeals), arg0, arg1, arg2, arg3)
 }
 
+// GetPiecesContainingBlock mocks base method.
+func (m *MockIMarket) GetPiecesContainingBlock(arg0 context.Context, arg1 cid.Cid) ([]cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPiecesContainingBlock", arg0, arg1)
+	ret0, _ := ret[0].([]cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPiecesContainingBlock indicates an expected call of GetPiecesContainingBlock.
+func (mr *MockIMarketMockRecorder) GetPiecesContainingBlock(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPiecesContainingBlock", reflect.TypeOf((*MockIMarket)(nil).GetPiecesContainingBlock), arg0, arg1)
+}
+
 // GetRetrievalDealStatistic mocks base method.
 func (m *MockIMarket) GetRetrievalDealStatistic(arg0 context.Context, arg1 address.Address) (*market.RetrievalDealStatistic, error) {
 	m.ctrl.T.Helper()

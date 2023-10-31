@@ -63,6 +63,7 @@ type IMarketStruct struct {
 		DealsSetPieceCidBlocklist               func(context.Context, address.Address, []cid.Cid) error                                                                                                                                             `perm:"write"`
 		DealsSetPublishMsgPeriod                func(context.Context, address.Address, time.Duration) error                                                                                                                                         `perm:"write"`
 		GetDeals                                func(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*market.DealInfo, error)                                                                                               `perm:"read"`
+		GetPiecesContainingBlock                func(ctx context.Context, blockCID cid.Cid) ([]cid.Cid, error)                                                                                                                                      `perm:"read"`
 		GetRetrievalDealStatistic               func(ctx context.Context, miner address.Address) (*market.RetrievalDealStatistic, error)                                                                                                            `perm:"read"`
 		GetStorageDealStatistic                 func(ctx context.Context, miner address.Address) (*market.StorageDealStatistic, error)                                                                                                              `perm:"read"`
 		GetUnPackedDeals                        func(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                                   `perm:"read"`
@@ -244,6 +245,9 @@ func (s *IMarketStruct) DealsSetPublishMsgPeriod(p0 context.Context, p1 address.
 }
 func (s *IMarketStruct) GetDeals(p0 context.Context, p1 address.Address, p2, p3 int) ([]*market.DealInfo, error) {
 	return s.Internal.GetDeals(p0, p1, p2, p3)
+}
+func (s *IMarketStruct) GetPiecesContainingBlock(p0 context.Context, p1 cid.Cid) ([]cid.Cid, error) {
+	return s.Internal.GetPiecesContainingBlock(p0, p1)
 }
 func (s *IMarketStruct) GetRetrievalDealStatistic(p0 context.Context, p1 address.Address) (*market.RetrievalDealStatistic, error) {
 	return s.Internal.GetRetrievalDealStatistic(p0, p1)

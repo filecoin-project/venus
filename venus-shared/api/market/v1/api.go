@@ -156,6 +156,8 @@ type IMarket interface {
 	// DagstoreDestroyShard destroy shard by key
 	DagstoreDestroyShard(ctx context.Context, key string) error //perm:admin
 
+	GetPiecesContainingBlock(ctx context.Context, blockCID cid.Cid) ([]cid.Cid, error) //perm:read
+
 	MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                                          //perm:write
 	UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error                   //perm:write
 	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus market.PieceStatus, dealStatus storagemarket.StorageDealStatus) error //perm:write
