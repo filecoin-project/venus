@@ -50,6 +50,8 @@ import (
 	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
 	"github.com/filecoin-project/specs-actors/v8/actors/migration/nv16"
 
+	init11 "github.com/filecoin-project/go-state-types/builtin/v11/init"
+	system11 "github.com/filecoin-project/go-state-types/builtin/v11/system"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -400,6 +402,10 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      10,
 			}},
 			Expensive: true,
+		}, {
+			Height:    upgradeHeight.UpgradeWatermelonFixHeight,
+			Network:   network.Version21,
+			Migration: cf.upgradeActorsV12Fix,
 		},
 	}
 
@@ -2693,6 +2699,8 @@ func (c *ChainFork) UpgradeActorsV12(ctx context.Context,
 	return newRoot, nil
 }
 
+var calibnetv12BuggyBundle = cid.MustParse("bafy2bzacedrunxfqta5skb7q7x32lnp4efz2oq7fn226ffm7fu5iqs62jkmvs")
+
 func (c *ChainFork) upgradeActorsV12Common(
 	ctx context.Context,
 	cache MigrationCache,
@@ -2722,13 +2730,53 @@ func (c *ChainFork) upgradeActorsV12Common(
 		)
 	}
 
-	manifest, ok := actors.GetManifest(actorstypes.Version12)
-	if !ok {
-		return cid.Undef, fmt.Errorf("no manifest CID for v12 upgrade")
+	// check whether or not this is a calibnet upgrade
+	// we do this because calibnet upgraded to a "wrong" actors bundle, which was then corrected
+	// we thus upgrade to calibrationnet-buggy in this upgrade
+	actorsIn, err := vmstate.LoadState(ctx, adtStore, root)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("loading state tree: %w", err)
+	}
+
+	initActor, found, err := actorsIn.GetActor(ctx, builtin.InitActorAddr)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to get system actor: %w", err)
+	}
+	if !found {
+		return cid.Undef, fmt.Errorf("system actor %s not found", err)
+	}
+
+	var initState init11.State
+	if err := adtStore.Get(ctx, initActor.Head, &initState); err != nil {
+		return cid.Undef, fmt.Errorf("failed to get system actor state: %w", err)
+	}
+
+	var manifestCid cid.Cid
+	if initState.NetworkName == "calibrationnet" {
+		embedded, ok := actors.GetEmbeddedBuiltinActorsBundle(actorstypes.Version12, "calibrationnet-buggy")
+		if !ok {
+			return cid.Undef, fmt.Errorf("didn't find buggy calibrationnet bundle")
+		}
+
+		var err error
+		manifestCid, err = actors.LoadBundle(ctx, writeStore, bytes.NewReader(embedded))
+		if err != nil {
+			return cid.Undef, fmt.Errorf("failed to load buggy calibnet bundle: %w", err)
+		}
+
+		if manifestCid != calibnetv12BuggyBundle {
+			return cid.Undef, fmt.Errorf("didn't find expected buggy calibnet bundle manifest: %s != %s", manifestCid, calibnetv12BuggyBundle)
+		}
+	} else {
+		var ok bool
+		manifestCid, ok = actors.GetManifest(actorstypes.Version12)
+		if !ok {
+			return cid.Undef, fmt.Errorf("no manifest CID for v12 upgrade")
+		}
 	}
 
 	// Perform the migration
-	newHamtRoot, err := nv21.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
+	newHamtRoot, err := nv21.MigrateStateTree(ctx, adtStore, manifestCid, stateRoot.Actors, epoch, config,
 		migrationLogger{}, cache)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("upgrading to actors v12: %w", err)
@@ -2751,6 +2799,152 @@ func (c *ChainFork) upgradeActorsV12Common(
 
 	if err := writeStore.Shutdown(ctx); err != nil {
 		return cid.Undef, fmt.Errorf("writeStore shutdown failed: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+//////////////////////
+
+var calibnetv12BuggyMinerCID = cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq")
+
+func (c *ChainFork) upgradeActorsV12Fix(ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+) (cid.Cid, error) {
+	stateStore := c.bs
+	adtStore := adt.WrapStore(ctx, cbor.NewCborStore(stateStore))
+
+	// ensure that the manifest is loaded in the blockstore
+	if err := actors.LoadBundles(ctx, stateStore, actorstypes.Version12); err != nil {
+		return cid.Undef, fmt.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot vmstate.StateRoot
+	if err := adtStore.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, fmt.Errorf("failed to decode state root: %w", err)
+	}
+
+	actorsIn, err := vmstate.LoadState(ctx, adtStore, root)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("loading state tree: %w", err)
+	}
+
+	// load old manifest data
+	systemActor, found, err := actorsIn.GetActor(ctx, builtin.SystemActorAddr)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to get system actor: %w", err)
+	}
+	if !found {
+		return cid.Undef, fmt.Errorf("system actor not found")
+	}
+
+	var systemState system11.State
+	if err := adtStore.Get(ctx, systemActor.Head, &systemState); err != nil {
+		return cid.Undef, fmt.Errorf("failed to get system actor state: %w", err)
+	}
+
+	var oldManifestData manifest.ManifestData
+	if err := adtStore.Get(ctx, systemState.BuiltinActors, &oldManifestData); err != nil {
+		return cid.Undef, fmt.Errorf("failed to get old manifest data: %w", err)
+	}
+
+	newManifestCID, ok := actors.GetManifest(actorstypes.Version12)
+	if !ok {
+		return cid.Undef, fmt.Errorf("no manifest CID for v12 upgrade")
+	}
+
+	// load new manifest
+	var newManifest manifest.Manifest
+	if err := adtStore.Get(ctx, newManifestCID, &newManifest); err != nil {
+		return cid.Undef, fmt.Errorf("error reading actor manifest: %w", err)
+	}
+
+	if err := newManifest.Load(ctx, adtStore); err != nil {
+		return cid.Undef, fmt.Errorf("error loading actor manifest: %w", err)
+	}
+
+	// build the CID mapping
+	codeMapping := make(map[cid.Cid]cid.Cid, len(oldManifestData.Entries))
+	for _, oldEntry := range oldManifestData.Entries {
+		newCID, ok := newManifest.Get(oldEntry.Name)
+		if !ok {
+			return cid.Undef, fmt.Errorf("missing manifest entry for %s", oldEntry.Name)
+		}
+
+		// Note: we expect newCID to be the same as oldEntry.Code for all actors except the miner actor
+		codeMapping[oldEntry.Code] = newCID
+	}
+
+	// Create empty actorsOut
+
+	actorsOut, err := vmstate.NewState(adtStore, actorsIn.Version())
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to create new tree: %w", err)
+	}
+
+	// Perform the migration
+	err = actorsIn.ForEach(func(a address.Address, actor *types.Actor) error {
+		newCid, ok := codeMapping[actor.Code]
+		if !ok {
+			return fmt.Errorf("didn't find mapping for %s", actor.Code)
+		}
+
+		return actorsOut.SetActor(ctx, a, &types.Actor{
+			Code:    newCid,
+			Head:    actor.Head,
+			Nonce:   actor.Nonce,
+			Balance: actor.Balance,
+			Address: actor.Address,
+		})
+	})
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to perform migration: %w", err)
+	}
+
+	err = actorsIn.ForEach(func(a address.Address, inActor *types.Actor) error {
+		outActor, found, err := actorsOut.GetActor(ctx, a)
+		if err != nil {
+			return fmt.Errorf("failed to get actor in outTree: %w", err)
+		}
+		if !found {
+			return fmt.Errorf("actor %s not found in outTree", a)
+		}
+
+		if inActor.Nonce != outActor.Nonce {
+			return fmt.Errorf("mismatched nonce for actor %s", a)
+		}
+
+		if !inActor.Balance.Equals(outActor.Balance) {
+			return fmt.Errorf("mismatched balance for actor %s: %d != %d", a, inActor.Balance, outActor.Balance)
+		}
+
+		if inActor.Address != outActor.Address && inActor.Address.String() != outActor.Address.String() {
+			return fmt.Errorf("mismatched address for actor %s: %s != %s", a, inActor.Address, outActor.Address)
+		}
+
+		if inActor.Head != outActor.Head {
+			return fmt.Errorf("mismatched head for actor %s", a)
+		}
+
+		// This is the hard-coded "buggy" miner actor Code ID
+		if inActor.Code != calibnetv12BuggyMinerCID && inActor.Code != outActor.Code {
+			return fmt.Errorf("unexpected change in code for actor %s", a)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to sanity check migration: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := actorsOut.Flush(ctx)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to persist new state root: %w", err)
 	}
 
 	return newRoot, nil
