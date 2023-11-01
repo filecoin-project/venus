@@ -228,6 +228,7 @@ var replicaCmd = &cli.Command{
 			{"\"github.com/filecoin-project/lotus/blockstore\"", "blockstore \"github.com/filecoin-project/venus/pkg/util/blockstoreutil\""},
 			{"golang.org/x/xerrors", "fmt"},
 			{"xerrors.Errorf", "fmt.Errorf"},
+			{"codeId", "codeID"},
 		}
 
 		for _, file := range files {

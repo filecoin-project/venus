@@ -84,12 +84,6 @@ func SetNetworkBundle(networkType int) error {
 		networkBundle = "mainnet"
 	}
 
-	// The following code cid existed temporarily on the calibnet testnet, as a "buggy" storage miner actor implementation.
-	// We include it in our builtin bundle, but intentionally omit from metadata.
-	if NetworkBundle == "calibrationnet" {
-		AddActorMeta("storageminer", cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq"), actorstypes.Version12)
-	}
-
 	return UseNetworkBundle(networkBundle)
 }
 
@@ -98,11 +92,9 @@ func UseNetworkBundle(netw string) error {
 	if NetworkBundle == netw {
 		return nil
 	}
-	if err := loadManifests(netw); err != nil {
-		return err
-	}
 	NetworkBundle = netw
-	return nil
+
+	return loadManifests(netw)
 }
 
 func loadManifests(netw string) error {
@@ -138,6 +130,12 @@ func loadManifests(netw string) error {
 
 	for _, meta := range newMetadata {
 		RegisterManifest(meta.Version, meta.ManifestCid, meta.Actors)
+	}
+
+	// The following code cid existed temporarily on the calibnet testnet, as a "buggy" storage miner actor implementation.
+	// We include it in our builtin bundle, but intentionally omit from metadata.
+	if NetworkBundle == "calibrationnet" {
+		AddActorMeta("storageminer", cid.MustParse("bafk2bzacecnh2ouohmonvebq7uughh4h3ppmg4cjsk74dzxlbbtlcij4xbzxq"), actorstypes.Version12)
 	}
 
 	return nil
