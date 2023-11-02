@@ -367,7 +367,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeHyggeHeight:       2683348,
 	UpgradeLightningHeight:   2809800,
 	UpgradeThunderHeight:     2809800 + 2880*21,
-	UpgradeWatermelonHeight:  999999999999999,
+	UpgradeWatermelonHeight:  3431940,
 	// This fix upgrade only ran on calibrationnet
 	UpgradeWatermelonFixHeight: -1,
 }
