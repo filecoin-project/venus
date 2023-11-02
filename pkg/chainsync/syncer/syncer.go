@@ -542,7 +542,8 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.Ti
 		return nil, err
 	}
 
-	for index, tip := range leftChain {
+	for index := range messages {
+		tip := leftChain[index]
 		fts, err := zipTipSetAndMessages(bs, tip, messages[index].Bls, messages[index].Secpk, messages[index].BlsIncludes, messages[index].SecpkIncludes)
 		if err != nil {
 			return nil, fmt.Errorf("message processing failed: %w", err)
