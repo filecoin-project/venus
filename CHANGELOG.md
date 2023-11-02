@@ -1,5 +1,9 @@
 # venus changelog
 
+## v1.14.0-rc4
+
+chore: update to builtin-actors v12.0.0-rc.2 [[#6207](https://github.com/filecoin-project/venus/pull/6207)]
+
 ## v1.14.0-rc3
 
 * chore: reset butterflynet [[#6191](https://github.com/filecoin-project/venus/pull/6191)]
