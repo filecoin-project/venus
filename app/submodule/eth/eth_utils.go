@@ -611,12 +611,12 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLooku
 	}
 
 	// The tx is located in the parent tipset
-	parentTs, err := ca.ChainGetTipSet(ctx, ts.Parents())
+	parentTS, err := ca.ChainGetTipSet(ctx, ts.Parents())
 	if err != nil {
 		return types.EthTxReceipt{}, fmt.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", ts.Parents(), err)
 	}
 
-	baseFee := parentTs.Blocks()[0].ParentBaseFee
+	baseFee := parentTS.Blocks()[0].ParentBaseFee
 	gasOutputs := gas.ComputeGasOutputs(lookup.Receipt.GasUsed, int64(tx.Gas), baseFee, big.Int(tx.MaxFeePerGas), big.Int(tx.MaxPriorityFeePerGas), true)
 	totalSpent := big.Sum(gasOutputs.BaseFeeBurn, gasOutputs.MinerTip, gasOutputs.OverEstimationBurn)
 
