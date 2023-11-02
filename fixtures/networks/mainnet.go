@@ -70,8 +70,8 @@ func Mainnet() *NetworkConf {
 				UpgradeHyggeHeight:         2683348,           // 2023-03-14T15:14:00Z
 				UpgradeLightningHeight:     2809800,           // 2023-04-27T13:00:00Z
 				UpgradeThunderHeight:       2809800 + 2880*21, // 2023-05-18T13:00:00Z
-				UpgradeWatermelonHeight:    999999999999999,
-				UpgradeWatermelonFixHeight: -1, // This fix upgrade only ran on calibrationnet
+				UpgradeWatermelonHeight:    3431940,           // 2023-11-29T13:30:00Z
+				UpgradeWatermelonFixHeight: -1,                // This fix upgrade only ran on calibrationnet
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:          address.Mainnet,
