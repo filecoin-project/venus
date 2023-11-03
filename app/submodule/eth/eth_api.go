@@ -715,7 +715,6 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.
 
 		// arrays should be reversed at the end
 		baseFeeArray = append(baseFeeArray, types.EthBigInt(basefee))
-		gasUsedRatioArray = append(gasUsedRatioArray, float64(totalGasUsed)/float64(constants.BlockGasLimit))
 		gasUsedRatioArray = append(gasUsedRatioArray, float64(totalGasUsed)/float64(maxGas))
 
 		rewardsArray = append(rewardsArray, rewards)
