@@ -113,7 +113,7 @@ func (s *Server) HandleStream(stream inet.Stream) {
 		return
 	}
 
-	slog.Infow("block sync request", "start", req.Head, "len", req.Length)
+	slog.Debugw("block sync request", "start", req.Head, "len", req.Length)
 
 	resp, err := s.processRequest(ctx, &req)
 	if err != nil {

@@ -647,8 +647,10 @@ func (c *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, height a
 		if err == nil && ok && !constants.NoMigrationResultCache {
 			log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
 			return migCid, nil
-		} else if err != nil {
+		} else if !errors.Is(err, dstore.ErrNotFound) {
 			log.Errorw("failed to lookup previous migration result", "err", err)
+		} else {
+			log.Debug("no cached migration found, migrating from scratch")
 		}
 
 		startTime := time.Now()
