@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/state/tree"
@@ -70,6 +71,11 @@ func (x *FvmExtern) TipsetCid(ctx context.Context, epoch abi.ChainEpoch) (cid.Ci
 	return tsk.Cid()
 }
 
+// todo: remove after nv21?
+// https://github.com/filecoin-project/lotus/pull/11399
+var upgradeWatermelonFixHeight = abi.ChainEpoch(-1)
+var setUpgradeWatermelonFixHeightOnce sync.Once
+
 // VerifyConsensusFault is similar to the one in syscalls.go used by the LegacyVM, except it never errors
 // Errors are logged and "no fault" is returned, which is functionally what go-actors does anyway
 func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte) (*ffi_cgo.ConsensusFault, int64) {
@@ -102,6 +108,14 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 		fvmLog.Infof("invalid consensus fault: submitted blocks are the same")
 		return ret, totalGas
 	}
+
+	if config.IsNearUpgrade(blockA.Height, upgradeWatermelonFixHeight) {
+		return ret, totalGas
+	}
+	if config.IsNearUpgrade(blockB.Height, upgradeWatermelonFixHeight) {
+		return ret, totalGas
+	}
+
 	// (1) check conditions necessary to any consensus fault
 
 	// were blocks mined by same miner?
@@ -288,6 +302,10 @@ func defaultFVMOpts(ctx context.Context, opts *vm.VmOption) (*ffi.FVMOpts, error
 }
 
 func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
+	setUpgradeWatermelonFixHeightOnce.Do(func() {
+		upgradeWatermelonFixHeight = opts.Fork.GetForkUpgrade().UpgradeWatermelonFixHeight
+	})
+
 	fvmOpts, err := defaultFVMOpts(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("creating fvm opts: %w", err)

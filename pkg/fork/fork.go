@@ -643,16 +643,19 @@ func (c *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, height a
 	retCid := root
 	u := c.stateMigrations[height]
 	if u != nil && u.upgrade != nil {
-		migCid, ok, err := u.migrationResultCache.Get(ctx, root)
-		if err == nil && ok && !constants.NoMigrationResultCache {
-			log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
-			return migCid, nil
-		} else if !errors.Is(err, dstore.ErrNotFound) {
-			log.Errorw("failed to lookup previous migration result", "err", err)
-		} else {
-			log.Debug("no cached migration found, migrating from scratch")
+		if height != c.forkUpgrade.UpgradeWatermelonFixHeight {
+			migCid, ok, err := u.migrationResultCache.Get(ctx, root)
+			if err == nil && ok && !constants.NoMigrationResultCache {
+				log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
+				return migCid, nil
+			} else if !errors.Is(err, dstore.ErrNotFound) {
+				log.Errorw("failed to lookup previous migration result", "err", err)
+			} else {
+				log.Debug("no cached migration found, migrating from scratch")
+			}
 		}
 
+		var err error
 		startTime := time.Now()
 		log.Warnw("STARTING migration", "height", height, "from", root)
 		// Yes, we clone the cache, even for the final upgrade epoch. Why? Reverts. We may
@@ -2907,6 +2910,19 @@ func (c *ChainFork) upgradeActorsV12Fix(ctx context.Context,
 		return cid.Undef, fmt.Errorf("failed to perform migration: %w", err)
 	}
 
+	systemState.BuiltinActors = newManifest.Data
+	newSystemHead, err := adtStore.Put(ctx, &systemState)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to put new system state: %w", err)
+	}
+
+	systemActor.Head = newSystemHead
+	if err = actorsOut.SetActor(ctx, builtin.SystemActorAddr, systemActor); err != nil {
+		return cid.Undef, fmt.Errorf("failed to put new system actor: %w", err)
+	}
+
+	// Sanity checking
+
 	err = actorsIn.ForEach(func(a address.Address, inActor *types.Actor) error {
 		outActor, found, err := actorsOut.GetActor(ctx, a)
 		if err != nil {
@@ -2928,7 +2944,7 @@ func (c *ChainFork) upgradeActorsV12Fix(ctx context.Context,
 			return fmt.Errorf("mismatched address for actor %s: %s != %s", a, inActor.Address, outActor.Address)
 		}
 
-		if inActor.Head != outActor.Head {
+		if inActor.Head != outActor.Head && a != builtin.SystemActorAddr {
 			return fmt.Errorf("mismatched head for actor %s", a)
 		}
 
