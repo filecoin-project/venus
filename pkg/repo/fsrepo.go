@@ -36,6 +36,7 @@ const (
 	versionFilename        = "version"
 	walletDatastorePrefix  = "wallet"
 	chainDatastorePrefix   = "chain"
+	splitstorePrefix       = "splitstore"
 	metaDatastorePrefix    = "metadata"
 	paychDatastorePrefix   = "paych"
 	snapshotFilenamePrefix = "snapshot"
@@ -52,7 +53,7 @@ type FSRepo struct {
 	// lk protects the config file
 	lk sync.RWMutex
 
-	ds       *blockstoreutil.BadgerBlockstore
+	ds       blockstoreutil.Blockstore
 	keystore fskeystore.Keystore
 	walletDs Datastore
 	chainDs  Datastore
@@ -65,6 +66,8 @@ type FSRepo struct {
 	sqlPath string
 	sqlErr  error
 	sqlOnce sync.Once
+
+	closers []func() error
 }
 
 var _ Repo = (*FSRepo)(nil)
@@ -209,6 +212,14 @@ func (r *FSRepo) loadFromDisk() error {
 		return errors.Wrap(err, "failed to load config file")
 	}
 
+	if err := r.openChainDatastore(); err != nil {
+		return errors.Wrap(err, "failed to open chain datastore")
+	}
+
+	if err := r.openMetaDatastore(); err != nil {
+		return errors.Wrap(err, "failed to open metadata datastore")
+	}
+
 	if err := r.openDatastore(); err != nil {
 		return errors.Wrap(err, "failed to open datastore")
 	}
@@ -219,14 +230,6 @@ func (r *FSRepo) loadFromDisk() error {
 
 	if err := r.openWalletDatastore(); err != nil {
 		return errors.Wrap(err, "failed to open wallet datastore")
-	}
-
-	if err := r.openChainDatastore(); err != nil {
-		return errors.Wrap(err, "failed to open chain datastore")
-	}
-
-	if err := r.openMetaDatastore(); err != nil {
-		return errors.Wrap(err, "failed to open metadata datastore")
 	}
 
 	if err := r.openPaychDataStore(); err != nil {
@@ -297,29 +300,12 @@ func (r *FSRepo) Keystore() fskeystore.Keystore {
 
 // Close closes the repo.
 func (r *FSRepo) Close() error {
-	if err := r.ds.Close(); err != nil {
-		return errors.Wrap(err, "failed to close datastore")
+	// todo: use new way to close others
+	for _, closer := range r.closers {
+		if err := closer(); err != nil {
+			return fmt.Errorf("close fs repo: %w", err)
+		}
 	}
-
-	if err := r.walletDs.Close(); err != nil {
-		return errors.Wrap(err, "failed to close wallet datastore")
-	}
-
-	if err := r.chainDs.Close(); err != nil {
-		return errors.Wrap(err, "failed to close chain datastore")
-	}
-
-	if err := r.metaDs.Close(); err != nil {
-		return errors.Wrap(err, "failed to close meta datastore")
-	}
-
-	if err := r.paychDs.Close(); err != nil {
-		return errors.Wrap(err, "failed to close paych datastore")
-	}
-
-	/*if err := r.marketDs.Close(); err != nil {
-		return errors.Wrap(err, "failed to close market datastore")
-	}*/
 
 	if err := r.removeAPIFile(); err != nil {
 		return errors.Wrap(err, "error removing API file")
@@ -376,19 +362,31 @@ func (r *FSRepo) readVersion() (uint, error) {
 }
 
 func (r *FSRepo) openDatastore() error {
+	path := filepath.Join(r.path, Config.Datastore.Path)
+	opts, err := blockstoreutil.BadgerBlockstoreOptions(path, false)
+	if err != nil {
+		return err
+	}
+	opts.Prefix = bstore.BlockPrefix.String()
+	ds, err := blockstoreutil.Open(opts)
+	if err != nil {
+		return err
+	}
+
+	r.closers = append(r.closers, ds.Close)
+
 	switch Config.Datastore.Type {
 	case "badgerds":
-		path := filepath.Join(r.path, Config.Datastore.Path)
-		opts, err := blockstoreutil.BadgerBlockstoreOptions(path, false)
-		if err != nil {
-			return err
-		}
-		opts.Prefix = bstore.BlockPrefix.String()
-		ds, err := blockstoreutil.Open(opts)
-		if err != nil {
-			return err
-		}
 		r.ds = ds
+	case "splitstore":
+		if r.chainDs == nil {
+			return fmt.Errorf("meta data store is nil")
+		}
+
+		// todo: replace ds with splitstore
+		splitstore := ds
+
+		r.ds = splitstore
 	default:
 		return fmt.Errorf("unknown datastore type in config: %s", Config.Datastore.Type)
 	}
@@ -416,6 +414,7 @@ func (r *FSRepo) openChainDatastore() error {
 	}
 
 	r.chainDs = ds
+	r.closers = append(r.closers, ds.Close)
 
 	return nil
 }
@@ -427,6 +426,7 @@ func (r *FSRepo) openMetaDatastore() error {
 	}
 
 	r.metaDs = ds
+	r.closers = append(r.closers, ds.Close)
 
 	return nil
 }
@@ -437,6 +437,7 @@ func (r *FSRepo) openPaychDataStore() error {
 	if err != nil {
 		return err
 	}
+	r.closers = append(r.closers, r.paychDs.Close)
 	return nil
 }
 
@@ -448,6 +449,7 @@ func (r *FSRepo) openWalletDatastore() error {
 	}
 
 	r.walletDs = ds
+	r.closers = append(r.closers, ds.Close)
 
 	return nil
 }
