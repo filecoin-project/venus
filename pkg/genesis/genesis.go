@@ -69,13 +69,7 @@ func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate st
 			template.Timestamp = uint64(constants.Clock.Now().Unix())
 		}
 
-		// TODO potentially replace this cached blockstore by a CBOR cache.
-		cbs, err := blockstoreutil.CachedBlockstore(ctx, bs, blockstoreutil.DefaultCacheOpts())
-		if err != nil {
-			return nil, err
-		}
-
-		b, err := genesis2.MakeGenesisBlock(context.TODO(), rep, cbs, template, para)
+		b, err := genesis2.MakeGenesisBlock(context.TODO(), rep, bs, template, para)
 		if err != nil {
 			return nil, fmt.Errorf("make genesis block: %w", err)
 		}
@@ -87,8 +81,8 @@ func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate st
 			return nil, err
 		}
 
-		offl := offline.Exchange(cbs)
-		blkserv := blockservice.New(cbs, offl)
+		offl := offline.Exchange(bs)
+		blkserv := blockservice.New(bs, offl)
 		dserv := merkledag.NewDAGService(blkserv)
 
 		if err := car.WriteCarWithWalker(context.TODO(), dserv, []cid.Cid{b.Genesis.Cid()}, f, gen.CarWalkFunc); err != nil {

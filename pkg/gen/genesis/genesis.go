@@ -515,6 +515,7 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 		Bsstore:              cs.Blockstore(),
 		SysCallsImpl:         mkFakedSigSyscalls(syscalls),
 		GasPriceSchedule:     gasPriceSchedule,
+		Fork:                 fork.NewMockFork(),
 	}
 
 	vm, err := fvm.NewVM(ctx, vmopt)

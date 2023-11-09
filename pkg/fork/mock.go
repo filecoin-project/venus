@@ -38,19 +38,20 @@ func (mockFork *MockFork) HasExpensiveForkBetween(parent, height abi.ChainEpoch)
 
 func (mockFork *MockFork) GetForkUpgrade() *config.ForkUpgradeConfig {
 	return &config.ForkUpgradeConfig{
-		UpgradeSmokeHeight:       -1,
-		UpgradeBreezeHeight:      -1,
-		UpgradeIgnitionHeight:    -1,
-		UpgradeLiftoffHeight:     -1,
-		UpgradeAssemblyHeight:    -1,
-		UpgradeRefuelHeight:      -1,
-		UpgradeTapeHeight:        -1,
-		UpgradeKumquatHeight:     -1,
-		BreezeGasTampingDuration: -1,
-		UpgradeCalicoHeight:      -1,
-		UpgradePersianHeight:     -1,
-		UpgradeOrangeHeight:      -1,
-		UpgradeClausHeight:       -1,
+		UpgradeSmokeHeight:         -1,
+		UpgradeBreezeHeight:        -1,
+		UpgradeIgnitionHeight:      -1,
+		UpgradeLiftoffHeight:       -1,
+		UpgradeAssemblyHeight:      -1,
+		UpgradeRefuelHeight:        -1,
+		UpgradeTapeHeight:          -1,
+		UpgradeKumquatHeight:       -1,
+		BreezeGasTampingDuration:   -1,
+		UpgradeCalicoHeight:        -1,
+		UpgradePersianHeight:       -1,
+		UpgradeOrangeHeight:        -1,
+		UpgradeClausHeight:         -1,
+		UpgradeWatermelonFixHeight: -1,
 	}
 }
 
