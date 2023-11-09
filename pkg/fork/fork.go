@@ -60,7 +60,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/repo"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -569,8 +568,6 @@ type ChainFork struct {
 	// upgrade param
 	networkType types.NetworkType
 	forkUpgrade *config.ForkUpgradeConfig
-
-	metadataDs repo.Datastore
 }
 
 func NewChainFork(ctx context.Context,
@@ -586,7 +583,6 @@ func NewChainFork(ctx context.Context,
 		ipldstore:   ipldstore,
 		networkType: networkParams.NetworkType,
 		forkUpgrade: networkParams.ForkUpgradeParam,
-		metadataDs:  metadataDs,
 	}
 
 	// If we have upgrades, make sure they're in-order and make sense.

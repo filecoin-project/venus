@@ -43,7 +43,6 @@ type Waiter struct {
 	chainReader     waiterChainReader
 	messageProvider MessageProvider
 	cst             cbor.IpldStore
-	bs              bstore.Blockstore
 	Stmgr           IStmgr
 }
 
@@ -55,7 +54,6 @@ func NewWaiter(chainStore waiterChainReader, messages MessageProvider, bs bstore
 	return &Waiter{
 		chainReader:     chainStore,
 		cst:             cst,
-		bs:              bs,
 		messageProvider: messages,
 	}
 }
