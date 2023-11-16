@@ -1,9 +1,12 @@
 package testutil
 
 import (
+	crand "crypto/rand"
 	"encoding/hex"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -33,7 +36,8 @@ func IntRangedProvider(min, max int) func(*testing.T) int {
 func BytesFixedProvider(size int) func(*testing.T) []byte {
 	return func(t *testing.T) []byte {
 		b := make([]byte, size)
-		rand.Read(b[:])
+		_, err := crand.Read(b[:])
+		require.NoError(t, err)
 		return b
 	}
 }
@@ -41,7 +45,8 @@ func BytesFixedProvider(size int) func(*testing.T) []byte {
 func BytesAtMostProvider(size int) func(*testing.T) []byte {
 	return func(t *testing.T) []byte {
 		b := make([]byte, rand.Intn(size))
-		rand.Read(b[:])
+		_, err := crand.Read(b[:])
+		require.NoError(t, err)
 		return b
 	}
 }
