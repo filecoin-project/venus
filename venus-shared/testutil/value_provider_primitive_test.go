@@ -13,7 +13,7 @@ import (
 
 func getRand() *rand.Rand {
 	seed := time.Now().UnixNano()
-	rand.Seed(seed)
+	rand.New(rand.NewSource(seed))
 	return rand.New(rand.NewSource(seed))
 }
 

@@ -2,8 +2,8 @@ package fskeystore
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"sort"

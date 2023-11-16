@@ -26,7 +26,7 @@ func TestBlockProbability(t *testing.T) {
 func TestWinnerProba(t *testing.T) {
 	tf.UnitTest(t)
 
-	rand.Seed(time.Now().UnixNano())
+	rand.New(rand.NewSource(time.Now().UnixNano()))
 	const N = 1000000
 	winnerProba := noWinnersProb()
 	sum := 0

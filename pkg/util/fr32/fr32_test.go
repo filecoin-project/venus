@@ -2,8 +2,8 @@ package fr32_test
 
 import (
 	"bytes"
+	"crypto/rand"
 	"io"
-	"math/rand"
 	"os"
 	"testing"
 
