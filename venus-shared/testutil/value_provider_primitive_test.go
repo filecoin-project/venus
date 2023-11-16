@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"encoding/hex"
-	"math/rand"
 	"reflect"
 	"testing"
 	"time"
@@ -10,12 +9,6 @@ import (
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/require"
 )
-
-func getRand() *rand.Rand {
-	seed := time.Now().UnixNano()
-	rand.New(rand.NewSource(seed))
-	return rand.New(rand.NewSource(seed))
-}
 
 func TestDefaultBytes(t *testing.T) {
 	tf.UnitTest(t)
