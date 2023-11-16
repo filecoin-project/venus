@@ -54,24 +54,25 @@ func Mainnet() *NetworkConf {
 				// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 				// Miners, clients, developers, custodians all need time to prepare.
 				// We still have upgrades and state changes to do, but can happen after signaling timing here.
-				UpgradeKumquatHeight:       170000,
-				UpgradeCalicoHeight:        265200,
-				UpgradePersianHeight:       265200 + (builtin2.EpochsInHour * 60),
-				UpgradeOrangeHeight:        336458,
-				UpgradeClausHeight:         343200, // 2020-12-22T02:00:00Z
-				UpgradeTrustHeight:         550321, // 2021-03-04T00:00:30Z
-				UpgradeNorwegianHeight:     665280, // 2021-04-12T22:00:00Z
-				UpgradeTurboHeight:         712320, // 2021-04-29T06:00:00Z
-				UpgradeHyperdriveHeight:    892800, // 2021-06-30T22:00:00Z
-				UpgradeChocolateHeight:     1231620,
-				UpgradeOhSnapHeight:        1594680,           // 2022-03-01T15:00:00Z
-				UpgradeSkyrHeight:          1960320,           // 2022-07-06T14:00:00Z
-				UpgradeSharkHeight:         2383680,           // 2022-11-30T14:00:00Z
-				UpgradeHyggeHeight:         2683348,           // 2023-03-14T15:14:00Z
-				UpgradeLightningHeight:     2809800,           // 2023-04-27T13:00:00Z
-				UpgradeThunderHeight:       2809800 + 2880*21, // 2023-05-18T13:00:00Z
-				UpgradeWatermelonHeight:    3431940,           // 2023-11-29T13:30:00Z
-				UpgradeWatermelonFixHeight: -1,                // This fix upgrade only ran on calibrationnet
+				UpgradeKumquatHeight:        170000,
+				UpgradeCalicoHeight:         265200,
+				UpgradePersianHeight:        265200 + (builtin2.EpochsInHour * 60),
+				UpgradeOrangeHeight:         336458,
+				UpgradeClausHeight:          343200, // 2020-12-22T02:00:00Z
+				UpgradeTrustHeight:          550321, // 2021-03-04T00:00:30Z
+				UpgradeNorwegianHeight:      665280, // 2021-04-12T22:00:00Z
+				UpgradeTurboHeight:          712320, // 2021-04-29T06:00:00Z
+				UpgradeHyperdriveHeight:     892800, // 2021-06-30T22:00:00Z
+				UpgradeChocolateHeight:      1231620,
+				UpgradeOhSnapHeight:         1594680,           // 2022-03-01T15:00:00Z
+				UpgradeSkyrHeight:           1960320,           // 2022-07-06T14:00:00Z
+				UpgradeSharkHeight:          2383680,           // 2022-11-30T14:00:00Z
+				UpgradeHyggeHeight:          2683348,           // 2023-03-14T15:14:00Z
+				UpgradeLightningHeight:      2809800,           // 2023-04-27T13:00:00Z
+				UpgradeThunderHeight:        2809800 + 2880*21, // 2023-05-18T13:00:00Z
+				UpgradeWatermelonHeight:     3469380,           // 2023-12-12T13:30:00Z
+				UpgradeWatermelonFixHeight:  -100,              // This fix upgrade only ran on calibrationnet
+				UpgradeWatermelonFix2Height: -101,              // This fix upgrade only ran on calibrationnet
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:          address.Mainnet,
