@@ -1,5 +1,10 @@
 # venus changelog
 
+## v1.14.0-rc6
+
+* opt: migration: set premigration to 90 minute [[#6217](https://github.com/filecoin-project/venus/pull/6217)]
+* fix: light-weight patch to fix calibrationnet again by removing move_partitions from built-in actors [[#6223](https://github.com/filecoin-project/venus/pull/6223)]
+
 ## v1.14.0-rc5
 
 fix: nv21fix migration: correctly upgrade system actor [[#6215](https://github.com/filecoin-project/venus/pull/6215)]
