@@ -169,9 +169,11 @@ func NewSplitstore(path string, initStore blockstore.Blockstore, opts ...Splitst
 func (ss *Splitstore) HeadChange(_, apply []*types.TipSet) error {
 	for _, ts := range apply {
 		height := ts.Height()
+		log := log.With("height", height)
 
 		if height >= ss.epochToClean && len(ss.stores) > ss.maxStoreCount {
 			storeToDrop := ss.stores[0]
+			log.Infof("drop store base%s)", storeToDrop.Base())
 
 			// block transfer
 			tempStore := NewComposeStore(storeToDrop, ss.stores[0])
@@ -209,6 +211,7 @@ func (ss *Splitstore) HeadChange(_, apply []*types.TipSet) error {
 				return err
 			}
 			ss.stores = append(ss.stores, store)
+			log.Infof("append new store base(%s)", tskCid.String())
 		}
 	}
 	return nil
