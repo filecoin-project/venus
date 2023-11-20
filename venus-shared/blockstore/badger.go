@@ -478,6 +478,39 @@ func (b *BadgerBlockstore) HashOnRead(_ bool) {
 	log.Warnf("called HashOnRead on badger blockstore; function not supported; ignoring")
 }
 
+func (b *BadgerBlockstore) ForEachKey(f func(cid.Cid) error) error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	txn := b.DB.NewTransaction(false)
+	defer txn.Discard()
+	opts := badger.IteratorOptions{PrefetchSize: 100}
+	iter := txn.NewIterator(opts)
+	defer iter.Close()
+
+	for iter.Rewind(); iter.Valid(); iter.Next() {
+		if atomic.LoadInt64(&b.state) != stateOpen {
+			// open iterators will run even after the database is closed...
+			return ErrBlockstoreClosed
+		}
+		k := iter.Item().Key()
+		// need to convert to key.Key using key.KeyFromDsKey.
+		bk, err := dshelp.BinaryFromDsKey(datastore.RawKey(string(k)))
+		if err != nil {
+			log.Warnf("error parsing key from binary: %s", err)
+			continue
+		}
+		cidKey := cid.NewCidV1(cid.Raw, bk)
+		err = f(cidKey)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (b *BadgerBlockstore) ConvertKey(cid cid.Cid) datastore.Key {
 	key := dshelp.MultihashToDsKey(cid.Hash())
 	return b.keyTransform.ConvertKey(key)
