@@ -34,6 +34,11 @@ type MiningAPI struct { //nolint
 
 // MinerGetBaseInfo get current miner information
 func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*types.MiningBaseInfo, error) {
+	localLog := log.With(
+		"maddr", maddr,
+		"round", round,
+	)
+
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
 	ts, err := chainStore.GetTipSet(ctx, tsk)
 	if err != nil {
@@ -79,6 +84,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 			return nil, fmt.Errorf("loading miner in current state: %v", err)
 		}
 
+		localLog.Infof("miner actor(%s) not found at look back tipset %s", maddr, ts.Key())
 		return nil, nil
 	}
 	if err != nil {
@@ -106,6 +112,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	}
 
 	if len(xsectors) == 0 {
+		localLog.Info("no sectors found for winning post")
 		return nil, nil
 	}
 
