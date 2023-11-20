@@ -8,9 +8,12 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func TestLockingDifferentShardsDoesNotBlock(t *testing.T) {
+	testflags.UnitTest(t)
 	shards := 16
 	sm := New(shards)
 	done := make(chan struct{})
@@ -29,6 +32,7 @@ func TestLockingDifferentShardsDoesNotBlock(t *testing.T) {
 	close(done)
 }
 func TestLockingSameShardsBlocks(t *testing.T) {
+	testflags.UnitTest(t)
 	shards := 16
 	sm := New(shards)
 	wg := sync.WaitGroup{}
@@ -60,6 +64,7 @@ func TestLockingSameShardsBlocks(t *testing.T) {
 }
 
 func TestShardedByString(t *testing.T) {
+	testflags.UnitTest(t)
 	shards := 16
 	sm := NewFor(maphash.String, shards)
 
