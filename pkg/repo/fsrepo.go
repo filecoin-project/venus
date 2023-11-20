@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo/fskeystore"
 
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
+	"github.com/filecoin-project/venus/venus-shared/blockstore/splitstore"
 	bstore "github.com/ipfs/boxo/blockstore"
 
 	badgerds "github.com/ipfs/go-ds-badger2"
@@ -383,8 +384,11 @@ func (r *FSRepo) openDatastore() error {
 			return fmt.Errorf("meta data store is nil")
 		}
 
-		// todo: replace ds with splitstore
-		splitstore := ds
+		ssPath := filepath.Join(r.path, splitstorePrefix)
+		splitstore, err := splitstore.NewSplitstore(ssPath, ds)
+		if err != nil {
+			return fmt.Errorf("build splitstore: %w", err)
+		}
 
 		r.ds = splitstore
 	default:

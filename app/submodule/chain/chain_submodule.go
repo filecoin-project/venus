@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/blockstore/splitstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -55,6 +56,7 @@ func NewChainSubmodule(ctx context.Context,
 ) (*ChainSubmodule, error) {
 	repo := config.Repo()
 	// initialize chain store
+	basebs := repo.Datastore()
 	chainStore := chain.NewStore(repo.ChainDatastore(), repo.Datastore(), config.GenesisCid(), circulatiingSupplyCalculator)
 	// drand
 	genBlk, err := chainStore.GetGenesisBlock(context.TODO())
@@ -77,6 +79,11 @@ func NewChainSubmodule(ctx context.Context,
 	processor := consensus.NewDefaultProcessor(syscalls, circulatiingSupplyCalculator, chainStore, config.Repo().Config().NetworkParams)
 
 	waiter := chain.NewWaiter(chainStore, messageStore, config.Repo().Datastore(), cbor.NewCborStore(config.Repo().Datastore()))
+
+	// SubscribeHeadChanges for splitstore
+	if ss, ok := basebs.(*splitstore.Splitstore); ok {
+		chainStore.SubscribeHeadChanges(ss.HeadChange)
+	}
 
 	store := &ChainSubmodule{
 		ChainReader:  chainStore,
