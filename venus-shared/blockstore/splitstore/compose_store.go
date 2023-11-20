@@ -168,7 +168,7 @@ func (cs *ComposeStore) Put(ctx context.Context, b blocks.Block) error {
 
 // PutMany implements blockstore.Blockstore.
 func (cs *ComposeStore) PutMany(ctx context.Context, bs []blocks.Block) error {
-	return cs.PutMany(ctx, bs)
+	return cs.primary.PutMany(ctx, bs)
 }
 
 // View implements blockstore.Blockstore.
