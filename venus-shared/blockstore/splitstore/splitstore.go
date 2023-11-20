@@ -79,7 +79,7 @@ var _ blockstore.Blockstore = (*Splitstore)(nil)
 func NewSplitstore(path string, initStore blockstore.Blockstore, opts ...SplitstoreOption) (*Splitstore, error) {
 	opt := SplitstoreOption{
 		MaxStoreCount: 3,
-		StoreSize:     2 * policy.ChainFinality,
+		StoreSize:     3 * policy.ChainFinality,
 	}
 	if len(opts) > 1 {
 		return nil, fmt.Errorf("splitstore: too many options")
@@ -137,8 +137,8 @@ func NewSplitstore(path string, initStore blockstore.Blockstore, opts ...Splitst
 		bs = append(bs, innerStore)
 	}
 
-	if !bs[len(bs)-1].Base().Defined() {
-		bs[len(bs)-1].Blockstore = initStore
+	if !bs[0].Base().Defined() {
+		bs[0].Blockstore = initStore
 	}
 
 	for i := range bs {
@@ -147,6 +147,20 @@ func NewSplitstore(path string, initStore blockstore.Blockstore, opts ...Splitst
 			ss.stores = append(ss.stores, bs[i])
 		}
 	}
+
+	// update epochToAppend
+	ctx := context.Background()
+	tskCid := ss.stores[len(ss.stores)-1].Base()
+	var tsk types.TipSetKey
+	err = ss.getCbor(ctx, tskCid, &tsk)
+	if err != nil {
+		return nil, fmt.Errorf("load store base tsk(%s): %w", tskCid, err)
+	}
+	ts, err := ss.getTipset(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("load store base tipset(%s): %w", tsk, err)
+	}
+	ss.epochToAppend = ts.Height() + ss.storeSize
 
 	return ss, nil
 }
