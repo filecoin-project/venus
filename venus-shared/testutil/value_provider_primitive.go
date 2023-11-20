@@ -4,6 +4,9 @@ import (
 	"encoding/hex"
 	"math/rand"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -17,7 +20,7 @@ const (
 	defaultBytesFixedSize = 16
 )
 
-func IntProvider(t *testing.T) int { return rand.Int() }
+func IntProvider(t *testing.T) int { return r.Int() }
 
 func IntRangedProvider(min, max int) func(*testing.T) int {
 	return func(t *testing.T) int {
@@ -26,14 +29,23 @@ func IntRangedProvider(min, max int) func(*testing.T) int {
 			t.Fatalf("invalid range [%d, %d)", min, max)
 		}
 
-		return min + rand.Intn(gap)
+		return min + r.Intn(gap)
 	}
+}
+
+var r = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+func getRand() *rand.Rand {
+	seed := time.Now().UnixNano()
+	r = rand.New(rand.NewSource(seed))
+	return rand.New(rand.NewSource(seed))
 }
 
 func BytesFixedProvider(size int) func(*testing.T) []byte {
 	return func(t *testing.T) []byte {
 		b := make([]byte, size)
-		rand.Read(b[:])
+		_, err := r.Read(b[:])
+		require.NoError(t, err)
 		return b
 	}
 }
@@ -41,7 +53,8 @@ func BytesFixedProvider(size int) func(*testing.T) []byte {
 func BytesAtMostProvider(size int) func(*testing.T) []byte {
 	return func(t *testing.T) []byte {
 		b := make([]byte, rand.Intn(size))
-		rand.Read(b[:])
+		_, err := r.Read(b[:])
+		require.NoError(t, err)
 		return b
 	}
 }

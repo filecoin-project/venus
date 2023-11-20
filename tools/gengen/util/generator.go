@@ -119,7 +119,7 @@ func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 	}
 	keys = append(keys, cfg.ImportKeys...)
 	g.keys = keys
-	vrKey, err := key.NewSecpKeyFromSeed(g.pnrg)
+	vrKey, err := key.NewBLSKeyFromSeed(g.pnrg)
 	if err != nil {
 		return err
 	}

@@ -3,10 +3,12 @@ package util
 import (
 	"testing"
 
+	"github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMergePeers(t *testing.T) {
+	testflags.UnitTest(t)
 	t1 := MergePeers([]string{}, []string{"a"})
 	assert.Equal(t, []string{"a"}, t1)
 

@@ -26,12 +26,12 @@ func TestBlockProbability(t *testing.T) {
 func TestWinnerProba(t *testing.T) {
 	tf.UnitTest(t)
 
-	rand.Seed(time.Now().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	const N = 1000000
 	winnerProba := noWinnersProb()
 	sum := 0
 	for i := 0; i < N; i++ {
-		minersRand := rand.Float64()
+		minersRand := r.Float64()
 		j := 0
 		for ; j < MaxBlocks; j++ {
 			minersRand -= winnerProba[j]
