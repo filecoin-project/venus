@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -78,8 +79,10 @@ func newDefaultAPIConfig() *APIConfig {
 // DatastoreConfig holds all the configuration options for the datastore.
 // TODO: use the advanced datastore configuration from ipfs
 type DatastoreConfig struct {
-	Type string `json:"type"`
-	Path string `json:"path"`
+	Type            string `json:"type"`
+	Path            string `json:"path"`
+	SplitstoreSize  int64  `json:"splitstore_size"`
+	SplitstoreCount int    `json:"splitstore_count"`
 }
 
 // Validators hold the list of validation functions for each configuration
@@ -93,8 +96,10 @@ var Validators = map[string]func(string, string) error{
 
 func newDefaultDatastoreConfig() *DatastoreConfig {
 	return &DatastoreConfig{
-		Type: "badgerds",
-		Path: "badger",
+		Type:            "badgerds",
+		Path:            "badger",
+		SplitstoreSize:  int64(3 * policy.ChainFinality),
+		SplitstoreCount: 3,
 	}
 }
 

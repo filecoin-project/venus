@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/repo/fskeystore"
 
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
@@ -385,7 +386,11 @@ func (r *FSRepo) openDatastore() error {
 		}
 
 		ssPath := filepath.Join(r.path, splitstorePrefix)
-		splitstore, err := splitstore.NewSplitstore(ssPath, ds)
+		opt := splitstore.SplitstoreOption{
+			MaxStoreCount: r.cfg.Datastore.SplitstoreCount,
+			StoreSize:     abi.ChainEpoch(r.cfg.Datastore.SplitstoreSize),
+		}
+		splitstore, err := splitstore.NewSplitstore(ssPath, ds, opt)
 		if err != nil {
 			return fmt.Errorf("build splitstore: %w", err)
 		}
