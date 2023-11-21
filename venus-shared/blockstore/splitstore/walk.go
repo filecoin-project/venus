@@ -162,7 +162,8 @@ func walkObject(ctx context.Context, store blockstore.Blockstore, c cid.Cid, v V
 	for _, c := range links {
 		err := walkObject(ctx, store, c, v)
 		if err != nil {
-			return fmt.Errorf("error walking link (cid: %s): %w", c, err)
+			// try best to walk more object
+			log.Warnf("walkObject(%s): %s", c, err)
 		}
 	}
 

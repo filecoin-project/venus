@@ -97,11 +97,15 @@ func NewSplitstore(path string, initStore blockstore.Blockstore, opts ...Splitst
 		} else {
 			log.Warnf("splitstore: max store count must greater than 1, use default value %d", opt.MaxStoreCount)
 		}
-		if opts[0].StoreSize > policy.ChainFinality {
-			opt.StoreSize = opts[0].StoreSize
-		} else {
-			log.Warnf("splitstore: store size must greater than chain finality, use default value %d", opt.StoreSize)
-		}
+		// todo: enable store size check after test
+
+		// if opts[0].StoreSize > policy.ChainFinality {
+		// 	opt.StoreSize = opts[0].StoreSize
+		// } else {
+		// 	log.Warnf("splitstore: store size must greater than chain finality, use default value %d", opt.StoreSize)
+		// }
+
+		opt.StoreSize = opts[0].StoreSize
 	}
 
 	// check path
@@ -468,20 +472,18 @@ func newInnerStore(path string, height int64, c cid.Cid) (*InnerBlockstoreImpl, 
 		storePath = filepath.Join(path, fmt.Sprintf("base_%d_init.db", height))
 	}
 
-	// 存在路径, 根据情况创建 store
-	// 不存在路径 , 创建路径 创建 store
 	stat, err := os.Stat(storePath)
 	if os.IsNotExist(err) {
-		err = os.MkdirAll(path, 0755)
+		err = os.MkdirAll(storePath, 0755)
 		if err != nil {
-			return nil, fmt.Errorf("create store path(%s): %w", path, err)
+			return nil, fmt.Errorf("create store path(%s): %w", storePath, err)
 		}
 	} else if err != nil {
-		return nil, fmt.Errorf("check store path(%s): %w", path, err)
+		return nil, fmt.Errorf("check store path(%s): %w", storePath, err)
 	}
 
 	if stat != nil && !stat.IsDir() {
-		return nil, fmt.Errorf("store path(%s) is not a directory", path)
+		return nil, fmt.Errorf("store path(%s) is not a directory", storePath)
 	}
 
 	if c.Defined() {

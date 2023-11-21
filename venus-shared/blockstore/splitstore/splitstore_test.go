@@ -84,14 +84,16 @@ func TestScan(t *testing.T) {
 	}
 
 	for i, b := range tempBlocks {
-		storePath := fmt.Sprintf("base_%d_%s.db", 10+i, b.Cid())
-		storePath = filepath.Join(tempDir, storePath)
-		err := os.MkdirAll(storePath, 0777)
+		s, err := newInnerStore(tempDir, int64(10+i), b.Cid())
 		require.NoError(t, err)
+		if s, ok := s.Blockstore.(Closer); ok {
+			err := s.Close()
+			require.NoError(t, err)
+		}
 	}
 
 	// base_0_init.db(place holder)
-	err := os.MkdirAll(filepath.Join(tempDir, "base_0_init.db"), 0777)
+	_, err := newInnerStore(tempDir, int64(0), cid.Undef)
 	require.NoError(t, err)
 
 	// any.db will not be scanned in
