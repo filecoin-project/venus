@@ -3,13 +3,12 @@ package splitstore
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"testing"
 
-	"github.com/dgraph-io/badger/v2"
 	"github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/logging"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	bstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
@@ -54,40 +53,43 @@ func TestWalk(t *testing.T) {
 
 func openStore(path string) (*blockstore.BadgerBlockstore, error) {
 	opt, err := blockstore.BadgerBlockstoreOptions(path, false)
-	opt.Prefix = "blocks"
+	opt.Prefix = bstore.BlockPrefix.String()
 	if err != nil {
 		return nil, err
 	}
 	return blockstore.Open(opt)
 }
 
-func TestGetAllKeys(t *testing.T) {
-	// 打开数据库
-	badgerPath := "/root/tanlang/venus/.vscode/venus_16391_bafy2bzacebdffckqhdnvm767hon3osuv77iryvcjfcvtob6sm2vz6je346k5o"
-	db, err := badger.Open(badger.DefaultOptions(badgerPath))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
+// todo: remove these test cases
+func TestTsk(t *testing.T) {
+	bCid := cid.MustParse("bafy2bzacecszjrdivfsgbxetthe7uac56wjvstrk4qewxsvefes3xgdi6lbmc")
+	tskCid, err := types.NewTipSetKey(bCid).Cid()
+	require.NoError(t, err)
 
-	// 创建一个事务
-	txn := db.NewTransaction(false)
-	defer txn.Discard()
+	c := cid.MustParse("bafy2bzacedm5ygprszgbimh6ymuuwkv3xegkpjlmuu5omm4tviftpubvda7ha")
 
-	// 迭代遍历所有的 keys
-	opts := badger.DefaultIteratorOptions
-	opts.PrefetchSize = 10
-	it := txn.NewIterator(opts)
-	defer it.Close()
+	ds, err := openStore("/root/tanlang/docker/test/splitstore/.venus/root/.venus/splitstore/base_42_bafy2bzacedm5ygprszgbimh6ymuuwkv3xegkpjlmuu5omm4tviftpubvda7ha.db")
+	require.NoError(t, err)
 
-	for it.Rewind(); it.Valid(); it.Next() {
-		item := it.Item()
-		key := item.KeyCopy(nil)
-		fmt.Println(string(key))
+	has, err := ds.Has(context.Background(), c)
+	require.NoError(t, err)
+
+	fmt.Printf("has: %v\n", has)
+	fmt.Printf("tskCid: %v %v\n", tskCid, c)
+}
+
+func TestIterSomeKey(t *testing.T) {
+	ds, err := openStore("/root/tanlang/docker/test/splitstore/.venus/root/.venus/splitstore/base_3726_bafy2bzaced65gadcvjd4fi4orxjdnetmvguqbyozsqbncpokomtbseejou4yw.db")
+	require.NoError(t, err)
+
+	ch, err := ds.AllKeysChan(context.Background())
+	require.NoError(t, err)
+
+	for c := range ch {
+		fmt.Printf("cid: %v\n", c)
 	}
 }
 
-func TestRand(t *testing.T) {
-	rand.New(rand.NewSource(0))
-	rand.Seed(0)
+func TestCid(t *testing.T) {
+	_ = cid.MustParse("bafk2bzacedulsjdqqedrf5wvkljo7dsold3gf4ve7ljqgdqibpnhnpjdmg4s4")
 }

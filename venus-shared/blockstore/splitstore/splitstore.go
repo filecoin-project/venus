@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
@@ -72,6 +73,12 @@ type Splitstore struct {
 
 	epochToAppend abi.ChainEpoch
 	epochToClean  abi.ChainEpoch
+
+	initStore     blockstore.Blockstore
+	headTipsetKey cid.Cid
+	isRollback    bool
+
+	mut sync.RWMutex
 }
 
 var _ blockstore.Blockstore = (*Splitstore)(nil)
@@ -121,6 +128,8 @@ func NewSplitstore(path string, initStore blockstore.Blockstore, opts ...Splitst
 
 		epochToAppend: 0,
 		epochToClean:  math.MaxInt64,
+
+		initStore: initStore,
 	}
 
 	// scan for stores
@@ -130,7 +139,7 @@ func NewSplitstore(path string, initStore blockstore.Blockstore, opts ...Splitst
 	}
 	if len(bs) == 0 {
 		// init a placeholder and first store
-		innerStore, err := newInnerStore(path, 0, "")
+		innerStore, err := newInnerStore(path, 0, cid.Undef)
 		if err != nil {
 			return nil, err
 		}
@@ -142,59 +151,54 @@ func NewSplitstore(path string, initStore blockstore.Blockstore, opts ...Splitst
 	}
 
 	for i := range bs {
-		// take the last maxStoreCount  stores
-		if i >= len(bs)-ss.maxStoreCount {
-			ss.stores = append(ss.stores, bs[i])
-		}
+		ss.stores = append(ss.stores, bs[i])
 	}
 
-	// update epochToAppend
-	ctx := context.Background()
-	tskCid := ss.stores[len(ss.stores)-1].Base()
-	var tsk types.TipSetKey
-	err = ss.getCbor(ctx, tskCid, &tsk)
-	if err != nil {
-		return nil, fmt.Errorf("load store base tsk(%s): %w", tskCid, err)
+	// update epochToAppend and epochToClean
+	if len(ss.stores) > 1 {
+		ctx := context.Background()
+		tskCid := ss.stores[len(ss.stores)-1].Base()
+		var tsk types.TipSetKey
+		err = ss.getCbor(ctx, tskCid, &tsk)
+		if err != nil {
+			return nil, fmt.Errorf("load store base tsk(%s): %w", tskCid, err)
+		}
+		ts, err := ss.getTipset(ctx, tsk)
+		if err != nil {
+			return nil, fmt.Errorf("load store base tipset(%s): %w", tsk, err)
+		}
+		ss.epochToAppend = ts.Height() + ss.storeSize
 	}
-	ts, err := ss.getTipset(ctx, tsk)
-	if err != nil {
-		return nil, fmt.Errorf("load store base tipset(%s): %w", tsk, err)
+
+	for i := 0; i < len(ss.stores)-ss.maxStoreCount; i++ {
+		err := ss.dropLastStore()
+		if err != nil {
+			return nil, fmt.Errorf("drop redundant store: %w", err)
+		}
 	}
-	ss.epochToAppend = ts.Height() + ss.storeSize
 
 	return ss, nil
 }
 
 // HeadChange subscribe to head change, schedule for new store and delete old
 func (ss *Splitstore) HeadChange(_, apply []*types.TipSet) error {
+	if ss.isRollback {
+		return nil
+	}
+
 	for _, ts := range apply {
 		height := ts.Height()
 		log := log.With("height", height)
+		var err error
+		ss.headTipsetKey, err = ts.Key().Cid()
+		if err != nil {
+			log.Errorf("update head tipset key: %w", err)
+		}
 
 		if height >= ss.epochToClean && len(ss.stores) > ss.maxStoreCount {
-			storeToDrop := ss.stores[0]
-			log.Infof("drop store base%s)", storeToDrop.Base())
-
-			// block transfer
-			tempStore := NewComposeStore(storeToDrop, ss.stores[0])
-			v := NewSyncVisitor()
-			err := WalkChain(context.Background(), tempStore, ss.stores[1].Base(), v, ss.storeSize)
+			err := ss.dropLastStore()
 			if err != nil {
-				return fmt.Errorf("block transfer: %w", err)
-			}
-
-			ss.stores = ss.stores[1:]
-
-			// close and  clean
-			if closer, ok := storeToDrop.(Closer); ok {
-				err := closer.Close()
-				if err != nil {
-					return fmt.Errorf("close deprecated store: %w", err)
-				}
-			}
-			err = storeToDrop.Clean()
-			if err != nil {
-				return fmt.Errorf("clean deprecated store: %w", err)
+				return err
 			}
 		}
 
@@ -206,11 +210,12 @@ func (ss *Splitstore) HeadChange(_, apply []*types.TipSet) error {
 			if err != nil {
 				return err
 			}
-			store, err := newInnerStore(ss.path, int64(height), tskCid.String())
+			store, err := newInnerStore(ss.path, int64(height), tskCid)
 			if err != nil {
 				return err
 			}
 			ss.stores = append(ss.stores, store)
+
 			log.Infof("append new store base(%s)", tskCid.String())
 		}
 	}
@@ -219,60 +224,85 @@ func (ss *Splitstore) HeadChange(_, apply []*types.TipSet) error {
 
 // AllKeysChan implements blockstore.Blockstore.
 func (ss *Splitstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+	ss.mut.RLock()
+	defer ss.mut.RUnlock()
 	return ss.composeStore().AllKeysChan(ctx)
 }
 
 // DeleteBlock implements blockstore.Blockstore.
 func (ss *Splitstore) DeleteBlock(ctx context.Context, c cid.Cid) error {
+	ss.mut.RLock()
+	defer ss.mut.RUnlock()
 	return ss.composeStore().DeleteBlock(ctx, c)
 }
 
 // DeleteMany implements blockstore.Blockstore.
 func (ss *Splitstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
+	ss.mut.RLock()
+	defer ss.mut.RUnlock()
 	return ss.composeStore().DeleteMany(ctx, cids)
 }
 
 // Flush implements blockstore.Blockstore.
 func (ss *Splitstore) Flush(ctx context.Context) error {
+	ss.mut.RLock()
+	defer ss.mut.RUnlock()
 	return ss.composeStore().Flush(ctx)
 }
 
 // Get implements blockstore.Blockstore.
 func (ss *Splitstore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
+	ss.mut.RLock()
+	defer ss.mut.RUnlock()
 	return ss.composeStore().Get(ctx, c)
 }
 
 // GetSize implements blockstore.Blockstore.
 func (ss *Splitstore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
+	ss.mut.RLock()
+	defer ss.mut.RUnlock()
 	return ss.composeStore().GetSize(ctx, c)
 }
 
 // Has implements blockstore.Blockstore.
 func (ss *Splitstore) Has(ctx context.Context, c cid.Cid) (bool, error) {
+	ss.mut.RLock()
+	defer ss.mut.RUnlock()
 	return ss.composeStore().Has(ctx, c)
 }
 
 // HashOnRead implements blockstore.Blockstore.
 func (ss *Splitstore) HashOnRead(enabled bool) {
+	ss.mut.RLock()
+	defer ss.mut.RUnlock()
 	ss.composeStore().HashOnRead(enabled)
 }
 
 // Put implements blockstore.Blockstore.
 func (ss *Splitstore) Put(ctx context.Context, b blocks.Block) error {
+	ss.mut.RLock()
+	defer ss.mut.RUnlock()
 	return ss.composeStore().Put(ctx, b)
 }
 
 // PutMany implements blockstore.Blockstore.
 func (ss *Splitstore) PutMany(ctx context.Context, bs []blocks.Block) error {
+	ss.mut.RLock()
+	defer ss.mut.RUnlock()
 	return ss.composeStore().PutMany(ctx, bs)
 }
 
 // View implements blockstore.Blockstore.
 func (ss *Splitstore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) error {
+	ss.mut.RLock()
+	defer ss.mut.RUnlock()
 	return ss.composeStore().View(ctx, cid, callback)
 }
 
+// Close close all sub store
 func (ss *Splitstore) Close() error {
+	ss.mut.Lock()
+	defer ss.mut.Unlock()
 	for i := range ss.stores {
 		if closer, ok := ss.stores[i].(Closer); ok {
 			err := closer.Close()
@@ -284,10 +314,66 @@ func (ss *Splitstore) Close() error {
 	return nil
 }
 
+// Rollback rollback splitstore to init store:
+// 1. redirect query to init store
+// 2. disable store appending and cleaning
+// 3. transfer blocks back to init store
+func (ss *Splitstore) Rollback() error {
+	ss.isRollback = true
+
+	// transfer block to init store
+	if ss.headTipsetKey.Defined() {
+		v := NewSyncVisitor()
+		err := WalkChain(context.Background(), ss.composeStore(), ss.headTipsetKey, v, ss.storeSize)
+		if err != nil {
+			return fmt.Errorf("transfer block to init store: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (ss *Splitstore) dropLastStore() error {
+	if len(ss.stores) < 3 {
+		return fmt.Errorf("unexpected store count when launch a drop task: %d", len(ss.stores))
+	}
+	storeToDrop := ss.stores[0]
+	log.Infof("drop store base(%s)", storeToDrop.Base())
+
+	// block transfer
+	tempStore := NewComposeStore(storeToDrop, ss.stores[1])
+	v := NewSyncVisitor()
+	err := WalkChain(context.Background(), tempStore, ss.stores[2].Base(), v, ss.storeSize)
+	if err != nil {
+		return fmt.Errorf("block transfer: %w", err)
+	}
+
+	ss.stores = ss.stores[1:]
+
+	// close and  clean
+	ss.mut.Lock()
+	defer ss.mut.Unlock()
+	if closer, ok := storeToDrop.(Closer); ok {
+		err := closer.Close()
+		if err != nil {
+			return fmt.Errorf("close deprecated store: %w", err)
+		}
+	}
+	err = storeToDrop.Clean()
+	if err != nil {
+		return fmt.Errorf("clean deprecated store: %w", err)
+	}
+
+	return nil
+}
+
 func (ss *Splitstore) composeStore() blockstore.Blockstore {
 	bs := make([]blockstore.Blockstore, len(ss.stores))
 	for i := range ss.stores {
 		bs[i] = ss.stores[i]
+	}
+	if ss.isRollback {
+		bs = append(bs, ss.initStore)
 	}
 	return NewComposeStore(bs...)
 }
@@ -352,48 +438,13 @@ func scan(path string) ([]*InnerBlockstoreImpl, error) {
 			continue
 		}
 		name := entry.Name()
-		var height int64
-		var cidString string
-		height, cidString, err = extractHeightAndCid(name)
+
+		height, c, err := extractHeightAndCid(name)
 		if err != nil {
 			continue
 		}
 
-		innerStore, err := func() (*InnerBlockstoreImpl, error) {
-			storePath := filepath.Join(path, name)
-			cleanup := CleanImpl(func() error {
-				return os.RemoveAll(storePath)
-			})
-
-			if cidString == "init" {
-				// place holder for init store
-				return &InnerBlockstoreImpl{
-					Blockstore: nil,
-					Cleaner:    cleanup,
-					BaseKeeper: BaseKeeperImpl(func() cid.Cid {
-						return cid.Undef
-					}),
-				}, err
-			}
-
-			baseCid := cid.MustParse(cidString)
-			opt, err := blockstore.BadgerBlockstoreOptions(storePath, false)
-			if err != nil {
-				return nil, err
-			}
-			opt.Prefix = bstore.BlockPrefix.String()
-			store, err := blockstore.Open(opt)
-			if err != nil {
-				return nil, err
-			}
-			return &InnerBlockstoreImpl{
-				Blockstore: store,
-				Cleaner:    cleanup,
-				BaseKeeper: BaseKeeperImpl(func() cid.Cid {
-					return baseCid
-				}),
-			}, nil
-		}()
+		innerStore, err := newInnerStore(path, height, c)
 		if err != nil {
 			return nil, fmt.Errorf("scan splitstore: %w", err)
 		}
@@ -410,25 +461,32 @@ func scan(path string) ([]*InnerBlockstoreImpl, error) {
 	return bs, nil
 }
 
-func newInnerStore(path string, height int64, c string) (*InnerBlockstoreImpl, error) {
-	isEmpty := false
-	if c == "" {
-		c = "init"
-		isEmpty = true
+func newInnerStore(path string, height int64, c cid.Cid) (*InnerBlockstoreImpl, error) {
+	var store blockstore.Blockstore
+	storePath := filepath.Join(path, fmt.Sprintf("base_%d_%s.db", height, c))
+	if !c.Defined() {
+		storePath = filepath.Join(path, fmt.Sprintf("base_%d_init.db", height))
 	}
 
-	storePath := filepath.Join(path, fmt.Sprintf("base_%d_%s.db", height, c))
-	var store blockstore.Blockstore
-	baseCid := cid.Undef
-
-	if isEmpty {
-		// place holder for init store
-		err := os.Mkdir(storePath, 0777)
+	// 存在路径, 根据情况创建 store
+	// 不存在路径 , 创建路径 创建 store
+	stat, err := os.Stat(storePath)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(path, 0755)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("create store path(%s): %w", path, err)
 		}
-	} else {
+	} else if err != nil {
+		return nil, fmt.Errorf("check store path(%s): %w", path, err)
+	}
+
+	if stat != nil && !stat.IsDir() {
+		return nil, fmt.Errorf("store path(%s) is not a directory", path)
+	}
+
+	if c.Defined() {
 		opt, _ := blockstore.BadgerBlockstoreOptions(storePath, false)
+		opt.Prefix = bstore.BlockPrefix.String()
 		var err error
 		store, err = blockstore.Open(opt)
 		if err != nil {
@@ -442,20 +500,28 @@ func newInnerStore(path string, height int64, c string) (*InnerBlockstoreImpl, e
 			return os.RemoveAll(storePath)
 		}),
 		BaseKeeper: BaseKeeperImpl(func() cid.Cid {
-			return baseCid
+			return c
 		}),
 	}, nil
 }
 
-func extractHeightAndCid(s string) (int64, string, error) {
+func extractHeightAndCid(s string) (int64, cid.Cid, error) {
 	re := regexp.MustCompile(`base_(\d+)_(\w+)\.db`)
 	match := re.FindStringSubmatch(s)
 	if len(match) != 3 {
-		return 0, "", fmt.Errorf("failed to extract height and cid from %s", s)
+		return 0, cid.Undef, fmt.Errorf("failed to extract height and cid from %s", s)
 	}
 	height, err := strconv.ParseInt(match[1], 10, 64)
 	if err != nil {
-		return 0, "", err
+		return 0, cid.Undef, err
 	}
-	return height, match[2], nil
+	if match[2] == "init" {
+		return height, cid.Undef, nil
+	} else {
+		c, err := cid.Parse(match[2])
+		if err != nil {
+			return 0, cid.Undef, err
+		}
+		return height, c, nil
+	}
 }

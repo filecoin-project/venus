@@ -68,7 +68,7 @@ func WalkChain(ctx context.Context, store blockstore.Blockstore, tipsetKey cid.C
 	var tsk types.TipSetKey
 	err := cst.Get(ctx, tipsetKey, &tsk)
 	if err != nil {
-		return fmt.Errorf("get tipsetKey: %w", err)
+		return fmt.Errorf("get tipsetKey(%s): %w", tipsetKey, err)
 	}
 
 	blockToWalk := make(chan cid.Cid, 8)
