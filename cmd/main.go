@@ -138,6 +138,7 @@ TOOL COMMANDS
   version                - Show venus version information
   seed                   - Seal sectors for genesis miner
   fetch                  - Fetch proving parameters
+  splitstore			 - Manage splitstore
 `,
 	},
 	Options: []cmds.Option{
@@ -167,21 +168,22 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
-	"chain":   chainCmd,
-	"sync":    syncCmd,
-	"drand":   drandCmd,
-	"inspect": inspectCmd,
-	"log":     logCmd,
-	"send":    msgSendCmd,
-	"mpool":   mpoolCmd,
-	"swarm":   swarmCmd,
-	"wallet":  walletCmd,
-	"version": versionCmd,
-	"state":   stateCmd,
-	"miner":   minerCmd,
-	"paych":   paychCmd,
-	"info":    infoCmd,
-	"evm":     evmCmd,
+	"chain":      chainCmd,
+	"sync":       syncCmd,
+	"drand":      drandCmd,
+	"inspect":    inspectCmd,
+	"log":        logCmd,
+	"send":       msgSendCmd,
+	"mpool":      mpoolCmd,
+	"swarm":      swarmCmd,
+	"wallet":     walletCmd,
+	"version":    versionCmd,
+	"state":      stateCmd,
+	"miner":      minerCmd,
+	"paych":      paychCmd,
+	"info":       infoCmd,
+	"evm":        evmCmd,
+	"splitstore": splitstoreCmd,
 }
 
 func init() {

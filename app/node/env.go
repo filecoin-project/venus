@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/blockstore/splitstore"
 )
 
 // Env is the environment for command API handlers.
@@ -22,10 +23,11 @@ type Env struct {
 	MingingAPI           v1api.IMining
 	MessagePoolAPI       v1api.IMessagePool
 
-	MarketAPI v1api.IMarket
-	PaychAPI  v1api.IPaychan
-	CommonAPI v1api.ICommon
-	EthAPI    v1api.IETH
+	MarketAPI     v1api.IMarket
+	PaychAPI      v1api.IPaychan
+	CommonAPI     v1api.ICommon
+	EthAPI        v1api.IETH
+	SplitstoreAPI splitstore.SplitstoreController
 }
 
 var _ cmds.Environment = (*Env)(nil)

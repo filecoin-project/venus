@@ -65,6 +65,10 @@ type SplitstoreOption struct {
 	StoreSize     abi.ChainEpoch
 }
 
+type SplitstoreController interface {
+	Rollback() error
+}
+
 type Splitstore struct {
 	path          string
 	maxStoreCount int
@@ -82,6 +86,7 @@ type Splitstore struct {
 }
 
 var _ blockstore.Blockstore = (*Splitstore)(nil)
+var _ SplitstoreController = (*Splitstore)(nil)
 
 func NewSplitstore(path string, initStore blockstore.Blockstore, opts ...SplitstoreOption) (*Splitstore, error) {
 	opt := SplitstoreOption{
@@ -312,6 +317,16 @@ func (ss *Splitstore) Close() error {
 			err := closer.Close()
 			if err != nil {
 				return fmt.Errorf("close %dth store: %w", i, err)
+			}
+		}
+	}
+	if ss.isRollback {
+		// try best to clean all store
+		for i := range ss.stores {
+			err := ss.stores[i].Clean()
+			if err != nil {
+				bsCid := ss.stores[i].Base()
+				log.Errorf("clean store(%s) fail, try to clean manually: %w", bsCid, err)
 			}
 		}
 	}

@@ -33,6 +33,7 @@ import (
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"      // enable secp signatures
 	metricsPKG "github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/venus-shared/blockstore/splitstore"
 	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -379,7 +380,45 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		MarketAPI:            node.market.API(),
 		CommonAPI:            node.common,
 		EthAPI:               node.eth.API(),
+		SplitstoreAPI:        &RepoKeeper{repo: node.repo},
 	}
 
 	return &env
+}
+
+type RepoKeeper struct {
+	repo repo.Repo
+}
+
+var _ splitstore.SplitstoreController = (*RepoKeeper)(nil)
+
+func (r *RepoKeeper) Rollback() error {
+	ds := r.repo.Datastore()
+	if ds == nil {
+		fmt.Println("no blockstore found!")
+	}
+
+	rb, ok := ds.(splitstore.SplitstoreController)
+	if !ok {
+		fmt.Println("split store was disabled")
+	}
+	err := rb.Rollback()
+	if err != nil {
+		return fmt.Errorf("rollback splitstore: %w", err)
+	}
+
+	// rewrite config
+	cfg := r.repo.Config()
+	if cfg == nil {
+		return fmt.Errorf("no config found")
+	}
+	if cfg.Datastore.Type == "splitstore" {
+		cfg.Datastore.Type = "badgerds"
+		err = r.repo.ReplaceConfig(cfg)
+		if err != nil {
+			return fmt.Errorf("replace config: %w", err)
+		}
+	}
+
+	return nil
 }
