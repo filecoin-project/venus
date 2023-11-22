@@ -63,13 +63,20 @@ func NewSyncVisitor() Visitor {
 	}
 }
 
-func WalkChain(ctx context.Context, store blockstore.Blockstore, tipsetKey cid.Cid, v Visitor, deepLimit abi.ChainEpoch) error {
+func WalkChain(ctx context.Context, store blockstore.Blockstore, tipsetKey cid.Cid, v Visitor, depth abi.ChainEpoch) error {
 	cst := cbor.NewCborStore(store)
 	var tsk types.TipSetKey
 	err := cst.Get(ctx, tipsetKey, &tsk)
 	if err != nil {
 		return fmt.Errorf("get tipsetKey(%s): %w", tipsetKey, err)
 	}
+	var b types.BlockHeader
+	err = cst.Get(ctx, tsk.Cids()[0], &b)
+	if err != nil {
+		return fmt.Errorf("get block(%s): %w", tsk.Cids()[0], err)
+	}
+
+	deepLimit := b.Height - abi.ChainEpoch(depth)
 
 	blockToWalk := make(chan cid.Cid, 8)
 	objectToWalk := make(chan cid.Cid, 64)
@@ -156,7 +163,7 @@ func walkObject(ctx context.Context, store blockstore.Blockstore, c cid.Cid, v V
 	})
 
 	if err != nil {
-		return fmt.Errorf("error scanning linked block (cid: %s): %w", c, err)
+		return fmt.Errorf("scan link for(cid: %s): %w", c, err)
 	}
 
 	for _, c := range links {

@@ -18,16 +18,15 @@ import (
 func TestSplitstore(t *testing.T) {
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	// tempDir := "/root/tanlang/venus/.vscode/test"
 	splitstorePath := filepath.Join(tempDir, "splitstore")
 
-	initStore, err := openStore("./test_data/test_20615_bafy2bzacea53rxdtdrsaovap3bsfpash2sx2cu5ho2unoxg24kl2z3opcjjda")
+	initStore, err := openStore("./test_data/base_583_bafy2bzaceazuutcexhvwkyyesszohrkjjzk2zgknasgs7bb7zgfnwghtnu5w2.db")
 	require.NoError(t, err)
 
 	ss, err := NewSplitstore(splitstorePath, initStore)
 	require.NoError(t, err)
 
-	blockCid := cid.MustParse("bafy2bzacea53rxdtdrsaovap3bsfpash2sx2cu5ho2unoxg24kl2z3opcjjda")
+	blockCid := cid.MustParse("bafy2bzaceazuutcexhvwkyyesszohrkjjzk2zgknasgs7bb7zgfnwghtnu5w2")
 	tskCid, err := types.NewTipSetKey(blockCid).Cid()
 
 	// apply head change to append new store
