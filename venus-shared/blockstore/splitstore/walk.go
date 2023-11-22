@@ -138,7 +138,6 @@ func WalkChain(ctx context.Context, store blockstore.Blockstore, tipsetKey cid.C
 			}
 			objectToWalk <- tskCid
 		}
-
 	}
 
 	wg.Wait()

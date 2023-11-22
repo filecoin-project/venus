@@ -91,7 +91,7 @@ func TestScan(t *testing.T) {
 		}
 	}
 
-	// base_0_init.db(place holder)
+	// base_init.db(place holder)
 	_, err := newInnerStore(tempDir, int64(0), cid.Undef)
 	require.NoError(t, err)
 
@@ -113,7 +113,7 @@ func TestScan(t *testing.T) {
 		require.Nil(t, bs[0].Blockstore)
 	})
 
-	t.Run("slean up", func(t *testing.T) {
+	t.Run("clean up", func(t *testing.T) {
 		for i := range bs {
 			store := bs[i]
 			err := store.Clean()
@@ -152,4 +152,12 @@ func fakeTipset(height abi.ChainEpoch) *types.TipSet {
 
 	ts, _ := types.NewTipSet([]*types.BlockHeader{bh})
 	return ts
+}
+
+func TestScann(t *testing.T) {
+	path := "/root/tanlang/docker/test/splitstore/.venus/root/.venus1/splitstore"
+	bs, err := scan(path)
+	require.NoError(t, err)
+	require.Len(t, bs, 2)
+
 }

@@ -214,10 +214,28 @@ func (ss *Splitstore) HeadChange(_, apply []*types.TipSet) error {
 			ss.epochToAppend = height + ss.storeSize
 			cleanDelay := ss.storeSize / 2
 			ss.epochToClean = height + cleanDelay
-			tskCid, err := ts.Key().Cid()
+			tsk := ts.Key()
+			tskCid, err := tsk.Cid()
 			if err != nil {
 				return err
 			}
+
+			// make sure tsk have been persisted
+			h, err := ss.Has(context.Background(), tskCid)
+			if err != nil {
+				return fmt.Errorf("check tsk(%s) exist: %w", tskCid, err)
+			}
+			if !h {
+				tskBlock, err := tsk.ToStorageBlock()
+				if err != nil {
+					return err
+				}
+				err = ss.Put(context.Background(), tskBlock)
+				if err != nil {
+					return fmt.Errorf("persist tsk(%s): %w", tskCid, err)
+				}
+			}
+
 			store, err := newInnerStore(ss.path, int64(height), tskCid)
 			if err != nil {
 				return err
@@ -334,8 +352,9 @@ func (ss *Splitstore) Close() error {
 
 // Rollback rollback splitstore to init store:
 // 1. redirect query to init store
-// 2. disable store appending and cleaning
+// 2. disable store appending and dropping
 // 3. transfer blocks back to init store
+// 4. clean all stores
 func (ss *Splitstore) Rollback() error {
 	ss.isRollback = true
 
@@ -347,6 +366,26 @@ func (ss *Splitstore) Rollback() error {
 			return fmt.Errorf("transfer block to init store: %w", err)
 		}
 	}
+
+	// clean
+	ss.mut.Lock()
+	defer ss.mut.Unlock()
+	for i := range ss.stores {
+		bsCid := ss.stores[i].Base()
+		if bsCid.Defined() {
+			if closer, ok := ss.stores[i].(Closer); ok {
+				err := closer.Close()
+				if err != nil {
+					return fmt.Errorf("close store(%s): %w", bsCid, err)
+				}
+			}
+			err := ss.stores[i].Clean()
+			if err != nil {
+				return fmt.Errorf("clean store(%s): %w", bsCid, err)
+			}
+		}
+	}
+	ss.stores = []InnerBlockstore{}
 
 	return nil
 }
@@ -483,7 +522,7 @@ func newInnerStore(path string, height int64, c cid.Cid) (*InnerBlockstoreImpl, 
 	var store blockstore.Blockstore
 	storePath := filepath.Join(path, fmt.Sprintf("base_%d_%s.db", height, c))
 	if !c.Defined() {
-		storePath = filepath.Join(path, fmt.Sprintf("base_%d_init.db", height))
+		storePath = filepath.Join(path, fmt.Sprintf("base_init.db"))
 	}
 
 	stat, err := os.Stat(storePath)
@@ -522,6 +561,9 @@ func newInnerStore(path string, height int64, c cid.Cid) (*InnerBlockstoreImpl, 
 }
 
 func extractHeightAndCid(s string) (int64, cid.Cid, error) {
+	if s == "base_init.db" {
+		return -1, cid.Undef, nil
+	}
 	re := regexp.MustCompile(`base_(\d+)_(\w+)\.db`)
 	match := re.FindStringSubmatch(s)
 	if len(match) != 3 {
