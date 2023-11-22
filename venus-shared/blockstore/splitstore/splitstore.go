@@ -103,10 +103,10 @@ func NewSplitstore(path string, initStore blockstore.Blockstore, opts ...Splitst
 			log.Warnf("splitstore: max store count must greater than 1, use default value %d", opt.MaxStoreCount)
 		}
 
-		if opts[0].StoreSize > policy.ChainFinality/2 {
+		if opts[0].StoreSize > policy.ChainFinality {
 			opt.StoreSize = opts[0].StoreSize
 		} else {
-			log.Warnf("splitstore: store size must greater than half of chain finality, use default value %d", opt.StoreSize)
+			log.Warnf("splitstore: store size must greater than chain finality, use default value %d", opt.StoreSize)
 		}
 
 		opt.StoreSize = opts[0].StoreSize
