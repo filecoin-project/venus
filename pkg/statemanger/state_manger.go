@@ -27,7 +27,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
@@ -78,7 +78,7 @@ type Stmgr struct {
 
 	// We keep a small cache for calls to ExecutionTrace which helps improve
 	// performance for node operators like exchanges and block explorers
-	execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	execTraceCache *arc.ARCCache[types.TipSetKey, tipSetCacheEntry]
 	// We need a lock while making the copy as to prevent other callers
 	// overwrite the cache while making the copy
 	execTraceCacheLock sync.Mutex
@@ -94,10 +94,10 @@ func NewStateManager(cs *chain.Store,
 	actorDebugging bool,
 ) (*Stmgr, error) {
 	log.Debugf("execTraceCache size: %d", execTraceCacheSize)
-	var execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	var execTraceCache *arc.ARCCache[types.TipSetKey, tipSetCacheEntry]
 	var err error
 	if execTraceCacheSize > 0 {
-		execTraceCache, err = lru.NewARC[types.TipSetKey, tipSetCacheEntry](execTraceCacheSize)
+		execTraceCache, err = arc.NewARC[types.TipSetKey, tipSetCacheEntry](execTraceCacheSize)
 		if err != nil {
 			return nil, err
 		}

@@ -10,7 +10,7 @@ import (
 	"runtime/debug"
 	"sync"
 
-	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
 	carv2 "github.com/ipld/go-car/v2"
@@ -128,7 +128,7 @@ type Store struct {
 	reorgCh        chan reorg
 	reorgNotifeeCh chan ReorgNotifee
 
-	tsCache *lru.ARCCache[types.TipSetKey, *types.TipSet]
+	tsCache *arc.ARCCache[types.TipSetKey, *types.TipSet]
 }
 
 // NewStore constructs a new default store.
@@ -137,7 +137,7 @@ func NewStore(chainDs repo.Datastore,
 	genesisCid cid.Cid,
 	circulatiingSupplyCalculator ICirculatingSupplyCalcualtor,
 ) *Store {
-	tsCache, _ := lru.NewARC[types.TipSetKey, *types.TipSet](DefaultTipsetLruCacheSize)
+	tsCache, _ := arc.NewARC[types.TipSetKey, *types.TipSet](DefaultTipsetLruCacheSize)
 	store := &Store{
 		stateAndBlockSource: cbor.NewCborStore(bsstore),
 		ds:                  chainDs,

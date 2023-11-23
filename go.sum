@@ -570,8 +570,10 @@ github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.5.4 h1:YDjusn29QI/Das2iO9M0BHnIbxPeyuCHsjMW+lJfyTc=
 github.com/hashicorp/golang-lru v0.5.4/go.mod h1:iADmTwqILo4mZ8BN3D2Q6+9jd8WM5uGBxy+E8yxSoD4=
-github.com/hashicorp/golang-lru/v2 v2.0.2 h1:Dwmkdr5Nc/oBiXgJS3CDHNhJtIHkuZ3DZF5twqnfBdU=
-github.com/hashicorp/golang-lru/v2 v2.0.2/go.mod h1:QeFd9opnmA6QUJc5vARoKUSoFhyfM2/ZepoAG6RGpeM=
+github.com/hashicorp/golang-lru/arc/v2 v2.0.7 h1:QxkVTxwColcduO+LP7eJO56r2hFiG8zEbfAAzRv52KQ=
+github.com/hashicorp/golang-lru/arc/v2 v2.0.7/go.mod h1:Pe7gBlGdc8clY5LJ0LpJXMt5AmgmWNH1g+oFFVUHOEc=
+github.com/hashicorp/golang-lru/v2 v2.0.7 h1:a+bsQ5rvGLjzHuww6tVxozPZFVghXaHOwFs4luLUK2k=
+github.com/hashicorp/golang-lru/v2 v2.0.7/go.mod h1:QeFd9opnmA6QUJc5vARoKUSoFhyfM2/ZepoAG6RGpeM=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
 github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c h1:aY2hhxLhjEAbfXOx2nRJxCXezC6CO2V/yN+OCr1srtk=
@@ -592,8 +594,8 @@ github.com/ipfs-force-community/go-jsonrpc v0.1.9 h1:5QavBltfvV6fz/+EbYsCkVxJ1MS
 github.com/ipfs-force-community/go-jsonrpc v0.1.9/go.mod h1:jBSvPTl8V1N7gSTuCR4bis8wnQnIjHbRPpROol6iQKM=
 github.com/ipfs-force-community/metrics v1.0.1-0.20231011024528-8c881d456601 h1:zxKQ30KAD6KfvSFAx9tuqQXLDsEHyF+eVaUBXXYC2bU=
 github.com/ipfs-force-community/metrics v1.0.1-0.20231011024528-8c881d456601/go.mod h1:wM6EmkEcnJgWOFcVytgvK0u15awEmt8He0f2kAdsFDA=
-github.com/ipfs-force-community/sophon-auth v1.14.0-rc1 h1:r+TSz2r6H7K0ZtsiyS4Hmmf1bM62e5vQiHA8SYPIBz4=
-github.com/ipfs-force-community/sophon-auth v1.14.0-rc1/go.mod h1:d6J6u3zyIwcEajRho5BhVBcoIChEf0K76wP4yJEfEhc=
+github.com/ipfs-force-community/sophon-auth v1.14.0 h1:ctBJ6UHkcytEzfVPgiiHo0cW4FGQrE7r1H3Um0FcHbo=
+github.com/ipfs-force-community/sophon-auth v1.14.0/go.mod h1:d6J6u3zyIwcEajRho5BhVBcoIChEf0K76wP4yJEfEhc=
 github.com/ipfs/bbloom v0.0.1/go.mod h1:oqo8CVWsJFMOZqTglBG4wydCE4IQA/G2/SEofB0rjUI=
 github.com/ipfs/bbloom v0.0.4 h1:Gi+8EGJ2y5qiD5FbsbpX/TMNcJw8gSqr7eyjHa4Fhvs=
 github.com/ipfs/bbloom v0.0.4/go.mod h1:cS9YprKXpoZ9lT0n/Mw/a6/aFV6DTjTLYHeA+gyqMG0=

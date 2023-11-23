@@ -53,10 +53,11 @@ require (
 	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/golang-lru/v2 v2.0.2
+	github.com/hashicorp/golang-lru/arc/v2 v2.0.7
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/ipfs-force-community/metrics v1.0.1-0.20231011024528-8c881d456601
-	github.com/ipfs-force-community/sophon-auth v1.14.0-rc1
+	github.com/ipfs-force-community/sophon-auth v1.14.0
 	github.com/ipfs/boxo v0.10.1
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/go-datastore v0.6.0
