@@ -138,7 +138,7 @@ TOOL COMMANDS
   version                - Show venus version information
   seed                   - Seal sectors for genesis miner
   fetch                  - Fetch proving parameters
-  splitstore			 - Manage splitstore
+  splitstore             - Manage splitstore
 `,
 	},
 	Options: []cmds.Option{
