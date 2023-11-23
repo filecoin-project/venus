@@ -390,7 +390,7 @@ type RepoKeeper struct {
 	repo repo.Repo
 }
 
-var _ splitstore.SplitstoreController = (*RepoKeeper)(nil)
+var _ splitstore.Controller = (*RepoKeeper)(nil)
 
 func (r *RepoKeeper) Rollback() error {
 	ds := r.repo.Datastore()
@@ -398,7 +398,7 @@ func (r *RepoKeeper) Rollback() error {
 		fmt.Println("no blockstore found!")
 	}
 
-	rb, ok := ds.(splitstore.SplitstoreController)
+	rb, ok := ds.(splitstore.Controller)
 	if !ok {
 		fmt.Println("split store was disabled")
 	}

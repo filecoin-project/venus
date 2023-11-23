@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
@@ -28,13 +26,15 @@ func TestSplitstore(t *testing.T) {
 
 	blockCid := cid.MustParse("bafy2bzaceazuutcexhvwkyyesszohrkjjzk2zgknasgs7bb7zgfnwghtnu5w2")
 	tskCid, err := types.NewTipSetKey(blockCid).Cid()
+	require.NoError(t, err)
 
 	// apply head change to append new store
 	b, err := ss.getBlock(ctx, blockCid)
 	require.NoError(t, err)
 	ts, err := types.NewTipSet([]*types.BlockHeader{b})
 	require.NoError(t, err)
-	ss.HeadChange(nil, []*types.TipSet{ts})
+	err = ss.HeadChange(nil, []*types.TipSet{ts})
+	require.NoError(t, err)
 	require.Len(t, ss.stores, 2)
 
 	seenBefore := NewSyncVisitor()
@@ -132,26 +132,11 @@ func TestExtractHeightAndCid(t *testing.T) {
 	require.Equal(t, int64(10), h)
 	require.Equal(t, "b1", c)
 
-	h, c, err = extractHeightAndCid("base_10_b1")
+	_, _, err = extractHeightAndCid("base_10_b1")
 	require.Error(t, err)
 
-	h, c, err = extractHeightAndCid("base_b1")
+	_, _, err = extractHeightAndCid("base_b1")
 	require.Error(t, err)
-}
-
-func fakeTipset(height abi.ChainEpoch) *types.TipSet {
-	c, _ := abi.CidBuilder.Sum([]byte("any"))
-
-	bh := &types.BlockHeader{
-		Miner:                 address.TestAddress,
-		Messages:              c,
-		ParentStateRoot:       c,
-		ParentMessageReceipts: c,
-		Height:                height,
-	}
-
-	ts, _ := types.NewTipSet([]*types.BlockHeader{bh})
-	return ts
 }
 
 func TestScann(t *testing.T) {

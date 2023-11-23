@@ -60,12 +60,12 @@ type InnerBlockstoreImpl struct {
 	BaseKeeper
 }
 
-type SplitstoreOption struct {
+type Option struct {
 	MaxStoreCount int
 	StoreSize     abi.ChainEpoch
 }
 
-type SplitstoreController interface {
+type Controller interface {
 	Rollback() error
 }
 
@@ -86,10 +86,10 @@ type Splitstore struct {
 }
 
 var _ blockstore.Blockstore = (*Splitstore)(nil)
-var _ SplitstoreController = (*Splitstore)(nil)
+var _ Controller = (*Splitstore)(nil)
 
-func NewSplitstore(path string, initStore blockstore.Blockstore, opts ...SplitstoreOption) (*Splitstore, error) {
-	opt := SplitstoreOption{
+func NewSplitstore(path string, initStore blockstore.Blockstore, opts ...Option) (*Splitstore, error) {
+	opt := Option{
 		MaxStoreCount: 3,
 		StoreSize:     3 * policy.ChainFinality,
 	}
@@ -522,7 +522,7 @@ func newInnerStore(path string, height int64, c cid.Cid) (*InnerBlockstoreImpl, 
 	var store blockstore.Blockstore
 	storePath := filepath.Join(path, fmt.Sprintf("base_%d_%s.db", height, c))
 	if !c.Defined() {
-		storePath = filepath.Join(path, fmt.Sprintf("base_init.db"))
+		storePath = filepath.Join(path, "base_init.db")
 	}
 
 	stat, err := os.Stat(storePath)
@@ -575,11 +575,10 @@ func extractHeightAndCid(s string) (int64, cid.Cid, error) {
 	}
 	if match[2] == "init" {
 		return height, cid.Undef, nil
-	} else {
-		c, err := cid.Parse(match[2])
-		if err != nil {
-			return 0, cid.Undef, err
-		}
-		return height, c, nil
 	}
+	c, err := cid.Parse(match[2])
+	if err != nil {
+		return 0, cid.Undef, err
+	}
+	return height, c, nil
 }

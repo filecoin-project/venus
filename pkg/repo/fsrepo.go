@@ -386,7 +386,7 @@ func (r *FSRepo) openDatastore() error {
 		}
 
 		ssPath := filepath.Join(r.path, splitstorePrefix)
-		opt := splitstore.SplitstoreOption{
+		opt := splitstore.Option{
 			MaxStoreCount: r.cfg.Datastore.SplitstoreCount,
 			StoreSize:     abi.ChainEpoch(r.cfg.Datastore.SplitstoreSize),
 		}

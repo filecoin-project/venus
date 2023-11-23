@@ -142,16 +142,18 @@ func TestComposeStoreView(t *testing.T) {
 
 	t.Run("View", func(t *testing.T) {
 		for _, b := range blocksInPrimary {
-			composeStore.View(ctx, b.Cid(), func(b []byte) error {
+			err := composeStore.View(ctx, b.Cid(), func(b []byte) error {
 				require.Equal(t, b, b)
 				return nil
 			})
+			require.NoError(t, err)
 		}
 		for _, b := range blocksInSecondary {
-			composeStore.View(ctx, b.Cid(), func(b []byte) error {
+			err := composeStore.View(ctx, b.Cid(), func(b []byte) error {
 				require.Equal(t, b, b)
 				return nil
 			})
+			require.NoError(t, err)
 		}
 
 		err := composeStore.View(ctx, blockNotExist.Cid(), func(b []byte) error {
@@ -161,12 +163,12 @@ func TestComposeStoreView(t *testing.T) {
 		require.True(t, ipld.IsNotFound(err))
 
 		// test for sync
-		// wait for sync (switch goroutine)
 		for _, b := range blocksInSecondary {
-			primaryStore.View(ctx, b.Cid(), func(b []byte) error {
+			err := primaryStore.View(ctx, b.Cid(), func(b []byte) error {
 				require.Equal(t, b, b)
 				return nil
 			})
+			require.NoError(t, err)
 		}
 	})
 }

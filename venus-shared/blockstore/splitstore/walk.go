@@ -76,7 +76,7 @@ func WalkChain(ctx context.Context, store blockstore.Blockstore, tipsetKey cid.C
 		return fmt.Errorf("get block(%s): %w", tsk.Cids()[0], err)
 	}
 
-	deepLimit := b.Height - abi.ChainEpoch(depth)
+	deepLimit := b.Height - depth
 
 	blockToWalk := make(chan cid.Cid, 8)
 	objectToWalk := make(chan cid.Cid, 64)
@@ -89,8 +89,8 @@ func WalkChain(ctx context.Context, store blockstore.Blockstore, tipsetKey cid.C
 	}()
 
 	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
-		wg.Add(1)
 		defer wg.Done()
 		for c := range objectToWalk {
 			err := walkObject(ctx, store, c, v)

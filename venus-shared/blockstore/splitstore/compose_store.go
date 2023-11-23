@@ -91,7 +91,7 @@ func (cs *ComposeStore) DeleteBlock(ctx context.Context, c cid.Cid) error {
 func (cs *ComposeStore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
 	// primary and secondly can be both incomplete
 	// don't try to batch delete
-	return fmt.Errorf("DeleteMany not implemented on ComposeStore; don't do this Luke!")
+	return fmt.Errorf("delete many not implemented on compose store; don't do this")
 }
 
 // Flush implements blockstore.Blockstore.

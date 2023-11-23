@@ -27,7 +27,7 @@ type Env struct {
 	PaychAPI      v1api.IPaychan
 	CommonAPI     v1api.ICommon
 	EthAPI        v1api.IETH
-	SplitstoreAPI splitstore.SplitstoreController
+	SplitstoreAPI splitstore.Controller
 }
 
 var _ cmds.Environment = (*Env)(nil)
