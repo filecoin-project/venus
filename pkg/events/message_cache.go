@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -14,11 +14,11 @@ type messageCache struct {
 	api IEvent
 
 	blockMsgLk    sync.Mutex
-	blockMsgCache *lru.ARCCache[cid.Cid, *types.BlockMessages]
+	blockMsgCache *arc.ARCCache[cid.Cid, *types.BlockMessages]
 }
 
 func newMessageCache(api IEvent) *messageCache {
-	blsMsgCache, _ := lru.NewARC[cid.Cid, *types.BlockMessages](500)
+	blsMsgCache, _ := arc.NewARC[cid.Cid, *types.BlockMessages](500)
 
 	return &messageCache{
 		api:           api,
