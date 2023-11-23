@@ -1,5 +1,9 @@
 # venus changelog
 
+## v1.14.0
+
+* chore: update sophon-auth
+
 ## v1.14.0-rc6
 
 * opt: migration: set premigration to 90 minute [[#6217](https://github.com/filecoin-project/venus/pull/6217)]
