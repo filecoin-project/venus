@@ -43,19 +43,19 @@ func TestComposeStoreGet(t *testing.T) {
 
 	t.Run("Get", func(t *testing.T) {
 		for _, b := range blocksInPrimary {
-			b, err := composeStore.Get(ctx, b.Cid())
+			block, err := composeStore.Get(ctx, b.Cid())
 			require.NoError(t, err)
-			require.Equal(t, b.RawData(), b.RawData())
+			require.Equal(t, b.RawData(), block.RawData())
 		}
 		for _, b := range blocksInSecondary {
-			b, err := composeStore.Get(ctx, b.Cid())
+			block, err := composeStore.Get(ctx, b.Cid())
 			require.NoError(t, err)
-			require.Equal(t, b.RawData(), b.RawData())
+			require.Equal(t, b.RawData(), block.RawData())
 		}
 		for _, b := range blocksInTertiary {
-			b, err := composeStore.Get(ctx, b.Cid())
+			block, err := composeStore.Get(ctx, b.Cid())
 			require.NoError(t, err)
-			require.Equal(t, b.RawData(), b.RawData())
+			require.Equal(t, b.RawData(), block.RawData())
 		}
 
 		_, err := composeStore.Get(ctx, blockNotExist.Cid())
@@ -65,9 +65,9 @@ func TestComposeStoreGet(t *testing.T) {
 		// wait for sync (switch goroutine)
 		time.Sleep(5 * time.Millisecond)
 		for _, b := range blocksInTertiary {
-			b, err := primaryStore.Get(ctx, b.Cid())
+			block, err := primaryStore.Get(ctx, b.Cid())
 			require.NoError(t, err)
-			require.Equal(t, b.RawData(), b.RawData())
+			require.Equal(t, b.RawData(), block.RawData())
 		}
 	})
 }
@@ -142,15 +142,15 @@ func TestComposeStoreView(t *testing.T) {
 
 	t.Run("View", func(t *testing.T) {
 		for _, b := range blocksInPrimary {
-			err := composeStore.View(ctx, b.Cid(), func(b []byte) error {
-				require.Equal(t, b, b)
+			err := composeStore.View(ctx, b.Cid(), func(bByte []byte) error {
+				require.Equal(t, b.RawData(), bByte)
 				return nil
 			})
 			require.NoError(t, err)
 		}
 		for _, b := range blocksInSecondary {
-			err := composeStore.View(ctx, b.Cid(), func(b []byte) error {
-				require.Equal(t, b, b)
+			err := composeStore.View(ctx, b.Cid(), func(bByte []byte) error {
+				require.Equal(t, b.RawData(), bByte)
 				return nil
 			})
 			require.NoError(t, err)
@@ -164,8 +164,8 @@ func TestComposeStoreView(t *testing.T) {
 
 		// test for sync
 		for _, b := range blocksInSecondary {
-			err := primaryStore.View(ctx, b.Cid(), func(b []byte) error {
-				require.Equal(t, b, b)
+			err := composeStore.View(ctx, b.Cid(), func(bByte []byte) error {
+				require.Equal(t, b.RawData(), bByte)
 				return nil
 			})
 			require.NoError(t, err)
