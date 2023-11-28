@@ -10,7 +10,6 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/venus/app/node"
-	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 )
 
 var syncCmd = &cmds.Command{
@@ -66,7 +65,7 @@ var storeStatusCmd = &cmds.Command{
 		var inSyncing []*types.Target
 		var waitTarget []*types.Target
 		for _, t := range targets {
-			if t.State == types.SyncStateStage(syncTypes.StateInSyncing) {
+			if t.State == types.StageMessages {
 				inSyncing = append(inSyncing, t)
 			} else {
 				waitTarget = append(waitTarget, t)

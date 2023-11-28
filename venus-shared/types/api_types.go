@@ -319,6 +319,8 @@ func (v SyncStateStage) String() string {
 		return "error"
 	case StageFetchingMessages:
 		return "fetching messages"
+	case StageIdle:
+		return "idle"
 	default:
 		return fmt.Sprintf("<unknown: %d>", v)
 	}
