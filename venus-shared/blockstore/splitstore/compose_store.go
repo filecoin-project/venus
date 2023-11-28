@@ -198,7 +198,7 @@ func (cs *ComposeStore) sync(ctx context.Context, c cid.Cid, b blocks.Block) {
 			var err error
 			b, err = cs.secondary.Get(ctx, c)
 			if err != nil {
-				log.Warnf("get block(%s) from secondary: %s", c, err)
+				// it is ok to ignore the err
 				return
 			}
 		}
