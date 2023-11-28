@@ -76,22 +76,6 @@ var (
 	NewGCBlockstore = blockstore.NewGCBlockstore
 )
 
-func DefaultCacheOpts() CacheOpts {
-	return CacheOpts{
-		HasBloomFilterSize:   0,
-		HasBloomFilterHashes: 0,
-		HasARCCacheSize:      512 << 10,
-	}
-}
-
-func CachedBlockstore(ctx context.Context, bs blockstore.Blockstore, opts CacheOpts) (Blockstore, error) {
-	bsTmp, err := blockstore.CachedBlockstore(ctx, bs, opts)
-	if err != nil {
-		return nil, err
-	}
-	return WrapIDStore(bsTmp), nil
-}
-
 type adaptedBlockstore struct {
 	blockstore.Blockstore
 }
