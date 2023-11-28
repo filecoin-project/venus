@@ -64,7 +64,7 @@ func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...acto
 		)
 		if path, ok := BundleOverrides[av]; ok {
 			root, err = LoadBundleFromFile(ctx, bs, path)
-		} else if embedded, ok := GetEmbeddedBuiltinActorsBundle(av); ok {
+		} else if embedded, ok := GetEmbeddedBuiltinActorsBundle(av, NetworkBundle); ok {
 			root, err = LoadBundle(ctx, bs, bytes.NewReader(embedded))
 		} else {
 			err = fmt.Errorf("bundle for actors version v%d not found", av)

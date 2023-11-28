@@ -1,5 +1,22 @@
 # venus changelog
 
+## v1.14.0
+
+* chore: update sophon-auth
+
+## v1.14.0-rc6
+
+* opt: migration: set premigration to 90 minute [[#6217](https://github.com/filecoin-project/venus/pull/6217)]
+* fix: light-weight patch to fix calibrationnet again by removing move_partitions from built-in actors [[#6223](https://github.com/filecoin-project/venus/pull/6223)]
+
+## v1.14.0-rc5
+
+fix: nv21fix migration: correctly upgrade system actor [[#6215](https://github.com/filecoin-project/venus/pull/6215)]
+
+## v1.14.0-rc4
+
+chore: update to builtin-actors v12.0.0-rc.2 [[#6207](https://github.com/filecoin-project/venus/pull/6207)]
+
 ## v1.14.0-rc3
 
 * chore: reset butterflynet [[#6191](https://github.com/filecoin-project/venus/pull/6191)]

@@ -27,10 +27,10 @@ func TestMethodMap(t *testing.T) {
 	})
 
 	t.Run("ReLoad butterflynet actors", func(t *testing.T) {
-		assert.Nil(t, actors.SetNetworkBundle(int(types.NetworkButterfly)))
+		assert.Nil(t, actors.SetNetworkBundle(int(types.NetworkCalibnet)))
 		ReloadMethodsMap()
 		for _, actorsMetadata := range actors.EmbeddedBuiltinActorsMetadata {
-			if actorsMetadata.Network == string(types.NetworkNameButterfly) {
+			if actorsMetadata.Network == string(types.NetworkNameCalibration) {
 				for name, actor := range actorsMetadata.Actors {
 					checkActorCode(t, actorsMetadata.Version, actor, name, actorsMetadata.Network)
 				}
