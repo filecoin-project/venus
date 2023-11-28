@@ -11,6 +11,8 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 )
 
+var batchSize = 10000
+
 // autolog is a logger for the autobatching blockstore. It is subscoped from the
 // blockstore logger.
 var autolog = log.Named("auto")
@@ -94,19 +96,19 @@ func (bs *AutobatchBlockstore) flushWorker(ctx context.Context) {
 		case <-bs.flushCh:
 			// TODO: check if we _should_ actually flush. We could get a spurious wakeup
 			// here.
-			putErr := bs.doFlush(ctx, false)
+			putErr := bs.doFlush(ctx, false, false)
 			for putErr != nil {
 				select {
 				case <-ctx.Done():
 					return
 				case <-time.After(bs.flushRetryDelay):
 					autolog.Errorf("FLUSH ERRORED: %w, retrying after %v", putErr, bs.flushRetryDelay)
-					putErr = bs.doFlush(ctx, true)
+					putErr = bs.doFlush(ctx, true, false)
 				}
 			}
 		case <-ctx.Done():
 			// Do one last flush.
-			_ = bs.doFlush(ctx, false)
+			_ = bs.doFlush(ctx, false, true)
 			return
 		}
 	}
@@ -114,7 +116,7 @@ func (bs *AutobatchBlockstore) flushWorker(ctx context.Context) {
 
 // caller must NOT hold stateLock
 // set retryOnly to true to only retry a failed flush and not flush anything new.
-func (bs *AutobatchBlockstore) doFlush(ctx context.Context, retryOnly bool) error {
+func (bs *AutobatchBlockstore) doFlush(ctx context.Context, retryOnly bool, flushAll bool) error {
 	bs.doFlushLock.Lock()
 	defer bs.doFlushLock.Unlock()
 
@@ -131,13 +133,27 @@ func (bs *AutobatchBlockstore) doFlush(ctx context.Context, retryOnly bool) erro
 	// Then take the current batch...
 	bs.stateLock.Lock()
 	// We do NOT clear addedCids here, because its purpose is to expedite Puts
-	bs.flushingBatch = bs.bufferedBatch
-	bs.bufferedBatch.blockList = make([]block.Block, 0, len(bs.flushingBatch.blockList))
-	bs.bufferedBatch.blockMap = make(map[cid.Cid]block.Block, len(bs.flushingBatch.blockMap))
+	if len(bs.bufferedBatch.blockList) > batchSize && !flushAll {
+		bs.flushingBatch.blockMap = make(map[cid.Cid]block.Block, batchSize)
+		bs.flushingBatch.blockList = bs.bufferedBatch.blockList[:batchSize]
+		for _, blk := range bs.flushingBatch.blockList {
+			bs.flushingBatch.blockMap[blk.Cid()] = blk
+			delete(bs.bufferedBatch.blockMap, blk.Cid())
+		}
+		bs.bufferedBatch.blockList = bs.bufferedBatch.blockList[batchSize:]
+	} else {
+		bs.flushingBatch = bs.bufferedBatch
+		bs.bufferedBatch.blockList = make([]block.Block, 0, len(bs.flushingBatch.blockList))
+		bs.bufferedBatch.blockMap = make(map[cid.Cid]block.Block, len(bs.flushingBatch.blockMap))
+	}
 	bs.stateLock.Unlock()
+
+	now := time.Now()
 
 	// And try to flush it.
 	bs.flushErr = bs.backingBs.PutMany(ctx, bs.flushingBatch.blockList)
+
+	autolog.Debugf("flushed %d blocks in %s", len(bs.flushingBatch.blockList), time.Since(now))
 
 	// If we succeeded, reset the batch. Otherwise, we'll try again next time.
 	if bs.flushErr == nil {
@@ -151,7 +167,7 @@ func (bs *AutobatchBlockstore) doFlush(ctx context.Context, retryOnly bool) erro
 
 // caller must NOT hold stateLock
 func (bs *AutobatchBlockstore) Flush(ctx context.Context) error {
-	return bs.doFlush(ctx, false)
+	return bs.doFlush(ctx, false, true)
 }
 
 func (bs *AutobatchBlockstore) Shutdown(ctx context.Context) error {
