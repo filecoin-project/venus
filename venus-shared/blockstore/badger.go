@@ -74,8 +74,8 @@ func BadgerBlockstoreOptions(path string, readonly bool) (Options, error) {
 
 	// We mmap the index and the value logs; this is important to enable
 	// zero-copy value access.
-	opts.ValueLogLoadingMode = FileIO
-	opts.TableLoadingMode = FileIO
+	opts.ValueLogLoadingMode = MemoryMap
+	opts.TableLoadingMode = MemoryMap
 
 	// Embed only values < 128 bytes in the LSM tree; larger values are stored
 	// in value logs.
