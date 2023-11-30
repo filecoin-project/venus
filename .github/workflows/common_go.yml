@@ -11,6 +11,11 @@ on:
         type: number
       has_ffi:
         type: boolean
+      log_level:
+        description: 'specifies the log level'
+        required: false
+        default: info
+        type: string
 
 jobs:
 
@@ -61,7 +66,9 @@ jobs:
           test -z "$(git status --porcelain)"
 
       - name: Run coverage
-        run:  go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./... -v --timeout ${{ inputs.test_timeout }}m
+        run: |
+          export GOLOG_LOG_LEVEL=${{ inputs.log_level }}
+          go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./... -v --timeout ${{ inputs.test_timeout }}m
 
       - name: Upload
         uses: codecov/codecov-action@v3
