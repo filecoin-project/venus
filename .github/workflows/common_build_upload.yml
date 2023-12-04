@@ -208,6 +208,7 @@ jobs:
 
   build-macos:
     runs-on: macos-11
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v4
         with:
