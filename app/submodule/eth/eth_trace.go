@@ -3,17 +3,13 @@ package eth
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"fmt"
-	"io"
 
 	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
-	"github.com/filecoin-project/go-state-types/exitcode"
 
 	builtinactors "github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -123,14 +119,8 @@ func buildTraces(ctx context.Context, traces *[]*types.EthTrace, parent *types.E
 	} else {
 		// we are going to assume a native method, but we may change it in one of the edge cases below
 		// TODO: only do this if we know it's a native method (optimization)
-		trace.Action.Input, err = handleFilecoinMethodInput(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
-		if err != nil {
-			return fmt.Errorf("buildTraces: %w", err)
-		}
-		trace.Result.Output, err = handleFilecoinMethodOutput(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
-		if err != nil {
-			return fmt.Errorf("buildTraces: %w", err)
-		}
+		trace.Action.Input = encodeFilecoinParamsAsABI(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
+		trace.Result.Output = encodeFilecoinReturnAsABI(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
 	}
 
 	// TODO: is it OK to check this here or is this only specific to certain edge case (evm to evm)?
@@ -254,96 +244,4 @@ func buildTraces(ctx context.Context, traces *[]*types.EthTrace, parent *types.E
 	}
 
 	return nil
-}
-
-func writePadded(w io.Writer, data any, size int) error {
-	tmp := &bytes.Buffer{}
-
-	// first write data to tmp buffer to get the size
-	err := binary.Write(tmp, binary.BigEndian, data)
-	if err != nil {
-		return fmt.Errorf("writePadded: failed writing tmp data to buffer: %w", err)
-	}
-
-	if tmp.Len() > size {
-		return fmt.Errorf("writePadded: data is larger than size")
-	}
-
-	// write tailing zeros to pad up to size
-	cnt := size - tmp.Len()
-	for i := 0; i < cnt; i++ {
-		err = binary.Write(w, binary.BigEndian, uint8(0))
-		if err != nil {
-			return fmt.Errorf("writePadded: failed writing tailing zeros to buffer: %w", err)
-		}
-	}
-
-	// finally write the actual value
-	err = binary.Write(w, binary.BigEndian, tmp.Bytes())
-	if err != nil {
-		return fmt.Errorf("writePadded: failed writing data to buffer: %w", err)
-	}
-
-	return nil
-}
-
-func handleFilecoinMethodInput(method abi.MethodNum, codec uint64, params []byte) ([]byte, error) {
-	nativeMethodSelector := []byte{0x86, 0x8e, 0x10, 0xc4}
-	evmWordSize := 32
-
-	staticArgs := []uint64{
-		uint64(method),
-		codec,
-		uint64(evmWordSize) * 3,
-		uint64(len(params)),
-	}
-	totalWords := len(staticArgs) + (len(params) / evmWordSize)
-	if len(params)%evmWordSize != 0 {
-		totalWords++
-	}
-	len := 4 + totalWords*evmWordSize
-
-	w := &bytes.Buffer{}
-	err := binary.Write(w, binary.BigEndian, nativeMethodSelector)
-	if err != nil {
-		return nil, fmt.Errorf("handleFilecoinMethodInput: failed writing method selector: %w", err)
-	}
-
-	for _, arg := range staticArgs {
-		err := writePadded(w, arg, 32)
-		if err != nil {
-			return nil, fmt.Errorf("handleFilecoinMethodInput: %w", err)
-		}
-	}
-	err = binary.Write(w, binary.BigEndian, params)
-	if err != nil {
-		return nil, fmt.Errorf("handleFilecoinMethodInput: failed writing params: %w", err)
-	}
-	remain := len - w.Len()
-	for i := 0; i < remain; i++ {
-		err = binary.Write(w, binary.BigEndian, uint8(0))
-		if err != nil {
-			return nil, fmt.Errorf("handleFilecoinMethodInput: failed writing tailing zeros: %w", err)
-		}
-	}
-
-	return w.Bytes(), nil
-}
-
-func handleFilecoinMethodOutput(exitCode exitcode.ExitCode, codec uint64, data []byte) ([]byte, error) {
-	w := &bytes.Buffer{}
-
-	values := []interface{}{uint32(exitCode), codec, uint32(w.Len()), uint32(len(data))}
-	for _, v := range values {
-		err := writePadded(w, v, 32)
-		if err != nil {
-			return nil, fmt.Errorf("handleFilecoinMethodOutput: %w", err)
-		}
-	}
-	err := binary.Write(w, binary.BigEndian, data)
-	if err != nil {
-		return nil, fmt.Errorf("handleFilecoinMethodOutput: failed writing data: %w", err)
-	}
-
-	return w.Bytes(), nil
 }
