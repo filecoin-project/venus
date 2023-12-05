@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
 
 	"github.com/filecoin-project/go-address"
@@ -651,16 +652,39 @@ var stateSysActorCIDsCmd = &cmds.Command{
 		}
 		buf.WriteString(fmt.Sprintf("Actor Version: %d\n", actorVersion))
 
+		manifestCid, err := env.(*node.Env).ChainAPI.StateActorManifestCID(ctx, nv)
+		if err != nil {
+			return err
+		}
+		buf.WriteString(fmt.Sprintf("Manifest CID: %v\n", manifestCid))
+
 		tw := tablewriter.New(tablewriter.Col("Actor"), tablewriter.Col("CID"))
 
 		actorsCids, err := env.(*node.Env).ChainAPI.StateActorCodeCIDs(ctx, nv)
 		if err != nil {
 			return err
 		}
-		for name, cid := range actorsCids {
+
+		type actorCid struct {
+			actorName string
+			actorCID  string
+		}
+
+		var actorsCid []actorCid
+		for name, c := range actorsCids {
+			actorsCid = append(actorsCid, actorCid{
+				actorName: name,
+				actorCID:  c.String(),
+			})
+		}
+		sort.Slice(actorsCid, func(i, j int) bool {
+			return actorsCid[i].actorName < actorsCid[j].actorName
+		})
+
+		for _, ac := range actorsCid {
 			tw.Write(map[string]interface{}{
-				"Actor": name,
-				"CID":   cid.String(),
+				"Actor": ac.actorName,
+				"CID":   ac.actorCID,
 			})
 		}
 
