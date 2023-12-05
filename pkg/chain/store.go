@@ -987,11 +987,19 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 }
 
 // Import import a car file into local db
-func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, error) {
+func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, *types.BlockHeader, error) {
 	br, err := carv2.NewBlockReader(r)
 	if err != nil {
-		return nil, fmt.Errorf("loadcar failed: %w", err)
+		return nil, nil, fmt.Errorf("loadcar failed: %w", err)
 	}
+
+	if len(br.Roots) == 0 {
+		return nil, nil, fmt.Errorf("no roots in snapshot car file")
+	}
+
+	var tailBlock types.BlockHeader
+	tailBlock.Height = abi.ChainEpoch(-1)
+	nextTailCid := br.Roots[0]
 
 	parallelPuts := 5
 	putThrottle := make(chan error, parallelPuts)
@@ -1006,20 +1014,33 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 			if err == io.EOF {
 				if len(buf) > 0 {
 					if err := store.bsstore.PutMany(ctx, buf); err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 				}
 
 				break
 			}
-			return nil, err
+			return nil, nil, err
+		}
+
+		// check for header block, looking for genesis
+		if blk.Cid() == nextTailCid && tailBlock.Height != 0 {
+			if err := tailBlock.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+				return nil, nil, fmt.Errorf("failed to unmarshal genesis block: %w", err)
+			}
+			if len(tailBlock.Parents) > 0 {
+				nextTailCid = tailBlock.Parents[0]
+			} else {
+				// note: even the 0th block has a parent linking to the cbor genesis block
+				return nil, nil, fmt.Errorf("current block (epoch %d cid %s) has no parents", tailBlock.Height, tailBlock.Cid())
+			}
 		}
 
 		buf = append(buf, blk)
 
 		if len(buf) > 1000 {
 			if lastErr := <-putThrottle; lastErr != nil { // consume one error to have the right to add one
-				return nil, lastErr
+				return nil, nil, lastErr
 			}
 
 			go func(buf []blocks.Block) {
@@ -1032,13 +1053,17 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 	// check errors
 	for i := 0; i < parallelPuts; i++ {
 		if lastErr := <-putThrottle; lastErr != nil {
-			return nil, lastErr
+			return nil, nil, lastErr
 		}
+	}
+
+	if tailBlock.Height != 0 {
+		return nil, nil, fmt.Errorf("expected genesis block to have height 0 (genesis), got %d: %s", tailBlock.Height, tailBlock.Cid())
 	}
 
 	root, err := store.GetTipSet(ctx, types.NewTipSetKey(br.Roots...))
 	if err != nil {
-		return nil, fmt.Errorf("failed to load root tipset from chainfile: %w", err)
+		return nil, nil, fmt.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
 
 	// Notice here is different with lotus, because the head tipset in lotus is not computed,
@@ -1058,7 +1083,7 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 		curTipsetKey := curTipset.Parents()
 		curParentTipset, err := store.GetTipSet(ctx, curTipsetKey)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load root tipset from chainfile: %w", err)
+			return nil, nil, fmt.Errorf("failed to load root tipset from chainfile: %w", err)
 		}
 
 		if curParentTipset.Height() == 0 {
@@ -1077,7 +1102,7 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 			TipSetReceipts:  curTipset.At(0).ParentMessageReceipts,
 		})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// save tipsetkey
@@ -1086,7 +1111,7 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 		curTipset = curParentTipset
 	}
 
-	return root, nil
+	return root, &tailBlock, nil
 }
 
 // SetCheckPoint set current checkpoint
