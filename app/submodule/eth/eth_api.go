@@ -1160,10 +1160,7 @@ func (a *ethAPI) EthTraceReplayBlockTransactions(ctx context.Context, blkNum str
 				return nil, fmt.Errorf("failed to decode payload: %w", err)
 			}
 		} else {
-			output, err = handleFilecoinMethodOutput(ir.ExecutionTrace.MsgRct.ExitCode, ir.ExecutionTrace.MsgRct.ReturnCodec, ir.ExecutionTrace.MsgRct.Return)
-			if err != nil {
-				return nil, fmt.Errorf("could not convert output: %w", err)
-			}
+			output = encodeFilecoinReturnAsABI(ir.ExecutionTrace.MsgRct.ExitCode, ir.ExecutionTrace.MsgRct.ReturnCodec, ir.ExecutionTrace.MsgRct.Return)
 		}
 
 		t := types.EthTraceReplayBlockTransaction{
