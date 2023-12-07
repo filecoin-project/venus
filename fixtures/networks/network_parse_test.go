@@ -52,11 +52,6 @@ func TestGetNetworkFromName(t *testing.T) {
 			network: types.NetworkButterfly,
 			err:     nil,
 		},
-		// {
-		// 	name:    "hyperspacenet",
-		// 	network: types.NetworkHyperspace,
-		// 	err:     nil,
-		// },
 		{
 			name:    "unknown",
 			network: 0,

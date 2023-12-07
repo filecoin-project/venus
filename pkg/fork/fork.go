@@ -91,11 +91,11 @@ func init() {
 	if mwcs := os.Getenv(EnvMigrationMaxWorkerCount); mwcs != "" {
 		mwc, err := strconv.ParseInt(mwcs, 10, 32)
 		if err != nil {
-			log.Warnf("invalid value for %s (%s) defaulting to %d: %s", EnvMigrationMaxWorkerCount, mwcs, MigrationMaxWorkerCount, err)
+			fmt.Printf("invalid value for %s (%s) defaulting to %d: %s\n", EnvMigrationMaxWorkerCount, mwcs, MigrationMaxWorkerCount, err)
 			return
 		}
 		// use value from environment
-		log.Infof("migration worker cound set from %s (%d)", EnvMigrationMaxWorkerCount, mwc)
+		fmt.Printf("migration worker count set from %s (%d)\n", EnvMigrationMaxWorkerCount, mwc)
 		MigrationMaxWorkerCount = int(mwc)
 		return
 	}

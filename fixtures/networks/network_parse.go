@@ -66,10 +66,6 @@ func GetNetworkConfigFromType(networkType types.NetworkType) (*NetworkConf, erro
 		return InteropNet(), nil
 	case types.NetworkButterfly:
 		return ButterflySnapNet(), nil
-	case types.NetworkWallaby:
-		return WallabyNet(), nil
-	case types.NetworkHyperspace:
-		return HyperspaceNet(), nil
 	}
 
 	return nil, fmt.Errorf("unknown network type %d", networkType)

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNetworkNamtToNetworkType(t *testing.T) {
+func TestNetworkNameToNetworkType(t *testing.T) {
 	tf.UnitTest(t)
 	assert.Len(t, NetworkTypeWithNetworkName, 6)
 	assert.Len(t, NetworkNameWithNetworkType, 6)

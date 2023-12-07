@@ -53,8 +53,6 @@ func init() {
 // NetworkInterop    NetworkType = 0x6
 // NetworkForce      NetworkType = 0x7
 // NetworkButterfly  NetworkType = 0x8
-// NetworkWallaby    NetworkType = 0x9
-// NetworkHyperspace NetworkType = 0x10
 // Avoid import cycle, we use concrete values
 func SetNetworkBundle(networkType int) error {
 	networkBundle := ""
@@ -74,12 +72,6 @@ func SetNetworkBundle(networkType int) error {
 	// case types.NetworkButterfly:
 	case 0x8:
 		networkBundle = "butterflynet"
-	// case types.NetworkWallaby:
-	case 0x9:
-		networkBundle = "wallaby"
-	// case types.NetworkHyperspace:
-	case 0x10:
-		networkBundle = "hyperspace"
 	default:
 		networkBundle = "mainnet"
 	}
