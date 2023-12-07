@@ -7,6 +7,9 @@ import (
 	"github.com/ipfs/go-datastore"
 )
 
+// Config is the config object for the repo.
+var Config = config.NewDefaultConfig()
+
 // Datastore is the datastore interface provided by the repo
 type Datastore datastore.Batching
 

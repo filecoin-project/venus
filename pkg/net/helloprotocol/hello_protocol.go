@@ -20,7 +20,7 @@ import (
 	net "github.com/libp2p/go-libp2p/core/network"
 	ma "github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/venus/pkg/metrics"
+	"github.com/ipfs-force-community/metrics"
 )
 
 var log = logging.Logger("/fil/hello")
@@ -29,8 +29,8 @@ var log = logging.Logger("/fil/hello")
 const helloProtocolID = "/fil/hello/1.0.0"
 
 var (
-	genesisErrCt  = metrics.NewInt64Counter("hello_genesis_error", "Number of errors encountered in hello protocol due to incorrect genesis block")
-	helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of errors encountered in hello protocol due to malformed message")
+	genesisErrCt  = metrics.NewCounter("hello_genesis_error", "Number of errors encountered in hello protocol due to incorrect genesis block")
+	helloMsgErrCt = metrics.NewCounter("hello_message_error", "Number of errors encountered in hello protocol due to malformed message")
 )
 
 // HelloMessage is the data structure of a single message in the hello protocol.
@@ -114,7 +114,7 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 
 	hello, err := h.receiveHello(ctx, s)
 	if err != nil {
-		helloMsgErrCt.Inc(ctx, 1)
+		helloMsgErrCt.Tick(ctx)
 		log.Debugf("failed to receive hello message:%s", err)
 		// can't process a hello received in error, but leave this connection
 		// open because we connections are innocent until proven guilty
@@ -127,7 +127,7 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	from := s.Conn().RemotePeer()
 	if !hello.GenesisHash.Equals(h.genesis) {
 		log.Debugf("peer genesis cid: %s does not match ours: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
-		genesisErrCt.Inc(context.Background(), 1)
+		genesisErrCt.Tick(context.Background())
 		_ = s.Conn().Close()
 		return
 	}

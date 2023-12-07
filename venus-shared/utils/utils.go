@@ -6,6 +6,8 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
+
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 )
 
 var NetworkNameWithNetworkType = map[types.NetworkName]types.NetworkType{
@@ -67,4 +69,36 @@ func LoadBuiltinActors(ctx context.Context, getter networkNameGetter) error {
 	ReloadMethodsMap()
 
 	return nil
+}
+
+// Name returns the name of a variable whose type does not have a default implementation of the String() method.
+func Name(a interface{}) string {
+	switch v := a.(type) {
+	case acrypto.DomainSeparationTag:
+		switch v {
+		case acrypto.DomainSeparationTag_TicketProduction:
+			return "TicketProduction"
+		case acrypto.DomainSeparationTag_ElectionProofProduction:
+			return "ElectionProofProduction"
+		case acrypto.DomainSeparationTag_WinningPoStChallengeSeed:
+			return "WinningPoStChallengeSeed"
+		case acrypto.DomainSeparationTag_WindowedPoStChallengeSeed:
+			return "WindowedPoStChallengeSeed"
+		case acrypto.DomainSeparationTag_SealRandomness:
+			return "SealRandomness"
+		case acrypto.DomainSeparationTag_InteractiveSealChallengeSeed:
+			return "InteractiveSealChallengeSeed"
+		case acrypto.DomainSeparationTag_WindowedPoStDeadlineAssignment:
+			return "WindowedPoStDeadlineAssignment"
+		case acrypto.DomainSeparationTag_MarketDealCronSeed:
+			return "MarketDealCronSeed"
+		case acrypto.DomainSeparationTag_PoStChainCommit:
+			return "PoStChainCommit"
+		default:
+			return ""
+		}
+
+	default:
+		return ""
+	}
 }

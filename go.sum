@@ -592,8 +592,8 @@ github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839 h1:W9WBk7
 github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839/go.mod h1:xaLFMmpvUxqXtVkUJfg9QmT88cDaCJ3ZKgdZ78oO8Qo=
 github.com/ipfs-force-community/go-jsonrpc v0.1.9 h1:5QavBltfvV6fz/+EbYsCkVxJ1MSJncZm6YuPs1SLdZU=
 github.com/ipfs-force-community/go-jsonrpc v0.1.9/go.mod h1:jBSvPTl8V1N7gSTuCR4bis8wnQnIjHbRPpROol6iQKM=
-github.com/ipfs-force-community/metrics v1.0.1-0.20231011024528-8c881d456601 h1:zxKQ30KAD6KfvSFAx9tuqQXLDsEHyF+eVaUBXXYC2bU=
-github.com/ipfs-force-community/metrics v1.0.1-0.20231011024528-8c881d456601/go.mod h1:wM6EmkEcnJgWOFcVytgvK0u15awEmt8He0f2kAdsFDA=
+github.com/ipfs-force-community/metrics v1.0.1-0.20231207081445-30178e706d09 h1:qEI6ItxKtgOupMMuGJwqK5zEzztKKPUP1QKq9g+X5bM=
+github.com/ipfs-force-community/metrics v1.0.1-0.20231207081445-30178e706d09/go.mod h1:wM6EmkEcnJgWOFcVytgvK0u15awEmt8He0f2kAdsFDA=
 github.com/ipfs-force-community/sophon-auth v1.14.0 h1:ctBJ6UHkcytEzfVPgiiHo0cW4FGQrE7r1H3Um0FcHbo=
 github.com/ipfs-force-community/sophon-auth v1.14.0/go.mod h1:d6J6u3zyIwcEajRho5BhVBcoIChEf0K76wP4yJEfEhc=
 github.com/ipfs/bbloom v0.0.1/go.mod h1:oqo8CVWsJFMOZqTglBG4wydCE4IQA/G2/SEofB0rjUI=

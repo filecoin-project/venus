@@ -50,8 +50,7 @@ type FSRepo struct {
 	version uint
 
 	// lk protects the config file
-	lk  sync.RWMutex
-	cfg *config.Config
+	lk sync.RWMutex
 
 	ds       *blockstoreutil.BadgerBlockstore
 	keystore fskeystore.Keystore
@@ -242,7 +241,7 @@ func (r *FSRepo) Config() *config.Config {
 	r.lk.RLock()
 	defer r.lk.RUnlock()
 
-	return r.cfg
+	return Config
 }
 
 // ReplaceConfig replaces the current config with the newly passed in one.
@@ -250,13 +249,13 @@ func (r *FSRepo) ReplaceConfig(cfg *config.Config) error {
 	r.lk.Lock()
 	defer r.lk.Unlock()
 
-	r.cfg = cfg
+	Config = cfg
 	tmp := filepath.Join(r.path, tempConfigFilename)
 	err := os.RemoveAll(tmp)
 	if err != nil {
 		return err
 	}
-	err = r.cfg.WriteFile(tmp)
+	err = Config.WriteFile(tmp)
 	if err != nil {
 		return err
 	}
@@ -367,7 +366,7 @@ func LoadConfig(p string) (*config.Config, error) {
 }
 
 func (r *FSRepo) loadConfig() (err error) {
-	r.cfg, err = LoadConfig(r.path)
+	Config, err = LoadConfig(r.path)
 	return
 }
 
@@ -377,9 +376,9 @@ func (r *FSRepo) readVersion() (uint, error) {
 }
 
 func (r *FSRepo) openDatastore() error {
-	switch r.cfg.Datastore.Type {
+	switch Config.Datastore.Type {
 	case "badgerds":
-		path := filepath.Join(r.path, r.cfg.Datastore.Path)
+		path := filepath.Join(r.path, Config.Datastore.Path)
 		opts, err := blockstoreutil.BadgerBlockstoreOptions(path, false)
 		if err != nil {
 			return err
@@ -391,7 +390,7 @@ func (r *FSRepo) openDatastore() error {
 		}
 		r.ds = ds
 	default:
-		return fmt.Errorf("unknown datastore type in config: %s", r.cfg.Datastore.Type)
+		return fmt.Errorf("unknown datastore type in config: %s", Config.Datastore.Type)
 	}
 
 	return nil

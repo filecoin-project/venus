@@ -56,7 +56,7 @@ require (
 	github.com/hashicorp/golang-lru/arc/v2 v2.0.7
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
-	github.com/ipfs-force-community/metrics v1.0.1-0.20231011024528-8c881d456601
+	github.com/ipfs-force-community/metrics v1.0.1-0.20231207081445-30178e706d09
 	github.com/ipfs-force-community/sophon-auth v1.14.0
 	github.com/ipfs/boxo v0.10.1
 	github.com/ipfs/go-cid v0.4.1
@@ -95,7 +95,6 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/whyrusleeping/cbor-gen v0.0.0-20230923211252-36a87e1ba72f
-	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	github.com/zyedidia/generic v1.2.1
 	go.opencensus.io v0.24.0
@@ -124,6 +123,7 @@ require (
 	github.com/ipfs/go-merkledag v0.11.0 // indirect
 	github.com/petar/GoLLRB v0.0.0-20210522233825-ae3b015fd3e9 // indirect
 	github.com/whyrusleeping/cbor v0.0.0-20171005072247-63513f603b11 // indirect
+	github.com/whyrusleeping/go-logging v0.0.1 // indirect
 )
 
 require (

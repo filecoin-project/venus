@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ipfs-force-community/metrics"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/event"
 	host "github.com/libp2p/go-libp2p/core/host"
@@ -16,6 +17,10 @@ import (
 )
 
 var log = logging.Logger("peermgr")
+
+var (
+	peerCount = metrics.NewInt64("peer/count", "Number of peers", "")
+)
 
 const (
 	MaxFilPeers = 320
@@ -96,7 +101,12 @@ func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, period time.Duration, bootstrap [
 
 	pm.notifee = &net.NotifyBundle{
 		DisconnectedF: func(_ net.Network, c net.Conn) {
+			peerCount.Inc(context.Background(), -1)
 			pm.Disconnect(c.RemotePeer())
+		},
+		ConnectedF: func(_ net.Network, c net.Conn) {
+			// add dec peerCount
+			peerCount.Inc(context.Background(), 1)
 		},
 	}
 
