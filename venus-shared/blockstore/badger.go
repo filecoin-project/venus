@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"sync/atomic"
+	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
@@ -118,6 +119,8 @@ const (
 // operation calls after Close() has returned, but it may not happen for
 // operations in progress. Those are likely to fail with a different error.
 type BadgerBlockstore struct {
+	cancel context.CancelFunc
+
 	DB *badger.DB
 
 	// state is guarded by atomic.
@@ -154,6 +157,11 @@ func Open(opts Options) (*BadgerBlockstore, error) {
 		keyTransform: keyTransform,
 		cache:        cache,
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	bs.cancel = cancel
+	go bs.gc(ctx)
+
 	return bs, nil
 }
 
@@ -163,6 +171,7 @@ func (b *BadgerBlockstore) Close() error {
 	if !atomic.CompareAndSwapInt64(&b.state, stateOpen, stateClosing) {
 		return nil
 	}
+	b.cancel()
 
 	defer atomic.StoreInt64(&b.state, stateClosed)
 	return b.DB.Close()
@@ -481,4 +490,35 @@ func (b *BadgerBlockstore) HashOnRead(_ bool) {
 func (b *BadgerBlockstore) ConvertKey(cid cid.Cid) datastore.Key {
 	key := dshelp.MultihashToDsKey(cid.Hash())
 	return b.keyTransform.ConvertKey(key)
+}
+
+const (
+	defaultGCSleep    = 2 * time.Minute
+	defaultGCInterval = 2 * time.Hour
+)
+
+func (b *BadgerBlockstore) gc(ctx context.Context) {
+	gcTimer := time.NewTimer(defaultGCInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-gcTimer.C:
+			start := time.Now()
+			err := b.DB.RunValueLogGC(0.7)
+			switch err {
+			case badger.ErrNoRewrite, badger.ErrRejected:
+				// No rewrite means we've fully garbage collected.
+				// Rejected means someone else is running a GC
+				// or we're closing.
+				gcTimer.Reset(defaultGCInterval)
+			case nil:
+				log.Infow("successful value log GC", "elapsed", time.Since(start).Truncate(time.Microsecond).String())
+				gcTimer.Reset(defaultGCSleep)
+			default:
+				log.Errorw("error duraing a GC cycle", "err", err)
+				gcTimer.Reset(defaultGCInterval)
+			}
+		}
+	}
 }
