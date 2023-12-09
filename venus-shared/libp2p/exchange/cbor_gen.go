@@ -22,6 +22,8 @@ var _ = sort.Sort
 
 var lengthBufRequest = []byte{131}
 
+const CXMaxLength = 20000
+
 func (t *Request) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
@@ -35,7 +37,7 @@ func (t *Request) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Head ([]cid.Cid) (slice)
-	if len(t.Head) > cbg.MaxLength {
+	if len(t.Head) > CXMaxLength {
 		return xerrors.Errorf("Slice value in field t.Head was too long")
 	}
 
@@ -95,7 +97,7 @@ func (t *Request) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > CXMaxLength {
 		return fmt.Errorf("t.Head: array too large (%d)", extra)
 	}
 
@@ -181,7 +183,7 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ErrorMessage (string) (string)
-	if len(t.ErrorMessage) > cbg.MaxLength {
+	if len(t.ErrorMessage) > CXMaxLength {
 		return xerrors.Errorf("Value in field t.ErrorMessage was too long")
 	}
 
@@ -193,7 +195,7 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Chain ([]*exchange.BSTipSet) (slice)
-	if len(t.Chain) > cbg.MaxLength {
+	if len(t.Chain) > CXMaxLength {
 		return xerrors.Errorf("Slice value in field t.Chain was too long")
 	}
 
@@ -262,7 +264,7 @@ func (t *Response) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > CXMaxLength {
 		return fmt.Errorf("t.Chain: array too large (%d)", extra)
 	}
 
@@ -321,7 +323,7 @@ func (t *CompactedMessages) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Bls ([]*types.Message) (slice)
-	if len(t.Bls) > cbg.MaxLength {
+	if len(t.Bls) > CXMaxLength {
 		return xerrors.Errorf("Slice value in field t.Bls was too long")
 	}
 
@@ -335,7 +337,7 @@ func (t *CompactedMessages) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.BlsIncludes ([][]uint64) (slice)
-	if len(t.BlsIncludes) > cbg.MaxLength {
+	if len(t.BlsIncludes) > CXMaxLength {
 		return xerrors.Errorf("Slice value in field t.BlsIncludes was too long")
 	}
 
@@ -343,7 +345,7 @@ func (t *CompactedMessages) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.BlsIncludes {
-		if len(v) > cbg.MaxLength {
+		if len(v) > CXMaxLength {
 			return xerrors.Errorf("Slice value in field v was too long")
 		}
 
@@ -360,7 +362,7 @@ func (t *CompactedMessages) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Secpk ([]*types.SignedMessage) (slice)
-	if len(t.Secpk) > cbg.MaxLength {
+	if len(t.Secpk) > CXMaxLength {
 		return xerrors.Errorf("Slice value in field t.Secpk was too long")
 	}
 
@@ -374,7 +376,7 @@ func (t *CompactedMessages) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.SecpkIncludes ([][]uint64) (slice)
-	if len(t.SecpkIncludes) > cbg.MaxLength {
+	if len(t.SecpkIncludes) > CXMaxLength {
 		return xerrors.Errorf("Slice value in field t.SecpkIncludes was too long")
 	}
 
@@ -382,7 +384,7 @@ func (t *CompactedMessages) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.SecpkIncludes {
-		if len(v) > cbg.MaxLength {
+		if len(v) > CXMaxLength {
 			return xerrors.Errorf("Slice value in field v was too long")
 		}
 
@@ -430,7 +432,7 @@ func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > CXMaxLength {
 		return fmt.Errorf("t.Bls: array too large (%d)", extra)
 	}
 
@@ -478,7 +480,7 @@ func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > CXMaxLength {
 		return fmt.Errorf("t.BlsIncludes: array too large (%d)", extra)
 	}
 
@@ -504,7 +506,7 @@ func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > CXMaxLength {
 				return fmt.Errorf("t.BlsIncludes[i]: array too large (%d)", extra)
 			}
 
@@ -550,7 +552,7 @@ func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > CXMaxLength {
 		return fmt.Errorf("t.Secpk: array too large (%d)", extra)
 	}
 
@@ -598,7 +600,7 @@ func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > CXMaxLength {
 		return fmt.Errorf("t.SecpkIncludes: array too large (%d)", extra)
 	}
 
@@ -624,7 +626,7 @@ func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > CXMaxLength {
 				return fmt.Errorf("t.SecpkIncludes[i]: array too large (%d)", extra)
 			}
 
@@ -681,7 +683,7 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Blocks ([]*types.BlockHeader) (slice)
-	if len(t.Blocks) > cbg.MaxLength {
+	if len(t.Blocks) > CXMaxLength {
 		return xerrors.Errorf("Slice value in field t.Blocks was too long")
 	}
 
@@ -731,7 +733,7 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > CXMaxLength {
 		return fmt.Errorf("t.Blocks: array too large (%d)", extra)
 	}
 
