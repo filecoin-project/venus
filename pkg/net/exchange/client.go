@@ -2,7 +2,6 @@ package exchange
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -25,6 +24,10 @@ import (
 )
 
 var exchangeClientLogger = logging.Logger("exchange.client")
+
+// Set the max exchange message size to 120MiB. Purely based on gas numbers, we can include ~8MiB of
+// messages per block, so I've set this to 120MiB to be _very_ safe.
+const maxExchangeMessageSize = (15 * 8) << 20
 
 // client implements exchange.Client, using the libp2p ChainExchange protocol
 // as the fetching mechanism.
@@ -426,20 +429,15 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 	}
 	_ = stream.SetWriteDeadline(time.Time{}) // clear deadline // FIXME: Needs
 	//  its own API (https://github.com/libp2p/go-libp2p/core/issues/162).
-
-	// Read response.
-	_ = stream.SetReadDeadline(time.Time{})
-
-	// TODO Note: this will remove once we've completed the go-libp2p migration to
-	//		      go-libp2p-core 0.7.0
-	respBytes, err := io.ReadAll(bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)))
-	if err != nil {
-		return nil, err
+	if err := stream.CloseWrite(); err != nil {
+		log.Warnw("CloseWrite err", "error", err)
 	}
 
+	// Read response, limiting the size of the response to maxExchangeMessageSize as we allow a
+	// lot of messages (10k+) but they'll mostly be quite small.
 	var res exchange.Response
 	err = cborutil.ReadCborRPC(
-		bytes.NewReader(respBytes),
+		bufio.NewReader(io.LimitReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline), maxExchangeMessageSize)),
 		// bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)),
 		&res)
 	if err != nil {
