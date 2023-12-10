@@ -1,6 +1,6 @@
 # venus changelog
 
-## v1.14.1
+## v1.14.2
 
 * fix: exchange: allow up to 10k messages per block
 
