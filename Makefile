@@ -121,6 +121,10 @@ build: $(BUILD_DEPS)
 	rm -f venus
 	$(GO) build -o ./venus $(GOFLAGS) .
 
+debug: $(BUILD_DEPS)
+	rm -f venus
+	$(GO) build -o ./venus -gcflags=all="-N -l" $(GOFLAGS) .
+
 
 .PHONY: docker
 TAG:=test

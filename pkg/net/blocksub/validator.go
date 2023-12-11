@@ -8,13 +8,13 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs-force-community/metrics"
 )
 
 var (
 	blockTopicLogger = log.Logger("net/block_validator")
-	mDecodeBlkFail   = metrics.NewInt64Counter("net/pubsub_block_decode_failure", "Number of blocks that fail to decode seen on block pubsub channel")
+	mDecodeBlkFail   = metrics.NewCounter("net/pubsub_block_decode_failure", "Number of blocks that fail to decode seen on block pubsub channel")
 )
 
 // BlockTopicValidator may be registered on go-libp2p-pubsub to validate blocksub messages.
@@ -36,7 +36,7 @@ func NewBlockTopicValidator(bv BlockHeaderValidator, opts ...pubsub.ValidatorOpt
 			err := bm.UnmarshalCBOR(bytes.NewReader(msg.GetData()))
 			if err != nil {
 				blockTopicLogger.Warnf("failed to decode blocksub payload from peer %s: %s", p.String(), err.Error())
-				mDecodeBlkFail.Inc(ctx, 1)
+				mDecodeBlkFail.Tick(ctx)
 				return pubsub.ValidationIgnore
 			}
 

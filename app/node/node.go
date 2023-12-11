@@ -31,8 +31,9 @@ import (
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"       // enable bls signatures
 	_ "github.com/filecoin-project/venus/pkg/crypto/delegated" // enable delegated signatures
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"      // enable secp signatures
-	"github.com/filecoin-project/venus/pkg/metrics"
+	metricsPKG "github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
@@ -45,6 +46,10 @@ import (
 )
 
 var log = logging.Logger("node") // nolint: deadcode
+
+var (
+	apiStatusGauge = metrics.NewInt64("api/status", "Status of the API server. 1 is up, 0 is down.", "")
+)
 
 // ConfigOpt mutates a node config post initialization
 type ConfigOpt func(*config.Config)
@@ -157,11 +162,11 @@ func (node *Node) OfflineMode() bool {
 // Start boots up the node.
 func (node *Node) Start(ctx context.Context) error {
 	var err error
-	if err = metrics.RegisterPrometheusEndpoint(node.repo.Config().Observability.Metrics); err != nil {
+	if err = metricsPKG.RegisterPrometheusEndpoint(node.repo.Config().Observability.Metrics); err != nil {
 		return errors.Wrap(err, "failed to setup metrics")
 	}
 
-	if node.jaeger, err = metrics.SetupJaegerTracing(node.network.Host.ID().Pretty(),
+	if node.jaeger, err = metricsPKG.SetupJaegerTracing(node.network.Host.ID().Pretty(),
 		node.repo.Config().Observability.Tracing); err != nil {
 		return errors.Wrap(err, "failed to setup tracing")
 	}
@@ -239,7 +244,7 @@ func (node *Node) Stop(ctx context.Context) {
 	}
 
 	if node.jaeger != nil {
-		if err := metrics.ShutdownJaeger(ctx, node.jaeger); err != nil {
+		if err := metricsPKG.ShutdownJaeger(ctx, node.jaeger); err != nil {
 			log.Warnf("error shutdown jaeger-tracing: %w", err)
 		}
 	}
@@ -297,8 +302,10 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	}
 
 	go func() {
+		apiStatusGauge.Set(ctx, 1)
 		err := apiServ.Serve(netListener) // nolint
 		if err != nil && err != http.ErrServerClosed {
+			apiStatusGauge.Set(ctx, 0)
 			return
 		}
 	}()
@@ -319,6 +326,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 		if err := apiServ.Shutdown(ctx); err != nil {
 			log.Warnf("failed to shutdown server: %v", err)
 		}
+		apiStatusGauge.Set(ctx, 0)
 		node.Stop(ctx)
 		memguard.Purge()
 		log.Infof("venus shutdown gracefully ...")

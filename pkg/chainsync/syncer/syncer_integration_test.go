@@ -44,7 +44,7 @@ func TestLoadFork(t *testing.T) {
 	require.NoError(t, err)
 
 	s, err := syncer.NewSyncer(stmgr, blockValidator, sel, builder.Store(),
-		builder.Mstore(), builder.BlockStore(), builder, clock.NewFake(time.Unix(1234567890, 0)), nil)
+		builder.Mstore(), builder.BlockStore(), builder, clock.NewFake(time.Unix(1234567890, 0)), fork.NewMockFork())
 
 	require.NoError(t, err)
 

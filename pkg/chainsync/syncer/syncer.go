@@ -9,11 +9,14 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/hashicorp/go-multierror"
+	"github.com/ipfs-force-community/metrics"
 
 	"golang.org/x/sync/errgroup"
 
+	actorsTypes "github.com/filecoin-project/go-state-types/actors"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -22,7 +25,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
-	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/net/exchange"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
@@ -59,15 +61,19 @@ var (
 	// ErrUnexpectedStoreState indicates that the syncer's chain bsstore is violating expected invariants.
 	ErrUnexpectedStoreState = errors.New("the chain bsstore is in an unexpected state")
 
-	logSyncer    = logging.Logger("chainsync.syncer")
-	syncOneTimer *metrics.Float64Timer
-	reorgCnt     *metrics.Int64Counter // nolint
+	logSyncer = logging.Logger("chainsync.syncer")
 )
 
-func init() {
-	syncOneTimer = metrics.NewTimerMs("syncer/sync_one", "Duration of single tipset validation in milliseconds")
-	reorgCnt = metrics.NewInt64Counter("chain/reorg_count", "The number of reorgs that have occurred.")
-}
+// metrics handlers
+var (
+	// epoch should not use as a label, because it has a lot of values
+	syncOneTimer      = metrics.NewTimerMs("sync/sync_one", "Duration of single tipset validation in milliseconds")
+	syncStatus        = metrics.NewInt64("sync/status", "The current status of the syncer. 0 = sync delay, 1 = sync done", "")
+	reorgCnt          = metrics.NewCounter("chain/reorg_count", "The number of reorgs that have occurred.") // nolint
+	epochGauge        = metrics.NewInt64("chain/epoch", "The current epoch.", "")
+	netVersionGuage   = metrics.NewInt64("chain/net_version", "The current network version.", "")
+	actorVersionGuage = metrics.NewInt64("chain/actor_version", "The current actor version.", "")
+)
 
 // StateProcessor does semantic validation on fullblocks.
 type StateProcessor interface {
@@ -195,8 +201,8 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 		return nil
 	}
 
-	stopwatch := syncOneTimer.Start(ctx)
-	defer stopwatch.Stop(ctx)
+	stopwatch := syncOneTimer.Start()
+	defer stopwatch(ctx)
 
 	var err error
 
@@ -234,6 +240,22 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 	}
 
 	syncer.chainStore.PersistTipSetKey(ctx, next.Key())
+
+	// chain related metrics
+	height := next.Height()
+	epochGauge.Set(ctx, int64(height))
+
+	timeStamp := next.MinTimestamp()
+	if timeStamp+repo.Config.NetworkParams.BlockDelay*uint64(time.Second) >= uint64(syncer.clock.Now().Unix()) {
+		// update to latest
+		syncStatus.Set(ctx, 1)
+	} else {
+		syncStatus.Set(ctx, 0)
+	}
+	netVersion := syncer.fork.GetNetworkVersion(ctx, height)
+	netVersionGuage.Set(ctx, int64(netVersion))
+	actorVersion, _ := actorsTypes.VersionForNetwork(netVersion)
+	actorVersionGuage.Set(ctx, int64(actorVersion))
 
 	return nil
 }

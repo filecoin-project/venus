@@ -19,7 +19,6 @@ import (
 type MemRepo struct {
 	// lk guards the config
 	lk    sync.RWMutex
-	C     *config.Config
 	D     blockstoreutil.Blockstore
 	Ks    fskeystore.Keystore
 	W     Datastore
@@ -40,8 +39,9 @@ func NewInMemoryRepo() *MemRepo {
 	// Reduce the time it takes to encrypt wallet password, default ScryptN is 1 << 21
 	// for test
 	defConfig.Wallet.PassphraseConfig = config.TestPassphraseConfig()
+	Config = defConfig
+
 	return &MemRepo{
-		C:     defConfig,
 		D:     blockstoreutil.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore())),
 		Ks:    fskeystore.MutexWrap(fskeystore.NewMemKeystore()),
 		W:     dss.MutexWrap(datastore.NewMapDatastore()),
@@ -58,7 +58,7 @@ func (mr *MemRepo) Config() *config.Config {
 	mr.lk.RLock()
 	defer mr.lk.RUnlock()
 
-	return mr.C
+	return Config
 }
 
 // ReplaceConfig replaces the current config with the newly passed in one.
@@ -66,7 +66,7 @@ func (mr *MemRepo) ReplaceConfig(cfg *config.Config) error {
 	mr.lk.Lock()
 	defer mr.lk.Unlock()
 
-	mr.C = cfg
+	Config = cfg
 
 	return nil
 }

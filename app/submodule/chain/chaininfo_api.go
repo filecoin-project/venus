@@ -18,10 +18,12 @@ import (
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -40,6 +42,11 @@ type chainInfoAPI struct { //nolint
 }
 
 var log = logging.Logger("chain")
+
+var (
+	tagKeyRandomnessRequestType = tag.MustNewKey("randomness_request_type")
+	randomnessRequestStatus     = metrics.NewInt64WithCounter("api/randomness_status", "Status of randomness request. 0 = fail, 1 = success", "", tagKeyRandomnessRequestType)
+)
 
 // NewChainInfoAPI new chain info api
 func NewChainInfoAPI(chain *ChainSubmodule) v1api.IChainInfo {
@@ -379,7 +386,7 @@ func (cia *chainInfoAPI) getNetworkName(ctx context.Context) (string, error) {
 }
 
 // StateGetRandomnessFromTickets is used to sample the chain for randomness.
-func (cia *chainInfoAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
+func (cia *chainInfoAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (rand abi.Randomness, err error) {
 	ts, err := cia.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("loading tipset %s: %w", tsk, err)
@@ -391,11 +398,18 @@ func (cia *chainInfoAPI) StateGetRandomnessFromTickets(ctx context.Context, pers
 		return nil, fmt.Errorf("getting chain randomness: %w", err)
 	}
 
-	return chain.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
+	ctx, _ = tag.New(ctx, tag.Upsert(tagKeyRandomnessRequestType, utils.Name(personalization)))
+	ret, err := chain.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
+	if err != nil {
+		randomnessRequestStatus.Set(ctx, 0)
+		return nil, err
+	}
+	randomnessRequestStatus.Set(ctx, 1)
+	return ret, nil
 }
 
 // StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
-func (cia *chainInfoAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
+func (cia *chainInfoAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (rand abi.Randomness, err error) {
 	ts, err := cia.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("loading tipset %s: %w", tsk, err)
@@ -406,7 +420,14 @@ func (cia *chainInfoAPI) StateGetRandomnessFromBeacon(ctx context.Context, perso
 		return nil, fmt.Errorf("getting beacon randomness: %w", err)
 	}
 
-	return chain.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
+	ctx, _ = tag.New(ctx, tag.Upsert(tagKeyRandomnessRequestType, utils.Name(personalization)))
+	ret, err := chain.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
+	if err != nil {
+		randomnessRequestStatus.Set(ctx, 0)
+		return nil, err
+	}
+	randomnessRequestStatus.Set(ctx, 1)
+	return ret, nil
 }
 
 func (cia *chainInfoAPI) StateGetRandomnessDigestFromTickets(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/api/chain/v1/mock"
@@ -55,5 +56,29 @@ func TestLoadBuiltinActors(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestName(t *testing.T) {
+	testCases := []struct {
+		Name   string
+		Input  any
+		Output string
+	}{
+		{
+			"empty",
+			[]string{},
+			"",
+		},
+		{
+			"test1",
+			acrypto.DomainSeparationTag_TicketProduction,
+			"TicketProduction",
+		}}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			assert.Equal(t, testCase.Output, Name(testCase.Input))
+		})
 	}
 }
