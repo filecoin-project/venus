@@ -5,7 +5,7 @@ import (
 )
 
 // BuildVersion is the local build version, set by build system
-const BuildVersion = "1.14.1"
+const BuildVersion = "1.14.2"
 
 var CurrentCommit string
 

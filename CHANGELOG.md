@@ -1,5 +1,9 @@
 # venus changelog
 
+## v1.14.2
+
+* fix: exchange: allow up to 10k messages per block
+
 ## v1.14.1
 
 * opt: update badger ValueLogLoadingMode and TableLoadingMode to MemoryMap [[#6235](https://github.com/filecoin-project/venus/pull/6235)]
