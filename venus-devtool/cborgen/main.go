@@ -39,7 +39,7 @@ func main() {
 			types: []interface{}{
 				exchange.Request{},
 				exchange.Response{},
-				exchange.CompactedMessages{},
+				exchange.CompactedMessagesCBOR{},
 				exchange.BSTipSet{},
 			},
 		},
