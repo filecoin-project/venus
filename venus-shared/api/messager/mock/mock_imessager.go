@@ -368,18 +368,18 @@ func (mr *MockIMessagerMockRecorder) ListMessageByAddress(arg0, arg1 interface{}
 }
 
 // ListMessageByFromState mocks base method.
-func (m *MockIMessager) ListMessageByFromState(arg0 context.Context, arg1 address.Address, arg2 messager.MessageState, arg3 bool, arg4, arg5 int) ([]*messager.Message, error) {
+func (m *MockIMessager) ListMessageByFromState(arg0 context.Context, arg1 address.Address, arg2 messager.MessageState, arg3 bool, arg4, arg5 int, arg6 time.Duration) ([]*messager.Message, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListMessageByFromState", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "ListMessageByFromState", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 	ret0, _ := ret[0].([]*messager.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListMessageByFromState indicates an expected call of ListMessageByFromState.
-func (mr *MockIMessagerMockRecorder) ListMessageByFromState(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+func (mr *MockIMessagerMockRecorder) ListMessageByFromState(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMessageByFromState", reflect.TypeOf((*MockIMessager)(nil).ListMessageByFromState), arg0, arg1, arg2, arg3, arg4, arg5)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMessageByFromState", reflect.TypeOf((*MockIMessager)(nil).ListMessageByFromState), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 }
 
 // ListNode mocks base method.
