@@ -152,7 +152,7 @@ jobs:
             ./${{inputs.bin_name}}_${{steps.vars.outputs.tag}}_ubuntu.sha256
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: ${{ steps.vars.outputs.pub_method == 'pushRelease' }}
         with:
           name: ${{steps.vars.outputs.artifact_name}}
