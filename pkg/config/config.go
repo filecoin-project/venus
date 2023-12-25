@@ -79,10 +79,11 @@ func newDefaultAPIConfig() *APIConfig {
 // DatastoreConfig holds all the configuration options for the datastore.
 // TODO: use the advanced datastore configuration from ipfs
 type DatastoreConfig struct {
-	Type            string `json:"type"`
-	Path            string `json:"path"`
-	SplitstoreSize  int64  `json:"splitstore_size"`
-	SplitstoreCount int    `json:"splitstore_count"`
+	Type                       string `json:"type"`
+	Path                       string `json:"path"`
+	SplitstoreSize             int64  `json:"splitstoreSize"`
+	SplitstoreCount            int    `json:"splitstoreCount"`
+	SplitstoreInitProtectEpoch int64  `json:"splitstoreInitProtectEpoch"`
 }
 
 // Validators hold the list of validation functions for each configuration
@@ -98,7 +99,7 @@ func newDefaultDatastoreConfig() *DatastoreConfig {
 	return &DatastoreConfig{
 		Type:            "badgerds",
 		Path:            "badger",
-		SplitstoreSize:  int64(3 * policy.ChainFinality),
+		SplitstoreSize:  int64(5 * policy.ChainFinality),
 		SplitstoreCount: 3,
 	}
 }

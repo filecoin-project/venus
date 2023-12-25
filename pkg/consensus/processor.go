@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/fvm"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
+	"github.com/filecoin-project/venus/venus-shared/blockstore"
 
 	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
@@ -95,6 +96,11 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 	)
 
 	makeVM := func(base cid.Cid, e abi.ChainEpoch, timestamp uint64) (vm.Interface, error) {
+		bs := vmOpts.Bsstore
+		if ts.Height() == 1185554 {
+			bs = blockstore.NewLogStore("./bs.log", bs)
+			// _, _ = bs.Has(ctx, base)
+		}
 		vmOpt := vm.VmOption{
 			CircSupplyCalculator: vmOpts.CircSupplyCalculator,
 			LookbackStateGetter:  vmOpts.LookbackStateGetter,
@@ -107,7 +113,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			Timestamp:            timestamp,
 			GasPriceSchedule:     vmOpts.GasPriceSchedule,
 			PRoot:                base,
-			Bsstore:              vmOpts.Bsstore,
+			Bsstore:              bs,
 			SysCallsImpl:         vmOpts.SysCallsImpl,
 			TipSetGetter:         vmOpts.TipSetGetter,
 			Tracing:              vmOpts.Tracing,

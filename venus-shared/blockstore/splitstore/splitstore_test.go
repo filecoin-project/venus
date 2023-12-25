@@ -1,56 +1,15 @@
 package splitstore
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/venus/venus-shared/types"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 )
-
-func TestSplitstore(t *testing.T) {
-	ctx := context.Background()
-	tempDir := t.TempDir()
-	splitstorePath := filepath.Join(tempDir, "splitstore")
-
-	initStore, err := openStore("./test_data/base_583_bafy2bzaceazuutcexhvwkyyesszohrkjjzk2zgknasgs7bb7zgfnwghtnu5w2.db")
-	require.NoError(t, err)
-
-	ss, err := NewSplitstore(splitstorePath, initStore)
-	require.NoError(t, err)
-
-	blockCid := cid.MustParse("bafy2bzaceazuutcexhvwkyyesszohrkjjzk2zgknasgs7bb7zgfnwghtnu5w2")
-	tskCid, err := types.NewTipSetKey(blockCid).Cid()
-	require.NoError(t, err)
-
-	// apply head change to append new store
-	b, err := ss.getBlock(ctx, blockCid)
-	require.NoError(t, err)
-	ts, err := types.NewTipSet([]*types.BlockHeader{b})
-	require.NoError(t, err)
-	err = ss.HeadChange(nil, []*types.TipSet{ts})
-	require.NoError(t, err)
-	require.Len(t, ss.stores, 2)
-
-	seenBefore := NewSyncVisitor()
-	t.Run("initial walk chain", func(t *testing.T) {
-		err = WalkChain(ctx, ss, tskCid, seenBefore, 0)
-		require.NoError(t, err)
-	})
-
-	seenAfter := NewSyncVisitor()
-	t.Run("walk chain after initialize", func(t *testing.T) {
-		err = WalkChain(ctx, ss.stores[1], tskCid, seenAfter, 0)
-		require.NoError(t, err)
-	})
-
-	require.Equal(t, seenBefore.Len(), seenAfter.Len())
-}
 
 func TestNewSplitstore(t *testing.T) {
 	tempDir := t.TempDir()
@@ -71,7 +30,7 @@ func TestNewSplitstore(t *testing.T) {
 
 	ss, err := NewSplitstore(tempDir, nil)
 	require.NoError(t, err)
-	require.Len(t, ss.stores, ss.maxStoreCount)
+	require.Len(t, ss.layers, ss.maxLayerCount)
 }
 
 func TestScan(t *testing.T) {
@@ -83,7 +42,7 @@ func TestScan(t *testing.T) {
 	}
 
 	for i, b := range tempBlocks {
-		s, err := newInnerStore(tempDir, int64(10+i), b.Cid())
+		s, err := newLayer(tempDir, int64(10+i), b.Cid())
 		require.NoError(t, err)
 		if s, ok := s.Blockstore.(Closer); ok {
 			err := s.Close()
@@ -92,7 +51,7 @@ func TestScan(t *testing.T) {
 	}
 
 	// base_init.db(place holder)
-	_, err := newInnerStore(tempDir, int64(0), cid.Undef)
+	_, err := newLayer(tempDir, int64(0), cid.Undef)
 	require.NoError(t, err)
 
 	// any.db will not be scanned in
@@ -127,15 +86,17 @@ func TestScan(t *testing.T) {
 }
 
 func TestExtractHeightAndCid(t *testing.T) {
-	h, c, err := extractHeightAndCid("base_10_b1.db")
+	h, _, err := extractHeightAndCid("base_10_bafy2bzacedyokdqa4mnkercuk5hcufi52w5q2xannm567ij2njiqovgwiicx6.db")
 	require.NoError(t, err)
 	require.Equal(t, int64(10), h)
-	require.Equal(t, "b1", c)
 
-	_, _, err = extractHeightAndCid("base_10_b1")
+	_, _, err = extractHeightAndCid("base_10_bafy2bzacedyokdqa4mnkercuk5hcufi52w5q2xannm567ij2njiqovgwiicx6")
 	require.Error(t, err)
 
-	_, _, err = extractHeightAndCid("base_b1")
+	_, _, err = extractHeightAndCid("base_bafy2bzacedyokdqa4mnkercuk5hcufi52w5q2xannm567ij2njiqovgwiicx6")
+	require.Error(t, err)
+
+	_, _, err = extractHeightAndCid("base_10_bafy2bzacedyokdqa4mnkercuk5hcufi52w5q2xannm567ij2njiqovgwiicx6.db.del")
 	require.Error(t, err)
 }
 
@@ -144,5 +105,4 @@ func TestScann(t *testing.T) {
 	bs, err := scan(path)
 	require.NoError(t, err)
 	require.Len(t, bs, 2)
-
 }

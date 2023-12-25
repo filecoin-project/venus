@@ -13,6 +13,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewComposeStore(t *testing.T) {
+	s := NewComposeStore(nil, nil)
+	require.True(t, s.(*ComposeStore).shouldSync)
+
+	s = NewComposeStore(nil, nil, nil)
+	require.True(t, s.(*ComposeStore).shouldSync)
+	require.False(t, s.(*ComposeStore).secondary.(*ComposeStore).shouldSync)
+	require.Nil(t, s.(*ComposeStore).secondary.(*ComposeStore).secondary)
+}
+
 func TestComposeStoreGet(t *testing.T) {
 	ctx := context.Background()
 	composeStore, primaryStore, secondaryStore, tertiaryStore := getBlockstore(t)
@@ -338,20 +348,6 @@ func TestComposeStoreDelete(t *testing.T) {
 		err := composeStore.DeleteBlock(ctx, blockNotExist.Cid())
 		require.NoError(t, err)
 	})
-}
-
-func TestNewComposeStore(t *testing.T) {
-	tempDir := t.TempDir()
-
-	primaryPath := filepath.Join(tempDir, "primary")
-	optPri, err := blockstore.BadgerBlockstoreOptions(primaryPath, false)
-	require.NoError(t, err)
-	dsPri, err := blockstore.Open(optPri)
-	require.NoError(t, err)
-
-	cs := NewComposeStore(dsPri)
-	_, err = cs.Has(context.Background(), cid.Undef)
-	require.NoError(t, err)
 }
 
 func getBlockstore(t *testing.T) (compose, primary, secondary, tertiary blockstore.Blockstore) {

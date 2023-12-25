@@ -44,10 +44,63 @@ func TestWalk(t *testing.T) {
 	tskCid, err := tsk.Cid()
 	require.NoError(t, err)
 
-	seen := NewSyncVisitor()
-
-	err = WalkChain(ctx, ds, tskCid, seen, 14)
+	err = WalkUntil(ctx, ds, tskCid, 10)
 	require.NoError(t, err)
+}
+
+func TestWalkOneState(t *testing.T) {
+	ctx := context.Background()
+
+	log.Info("log level")
+	log.Debug("log level")
+
+	badgerPath := "./test_data/base_583_bafy2bzaceazuutcexhvwkyyesszohrkjjzk2zgknasgs7bb7zgfnwghtnu5w2.db"
+	blockCid := cid.MustParse("bafy2bzaceazuutcexhvwkyyesszohrkjjzk2zgknasgs7bb7zgfnwghtnu5w2")
+
+	ds, err := openStore(badgerPath)
+	require.NoError(t, err)
+
+	cst := cbor.NewCborStore(ds)
+
+	var b types.BlockHeader
+	err = cst.Get(ctx, blockCid, &b)
+	require.NoError(t, err)
+
+	tsk := types.NewTipSetKey(blockCid)
+	require.False(t, tsk.IsEmpty())
+
+	tskCid, err := tsk.Cid()
+	require.NoError(t, err)
+
+	err = WalkUntil(ctx, ds, tskCid, b.Height)
+	require.NoError(t, err)
+}
+
+func TestVisitor(t *testing.T) {
+	t.Run("visit duplicated cid", func(t *testing.T) {
+		v := NewSyncVisitor()
+		c, err := types.DefaultCidBuilder.Sum([]byte("duplicated_cid"))
+		require.NoError(t, err)
+		require.True(t, v.Visit(c))
+		require.False(t, v.Visit(c))
+		require.Equal(t, v.Len(), 1)
+		require.Len(t, v.Cids(), 1)
+		require.Equal(t, v.Cids()[0], c)
+	})
+
+	t.Run("test hook", func(t *testing.T) {
+		v := NewSyncVisitor()
+		c, err := types.DefaultCidBuilder.Sum([]byte("cids_reject"))
+		require.NoError(t, err)
+		v.RegisterVisitHook(func(a cid.Cid) bool {
+			if a.Equals(c) {
+				return false
+			}
+			return true
+		})
+
+		require.False(t, v.Visit(c))
+	})
 }
 
 func openStore(path string) (*blockstore.BadgerBlockstore, error) {

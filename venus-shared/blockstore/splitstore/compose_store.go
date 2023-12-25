@@ -18,23 +18,48 @@ var log = logging.New("splitstore")
 // Write: write to primary store only
 // Delete: Delete from all store
 type ComposeStore struct {
-	primary   blockstore.Blockstore
-	secondary blockstore.Blockstore
+	shouldSync bool
+	primary    blockstore.Blockstore
+	secondary  blockstore.Blockstore
 }
 
 // NewComposeStore create a new ComposeStore with a list of blockstore
 // low priority come first
 func NewComposeStore(bs ...blockstore.Blockstore) blockstore.Blockstore {
-	if len(bs) == 0 {
+	switch len(bs) {
+	case 0:
 		return nil
+	case 1:
+		return bs[0]
 	}
-	ret := bs[0]
-	for i := 1; i < len(bs); i++ {
-		ret = &ComposeStore{
-			primary:   bs[i],
-			secondary: ret,
+	return Compose(bs...)
+}
+
+func Compose(bs ...blockstore.Blockstore) *ComposeStore {
+	switch len(bs) {
+	case 0:
+		return nil
+	case 1:
+		return &ComposeStore{
+			shouldSync: false,
+			primary:    bs[0],
+			secondary:  bs[0],
 		}
 	}
+
+	ret := &ComposeStore{
+		shouldSync: false,
+		primary:    bs[1],
+		secondary:  bs[0],
+	}
+	for i := 2; i < len(bs); i++ {
+		ret = &ComposeStore{
+			shouldSync: i == len(bs)-1,
+			primary:    bs[i],
+			secondary:  ret,
+		}
+	}
+
 	return ret
 }
 
@@ -187,6 +212,10 @@ func (cs *ComposeStore) View(ctx context.Context, c cid.Cid, cb func([]byte) err
 
 // sync sync block from secondly to primary
 func (cs *ComposeStore) sync(ctx context.Context, c cid.Cid, b blocks.Block) {
+	if !cs.shouldSync {
+		return
+	}
+
 	go func() {
 		select {
 		case <-ctx.Done():
