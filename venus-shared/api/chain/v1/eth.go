@@ -55,7 +55,7 @@ type IETH interface {
 	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.EthFeeHistory, error)                                                                 //perm:read
 
 	EthMaxPriorityFeePerGas(ctx context.Context) (types.EthBigInt, error)                                       //perm:read
-	EthEstimateGas(ctx context.Context, tx types.EthCall) (types.EthUint64, error)                              //perm:read
+	EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (types.EthUint64, error)                           //perm:read
 	EthCall(ctx context.Context, tx types.EthCall, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error) //perm:read
 
 	EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error) //perm:read

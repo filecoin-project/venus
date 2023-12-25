@@ -31,6 +31,7 @@ type (
 	EthBlockNumberOrHash           = types.EthBlockNumberOrHash
 	EthBytes                       = types.EthBytes
 	EthCall                        = types.EthCall
+	EthEstimateGasParams           = types.EthEstimateGasParams
 	EthFeeHistory                  = types.EthFeeHistory
 	EthFeeHistoryParams            = types.EthFeeHistoryParams
 	EthFilterID                    = types.EthFilterID

@@ -855,7 +855,7 @@ type IETHStruct struct {
 		EthBlockNumber                         func(ctx context.Context) (types.EthUint64, error)                                                                                        `perm:"read"`
 		EthCall                                func(ctx context.Context, tx types.EthCall, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error)                                  `perm:"read"`
 		EthChainId                             func(ctx context.Context) (types.EthUint64, error)                                                                                        `perm:"read"`
-		EthEstimateGas                         func(ctx context.Context, tx types.EthCall) (types.EthUint64, error)                                                                      `perm:"read"`
+		EthEstimateGas                         func(ctx context.Context, p jsonrpc.RawParams) (types.EthUint64, error)                                                                   `perm:"read"`
 		EthFeeHistory                          func(ctx context.Context, p jsonrpc.RawParams) (types.EthFeeHistory, error)                                                               `perm:"read"`
 		EthGasPrice                            func(ctx context.Context) (types.EthBigInt, error)                                                                                        `perm:"read"`
 		EthGetBalance                          func(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBigInt, error)                         `perm:"read"`
@@ -902,7 +902,7 @@ func (s *IETHStruct) EthCall(p0 context.Context, p1 types.EthCall, p2 types.EthB
 func (s *IETHStruct) EthChainId(p0 context.Context) (types.EthUint64, error) {
 	return s.Internal.EthChainId(p0)
 }
-func (s *IETHStruct) EthEstimateGas(p0 context.Context, p1 types.EthCall) (types.EthUint64, error) {
+func (s *IETHStruct) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (types.EthUint64, error) {
 	return s.Internal.EthEstimateGas(p0, p1)
 }
 func (s *IETHStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (types.EthFeeHistory, error) {

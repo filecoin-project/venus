@@ -849,8 +849,13 @@ func (a *ethAPI) applyMessage(ctx context.Context, msg *types.Message, tsk types
 	return res, nil
 }
 
-func (a *ethAPI) EthEstimateGas(ctx context.Context, tx types.EthCall) (types.EthUint64, error) {
-	msg, err := ethCallToFilecoinMessage(ctx, tx)
+func (a *ethAPI) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (types.EthUint64, error) {
+	params, err := jsonrpc.DecodeParams[types.EthEstimateGasParams](p)
+	if err != nil {
+		return types.EthUint64(0), fmt.Errorf("decoding params: %w", err)
+	}
+
+	msg, err := ethCallToFilecoinMessage(ctx, params.Tx)
 	if err != nil {
 		return types.EthUint64(0), err
 	}
@@ -858,9 +863,17 @@ func (a *ethAPI) EthEstimateGas(ctx context.Context, tx types.EthCall) (types.Et
 	// gas estimation actually run.
 	msg.GasLimit = 0
 
-	ts, err := a.chain.ChainHead(ctx)
-	if err != nil {
-		return types.EthUint64(0), err
+	var ts *types.TipSet
+	if params.BlkParam == nil {
+		ts, err = a.chain.ChainHead(ctx)
+		if err != nil {
+			return types.EthUint64(0), err
+		}
+	} else {
+		ts, err = getTipsetByEthBlockNumberOrHash(ctx, a.em.chainModule.ChainReader, *params.BlkParam)
+		if err != nil {
+			return types.EthUint64(0), fmt.Errorf("failed to process block param: %v; %w", params.BlkParam, err)
+		}
 	}
 	gassedMsg, err := a.mpool.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
 	if err != nil {

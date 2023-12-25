@@ -158,6 +158,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ Concurrent
 	- CreateBackup
 	- Discover
+	> EthEstimateGas {[func(context.Context, jsonrpc.RawParams) (types.EthUint64, error) <> func(context.Context, ethtypes.EthCall) (ethtypes.EthUint64, error)] base=func in type: #1 input; nested={[jsonrpc.RawParams <> ethtypes.EthCall] base=type kinds: slice != struct; nested=nil}}
 	+ EthTraceBlock
 	+ EthTraceReplayBlockTransactions
 	+ GasBatchEstimateMessageGas
