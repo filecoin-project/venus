@@ -66,8 +66,10 @@ func TestHelloHandshake(t *testing.T) {
 	require.NoError(t, err)
 
 	// stm: @DISCOVERY_HELLO_REGISTER_001
-	helloprotocol.NewHelloProtocolHandler(a, aPeerMgr, nil, oldStore, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(msc1.HelloCallback)
-	helloprotocol.NewHelloProtocolHandler(b, aPeerMgr, nil, store, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(msc2.HelloCallback)
+	err = helloprotocol.NewHelloProtocolHandler(a, aPeerMgr, nil, oldStore, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(ctx, msc1.HelloCallback)
+	require.NoError(t, err)
+	err = helloprotocol.NewHelloProtocolHandler(b, aPeerMgr, nil, store, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(ctx, msc2.HelloCallback)
+	require.NoError(t, err)
 
 	msc1.On("HelloCallback", b.ID(), heavy2.Key()).Return()
 	msc2.On("HelloCallback", a.ID(), heavy1.Key()).Return()
@@ -132,8 +134,10 @@ func TestHelloBadGenesis(t *testing.T) {
 	peerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
-	helloprotocol.NewHelloProtocolHandler(a, peerMgr, nil, store, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(msc1.HelloCallback)
-	helloprotocol.NewHelloProtocolHandler(b, peerMgr, nil, builder2.Store(), builder2.Mstore(), genesisB.Blocks()[0].Cid(), time.Second*30).Register(msc2.HelloCallback)
+	err = helloprotocol.NewHelloProtocolHandler(a, peerMgr, nil, store, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(ctx, msc1.HelloCallback)
+	require.NoError(t, err)
+	err = helloprotocol.NewHelloProtocolHandler(b, peerMgr, nil, builder2.Store(), builder2.Mstore(), genesisB.Blocks()[0].Cid(), time.Second*30).Register(ctx, msc2.HelloCallback)
+	require.NoError(t, err)
 
 	msc1.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 	msc2.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
@@ -178,8 +182,10 @@ func TestHelloMultiBlock(t *testing.T) {
 	peerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
-	helloprotocol.NewHelloProtocolHandler(a, peerMgr, nil, oldStore, mstore, genesisTipset.At(0).Cid(), time.Second*30).Register(msc1.HelloCallback)
-	helloprotocol.NewHelloProtocolHandler(b, peerMgr, nil, store, mstore, genesisTipset.At(0).Cid(), time.Second*30).Register(msc2.HelloCallback)
+	err = helloprotocol.NewHelloProtocolHandler(a, peerMgr, nil, oldStore, mstore, genesisTipset.At(0).Cid(), time.Second*30).Register(ctx, msc1.HelloCallback)
+	require.NoError(t, err)
+	err = helloprotocol.NewHelloProtocolHandler(b, peerMgr, nil, store, mstore, genesisTipset.At(0).Cid(), time.Second*30).Register(ctx, msc2.HelloCallback)
+	require.NoError(t, err)
 
 	msc1.On("HelloCallback", b.ID(), heavy2.Key()).Return()
 	msc2.On("HelloCallback", a.ID(), heavy1.Key()).Return()

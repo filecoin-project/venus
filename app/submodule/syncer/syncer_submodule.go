@@ -150,13 +150,15 @@ func NewSyncerSubmodule(ctx context.Context,
 		}
 	}
 
-	network.HelloHandler.Register(func(ci *types.ChainInfo) {
+	if err := network.HelloHandler.Register(ctx, func(ci *types.ChainInfo) {
 		err := chainSyncManager.BlockProposer().SendHello(ci)
 		if err != nil {
 			log.Errorf("error receiving chain info from hello %s: %s", ci, err)
 			return
 		}
-	})
+	}); err != nil {
+		return nil, err
+	}
 
 	return &SyncerSubmodule{
 		Stmgr:            stmgr,
