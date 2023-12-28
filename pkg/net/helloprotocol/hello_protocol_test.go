@@ -117,13 +117,13 @@ func TestHelloBadGenesis(t *testing.T) {
 	store := builder.Store()
 	mstore := builder.Mstore()
 
-	genesisA := builder.AppendOn(ctx, types.UndefTipSet, 1)
+	genesisA := builder.Genesis()
 	heavy1 := builder.AppendOn(ctx, genesisA, 1)
 	heavy2 := builder.AppendOn(ctx, heavy1, 1)
 	_ = store.SetHead(ctx, heavy2)
 
 	builder2 := chain.NewBuilder(t, address.Undef)
-	genesisB := builder2.Build(ctx, types.UndefTipSet, 1, func(b *chain.BlockBuilder, i int) {
+	genesisB := builder2.Build(ctx, builder2.Genesis(), 1, func(b *chain.BlockBuilder, i int) {
 		b.SetTicket([]byte{1, 3, 4, 5, 6, 1, 3, 6, 7, 8})
 	})
 

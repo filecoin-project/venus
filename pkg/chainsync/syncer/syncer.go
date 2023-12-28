@@ -130,8 +130,6 @@ type Syncer struct {
 	stmgr *statemanger.Stmgr
 	// Validates headers and message structure
 	blockValidator BlockValidator
-	// Selects the heaviest of two chains
-	chainSelector ChainSelector
 	// Provides and stores validated tipsets and their state roots.
 	chainStore *chain.Store
 	// Provides message collections given cids
@@ -152,7 +150,6 @@ type Syncer struct {
 // head tipset to initialize the staging field.
 func NewSyncer(stmgr *statemanger.Stmgr,
 	hv BlockValidator,
-	cs ChainSelector,
 	s *chain.Store,
 	m messageStore,
 	bsstore blockstoreutil.Blockstore,
@@ -170,7 +167,6 @@ func NewSyncer(stmgr *statemanger.Stmgr,
 		exchangeClient:  exchangeClient,
 		badTipSets:      syncTypes.NewBadTipSetCache(),
 		blockValidator:  hv,
-		chainSelector:   cs,
 		bsstore:         bsstore,
 		chainStore:      s,
 		messageProvider: m,
@@ -212,7 +208,13 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 			blk := next.At(i)
 			wg.Go(func() error {
 				// Fetch the URL.
-				return syncer.blockValidator.ValidateFullBlock(ctx, blk)
+				err := syncer.blockValidator.ValidateFullBlock(ctx, blk)
+				if err == nil {
+					if err := syncer.chainStore.AddToTipSetTracker(ctx, blk); err != nil {
+						return fmt.Errorf("failed to add validated header to tipset tracker: %w", err)
+					}
+				}
+				return err
 			})
 		}
 		err = wg.Wait()
@@ -347,7 +349,7 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 			}
 			if !parent.Key().Equals(syncer.checkPoint) {
 				logSyncer.Debugf("set chain head, height:%d, blocks:%d", parent.Height(), parent.Len())
-				if err := syncer.SetHead(ctx, parent); err != nil {
+				if err := syncer.chainStore.RefreshHeaviestTipSet(ctx, parent.Height()); err != nil {
 					errProcessChan <- err
 					return
 				}
@@ -635,99 +637,6 @@ func (syncer *Syncer) processTipSetSegment(ctx context.Context, target *syncType
 // Head get latest head from chain store
 func (syncer *Syncer) Head() *types.TipSet {
 	return syncer.chainStore.GetHead()
-}
-
-// SetHead try to sethead after complete tipset syncing,
-// if the current target weight is heavier than chain store. change a new head
-func (syncer *Syncer) SetHead(ctx context.Context, ts *types.TipSet) error {
-	syncer.headLock.Lock()
-	defer syncer.headLock.Unlock()
-	head := syncer.chainStore.GetHead()
-	heavier, err := syncer.chainSelector.IsHeavier(ctx, ts, head)
-	if err != nil {
-		return err
-	}
-
-	// If it is the heaviest update the chainStore.
-	if heavier {
-		exceeds, err := syncer.exceedsForkLength(ctx, head, ts)
-		if err != nil {
-			return err
-		}
-		if exceeds {
-			return nil
-		}
-		return syncer.chainStore.SetHead(ctx, ts)
-	}
-	return nil
-}
-
-// Check if the two tipsets have a fork length above `ForkLengthThreshold`.
-// `synced` is the head of the chain we are currently synced to and `external`
-// is the incoming tipset potentially belonging to a forked chain. It assumes
-// the external chain has already been validated and available in the ChainStore.
-// The "fast forward" case is covered in this logic as a valid fork of length 0.
-//
-// FIXME: We may want to replace some of the logic in `syncFork()` with this.
-//
-//	`syncFork()` counts the length on both sides of the fork at the moment (we
-//	need to settle on that) but here we just enforce it on the `synced` side.
-func (syncer *Syncer) exceedsForkLength(ctx context.Context, synced, external *types.TipSet) (bool, error) {
-	if synced == nil || external == nil {
-		// FIXME: If `cs.heaviest` is nil we should just bypass the entire
-		//  `MaybeTakeHeavierTipSet` logic (instead of each of the called
-		//  functions having to handle the nil case on their own).
-		return false, nil
-	}
-
-	var err error
-	// `forkLength`: number of tipsets we need to walk back from the our `synced`
-	// chain to the common ancestor with the new `external` head in order to
-	// adopt the fork.
-	for forkLength := 0; forkLength < int(constants.ForkLengthThreshold); forkLength++ {
-		// First walk back as many tipsets in the external chain to match the
-		// `synced` height to compare them. If we go past the `synced` height
-		// the subsequent match will fail but it will still be useful to get
-		// closer to the `synced` head parent's height in the next loop.
-		for external.Height() > synced.Height() {
-			if external.Height() == 0 {
-				// We reached the genesis of the external chain without a match;
-				// this is considered a fork outside the allowed limit (of "infinite"
-				// length).
-				return true, nil
-			}
-
-			external, err = syncer.chainStore.GetTipSet(ctx, external.Parents())
-			if err != nil {
-				return false, fmt.Errorf("failed to load parent tipset in external chain: %w", err)
-			}
-		}
-
-		// Now check if we arrived at the common ancestor.
-		if synced.Equals(external) {
-			return false, nil
-		}
-
-		// Now check to see if we've walked back to the checkpoint.
-		if synced.Key().Equals(syncer.checkPoint) {
-			return true, nil
-		}
-
-		// If we didn't, go back *one* tipset on the `synced` side (incrementing
-		// the `forkLength`).
-		if synced.Height() == 0 {
-			// Same check as the `external` side, if we reach the start (genesis)
-			// there is no common ancestor.
-			return true, nil
-		}
-		synced, err = syncer.chainStore.GetTipSet(ctx, synced.Parents())
-		if err != nil {
-			return false, fmt.Errorf("failed to load parent tipset in synced chain: %w", err)
-		}
-	}
-
-	// We traversed the fork length allowed without finding a common ancestor.
-	return true, nil
 }
 
 // TODO: this function effectively accepts unchecked input from the network,

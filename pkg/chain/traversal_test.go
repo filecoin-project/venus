@@ -13,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func TestIterAncestors(t *testing.T) {
@@ -25,7 +24,7 @@ func TestIterAncestors(t *testing.T) {
 		ctx := context.Background()
 		store := chain.NewBuilder(t, miner)
 
-		root := store.AppendBlockOnBlocks(ctx)
+		root := store.Genesis().At(0)
 		b11 := store.AppendBlockOnBlocks(ctx, root)
 		b12 := store.AppendBlockOnBlocks(ctx, root)
 		b21 := store.AppendBlockOnBlocks(ctx, b11, b12)
@@ -54,7 +53,7 @@ func TestIterAncestors(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		store := chain.NewBuilder(t, miner)
 
-		root := store.AppendBlockOnBlocks(ctx)
+		root := store.Genesis().At(0)
 		b11 := store.AppendBlockOnBlocks(ctx, root)
 		b12 := store.AppendBlockOnBlocks(ctx, root)
 		b21 := store.AppendBlockOnBlocks(ctx, b11, b12)
@@ -84,17 +83,17 @@ func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 15
-	head := builder.AppendManyOn(ctx, chainLen, types.UndefTipSet)
+	head := builder.AppendManyOn(ctx, chainLen, builder.Genesis())
 
 	stopHeight := abi.ChainEpoch(4)
 	iterator := chain.IterAncestors(ctx, builder, head)
 	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
 	assert.NoError(t, err)
 	latestHeight := tipsets[0].Height()
-	assert.Equal(t, abi.ChainEpoch(14), latestHeight)
+	assert.Equal(t, abi.ChainEpoch(15), latestHeight)
 	earliestHeight := tipsets[len(tipsets)-1].Height()
 	assert.Equal(t, abi.ChainEpoch(4), earliestHeight)
-	assert.Equal(t, 11, len(tipsets))
+	assert.Equal(t, 12, len(tipsets))
 }
 
 // Height at least 0.
@@ -104,17 +103,17 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 25
-	head := builder.AppendManyOn(ctx, chainLen, types.UndefTipSet)
+	head := builder.AppendManyOn(ctx, chainLen, builder.Genesis())
 
 	stopHeight := abi.ChainEpoch(0)
 	iterator := chain.IterAncestors(ctx, builder, head)
 	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
 	assert.NoError(t, err)
 	latestHeight := tipsets[0].Height()
-	assert.Equal(t, abi.ChainEpoch(24), latestHeight)
+	assert.Equal(t, abi.ChainEpoch(25), latestHeight)
 	earliestHeight := tipsets[len(tipsets)-1].Height()
 	assert.Equal(t, abi.ChainEpoch(0), earliestHeight)
-	assert.Equal(t, chainLen, len(tipsets))
+	assert.Equal(t, chainLen+1, len(tipsets))
 }
 
 // The starting epoch is a null block.

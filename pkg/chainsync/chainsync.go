@@ -40,13 +40,12 @@ func NewManager(
 	stmgr *statemanger.Stmgr,
 	hv *consensus.BlockValidator,
 	submodule *chain2.ChainSubmodule,
-	cs syncer.ChainSelector,
 	bsstore blockstoreutil.Blockstore,
 	exchangeClient exchange.Client,
 	c clock.Clock,
 	fork fork.IFork,
 ) (Manager, error) {
-	chainSyncer, err := syncer.NewSyncer(stmgr, hv, cs, submodule.ChainReader,
+	chainSyncer, err := syncer.NewSyncer(stmgr, hv, submodule.ChainReader,
 		submodule.MessageStore, bsstore,
 		exchangeClient, c, fork)
 	if err != nil {

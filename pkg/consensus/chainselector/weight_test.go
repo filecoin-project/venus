@@ -1,5 +1,5 @@
 // stm: #unit
-package consensus_test
+package chainselector
 
 import (
 	"context"
@@ -11,12 +11,10 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/consensus"
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 )
@@ -31,8 +29,10 @@ func TestWeight(t *testing.T) {
 	minerAddr := addrGetter()
 	// We only care about total power for the weight function
 	// Total is 16, so bitlen is 5, log2b is 4
-	viewer := makeStateViewer(fakeRoot, abi.NewStoragePower(16))
-	ticket := consensus.MakeFakeTicketForTest()
+	viewer := appstate.NewFakeStateView(abi.NewStoragePower(16), abi.NewStoragePower(16), 0, 0)
+	ticket := &types.Ticket{
+		VRFProof: types.VRFPi([]byte("xxxx")),
+	}
 	toWeigh := testhelpers.RequireNewTipSet(t, &types.BlockHeader{
 		Miner:        minerAddr,
 		ParentWeight: fbig.Zero(),
@@ -45,39 +45,32 @@ func TestWeight(t *testing.T) {
 		ParentMessageReceipts: testhelpers.EmptyReceiptsCID,
 	})
 
-	sel := consensus.NewChainSelector(cst, &viewer)
-	// sel := consensus.NewChainSelector(cst, &viewer, types.CidFromString(t, "genesisCid"))
-
 	t.Run("basic happy path", func(t *testing.T) {
 		// 0 + (4*256 + (4*1*1*256/5*2))
 		// 1024 + 102 = 1126
 		// stm: @CONSENSUS_CHAIN_SELECTOR_WEIGHT_001
-		w, err := sel.Weight(ctx, toWeigh)
-		// w, err := sel.Weight(ctx, toWeigh, fakeRoot)
+		w, err := weight(ctx, viewer, toWeigh)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(1126), w)
 	})
 
 	t.Run("total power adjusts as expected", func(t *testing.T) {
-		asLowerX := makeStateViewer(fakeRoot, abi.NewStoragePower(15))
-		asSameX := makeStateViewer(fakeRoot, abi.NewStoragePower(31))
-		asHigherX := makeStateViewer(fakeRoot, abi.NewStoragePower(32))
+		asLowerX := appstate.NewFakeStateView(abi.NewStoragePower(15), abi.NewStoragePower(15), 0, 0)
+		asSameX := appstate.NewFakeStateView(abi.NewStoragePower(31), abi.NewStoragePower(31), 0, 0)
+		asHigherX := appstate.NewFakeStateView(abi.NewStoragePower(32), abi.NewStoragePower(32), 0, 0)
 
 		// 0 + (3*256) + (3*1*1*256/2*5) = 844 (truncating not rounding division)
-		selLower := consensus.NewChainSelector(cst, &asLowerX)
-		fixWeight, err := selLower.Weight(ctx, toWeigh)
+		fixWeight, err := weight(ctx, asLowerX, toWeigh)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(844), fixWeight)
 
 		// Weight is same when total bytes = 16 as when total bytes = 31
-		selSame := consensus.NewChainSelector(cst, &asSameX)
-		fixWeight, err = selSame.Weight(ctx, toWeigh)
+		fixWeight, err = weight(ctx, asSameX, toWeigh)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(1126), fixWeight)
 
 		// 0 + (5*256) + (5*1*1*256/2*5) = 1408
-		selHigher := consensus.NewChainSelector(cst, &asHigherX)
-		fixWeight, err = selHigher.Weight(ctx, toWeigh)
+		fixWeight, err = weight(ctx, asHigherX, toWeigh)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(1408), fixWeight)
 	})
@@ -97,7 +90,7 @@ func TestWeight(t *testing.T) {
 		})
 
 		// 49 + (4*256) + (4*1*1*256/2*5) = 1175
-		w, err := sel.Weight(ctx, toWeighWithParent)
+		w, err := weight(ctx, viewer, toWeighWithParent)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(1175), w)
 	})
@@ -142,22 +135,8 @@ func TestWeight(t *testing.T) {
 			},
 		)
 		// 0 + (4*256) + (4*3*1*256/2*5) = 1331
-		w, err := sel.Weight(ctx, toWeighThreeBlock)
+		w, err := weight(ctx, viewer, toWeighThreeBlock)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(1331), w)
-
-		// stm: @CONSENSUS_CHAIN_SELECTOR_WEIGHT_001
-		toWeighTwoBlock := testhelpers.RequireNewTipSet(t, toWeighThreeBlock.At(0), toWeighThreeBlock.At(1))
-		isHeavier, err := sel.IsHeavier(ctx, toWeighThreeBlock, toWeighTwoBlock)
-		assert.NoError(t, err)
-		assert.True(t, isHeavier)
 	})
-}
-
-func makeStateViewer(stateRoot cid.Cid, networkPower abi.StoragePower) consensus.FakeConsensusStateViewer {
-	return consensus.FakeConsensusStateViewer{
-		Views: map[cid.Cid]*appstate.FakeStateView{
-			stateRoot: appstate.NewFakeStateView(networkPower, networkPower, 0, 0),
-		},
-	}
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/consensus/chainselector"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
@@ -37,13 +38,11 @@ func TestLoadFork(t *testing.T) {
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the bsstore, to which the syncer must ensure to put blocks.
 
-	sel := &chain.FakeChainSelector{}
-
 	blockValidator := builder.FakeStateEvaluator()
 	stmgr, err := statemanger.NewStateManager(builder.Store(), builder.MessageStore(), blockValidator, nil, nil, nil, nil, false)
 	require.NoError(t, err)
 
-	s, err := syncer.NewSyncer(stmgr, blockValidator, sel, builder.Store(),
+	s, err := syncer.NewSyncer(stmgr, blockValidator, builder.Store(),
 		builder.Mstore(), builder.BlockStore(), builder, clock.NewFake(time.Unix(1234567890, 0)), fork.NewMockFork())
 
 	require.NoError(t, err)
@@ -91,12 +90,11 @@ func TestLoadFork(t *testing.T) {
 
 	// Load a new chain bsstore on the underlying data. It will only compute state for the
 	// left (heavy) branch. It has a fetcher that can't provide blocks.
-	newStore := chain.NewStore(builder.Repo().ChainDatastore(), builder.BlockStore(), genesis.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator())
+	newStore := chain.NewStore(builder.Repo().ChainDatastore(), builder.BlockStore(), genesis.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight)
 	newStore.SetCheckPoint(genesis.Key())
 	require.NoError(t, newStore.Load(ctx))
 	_, err = syncer.NewSyncer(stmgr,
 		blockValidator,
-		sel,
 		newStore,
 		builder.Mstore(),
 		builder.BlockStore(),

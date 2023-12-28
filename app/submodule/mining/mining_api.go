@@ -249,7 +249,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *types.Bloc
 
 	next.BLSAggregate = aggSig
 
-	pweight, err := miningAPI.Ming.SyncModule.ChainSelector.Weight(ctx, pts)
+	pweight, err := miningAPI.Ming.ChainModule.ChainReader.Weight(ctx, pts)
 	if err != nil {
 		return nil, err
 	}

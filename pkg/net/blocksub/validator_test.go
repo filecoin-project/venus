@@ -28,8 +28,8 @@ func TestBlockTopicValidator(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	pid1 := th.RequireIntPeerID(t, 1)
 
-	goodBlk := builder.BuildOnBlock(ctx, nil, func(b *chain.BlockBuilder) {})
-	badBlk := builder.BuildOnBlock(ctx, nil, func(b *chain.BlockBuilder) {
+	goodBlk := builder.BuildOnBlock(ctx, builder.Genesis().At(0), func(b *chain.BlockBuilder) {})
+	badBlk := builder.BuildOnBlock(ctx, builder.Genesis().At(0), func(b *chain.BlockBuilder) {
 		b.IncHeight(1)
 	})
 

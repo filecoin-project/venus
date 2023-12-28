@@ -151,7 +151,6 @@ func (tq *TargetTracker) checkBlock(block *types.BlockHeader) bool {
 		}
 		if b.Miner == block.Miner {
 			log.Warnf("miner: %s packed more than none block in single tipset: %d, it's illegal.", b.Miner.String(), b.Height)
-			return false
 		}
 	}
 

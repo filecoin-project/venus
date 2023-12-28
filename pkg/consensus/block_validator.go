@@ -44,7 +44,10 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	logging "github.com/ipfs/go-log/v2"
 )
+
+var log = logging.Logger("consensus")
 
 var (
 	ErrTemporal          = errors.New("temporal error")
@@ -69,8 +72,6 @@ type BlockValidator struct {
 	state StateViewer
 	// Provides and stores validated tipsets and their state roots.
 	chainState chainReader
-	// Selects the heaviest of two chains
-	chainSelector *ChainSelector
 	// fork used to process fork code
 	fork fork.IFork
 	// network params
@@ -92,7 +93,6 @@ func NewBlockValidator(tv TicketValidator,
 	proofVerifier ProofVerifier,
 	state StateViewer,
 	chainState chainReader,
-	chainSelector *ChainSelector,
 	fork fork.IFork,
 	config *config.NetworkParamsConfig,
 	gasPirceSchedule *gas.PricesSchedule,
@@ -107,7 +107,6 @@ func NewBlockValidator(tv TicketValidator,
 		proofVerifier:      proofVerifier,
 		state:              state,
 		chainState:         chainState,
-		chainSelector:      chainSelector,
 		fork:               fork,
 		config:             config,
 		gasPirceSchedule:   gasPirceSchedule,
@@ -149,7 +148,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	if err != nil {
 		return fmt.Errorf("load parent tipset failed %w", err)
 	}
-	parentWeight, err := bv.chainSelector.Weight(ctx, parent)
+	parentWeight, err := bv.chainState.Weight(ctx, parent)
 	if err != nil {
 		return fmt.Errorf("calc parent weight failed %w", err)
 	}
