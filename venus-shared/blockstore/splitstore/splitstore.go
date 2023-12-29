@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -24,7 +25,7 @@ import (
 )
 
 const (
-	CHECKPOINT_DURATION = 4 * policy.ChainFinality
+	CheckPointDuration = 4 * policy.ChainFinality
 )
 
 type Closer interface {
@@ -87,12 +88,15 @@ type Splitstore struct {
 	epochToAppend abi.ChainEpoch
 	epochToDrop   abi.ChainEpoch
 
-	headTipsetKey cid.Cid
-	isRollback    bool
+	headTipsetKey  cid.Cid
+	headSubscriber []chan<- cid.Cid
+	rollbackFlag   bool
 
 	checkPoint cid.Cid
 
 	taskQue chan func()
+
+	mux sync.RWMutex
 }
 
 var _ blockstore.Blockstore = (*Splitstore)(nil)
@@ -193,10 +197,6 @@ func NewSplitstore(path string, initStore blockstore.Blockstore, opts ...Option)
 
 // HeadChange subscribe to head change, schedule for new store and delete old
 func (ss *Splitstore) HeadChange(_, apply []*types.TipSet) error {
-	if ss.isRollback {
-		return nil
-	}
-
 	ctx := context.Background()
 
 	for _, ts := range apply {
@@ -209,7 +209,11 @@ func (ss *Splitstore) HeadChange(_, apply []*types.TipSet) error {
 			log.Errorf("get tipset(%d) key: %s", height, err)
 			continue
 		}
-		ss.headTipsetKey = tskCid
+		ss.setHead(tskCid)
+		if ss.isRollback() {
+			// only update head tipset key after rollback
+			continue
+		}
 
 		if height >= ss.epochToDrop && ss.layers.Len() > ss.maxLayerCount {
 			ss.epochToDrop = height + ss.layerSize
@@ -254,9 +258,6 @@ func (ss *Splitstore) HeadChange(_, apply []*types.TipSet) error {
 			if err != nil {
 				log.Errorf("append new layer: backup header: %v", err)
 			}
-
-			// backup state
-
 		}
 	}
 	return nil
@@ -329,7 +330,7 @@ func (ss *Splitstore) Close() error {
 		return true
 	})
 
-	if ss.isRollback {
+	if ss.isRollback() {
 		// try best to clean all store
 		ss.layers.ForEach(func(i int, store Layer) bool {
 			err := store.Clean()
@@ -349,26 +350,49 @@ func (ss *Splitstore) Close() error {
 // 3. transfer blocks back to init store
 // 4. clean all stores
 func (ss *Splitstore) Rollback() error {
-	ss.isRollback = true
+	ss.mux.Lock()
+	ss.rollbackFlag = true
+	ss.mux.Unlock()
+
 	ctx := context.Background()
 
-	if !ss.headTipsetKey.Defined() {
-		return fmt.Errorf("rollback: head tipset key is undefined")
-	}
+	// wait to next head
+	head := ss.nextHead()
 
 	// transfer state to init store
-	currentHeight, err := ss.getTipsetHeight(ctx, ss.headTipsetKey)
+	currentHeight, err := ss.getTipsetHeight(ctx, head)
 	if err != nil {
 		return fmt.Errorf("get current height: %w", err)
 	}
-	targetHeight := currentHeight - CHECKPOINT_DURATION
-	err = WalkUntil(ctx, ss.composeStore(), ss.headTipsetKey, targetHeight)
+	targetHeight := currentHeight - CheckPointDuration
+	err = WalkUntil(ctx, ss.composeStore(), head, targetHeight)
 	if err != nil {
 		return fmt.Errorf("transfer state to init store: %w", err)
 	}
 
 	// transfer block header to init store
-	backupHeader(ctx, ss.headTipsetKey, ss.composeStore(), ss.initStore)
+	err = backupHeader(ctx, head, ss.composeStore(), ss.initStore)
+	if err != nil {
+		return fmt.Errorf("backup header: %w", err)
+	}
+
+	// drop all store
+	dropCount := ss.layers.Len()
+	for i := 0; i < dropCount; i++ {
+		storeToDrop := ss.layers.First()
+		// close and clean
+		if closer, ok := storeToDrop.(Closer); ok {
+			err := closer.Close()
+			if err != nil {
+				log.Errorf("close store(%s): %s", storeToDrop.Base(), err)
+			}
+		}
+		err := storeToDrop.Clean()
+		if err != nil {
+			log.Errorf("clean store(%s): %s", storeToDrop.Base(), err)
+		}
+		ss.layers.Delete(0)
+	}
 
 	return nil
 }
@@ -404,10 +428,15 @@ func (ss *Splitstore) dropRedundantLayer() {
 			height, err := ss.getTipsetHeight(context.Background(), targetStore.Base())
 			if err != nil {
 				log.Errorf("collect state: get tipset height: %s", err)
+				return
 			}
 
 			// collect the last state of target store
-			err = WalkUntil(context.Background(), snapshot, targetStore.Base(), height-CHECKPOINT_DURATION)
+			err = WalkUntil(context.Background(), snapshot, targetStore.Base(), height-CheckPointDuration)
+			if err != nil {
+				log.Errorf("collect state: %s", err)
+				return
+			}
 			ss.checkPoint = targetStore.Base()
 		}
 
@@ -436,7 +465,7 @@ func (ss *Splitstore) composeStore() blockstore.Blockstore {
 		return true
 	})
 
-	if ss.isRollback {
+	if ss.isRollback() {
 		bs = append(bs, ss.initStore)
 	} else {
 		bs = append([]blockstore.Blockstore{ss.initStore}, bs...)
@@ -447,11 +476,8 @@ func (ss *Splitstore) composeStore() blockstore.Blockstore {
 
 func (ss *Splitstore) start() {
 	go func() {
-		for {
-			select {
-			case task := <-ss.taskQue:
-				task()
-			}
+		for task := range ss.taskQue {
+			task()
 		}
 	}()
 }
@@ -529,6 +555,42 @@ func (ss *Splitstore) getTipsetHeight(ctx context.Context, key cid.Cid) (abi.Cha
 	}
 
 	return blk.Height, nil
+}
+
+func (ss *Splitstore) isRollback() bool {
+	ss.mux.RLock()
+	defer ss.mux.RUnlock()
+	return ss.rollbackFlag
+}
+
+func (ss *Splitstore) currentHead() cid.Cid {
+	ss.mux.RLock()
+	defer ss.mux.RUnlock()
+	return ss.headTipsetKey
+}
+
+func (ss *Splitstore) setHead(tsk cid.Cid) {
+	ss.mux.Lock()
+	ss.headTipsetKey = tsk
+	subs := ss.headSubscriber
+	ss.headSubscriber = nil
+	ss.mux.Unlock()
+
+	for _, sub := range subs {
+		sub <- tsk
+	}
+}
+
+func (ss *Splitstore) nextHead() cid.Cid {
+	ch := make(chan cid.Cid, 1)
+
+	ss.mux.Lock()
+	ss.headSubscriber = append(ss.headSubscriber, ch)
+	ss.mux.Unlock()
+
+	ret := <-ch
+
+	return ret
 }
 
 // scan for stores from splitstore path

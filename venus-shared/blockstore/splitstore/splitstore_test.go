@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sync"
 	"testing"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -31,6 +33,30 @@ func TestNewSplitstore(t *testing.T) {
 	ss, err := NewSplitstore(tempDir, nil)
 	require.NoError(t, err)
 	require.Len(t, ss.layers, ss.maxLayerCount)
+}
+
+func TestSethead(t *testing.T) {
+	tempDir := t.TempDir()
+
+	ss, err := NewSplitstore(tempDir, nil)
+	require.NoError(t, err)
+
+	var c1, c2 cid.Cid
+	c2 = cid.MustParse("bafy2bzacedqrlux7zaeaoka7b5udzwvdguzf3vqsgxglrdtakislgofte3ehi")
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		c1 = ss.nextHead()
+	}()
+
+	runtime.Gosched()
+	ss.setHead(c2)
+	ss.setHead(c2)
+
+	wg.Wait()
+	fmt.Println(c1, c2)
+	require.True(t, c1.Equals(c2))
 }
 
 func TestScan(t *testing.T) {
@@ -98,11 +124,4 @@ func TestExtractHeightAndCid(t *testing.T) {
 
 	_, _, err = extractHeightAndCid("base_10_bafy2bzacedyokdqa4mnkercuk5hcufi52w5q2xannm567ij2njiqovgwiicx6.db.del")
 	require.Error(t, err)
-}
-
-func TestScann(t *testing.T) {
-	path := "/root/tanlang/docker/test/splitstore/.venus/root/.venus1/splitstore"
-	bs, err := scan(path)
-	require.NoError(t, err)
-	require.Len(t, bs, 2)
 }

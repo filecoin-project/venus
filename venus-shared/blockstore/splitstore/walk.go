@@ -375,7 +375,6 @@ func walkObject(ctx context.Context, store blockstore.Blockstore, c cid.Cid, v V
 		walkObject(ctx, store, c, v)
 	}
 
-	return
 }
 
 func scanTipset(ctx context.Context, store blockstore.Blockstore, tsk *types.TipSetKey, v Visitor) []cid.Cid {

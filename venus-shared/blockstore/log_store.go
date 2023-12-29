@@ -36,7 +36,7 @@ func (l *LogStore) View(ctx context.Context, cid cid.Cid, callback func([]byte) 
 
 // AllKeysChan implements blockstore.Blockstore.
 func (l *LogStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	return l.AllKeysChan(ctx)
+	return l.bs.AllKeysChan(ctx)
 }
 
 // DeleteBlock implements blockstore.Blockstore.

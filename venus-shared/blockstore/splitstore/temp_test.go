@@ -548,7 +548,10 @@ func Test2Find(t *testing.T) {
 		require.NoError(t, err)
 		blk, err := ss.getBlock(ctx, tsk.Cids()[0])
 		require.NoError(t, err)
-		go walkChain(ctx, s, baseCid, v, blk.Height-2000, true)
+		go func() {
+			err := walkChain(ctx, s, baseCid, v, blk.Height-2000, true)
+			log.Errorf("walk chain error %v", err)
+		}()
 	}
 	wg.Wait()
 

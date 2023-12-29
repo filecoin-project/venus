@@ -93,10 +93,7 @@ func TestVisitor(t *testing.T) {
 		c, err := types.DefaultCidBuilder.Sum([]byte("cids_reject"))
 		require.NoError(t, err)
 		v.RegisterVisitHook(func(a cid.Cid) bool {
-			if a.Equals(c) {
-				return false
-			}
-			return true
+			return !a.Equals(c)
 		})
 
 		require.False(t, v.Visit(c))
