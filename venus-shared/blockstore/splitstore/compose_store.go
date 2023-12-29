@@ -45,6 +45,12 @@ func Compose(bs ...blockstore.Blockstore) *ComposeStore {
 			primary:    bs[0],
 			secondary:  bs[0],
 		}
+	case 2:
+		return &ComposeStore{
+			shouldSync: true,
+			primary:    bs[1],
+			secondary:  bs[0],
+		}
 	}
 
 	ret := &ComposeStore{
