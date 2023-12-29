@@ -48,34 +48,6 @@ func TestWalk(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestWalkOneState(t *testing.T) {
-	ctx := context.Background()
-
-	log.Info("log level")
-	log.Debug("log level")
-
-	badgerPath := "./test_data/base_583_bafy2bzaceazuutcexhvwkyyesszohrkjjzk2zgknasgs7bb7zgfnwghtnu5w2.db"
-	blockCid := cid.MustParse("bafy2bzaceazuutcexhvwkyyesszohrkjjzk2zgknasgs7bb7zgfnwghtnu5w2")
-
-	ds, err := openStore(badgerPath)
-	require.NoError(t, err)
-
-	cst := cbor.NewCborStore(ds)
-
-	var b types.BlockHeader
-	err = cst.Get(ctx, blockCid, &b)
-	require.NoError(t, err)
-
-	tsk := types.NewTipSetKey(blockCid)
-	require.False(t, tsk.IsEmpty())
-
-	tskCid, err := tsk.Cid()
-	require.NoError(t, err)
-
-	err = WalkUntil(ctx, ds, tskCid, b.Height)
-	require.NoError(t, err)
-}
-
 func TestVisitor(t *testing.T) {
 	t.Run("visit duplicated cid", func(t *testing.T) {
 		v := NewSyncVisitor()
