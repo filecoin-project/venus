@@ -669,9 +669,8 @@ func newLayer(path string, height int64, c cid.Cid) (*LayerImpl, error) {
 			if SoftDelete {
 				// soft delete: just rename with suffix '.del'
 				return os.Rename(storePath, storePath+".del")
-			} else {
-				return os.RemoveAll(storePath)
 			}
+			return os.RemoveAll(storePath)
 		}),
 		BaseKeeper: BaseFunc(func() cid.Cid {
 			return c

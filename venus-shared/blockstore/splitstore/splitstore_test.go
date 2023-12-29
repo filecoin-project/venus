@@ -30,12 +30,10 @@ func TestNewSplitstore(t *testing.T) {
 	initStore, err := openStore(tempDir + "/badger.db")
 	require.NoError(t, err)
 
-	var tskCids []cid.Cid
 	for i, ts := range mockTipset {
 		tsk := ts.Key()
 		tskCid, err := tsk.Cid()
 		require.NoError(t, err)
-		tskCids = append(tskCids, tskCid)
 
 		s, err := newLayer(tempDir, int64(100+i*100), tskCid)
 		require.NoError(t, err)
