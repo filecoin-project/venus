@@ -28,6 +28,8 @@ const (
 	CheckPointDuration = 4 * policy.ChainFinality
 )
 
+var SoftDelete = false
+
 type Closer interface {
 	Close() error
 }
@@ -69,7 +71,6 @@ type Option struct {
 	MaxLayerCount   int
 	LayerSize       abi.ChainEpoch
 	InitSyncProtect abi.ChainEpoch
-	HardDelete      bool
 }
 
 type Controller interface {
@@ -665,10 +666,12 @@ func newLayer(path string, height int64, c cid.Cid) (*LayerImpl, error) {
 	return &LayerImpl{
 		Blockstore: store,
 		Cleaner: CleanFunc(func() error {
-			// fake delete: just rename with suffix '.del'
-			return os.Rename(storePath, storePath+".del")
-
-			// return os.RemoveAll(storePath)
+			if SoftDelete {
+				// soft delete: just rename with suffix '.del'
+				return os.Rename(storePath, storePath+".del")
+			} else {
+				return os.RemoveAll(storePath)
+			}
 		}),
 		BaseKeeper: BaseFunc(func() cid.Cid {
 			return c

@@ -84,6 +84,7 @@ type DatastoreConfig struct {
 	SplitstoreSize             int64  `json:"splitstoreSize"`
 	SplitstoreCount            int    `json:"splitstoreCount"`
 	SplitstoreInitProtectEpoch int64  `json:"splitstoreInitProtectEpoch"`
+	SplitstoreSoftDelete       bool   `json:"splitstoreSoftDelete"`
 }
 
 // Validators hold the list of validation functions for each configuration

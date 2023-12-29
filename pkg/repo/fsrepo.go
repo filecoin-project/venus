@@ -386,6 +386,7 @@ func (r *FSRepo) openDatastore() error {
 		}
 
 		ssPath := filepath.Join(r.path, splitstorePrefix)
+		splitstore.SoftDelete = Config.Datastore.SplitstoreSoftDelete
 		opt := splitstore.Option{
 			MaxLayerCount:   Config.Datastore.SplitstoreCount,
 			LayerSize:       abi.ChainEpoch(Config.Datastore.SplitstoreSize),
