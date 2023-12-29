@@ -487,7 +487,7 @@ func (ss *Splitstore) getCbor(ctx context.Context, c cid.Cid, out interface{}) e
 	return cst.Get(ctx, c, out)
 }
 
-func (ss *Splitstore) getTipsetKey(ctx context.Context, c cid.Cid) (*types.TipSetKey, error) {
+func (ss *Splitstore) getTipsetKey(ctx context.Context, c cid.Cid) (*types.TipSetKey, error) { // nolint:unused
 	var tsk types.TipSetKey
 	err := ss.getCbor(ctx, c, &tsk)
 	if err != nil {
@@ -520,7 +520,7 @@ func (ss *Splitstore) getTipset(ctx context.Context, key *types.TipSetKey) (*typ
 	return ts, nil
 }
 
-func (ss *Splitstore) getBlock(ctx context.Context, c cid.Cid) (*types.BlockHeader, error) {
+func (ss *Splitstore) getBlock(ctx context.Context, c cid.Cid) (*types.BlockHeader, error) { // nolint:unused
 	if !c.Defined() {
 		return nil, fmt.Errorf("get block: block cid is undefined")
 	}
@@ -563,7 +563,7 @@ func (ss *Splitstore) isRollback() bool {
 	return ss.rollbackFlag
 }
 
-func (ss *Splitstore) currentHead() cid.Cid {
+func (ss *Splitstore) currentHead() cid.Cid { // nolint:unused
 	ss.mux.RLock()
 	defer ss.mux.RUnlock()
 	return ss.headTipsetKey
