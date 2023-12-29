@@ -395,12 +395,12 @@ var _ splitstore.Controller = (*RepoKeeper)(nil)
 func (r *RepoKeeper) Rollback() error {
 	ds := r.repo.Datastore()
 	if ds == nil {
-		fmt.Println("no blockstore found!")
+		return fmt.Errorf("no blockstore found!")
 	}
 
 	rb, ok := ds.(splitstore.Controller)
 	if !ok {
-		fmt.Println("split store was disabled")
+		return fmt.Errorf("split store was disabled")
 	}
 	err := rb.Rollback()
 	if err != nil {
