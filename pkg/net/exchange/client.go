@@ -276,14 +276,14 @@ func (c *client) validateCompressedIndices(chain []*exchange.BSTipSet) error {
 
 		for blockIdx := 0; blockIdx < blocksNum; blockIdx++ {
 			for _, mi := range msgs.BlsIncludes[blockIdx] {
-				if int(mi) >= len(msgs.Bls) {
+				if mi >= uint64(len(msgs.Bls)) {
 					return fmt.Errorf("index in BlsIncludes (%d) exceeds number of messages (%d)",
 						mi, len(msgs.Bls))
 				}
 			}
 
 			for _, mi := range msgs.SecpkIncludes[blockIdx] {
-				if int(mi) >= len(msgs.Secpk) {
+				if mi >= uint64(len(msgs.Secpk)) {
 					return fmt.Errorf("index in SecpkIncludes (%d) exceeds number of messages (%d)",
 						mi, len(msgs.Secpk))
 				}
