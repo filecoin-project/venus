@@ -1,5 +1,9 @@
 # venus changelog
 
+## v1.14.3
+
+* fix: index too large may out of range [[#6258](https://github.com/filecoin-project/venus/pull/6258)]
+
 ## v1.14.2
 
 * fix: exchange: allow up to 10k messages per block
