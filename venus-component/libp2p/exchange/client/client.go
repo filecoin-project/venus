@@ -339,7 +339,13 @@ func (c *client) GetFullTipSet(ctx context.Context, peer peer.ID, tsk chain.TipS
 		return nil, err
 	}
 
-	return validRes.toFullTipSets()[0], nil
+	fullTipsets := validRes.toFullTipSets()
+
+	if len(fullTipsets) == 0 {
+		return nil, fmt.Errorf("unexpectedly got no tipsets in exchange")
+	}
+
+	return fullTipsets[0], nil
 	// If `doRequest` didn't fail we are guaranteed to have at least
 	//  *one* tipset here, so it's safe to index directly.
 }
