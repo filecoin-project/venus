@@ -1571,7 +1571,7 @@ func (store *Store) AddToTipSetTracker(ctx context.Context, b *types.BlockHeader
 // - forms the best tipset that can be formed at the _input_ height
 // - compares the three tipset weights: "current" heaviest tipset, "refreshed" tipset, and best tipset at newTsHeight
 // - updates "current" heaviest to the heaviest of those 3 tipsets (if an update is needed), assuming it doesn't violate the maximum fork rule
-func (store *Store) RefreshHeaviestTipSet(ctx context.Context, newTsHeight abi.ChainEpoch) error {
+func (store *Store) RefreshHeaviestTipSet(ctx context.Context, newTSHeight abi.ChainEpoch) error {
 	for {
 		store.mu.Lock()
 		if len(store.reorgCh) < reorgChBuf/2 {
@@ -1615,14 +1615,14 @@ func (store *Store) RefreshHeaviestTipSet(ctx context.Context, newTsHeight abi.C
 		// as well as for 5 below.
 		// This is slow, but we expect to almost-never be here (only if miners are equivocating, which carries a hefty penalty).
 		for i := heaviestHeight + 5; i > heaviestHeight-5; i-- {
-			possibleHeaviestTs, possibleHeaviestWeight, err := store.FormHeaviestTipSetForHeight(ctx, i)
+			possibleHeaviestTS, possibleHeaviestWeight, err := store.FormHeaviestTipSetForHeight(ctx, i)
 			if err != nil {
 				return fmt.Errorf("failed to produce head at height %d: %w", i, err)
 			}
 
 			if possibleHeaviestWeight.GreaterThan(newHeaviestWeight) {
 				newHeaviestWeight = possibleHeaviestWeight
-				newHeaviest = possibleHeaviestTs
+				newHeaviest = possibleHeaviestTS
 			}
 		}
 
@@ -1639,19 +1639,19 @@ func (store *Store) RefreshHeaviestTipSet(ctx context.Context, newTsHeight abi.C
 	}
 
 	// if the new height we were notified about isn't what we just refreshed at, see if we have a heavier tipset there
-	if newTsHeight != newHeaviest.Height() {
-		bestTs, bestTsWeight, err := store.FormHeaviestTipSetForHeight(ctx, newTsHeight)
+	if newTSHeight != newHeaviest.Height() {
+		bestTS, bestTSWeight, err := store.FormHeaviestTipSetForHeight(ctx, newTSHeight)
 		if err != nil {
-			return fmt.Errorf("failed to form new heaviest tipset at height %d: %w", newTsHeight, err)
+			return fmt.Errorf("failed to form new heaviest tipset at height %d: %w", newTSHeight, err)
 		}
 
-		heavier := bestTsWeight.GreaterThan(newHeaviestWeight)
-		if bestTsWeight.Equals(newHeaviestWeight) {
-			heavier = breakWeightTie(bestTs, newHeaviest)
+		heavier := bestTSWeight.GreaterThan(newHeaviestWeight)
+		if bestTSWeight.Equals(newHeaviestWeight) {
+			heavier = breakWeightTie(bestTS, newHeaviest)
 		}
 
 		if heavier {
-			newHeaviest = bestTs
+			newHeaviest = bestTS
 		}
 	}
 
@@ -1720,7 +1720,7 @@ func (store *Store) FormHeaviestTipSetForHeight(ctx context.Context, height abi.
 	}
 
 	maxWeight := types.NewInt(0)
-	var maxTs *types.TipSet
+	var maxTS *types.TipSet
 	for _, headers := range formableTipsets {
 		ts, err := types.NewTipSet(headers)
 		if err != nil {
@@ -1734,16 +1734,16 @@ func (store *Store) FormHeaviestTipSetForHeight(ctx context.Context, height abi.
 
 		heavier := weight.GreaterThan(maxWeight)
 		if weight.Equals(maxWeight) {
-			heavier = breakWeightTie(ts, maxTs)
+			heavier = breakWeightTie(ts, maxTS)
 		}
 
 		if heavier {
 			maxWeight = weight
-			maxTs = ts
+			maxTS = ts
 		}
 	}
 
-	return maxTs, maxWeight, nil
+	return maxTS, maxWeight, nil
 }
 
 func breakWeightTie(ts1, ts2 *types.TipSet) bool {

@@ -135,8 +135,7 @@ type Syncer struct {
 	// Provides message collections given cids
 	messageProvider messageStore
 
-	clock    clock.Clock
-	headLock sync.Mutex
+	clock clock.Clock
 
 	bsstore    blockstoreutil.Blockstore
 	checkPoint types.TipSetKey
