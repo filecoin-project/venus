@@ -73,7 +73,7 @@ func (ti *TipStateCache) Get(ctx context.Context, ts *types.TipSet) (TSState, er
 	if !ok {
 		tipSetMetadata, err := ti.loader.LoadTipsetMetadata(ctx, ts)
 		if err != nil {
-			return TSState{}, errors.New("state not exit")
+			return TSState{}, fmt.Errorf("state not exit: %s", ts.Key())
 		}
 		ti.Put(tipSetMetadata)
 

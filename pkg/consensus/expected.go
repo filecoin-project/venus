@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -90,6 +91,7 @@ type chainReader interface {
 	GetLookbackTipSetForRound(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch, version network.Version) (*types.TipSet, cid.Cid, error)
 	GetTipsetMetadata(context.Context, *types.TipSet) (*chain.TipSetMetadata, error)
 	PutTipSetMetadata(context.Context, *chain.TipSetMetadata) error
+	Weight(context.Context, *types.TipSet) (big.Int, error)
 }
 
 var _ chainReader = (*chain.Store)(nil)

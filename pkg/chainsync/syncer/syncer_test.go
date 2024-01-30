@@ -226,12 +226,6 @@ func TestAcceptHeavierFork(t *testing.T) {
 	main3 := builder.AppendOn(ctx, main2, 1)
 	main4 := builder.AppendOn(ctx, main3, 1)
 
-	// Fork is heavier with more blocks, despite shorter (with default fake weighing function
-	// from FakeStateEvaluator).
-	fork1 := builder.AppendOn(ctx, forkbase, 3)
-	fork2 := builder.AppendOn(ctx, fork1, 1)
-	fork3 := builder.AppendOn(ctx, fork2, 1)
-
 	main4Target := &syncTypes.Target{
 		Base:    nil,
 		Current: nil,
@@ -244,6 +238,14 @@ func TestAcceptHeavierFork(t *testing.T) {
 	assert.NoError(t, builder.FlushHead(ctx))
 	verifyTip(t, builder.Store(), main4, builder.StateForKey(ctx, main4.Key()))
 	verifyHead(t, builder.Store(), main4)
+
+	// Avoid miners having two blocks at the same height
+	builder.ResetMiners()
+	// Fork is heavier with more blocks, despite shorter (with default fake weighing function
+	// from FakeStateEvaluator).
+	fork1 := builder.AppendOn(ctx, forkbase, 3)
+	fork2 := builder.AppendOn(ctx, fork1, 1)
+	fork3 := builder.AppendOn(ctx, fork2, 1)
 
 	// Heavier fork updates head3
 	fork3Target := &syncTypes.Target{
@@ -322,7 +324,6 @@ func TestNoUncessesaryFetch(t *testing.T) {
 
 	newSyncer, err := syncer.NewSyncer(stmgr,
 		eval,
-		&chain.FakeChainSelector{},
 		builder.Store(),
 		builder.Mstore(),
 		builder.BlockStore(),
@@ -592,10 +593,8 @@ func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builde
 ) (*chain.Builder, *syncer.Syncer) {
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the bsstore, to which the syncer must ensure to put blocks.
-	sel := &chain.FakeChainSelector{}
 	syncer, err := syncer.NewSyncer(stmgr,
 		headerVal,
-		sel,
 		builder.Store(),
 		builder.Mstore(),
 		builder.BlockStore(),

@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/consensus/chainselector"
 	"github.com/filecoin-project/venus/pkg/consensusfault"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -55,7 +56,7 @@ func NewChainSubmodule(ctx context.Context,
 ) (*ChainSubmodule, error) {
 	repo := config.Repo()
 	// initialize chain store
-	chainStore := chain.NewStore(repo.ChainDatastore(), repo.Datastore(), config.GenesisCid(), circulatiingSupplyCalculator)
+	chainStore := chain.NewStore(repo.ChainDatastore(), repo.Datastore(), config.GenesisCid(), circulatiingSupplyCalculator, chainselector.Weight)
 	// drand
 	genBlk, err := chainStore.GetGenesisBlock(context.TODO())
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/filecoin-project/venus/pkg/consensus/chainselector"
 	aexchange "github.com/filecoin-project/venus/pkg/net/exchange"
 	"github.com/filecoin-project/venus/pkg/vm"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
@@ -38,6 +39,8 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
+const defaultMinerCount = 15
+
 // Builder builds fake chains and acts as a provider and fetcher for the chain thus generated.
 // All blocks are unique (even if they share parents) and form valid chains of parents and heights,
 // but do not carry valid tickets. Each block contributes a weight of 1.
@@ -50,7 +53,7 @@ type Builder struct {
 	t            *testing.T
 	genesis      *types.TipSet
 	store        *Store
-	minerAddress address.Address
+	minerAddress []address.Address
 	stateBuilder StateBuilder
 	stamper      TimeStamper
 	repo         repo.Repo
@@ -175,6 +178,21 @@ func (f *Builder) MessageStore() *MessageStore {
 
 func (f *Builder) RemovePeer(peer peer.ID) {}
 
+func (f *Builder) GenMiners(str string) []address.Address {
+	var miners []address.Address
+	for i := 0; i < defaultMinerCount; i++ {
+		miner, err := address.NewSecp256k1Address([]byte(fmt.Sprintf("%s%d", str, i)))
+		require.NoError(f.t, err)
+		miners = append(miners, miner)
+	}
+
+	return miners
+}
+
+func (f *Builder) ResetMiners() {
+	f.minerAddress = f.GenMiners("miner-")
+}
+
 var (
 	_ BlockProvider   = (*Builder)(nil)
 	_ TipSetProvider  = (*Builder)(nil)
@@ -198,17 +216,12 @@ var _ IStmgr = &fakeStmgr{}
 
 // NewBuilder builds a new chain faker with default fake state building.
 func NewBuilder(t *testing.T, miner address.Address) *Builder {
-	return NewBuilderWithDeps(t, miner, &FakeStateBuilder{}, &ZeroTimestamper{})
+	return NewBuilderWithDeps(t, miner, &ZeroTimestamper{})
 }
 
 // NewBuilderWithDeps builds a new chain faker.
 // Blocks will have `miner` set as the miner address, or a default if empty.
-func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, stamper TimeStamper) *Builder {
-	if miner.Empty() {
-		var err error
-		miner, err = address.NewSecp256k1Address([]byte("miner"))
-		require.NoError(t, err)
-	}
+func NewBuilderWithDeps(t *testing.T, miner address.Address, stamper TimeStamper) *Builder {
 
 	repo := repo.NewInMemoryRepo()
 	bs := repo.Datastore()
@@ -217,8 +230,6 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 
 	b := &Builder{
 		t:            t,
-		minerAddress: miner,
-		stateBuilder: sb,
 		stamper:      stamper,
 		repo:         repo,
 		bs:           bs,
@@ -226,6 +237,13 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 		mstore:       NewMessageStore(bs, config.DefaultForkUpgradeParam),
 		tipStateCids: make(map[string]cid.Cid),
 	}
+
+	if !miner.Empty() {
+		b.minerAddress = []address.Address{miner}
+	} else {
+		b.minerAddress = b.GenMiners("miner")
+	}
+
 	ctx := context.TODO()
 	_, err := b.mstore.StoreMessages(ctx, []*types.SignedMessage{}, []*types.Message{})
 	require.NoError(t, err)
@@ -237,11 +255,15 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 
 	// create a fixed genesis
 	b.genesis = b.GeneratorGenesis()
-	b.store = NewStore(ds, bs, b.genesis.At(0).Cid(), NewMockCirculatingSupplyCalculator())
+	b.store = NewStore(ds, bs, b.genesis.At(0).Cid(), NewMockCirculatingSupplyCalculator(), chainselector.Weight)
+	b.stateBuilder = &FakeStateBuilder{b.store}
 
 	for _, block := range b.genesis.Blocks() {
 		// add block to cstore
 		_, err := b.cstore.Put(context.TODO(), block)
+		require.NoError(t, err)
+
+		err = b.store.AddToTipSetTracker(ctx, b.genesis.At(0))
 		require.NoError(t, err)
 	}
 
@@ -381,9 +403,13 @@ func (f *Builder) BuildOrphaTipset(parent *types.TipSet, width int, build func(b
 		binary.BigEndian.PutUint64(ticket.VRFProof, f.seq)
 		f.seq++
 
+		if i > len(f.minerAddress) {
+			require.NoError(f.t, fmt.Errorf("width too large %d>%d", i, len(f.minerAddress)))
+		}
+
 		b := &types.BlockHeader{
 			Ticket:                &ticket,
-			Miner:                 f.minerAddress,
+			Miner:                 f.minerAddress[i],
 			BeaconEntries:         nil,
 			ParentWeight:          parentWeight,
 			Parents:               parent.Key().Cids(),
@@ -429,6 +455,8 @@ func (f *Builder) BuildOrphaTipset(parent *types.TipSet, width int, build func(b
 		b.ParentStateRoot = stateRootRaw
 
 		blocks = append(blocks, b)
+
+		require.NoError(f.t, f.store.AddToTipSetTracker(ctx, b))
 	}
 	return testhelpers.RequireNewTipSet(f.t, blocks...)
 }
@@ -552,14 +580,16 @@ type StateBuilder interface {
 }
 
 // FakeStateBuilder computes a fake state CID by hashing the CIDs of a block's parents and messages.
-type FakeStateBuilder struct{}
+type FakeStateBuilder struct {
+	store *Store
+}
 
 // ComputeState computes a fake state from a previous state root CID and the messages contained
 // in list-of-lists of messages in blocks. Note that if there are no messages, the resulting state
 // is the same as the input state.
 // This differs from the true state transition function in that messages that are duplicated
 // between blocks in the tipset are not ignored.
-func (FakeStateBuilder) ComputeState(prev cid.Cid, blockmsg []types.BlockMessagesInfo) (cid.Cid, []types.MessageReceipt, error) {
+func (f FakeStateBuilder) ComputeState(prev cid.Cid, blockmsg []types.BlockMessagesInfo) (cid.Cid, []types.MessageReceipt, error) {
 	receipts := []types.MessageReceipt{}
 
 	// Accumulate the cids of the previous state and of all messages in the tipset.
@@ -589,13 +619,8 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blockmsg []types.BlockMessage
 }
 
 // Weigh computes a tipset's weight as its parent weight plus one for each block in the tipset.
-func (FakeStateBuilder) Weigh(context context.Context, tip *types.TipSet) (big.Int, error) {
-	parentWeight := big.Zero()
-	if tip.Defined() {
-		parentWeight = tip.ParentWeight()
-	}
-
-	return big.Add(parentWeight, big.NewInt(int64(tip.Len()))), nil
+func (f FakeStateBuilder) Weigh(ctx context.Context, tip *types.TipSet) (big.Int, error) {
+	return f.store.Weight(ctx, tip)
 }
 
 // /// Timestamper /////

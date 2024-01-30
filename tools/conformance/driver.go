@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/consensus/chainselector"
 	"github.com/filecoin-project/venus/pkg/fvm"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
@@ -100,7 +101,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
 	// chainstore
-	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) // load genesis from car
+	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight) // load genesis from car
 
 	// chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network, chainDs)
@@ -255,7 +256,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	ipldStore := cbor.NewCborStore(bs)
 	chainDs := ds.NewMapDatastore() // just mock one
 	// chainstore
-	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) // load genesis from car
+	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight) // load genesis from car
 
 	// chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network, chainDs)

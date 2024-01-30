@@ -85,7 +85,7 @@ func (sa *syncerAPI) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey)
 	if err != nil {
 		return big.Int{}, err
 	}
-	return sa.syncer.ChainSelector.Weight(ctx, ts)
+	return sa.syncer.ChainModule.ChainReader.Weight(ctx, ts)
 }
 
 // ChainSyncHandleNewTipSet submits a chain head to the syncer for processing.

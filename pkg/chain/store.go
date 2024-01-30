@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime/debug"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipld/go-car"
@@ -85,6 +86,8 @@ type TSState struct {
 	Receipts  cid.Cid
 }
 
+type WeightFunc func(context.Context, cbor.IpldStore, *types.TipSet) (big.Int, error)
+
 // Store is a generic implementation of the Store interface.
 // It works(tm) for now.
 type Store struct {
@@ -129,6 +132,11 @@ type Store struct {
 	reorgNotifeeCh chan ReorgNotifee
 
 	tsCache *arc.ARCCache[types.TipSetKey, *types.TipSet]
+
+	tstLk   sync.Mutex
+	tipsets map[abi.ChainEpoch][]cid.Cid
+
+	weight WeightFunc
 }
 
 // NewStore constructs a new default store.
@@ -136,6 +144,7 @@ func NewStore(chainDs repo.Datastore,
 	bsstore blockstoreutil.Blockstore,
 	genesisCid cid.Cid,
 	circulatiingSupplyCalculator ICirculatingSupplyCalcualtor,
+	weight WeightFunc,
 ) *Store {
 	tsCache, _ := arc.NewARC[types.TipSetKey, *types.TipSet](DefaultTipsetLruCacheSize)
 	store := &Store{
@@ -148,6 +157,8 @@ func NewStore(chainDs repo.Datastore,
 		genesis:        genesisCid,
 		reorgNotifeeCh: make(chan ReorgNotifee),
 		tsCache:        tsCache,
+		tipsets:        make(map[abi.ChainEpoch][]cid.Cid, constants.Finality),
+		weight:         weight,
 	}
 	// todo cycle reference , may think a better idea
 	store.tipIndex = NewTipStateCache(store)
@@ -540,8 +551,44 @@ func (store *Store) walkBack(ctx context.Context, from *types.TipSet, to abi.Cha
 	}
 }
 
+// updateHead sets the passed in tipset as the new head of this chain.
+func (store *Store) updateHead(ctx context.Context, newTS *types.TipSet) ([]*types.TipSet, []*types.TipSet, bool, error) {
+	var dropped []*types.TipSet
+	var added []*types.TipSet
+	var err error
+
+	if store.head != nil {
+		if store.head.Equals(newTS) {
+			return nil, nil, false, nil
+		}
+		// reorg
+		oldHead := store.head
+		dropped, added, err = CollectTipsToCommonAncestor(ctx, store, oldHead, newTS)
+		if err != nil {
+			return nil, nil, false, err
+		}
+	} else {
+		added = []*types.TipSet{newTS}
+	}
+
+	// Ensure consistency by storing this new head on disk.
+	if errInner := store.writeHead(ctx, newTS.Key()); errInner != nil {
+		return nil, nil, false, errors.Wrap(errInner, "failed to write new Head to datastore")
+	}
+	store.head = newTS
+
+	return dropped, added, true, nil
+}
+
 // SetHead sets the passed in tipset as the new head of this chain.
 func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+
+	return store.setHead(ctx, newTS)
+}
+
+func (store *Store) setHead(ctx context.Context, newTS *types.TipSet) error {
 	log.Infof("SetHead %s %d", newTS.String(), newTS.Height())
 	// Add logging to debug sporadic test failure.
 	if !newTS.Defined() {
@@ -551,34 +598,7 @@ func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
 	}
 
 	// reorg tipset
-	dropped, added, update, err := func() ([]*types.TipSet, []*types.TipSet, bool, error) {
-		var dropped []*types.TipSet
-		var added []*types.TipSet
-		var err error
-		store.mu.Lock()
-		defer store.mu.Unlock()
-
-		if store.head != nil {
-			if store.head.Equals(newTS) {
-				return nil, nil, false, nil
-			}
-			// reorg
-			oldHead := store.head
-			dropped, added, err = CollectTipsToCommonAncestor(ctx, store, oldHead, newTS)
-			if err != nil {
-				return nil, nil, false, err
-			}
-		} else {
-			added = []*types.TipSet{newTS}
-		}
-
-		// Ensure consistency by storing this new head on disk.
-		if errInner := store.writeHead(ctx, newTS.Key()); errInner != nil {
-			return nil, nil, false, errors.Wrap(errInner, "failed to write new Head to datastore")
-		}
-		store.head = newTS
-		return dropped, added, true, nil
-	}()
+	dropped, added, update, err := store.updateHead(ctx, newTS)
 	if err != nil {
 		return err
 	}
@@ -586,6 +606,8 @@ func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
 	if !update {
 		return nil
 	}
+
+	store.PersistTipSetKey(ctx, newTS.Key())
 
 	// todo wrap by go function
 	Reverse(added)
@@ -607,6 +629,8 @@ func (store *Store) PersistTipSetKey(ctx context.Context, key types.TipSetKey) {
 
 	_ = store.bsstore.Put(ctx, tskBlk)
 }
+
+const reorgChBuf = 32
 
 func (store *Store) reorgWorker(ctx context.Context) chan reorg {
 	headChangeNotifee := func(rev, app []*types.TipSet) error {
@@ -630,7 +654,7 @@ func (store *Store) reorgWorker(ctx context.Context) chan reorg {
 		return nil
 	}
 
-	out := make(chan reorg, 32)
+	out := make(chan reorg, reorgChBuf)
 	notifees := []ReorgNotifee{headChangeNotifee}
 
 	go func() {
@@ -1495,4 +1519,315 @@ func (store *Store) ParentStateView(ts *types.TipSet) (*state.View, error) {
 // Store wrap adt store
 func (store *Store) Store(ctx context.Context) adt.Store {
 	return adt.WrapStore(ctx, cbor.NewCborStore(store.bsstore))
+}
+
+func (store *Store) Weight(ctx context.Context, ts *types.TipSet) (big.Int, error) {
+	return store.weight(ctx, store.stateAndBlockSource, ts)
+}
+
+func (store *Store) AddToTipSetTracker(ctx context.Context, b *types.BlockHeader) error {
+	store.tstLk.Lock()
+	defer store.tstLk.Unlock()
+
+	tss := store.tipsets[b.Height]
+	for _, oc := range tss {
+		if oc == b.Cid() {
+			log.Debug("tried to add block to tipset tracker that was already there")
+			return nil
+		}
+		h, err := store.GetBlock(ctx, oc)
+		if err == nil && h != nil {
+			if h.Miner == b.Miner {
+				log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache %s-%s", b.Miner, b.Height, b.Cid(), h.Cid())
+			}
+		}
+	}
+	// This function is called 5 times per epoch on average
+	// It is also called with tipsets that are done with initial validation
+	// so they cannot be from the future.
+	// We are guaranteed not to use tipsets older than 900 epochs (fork limit)
+	// This means that we ideally want to keep only most recent 900 epochs in here
+	// Golang's map iteration starts at a random point in a map.
+	// With 5 tries per epoch, and 900 entries to keep, on average we will have
+	// ~136 garbage entries in the `store.tipsets` map. (solve for 1-(1-x/(900+x))^5 == 0.5)
+	// Seems good enough to me
+
+	for height := range store.tipsets {
+		if height < b.Height-constants.Finality {
+			delete(store.tipsets, height)
+		}
+		break
+	}
+
+	store.tipsets[b.Height] = append(tss, b.Cid())
+
+	return nil
+}
+
+// RefreshHeaviestTipSet receives a newTsHeight at which a new tipset might exist. It then:
+// - "refreshes" the heaviest tipset that can be formed at its current heaviest height
+//   - if equivocation is detected among the miners of the current heaviest tipset, the head is immediately updated to the heaviest tipset that can be formed in a range of 5 epochs
+//
+// - forms the best tipset that can be formed at the _input_ height
+// - compares the three tipset weights: "current" heaviest tipset, "refreshed" tipset, and best tipset at newTsHeight
+// - updates "current" heaviest to the heaviest of those 3 tipsets (if an update is needed), assuming it doesn't violate the maximum fork rule
+func (store *Store) RefreshHeaviestTipSet(ctx context.Context, newTSHeight abi.ChainEpoch) error {
+	for {
+		store.mu.Lock()
+		if len(store.reorgCh) < reorgChBuf/2 {
+			break
+		}
+		store.mu.Unlock()
+		log.Errorf("reorg channel is heavily backlogged, waiting a bit before trying to take process new tipsets")
+		select {
+		case <-time.After(time.Second / 2):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	defer store.mu.Unlock()
+
+	heaviest := store.head
+	heaviestWeight, err := store.Weight(ctx, heaviest)
+	if err != nil {
+		return fmt.Errorf("failed to calculate currentHeaviest's weight: %w", err)
+	}
+
+	heaviestHeight := abi.ChainEpoch(0)
+	if heaviest != nil {
+		heaviestHeight = heaviest.Height()
+	}
+
+	// Before we look at newTs, let's refresh best tipset at current head's height -- this is done to detect equivocation
+	newHeaviest, newHeaviestWeight, err := store.FormHeaviestTipSetForHeight(ctx, heaviestHeight)
+	if err != nil {
+		return fmt.Errorf("failed to reform head at same height: %w", err)
+	}
+
+	// Equivocation has occurred! We need a new head NOW!
+	if newHeaviest == nil || newHeaviestWeight.LessThan(heaviestWeight) {
+		log.Warnf("chainstore heaviest tipset's weight SHRANK from %d (%s) to %d (%s) due to equivocation", heaviestWeight, heaviest, newHeaviestWeight, newHeaviest)
+		// Unfortunately, we don't know what the right height to form a new heaviest tipset is.
+		// It is _probably_, but not _necessarily_, heaviestHeight.
+		// So, we need to explore a range of epochs, finding the heaviest tipset in that range.
+		// We thus try to form the heaviest tipset for 5 epochs above heaviestHeight (most of which will likely not exist),
+		// as well as for 5 below.
+		// This is slow, but we expect to almost-never be here (only if miners are equivocating, which carries a hefty penalty).
+		for i := heaviestHeight + 5; i > heaviestHeight-5; i-- {
+			possibleHeaviestTS, possibleHeaviestWeight, err := store.FormHeaviestTipSetForHeight(ctx, i)
+			if err != nil {
+				return fmt.Errorf("failed to produce head at height %d: %w", i, err)
+			}
+
+			if possibleHeaviestWeight.GreaterThan(newHeaviestWeight) {
+				newHeaviestWeight = possibleHeaviestWeight
+				newHeaviest = possibleHeaviestTS
+			}
+		}
+
+		// if we've found something, we know it's the heaviest equivocation-free head, take it IMMEDIATELY
+		if newHeaviest != nil {
+			errTake := store.setHead(ctx, newHeaviest)
+			if errTake != nil {
+				return fmt.Errorf("failed to take newHeaviest tipset as head: %w", err)
+			}
+		} else {
+			// if we haven't found something, just stay with our equivocation-y head
+			newHeaviest = heaviest
+		}
+	}
+
+	// if the new height we were notified about isn't what we just refreshed at, see if we have a heavier tipset there
+	if newTSHeight != newHeaviest.Height() {
+		bestTS, bestTSWeight, err := store.FormHeaviestTipSetForHeight(ctx, newTSHeight)
+		if err != nil {
+			return fmt.Errorf("failed to form new heaviest tipset at height %d: %w", newTSHeight, err)
+		}
+
+		heavier := bestTSWeight.GreaterThan(newHeaviestWeight)
+		if bestTSWeight.Equals(newHeaviestWeight) {
+			heavier = breakWeightTie(bestTS, newHeaviest)
+		}
+
+		if heavier {
+			newHeaviest = bestTS
+		}
+	}
+
+	// Everything's the same as before, exit early
+	if newHeaviest.Equals(heaviest) {
+		return nil
+	}
+
+	// At this point, it MUST be true that newHeaviest is heavier than store.heaviest -- update if fork allows
+	exceeds, err := store.exceedsForkLength(ctx, heaviest, newHeaviest)
+	if err != nil {
+		return fmt.Errorf("failed to check fork length: %w", err)
+	}
+
+	if exceeds {
+		return nil
+	}
+
+	err = store.setHead(ctx, newHeaviest)
+	if err != nil {
+		return fmt.Errorf("failed to take heaviest tipset: %w", err)
+	}
+
+	return nil
+}
+
+// FormHeaviestTipSetForHeight looks up all valid blocks at a given height, and returns the heaviest tipset that can be made at that height
+// It does not consider ANY blocks from miners that have "equivocated" (produced 2 blocks at the same height)
+func (store *Store) FormHeaviestTipSetForHeight(ctx context.Context, height abi.ChainEpoch) (*types.TipSet, types.BigInt, error) {
+	store.tstLk.Lock()
+	defer store.tstLk.Unlock()
+
+	blockCids, ok := store.tipsets[height]
+	if !ok {
+		return nil, types.NewInt(0), nil
+	}
+
+	// First, identify "bad" miners for the height
+
+	seenMiners := map[address.Address]struct{}{}
+	badMiners := map[address.Address]struct{}{}
+	blocks := make([]*types.BlockHeader, 0, len(blockCids))
+	for _, bhc := range blockCids {
+		h, err := store.GetBlock(ctx, bhc)
+		if err != nil {
+			return nil, types.NewInt(0), fmt.Errorf("failed to load block (%s) for tipset expansion: %w", bhc, err)
+		}
+
+		if _, seen := seenMiners[h.Miner]; seen {
+			badMiners[h.Miner] = struct{}{}
+			continue
+		}
+		seenMiners[h.Miner] = struct{}{}
+		blocks = append(blocks, h)
+	}
+
+	// Next, group by parent tipset
+
+	formableTipsets := make(map[types.TipSetKey][]*types.BlockHeader, 0)
+	for _, h := range blocks {
+		if _, bad := badMiners[h.Miner]; bad {
+			continue
+		}
+		ptsk := types.NewTipSetKey(h.Parents...)
+		formableTipsets[ptsk] = append(formableTipsets[ptsk], h)
+	}
+
+	maxWeight := types.NewInt(0)
+	var maxTS *types.TipSet
+	for _, headers := range formableTipsets {
+		ts, err := types.NewTipSet(headers)
+		if err != nil {
+			return nil, types.NewInt(0), fmt.Errorf("unexpected error forming tipset: %w", err)
+		}
+
+		weight, err := store.Weight(ctx, ts)
+		if err != nil {
+			return nil, types.NewInt(0), fmt.Errorf("failed to calculate weight: %w", err)
+		}
+
+		heavier := weight.GreaterThan(maxWeight)
+		if weight.Equals(maxWeight) {
+			heavier = breakWeightTie(ts, maxTS)
+		}
+
+		if heavier {
+			maxWeight = weight
+			maxTS = ts
+		}
+	}
+
+	return maxTS, maxWeight, nil
+}
+
+func breakWeightTie(ts1, ts2 *types.TipSet) bool {
+	s := len(ts1.Blocks())
+	if s > len(ts2.Blocks()) {
+		s = len(ts2.Blocks())
+	}
+
+	// blocks are already sorted by ticket
+	for i := 0; i < s; i++ {
+		if ts1.Blocks()[i].Ticket.Less(ts2.Blocks()[i].Ticket) {
+			log.Infof("weight tie broken in favour of %s", ts1.Key())
+			return true
+		}
+	}
+
+	log.Infof("weight tie left unbroken, default to %s", ts2.Key())
+	return false
+}
+
+// Check if the two tipsets have a fork length above `ForkLengthThreshold`.
+// `synced` is the head of the chain we are currently synced to and `external`
+// is the incoming tipset potentially belonging to a forked chain. It assumes
+// the external chain has already been validated and available in the ChainStore.
+// The "fast forward" case is covered in this logic as a valid fork of length 0.
+//
+// FIXME: We may want to replace some of the logic in `syncFork()` with this.
+//
+//	`syncFork()` counts the length on both sides of the fork at the moment (we
+//	need to settle on that) but here we just enforce it on the `synced` side.
+func (store *Store) exceedsForkLength(ctx context.Context, synced, external *types.TipSet) (bool, error) {
+	if synced == nil || external == nil {
+		// FIXME: If `cs.heaviest` is nil we should just bypass the entire
+		//  `MaybeTakeHeavierTipSet` logic (instead of each of the called
+		//  functions having to handle the nil case on their own).
+		return false, nil
+	}
+
+	var err error
+	// `forkLength`: number of tipsets we need to walk back from the our `synced`
+	// chain to the common ancestor with the new `external` head in order to
+	// adopt the fork.
+	for forkLength := 0; forkLength < int(constants.ForkLengthThreshold); forkLength++ {
+		// First walk back as many tipsets in the external chain to match the
+		// `synced` height to compare them. If we go past the `synced` height
+		// the subsequent match will fail but it will still be useful to get
+		// closer to the `synced` head parent's height in the next loop.
+		for external.Height() > synced.Height() {
+			if external.Height() == 0 {
+				// We reached the genesis of the external chain without a match;
+				// this is considered a fork outside the allowed limit (of "infinite"
+				// length).
+				return true, nil
+			}
+
+			external, err = store.GetTipSet(ctx, external.Parents())
+			if err != nil {
+				return false, fmt.Errorf("failed to load parent tipset in external chain: %w", err)
+			}
+		}
+
+		// Now check if we arrived at the common ancestor.
+		if synced.Equals(external) {
+			return false, nil
+		}
+
+		// Now check to see if we've walked back to the checkpoint.
+		if synced.Key().Equals(store.checkPoint) {
+			return true, nil
+		}
+
+		// If we didn't, go back *one* tipset on the `synced` side (incrementing
+		// the `forkLength`).
+		if synced.Height() == 0 {
+			// Same check as the `external` side, if we reach the start (genesis)
+			// there is no common ancestor.
+			return true, nil
+		}
+		synced, err = store.GetTipSet(ctx, synced.Parents())
+		if err != nil {
+			return false, fmt.Errorf("failed to load parent tipset in synced chain: %w", err)
+		}
+	}
+
+	// We traversed the fork length allowed without finding a common ancestor.
+	return true, nil
 }

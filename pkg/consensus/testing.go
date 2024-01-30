@@ -7,10 +7,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -20,21 +18,6 @@ func RequireNewTipSet(require *require.Assertions, blks ...*types.BlockHeader) *
 	ts, err := types.NewTipSet(blks)
 	require.NoError(err)
 	return ts
-}
-
-// FakeConsensusStateViewer is a fake power state viewer.
-type FakeConsensusStateViewer struct {
-	Views map[cid.Cid]*state.FakeStateView
-}
-
-// PowerStateView returns the state view for a root.
-func (f *FakeConsensusStateViewer) PowerStateView(root cid.Cid) state.PowerStateView {
-	return f.Views[root]
-}
-
-// FaultStateView returns the state view for a root.
-func (f *FakeConsensusStateViewer) FaultStateView(root cid.Cid) state.FaultStateView {
-	return f.Views[root]
 }
 
 // FakeMessageValidator is a validator that doesn't validate to simplify message creation in tests.
