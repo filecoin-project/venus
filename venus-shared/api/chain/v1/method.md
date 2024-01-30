@@ -1264,7 +1264,7 @@ Perms: read
 Inputs:
 ```json
 [
-  2
+  22
 ]
 ```
 
@@ -1279,7 +1279,7 @@ Perms: read
 Inputs:
 ```json
 [
-  2
+  22
 ]
 ```
 
@@ -1809,7 +1809,7 @@ Inputs:
 ]
 ```
 
-Response: `2`
+Response: `22`
 
 ### StateReplay
 
