@@ -14,9 +14,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	paych2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
 	tutils "github.com/filecoin-project/specs-actors/v6/support/testing"
 
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
@@ -643,7 +643,7 @@ func TestCheckSpendable(t *testing.T) {
 
 	// Check that the secret was passed through correctly
 	lastCall := s.mock.getLastCall()
-	var p paych2.UpdateChannelStateParams
+	var p paychtypes.UpdateChannelStateParams
 	err = p.UnmarshalCBOR(bytes.NewReader(lastCall.Params))
 	require.NoError(t, err)
 	require.Equal(t, secret, p.Secret)
@@ -698,7 +698,7 @@ func TestSubmitVoucher(t *testing.T) {
 
 	// Check that the secret was passed through correctly
 	msg := s.mock.pushedMessages(submitCid)
-	var p paych2.UpdateChannelStateParams
+	var p paychtypes.UpdateChannelStateParams
 	err = p.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	require.NoError(t, err)
 
@@ -710,7 +710,7 @@ func TestSubmitVoucher(t *testing.T) {
 	require.NoError(t, err)
 
 	msg = s.mock.pushedMessages(submitCid)
-	var p3 paych2.UpdateChannelStateParams
+	var p3 paychtypes.UpdateChannelStateParams
 	err = p3.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	require.NoError(t, err)
 
