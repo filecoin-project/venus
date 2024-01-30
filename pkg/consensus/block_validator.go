@@ -171,6 +171,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 		logExpect.Warn("Got block from the future, but within threshold ", blk.Timestamp, time.Now().Unix())
 	}
 
+	// TODO: Optimization: See https://github.com/filecoin-project/lotus/issues/11597
 	// get parent beacon
 	prevBeacon, err := bv.chainState.GetLatestBeaconEntry(ctx, parent)
 	if err != nil {

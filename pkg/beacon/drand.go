@@ -3,14 +3,13 @@ package beacon
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	dchain "github.com/drand/drand/chain"
 	dclient "github.com/drand/drand/client"
 	hclient "github.com/drand/drand/client/http"
-	"github.com/drand/drand/common/scheme"
+	dcrypto "github.com/drand/drand/crypto"
 	dlog "github.com/drand/drand/log"
 	"github.com/drand/kyber"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -42,6 +41,7 @@ type DrandBeacon struct {
 	drandGenTime uint64
 	filGenTime   uint64
 	filRoundTime uint64
+	scheme       *dcrypto.Scheme
 
 	localCache *lru.Cache[uint64, *types.BeaconEntry]
 }
@@ -61,6 +61,10 @@ func (l *logger) With(args ...interface{}) dlog.Logger {
 
 func (l *logger) Named(s string) dlog.Logger {
 	return &logger{l.SugaredLogger.Named(s)}
+}
+
+func (l *logger) AddCallerSkip(skip int) dlog.Logger {
+	return &logger{l.SugaredLogger.With(zap.AddCallerSkip(skip))}
 }
 
 // NewDrandBeacon create new beacon client from config, genesis block time and block delay
@@ -104,6 +108,11 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 		localCache: lc,
 	}
 
+	sch, err := dcrypto.GetSchemeByIDWithDefault(drandChain.Scheme)
+	if err != nil {
+		return nil, err
+	}
+	db.scheme = sch
 	db.pubkey = drandChain.PublicKey
 	db.interval = drandChain.Period
 	db.drandGenTime = uint64(drandChain.GenesisTime)
@@ -154,28 +163,28 @@ func (db *DrandBeacon) getCachedValue(round uint64) *types.BeaconEntry {
 	return v
 }
 
-func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntry) error {
-	if prev.Round == 0 {
-		// TODO handle genesis better
-		return nil
-	}
-	if be := db.getCachedValue(curr.Round); be != nil {
-		if !bytes.Equal(curr.Data, be.Data) {
-			return errors.New("invalid beacon value, does not match cached good value")
+func (db *DrandBeacon) VerifyEntry(entry types.BeaconEntry, prevEntrySig []byte) error {
+	if be := db.getCachedValue(entry.Round); be != nil {
+		if !bytes.Equal(entry.Data, be.Data) {
+			return fmt.Errorf("invalid beacon value, does not match cached good value")
 		}
 		// return no error if the value is in the cache already
 		return nil
 	}
 	b := &dchain.Beacon{
-		PreviousSig: prev.Data,
-		Round:       curr.Round,
-		Signature:   curr.Data,
+		PreviousSig: prevEntrySig,
+		Round:       entry.Round,
+		Signature:   entry.Data,
 	}
-	err := dchain.NewVerifier(scheme.GetSchemeFromEnv()).VerifyBeacon(*b, db.pubkey)
-	if err == nil {
-		db.cacheValue(curr)
+
+	err := db.scheme.VerifyBeacon(b, db.pubkey)
+	if err != nil {
+		return fmt.Errorf("failed to verify beacon: %w", err)
 	}
-	return err
+
+	db.cacheValue(entry)
+
+	return nil
 }
 
 // MaxBeaconRoundForEpoch get the turn of beacon chain corresponding to chain height

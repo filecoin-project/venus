@@ -29,7 +29,8 @@ type BeaconPoint struct { //nolint
 // been posted on chain.
 type RandomBeacon interface {
 	Entry(context.Context, uint64) <-chan Response
-	VerifyEntry(types.BeaconEntry, types.BeaconEntry) error
+	// VerifyEntry(types.BeaconEntry, types.BeaconEntry) error
+	VerifyEntry(entry types.BeaconEntry, prevEntrySig []byte) error
 	MaxBeaconRoundForEpoch(network.Version, abi.ChainEpoch) uint64
 }
 
@@ -37,14 +38,15 @@ type RandomBeacon interface {
 // if paraent beacon is the same beacon server. value beacon normally but if not equal, means that the pre entry in another beacon chain, so just validate
 // beacon value in current block header. the first values is parent beacon the the second value is current beacon.
 func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockHeader, parentEpoch abi.ChainEpoch, prevEntry *types.BeaconEntry) error {
-	{
+	// Before nv22 we had "chained" beacons, and so required two entries at a fork
+	if nv < network.Version22 {
 		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
 		currBeacon := bSchedule.BeaconForEpoch(h.Height)
 		if parentBeacon != currBeacon {
 			if len(h.BeaconEntries) != 2 {
 				return fmt.Errorf("expected two beacon entries at beacon fork, got %d", len(h.BeaconEntries))
 			}
-			err := currBeacon.VerifyEntry(h.BeaconEntries[1], h.BeaconEntries[0])
+			err := currBeacon.VerifyEntry(h.BeaconEntries[1], h.BeaconEntries[0].Data)
 			if err != nil {
 				return fmt.Errorf("beacon at fork point invalid: (%v, %v): %w",
 					h.BeaconEntries[1], h.BeaconEntries[0], err)
@@ -56,6 +58,7 @@ func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockH
 	// TODO: fork logic
 	b := bSchedule.BeaconForEpoch(h.Height)
 	maxRound := b.MaxBeaconRoundForEpoch(nv, h.Height)
+	// We don't expect to ever actually meet this condition
 	if maxRound == prevEntry.Round {
 		if len(h.BeaconEntries) != 0 {
 			return fmt.Errorf("expected not to have any beacon entries in this block, got %d", len(h.BeaconEntries))
@@ -67,24 +70,38 @@ func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockH
 		return fmt.Errorf("expected to have beacon entries in this block, but didn't find any")
 	}
 
+	if nv < network.Version22 && prevEntry.Round == 0 {
+		// We skip verifying the genesis entry before nv22, since that was "chained" randomness.
+		return nil
+	}
+
 	last := h.BeaconEntries[len(h.BeaconEntries)-1]
 	if last.Round != maxRound {
 		return fmt.Errorf("expected final beacon entry in block to be at round %d, got %d", maxRound, last.Round)
 	}
 
+	// Verify that all other entries' rounds are as expected for the epochs in between parentEpoch and h.Height
 	for i, e := range h.BeaconEntries {
-		if err := b.VerifyEntry(e, *prevEntry); err != nil {
+		correctRound := b.MaxBeaconRoundForEpoch(nv, parentEpoch+abi.ChainEpoch(i)+1)
+		if e.Round != correctRound {
+			return fmt.Errorf("unexpected beacon round %d, expected %d for epoch %d", e.Round, correctRound, parentEpoch+abi.ChainEpoch(i))
+		}
+	}
+
+	// Verify the beacon entries themselves
+	for i, e := range h.BeaconEntries {
+		if err := b.VerifyEntry(e, prevEntry.Data); err != nil {
 			return fmt.Errorf("beacon entry %d (%d - %x (%d)) was invalid: %w", i, e.Round, e.Data, len(e.Data), err)
 		}
 		prevEntry = &h.BeaconEntries[i]
-
 	}
 
 	return nil
 }
 
 func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, nv network.Version, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev types.BeaconEntry) ([]types.BeaconEntry, error) { //nolint
-	{
+	// Before nv22 we had "chained" beacons, and so required two entries at a fork
+	if nv < network.Version22 {
 		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
 		currBeacon := bSchedule.BeaconForEpoch(epoch)
 		if parentBeacon != currBeacon {
@@ -112,6 +129,7 @@ func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, nv network.V
 	start := time.Now()
 
 	maxRound := beacon.MaxBeaconRoundForEpoch(nv, epoch)
+	// We don't expect this to ever be the case
 	if maxRound == prev.Round {
 		return nil, nil
 	}
