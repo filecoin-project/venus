@@ -55,9 +55,10 @@ func InteropNet() *NetworkConf {
 				UpgradeHyggeHeight:          -21,
 				UpgradeLightningHeight:      -22,
 				UpgradeThunderHeight:        -23,
-				UpgradeWatermelonHeight:     50,
+				UpgradeWatermelonHeight:     -24,
 				UpgradeWatermelonFixHeight:  -100, // This fix upgrade only ran on calibrationnet
 				UpgradeWatermelonFix2Height: -101, // This fix upgrade only ran on calibrationnet
+				UpgradePineappleHeight:      50,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,
