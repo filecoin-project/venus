@@ -76,7 +76,7 @@ require (
 	github.com/ipld/go-car v0.6.1
 	github.com/ipld/go-car/v2 v2.10.1
 	github.com/jbenet/goprocess v0.1.4
-	github.com/libp2p/go-libp2p v0.27.9
+	github.com/libp2p/go-libp2p v0.31.1
 	github.com/libp2p/go-libp2p-kad-dht v0.21.1
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
 	github.com/libp2p/go-msgio v0.3.0
@@ -193,7 +193,7 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
-	github.com/google/pprof v0.0.0-20230821062121-407c9e7a662f // indirect
+	github.com/google/pprof v0.0.0-20230817174616-7a8ec2ada47b // indirect
 	github.com/hannahhoward/cbor-gen-for v0.0.0-20230214144701-5d17c9d5243c // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
@@ -273,13 +273,12 @@ require (
 	github.com/polydawn/refmt v0.89.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
-	github.com/prometheus/procfs v0.11.1 // indirect
+	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/prometheus/statsd_exporter v0.23.0 // indirect
 	github.com/puzpuzpuz/xsync/v2 v2.4.1
 	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/qtls-go1-19 v0.3.3 // indirect
-	github.com/quic-go/qtls-go1-20 v0.2.3 // indirect
-	github.com/quic-go/quic-go v0.35.1 // indirect
+	github.com/quic-go/qtls-go1-20 v0.3.3 // indirect
+	github.com/quic-go/quic-go v0.38.2 // indirect
 	github.com/quic-go/webtransport-go v0.5.3 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
 	github.com/rivo/uniseg v0.1.0 // indirect
@@ -326,7 +325,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
-	nhooyr.io/websocket v1.8.7 // indirect
 )
 
 replace (
