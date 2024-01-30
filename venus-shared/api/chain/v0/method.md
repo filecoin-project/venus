@@ -1221,7 +1221,7 @@ Perms: read
 Inputs:
 ```json
 [
-  21
+  2
 ]
 ```
 
@@ -1236,7 +1236,7 @@ Perms: read
 Inputs:
 ```json
 [
-  21
+  2
 ]
 ```
 
@@ -1614,7 +1614,8 @@ Response:
     "UpgradeHyggeHeight": 10101,
     "UpgradeLightningHeight": 10101,
     "UpgradeThunderHeight": 10101,
-    "UpgradeWatermelonHeight": 10101
+    "UpgradeWatermelonHeight": 10101,
+    "UpgradePineappleHeight": 10101
   },
   "Eip155ChainID": 123
 }
@@ -1732,7 +1733,7 @@ Inputs:
 ]
 ```
 
-Response: `21`
+Response: `2`
 
 ### StateReplay
 

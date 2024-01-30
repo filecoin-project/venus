@@ -17,7 +17,7 @@ func Net2k() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.Network2k,
-			GenesisNetworkVersion: network.Version20,
+			GenesisNetworkVersion: network.Version21,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg2KiBV1,
 				abi.RegisteredSealProof_StackedDrg8MiBV1,
@@ -51,9 +51,10 @@ func Net2k() *NetworkConf {
 				UpgradeHyggeHeight:          -21,
 				UpgradeLightningHeight:      -22,
 				UpgradeThunderHeight:        -23,
-				UpgradeWatermelonHeight:     200,
+				UpgradeWatermelonHeight:     -24,
 				UpgradeWatermelonFixHeight:  -100, // This fix upgrade only ran on calibrationnet
 				UpgradeWatermelonFix2Height: -101, // This fix upgrade only ran on calibrationnet
+				UpgradePineappleHeight:      200,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,

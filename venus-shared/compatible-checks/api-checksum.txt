@@ -290,7 +290,7 @@ api.FullNode:
 	EthBlockNumber:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
 	EthCall:	In=3,	Out=2,	CheckSum=4ad62b9ec4eb1da934580efa4878279a
 	EthChainId:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
-	EthEstimateGas:	In=2,	Out=2,	CheckSum=f4d63e320f2fb2778b210a925516a114
+	EthEstimateGas:	In=2,	Out=2,	CheckSum=06642bd8bc4a814495e4d5db5c3d11d5
 	EthFeeHistory:	In=2,	Out=2,	CheckSum=6a4806cfbd9b939d6f7fc3fbe7dc1ff7
 	EthGasPrice:	In=1,	Out=2,	CheckSum=e2f5588dddfc36a9cdef0fad6f4db93e
 	EthGetBalance:	In=3,	Out=2,	CheckSum=80912669b93ebbd53024dbc6b4f39d94
@@ -320,6 +320,8 @@ api.FullNode:
 	EthSendRawTransaction:	In=2,	Out=2,	CheckSum=f63e0b205164d628bc8022b6d5a496f5
 	EthSubscribe:	In=2,	Out=2,	CheckSum=f63e0b205164d628bc8022b6d5a496f5
 	EthSyncing:	In=1,	Out=2,	CheckSum=2c17cf64e376c0e9d0d56053d33c0722
+	EthTraceBlock:	In=2,	Out=2,	CheckSum=87ad85d70d0a285fae530a47eee79d13
+	EthTraceReplayBlockTransactions:	In=3,	Out=2,	CheckSum=ec2c86340cf2a777bc64bab8d10e3fdb
 	EthUninstallFilter:	In=2,	Out=2,	CheckSum=eaa6a477ffaae115413457bbdb11e339
 	EthUnsubscribe:	In=2,	Out=2,	CheckSum=eaa6a477ffaae115413457bbdb11e339
 	FilecoinAddressToEthAddress:	In=2,	Out=2,	CheckSum=13a0b5ce8f82604e17803a00c4086c4c

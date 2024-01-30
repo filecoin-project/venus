@@ -66,6 +66,7 @@ func Calibration() *NetworkConf {
 				UpgradeWatermelonHeight:     1013134,       // 2023-10-19T13:00:00Z
 				UpgradeWatermelonFixHeight:  1070494,       // 2023-11-07T13:00:00Z
 				UpgradeWatermelonFix2Height: 1108174,       // 2023-11-21T13:00:00Z
+				UpgradePineappleHeight:      999999999999999,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,

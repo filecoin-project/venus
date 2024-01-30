@@ -430,6 +430,7 @@ type ForkUpgradeParams struct {
 	UpgradeLightningHeight   abi.ChainEpoch
 	UpgradeThunderHeight     abi.ChainEpoch
 	UpgradeWatermelonHeight  abi.ChainEpoch
+	UpgradePineappleHeight   abi.ChainEpoch
 }
 
 type NodeStatus struct {

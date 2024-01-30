@@ -337,6 +337,7 @@ type ForkUpgradeConfig struct {
 	UpgradeWatermelonHeight     abi.ChainEpoch `json:"upgradeWatermelonHeight"`
 	UpgradeWatermelonFixHeight  abi.ChainEpoch `json:"upgradeWatermelonFixHeight"`
 	UpgradeWatermelonFix2Height abi.ChainEpoch `json:"upgradeWatermelonFix2Height"`
+	UpgradePineappleHeight      abi.ChainEpoch `json:"upgradePineappleHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -373,6 +374,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeWatermelonFixHeight: -1,
 	// This fix upgrade only ran on calibrationnet
 	UpgradeWatermelonFix2Height: -2,
+	UpgradePineappleHeight:      999999999999,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
