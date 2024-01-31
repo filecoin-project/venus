@@ -148,6 +148,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [StateEncodeParams](#stateencodeparams)
   * [StateGetAllocation](#stategetallocation)
   * [StateGetAllocationForPendingDeal](#stategetallocationforpendingdeal)
+  * [StateGetAllocationIdForPendingDeal](#stategetallocationidforpendingdeal)
   * [StateGetAllocations](#stategetallocations)
   * [StateGetClaim](#stategetclaim)
   * [StateGetClaims](#stategetclaims)
@@ -4416,6 +4417,29 @@ Response:
 }
 ```
 
+### StateGetAllocationIdForPendingDeal
+StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  5432,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `0`
+
 ### StateGetAllocations
 StateGetAllocations returns the all the allocations for a given client.
 
@@ -4699,8 +4723,7 @@ Response:
     "State": {
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101,
-      "VerifiedClaim": 0
+      "SlashEpoch": 10101
     }
   }
 }
@@ -4747,8 +4770,7 @@ Response:
   "State": {
     "SectorStartEpoch": 10101,
     "LastUpdatedEpoch": 10101,
-    "SlashEpoch": 10101,
-    "VerifiedClaim": 0
+    "SlashEpoch": 10101
   }
 }
 ```

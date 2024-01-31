@@ -436,6 +436,7 @@ api.FullNode:
 	StateGetActor:	In=3,	Out=2,	CheckSum=5ca2405c99c6a03afc0ca0dedefd263b
 	StateGetAllocation:	In=4,	Out=2,	CheckSum=306a8d2eb65b1bd436f2230bb96666b5
 	StateGetAllocationForPendingDeal:	In=3,	Out=2,	CheckSum=3d2912f0c80606576bb697499140ae2f
+	StateGetAllocationIdForPendingDeal:	In=3,	Out=2,	CheckSum=7008c851d474bd08a8df23d7a7368098
 	StateGetAllocations:	In=3,	Out=2,	CheckSum=570266653b3643cf22e6b47609db7e55
 	StateGetBeaconEntry:	In=2,	Out=2,	CheckSum=c74f5c0f4039207ea45c11bfe3319c38
 	StateGetClaim:	In=4,	Out=2,	CheckSum=79bc50cf65a4d6b102267fd020b97510

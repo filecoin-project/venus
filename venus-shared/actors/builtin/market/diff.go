@@ -66,7 +66,7 @@ func (d *marketStatesDiffer) Add(key uint64, val *cbg.Deferred) error {
 	if err != nil {
 		return err
 	}
-	d.Results.Added = append(d.Results.Added, DealIDState{abi.DealID(key), *ds})
+	d.Results.Added = append(d.Results.Added, DealIDState{abi.DealID(key), ds})
 	return nil
 }
 
@@ -79,7 +79,7 @@ func (d *marketStatesDiffer) Modify(key uint64, from, to *cbg.Deferred) error {
 	if err != nil {
 		return err
 	}
-	if *dsFrom != *dsTo {
+	if !dsFrom.Equals(dsTo) {
 		d.Results.Modified = append(d.Results.Modified, DealStateChange{abi.DealID(key), dsFrom, dsTo})
 	}
 	return nil
@@ -90,6 +90,6 @@ func (d *marketStatesDiffer) Remove(key uint64, val *cbg.Deferred) error {
 	if err != nil {
 		return err
 	}
-	d.Results.Removed = append(d.Results.Removed, DealIDState{abi.DealID(key), *ds})
+	d.Results.Removed = append(d.Results.Removed, DealIDState{abi.DealID(key), ds})
 	return nil
 }

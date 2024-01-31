@@ -343,7 +343,7 @@ func (v *View) MarketDealProposal(ctx context.Context, dealID abi.DealID) (marke
 }
 
 // NOTE: exposes on-chain structures directly for storage FSM and market module interfaces.
-func (v *View) MarketDealState(ctx context.Context, dealID abi.DealID) (*market.DealState, bool, error) {
+func (v *View) MarketDealState(ctx context.Context, dealID abi.DealID) (market.DealState, bool, error) {
 	marketState, err := v.LoadMarketState(ctx)
 	if err != nil {
 		return nil, false, err
@@ -439,7 +439,7 @@ func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*
 
 	return &types.MarketDeal{
 		Proposal: *dealProposal,
-		State:    *dealState,
+		State:    types.MakeDealState(dealState),
 	}, nil
 }
 
@@ -647,7 +647,7 @@ func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[s
 		}
 		out[strconv.FormatInt(int64(dealID), 10)] = &types.MarketDeal{
 			Proposal: d,
-			State:    *s,
+			State:    types.MakeDealState(s),
 		}
 		return nil
 	}); err != nil {
