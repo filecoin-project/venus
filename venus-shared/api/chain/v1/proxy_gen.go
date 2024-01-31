@@ -87,7 +87,7 @@ type IMinerStateStruct struct {
 		StateEncodeParams                  func(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error)                                     `perm:"read"`
 		StateGetAllocation                 func(ctx context.Context, clientAddr address.Address, allocationID types.AllocationId, tsk types.TipSetKey) (*types.Allocation, error)         `perm:"read"`
 		StateGetAllocationForPendingDeal   func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.Allocation, error)                                                   `perm:"read"`
-		StateGetAllocationIdForPendingDeal func(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error)                                               `perm:"read"`
+		StateGetAllocationIdForPendingDeal func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error)                                               `perm:"read"`
 		StateGetAllocations                func(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[types.AllocationId]types.Allocation, error)                    `perm:"read"`
 		StateGetClaim                      func(ctx context.Context, providerAddr address.Address, claimID types.ClaimId, tsk types.TipSetKey) (*types.Claim, error)                      `perm:"read"`
 		StateGetClaims                     func(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[types.ClaimId]types.Claim, error)                            `perm:"read"`
