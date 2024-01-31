@@ -139,10 +139,10 @@ func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, nv network.V
 		prev.Round = maxRound - 1
 	}
 
-	cur := maxRound
 	var out []types.BeaconEntry
-	for cur > prev.Round {
-		rch := beacon.Entry(ctx, cur)
+	for currEpoch := epoch; currEpoch > parentEpoch; currEpoch-- {
+		currRound := beacon.MaxBeaconRoundForEpoch(nv, currEpoch)
+		rch := beacon.Entry(ctx, currRound)
 		select {
 		case resp := <-rch:
 			if resp.Err != nil {
@@ -150,7 +150,6 @@ func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, nv network.V
 			}
 
 			out = append(out, resp.Entry)
-			cur = resp.Entry.Round - 1
 		case <-ctx.Done():
 			return nil, fmt.Errorf("context timed out waiting on beacon entry to come back for epoch %d: %w", epoch, ctx.Err())
 		}
