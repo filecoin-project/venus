@@ -8,8 +8,8 @@ require (
 	github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc7
 	github.com/filecoin-project/go-fil-markets v1.28.3
 	github.com/filecoin-project/go-jsonrpc v0.3.1
-	github.com/filecoin-project/go-state-types v0.12.9-0.20231205164216-231a5d9537a1
-	github.com/filecoin-project/lotus v1.25.3-0.20240111155443-13248220a923
+	github.com/filecoin-project/go-state-types v0.12.9-0.20240125111137-dbf4b5b126e2
+	github.com/filecoin-project/lotus v1.25.3-0.20240129191037-78edf46afc43
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
 	github.com/google/uuid v1.3.0
 	github.com/ipfs/go-block-format v0.1.2
@@ -20,7 +20,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
 	github.com/multiformats/go-multiaddr v0.12.1
 	github.com/urfave/cli/v2 v2.25.5
-	github.com/whyrusleeping/cbor-gen v0.0.0-20230923211252-36a87e1ba72f
+	github.com/whyrusleeping/cbor-gen v0.0.0-20240124134906-0efd71a8493b
 	golang.org/x/tools v0.12.1-0.20230815132531-74c255bcf846
 )
 

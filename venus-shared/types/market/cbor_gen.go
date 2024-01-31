@@ -344,6 +344,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.NextLane (uint64) (uint64)
@@ -537,9 +538,9 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.NextLane (uint64) (uint64)
 
 	{
@@ -691,7 +692,7 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Proof[:]); err != nil {
+	if _, err := cw.Write(t.Proof); err != nil {
 		return err
 	}
 
@@ -762,9 +763,10 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Proof = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Proof[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Proof); err != nil {
 		return err
 	}
+
 	// t.Submitted (bool) (bool)
 
 	maj, extra, err = cr.ReadHeader()
@@ -1045,13 +1047,11 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
-
 	if extra != 16 {
 		return fmt.Errorf("expected array to have 16 elements")
 	}
 
 	t.ID = [16]uint8{}
-
 	if _, err := io.ReadFull(cr, t.ID[:]); err != nil {
 		return err
 	}

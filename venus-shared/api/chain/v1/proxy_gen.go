@@ -22,6 +22,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 
 	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -86,6 +87,7 @@ type IMinerStateStruct struct {
 		StateEncodeParams                  func(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error)                                     `perm:"read"`
 		StateGetAllocation                 func(ctx context.Context, clientAddr address.Address, allocationID types.AllocationId, tsk types.TipSetKey) (*types.Allocation, error)         `perm:"read"`
 		StateGetAllocationForPendingDeal   func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.Allocation, error)                                                   `perm:"read"`
+		StateGetAllocationIdForPendingDeal func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error)                                               `perm:"read"`
 		StateGetAllocations                func(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[types.AllocationId]types.Allocation, error)                    `perm:"read"`
 		StateGetClaim                      func(ctx context.Context, providerAddr address.Address, claimID types.ClaimId, tsk types.TipSetKey) (*types.Claim, error)                      `perm:"read"`
 		StateGetClaims                     func(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[types.ClaimId]types.Claim, error)                            `perm:"read"`
@@ -150,6 +152,9 @@ func (s *IMinerStateStruct) StateGetAllocation(p0 context.Context, p1 address.Ad
 }
 func (s *IMinerStateStruct) StateGetAllocationForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.Allocation, error) {
 	return s.Internal.StateGetAllocationForPendingDeal(p0, p1, p2)
+}
+func (s *IMinerStateStruct) StateGetAllocationIdForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (verifreg.AllocationId, error) {
+	return s.Internal.StateGetAllocationIdForPendingDeal(p0, p1, p2)
 }
 func (s *IMinerStateStruct) StateGetAllocations(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[types.AllocationId]types.Allocation, error) {
 	return s.Internal.StateGetAllocations(p0, p1, p2)

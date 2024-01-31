@@ -76,9 +76,10 @@ func (t *NetRPCReq) MarshalCBOR(w io.Writer) error {
 			return err
 		}
 
-		if _, err := cw.Write(v[:]); err != nil {
+		if _, err := cw.Write(v); err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -171,9 +172,9 @@ func (t *NetRPCReq) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Cid[i] = c
 
 			}
+
 		}
 	}
-
 	// t.Data ([][]uint8) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -218,12 +219,12 @@ func (t *NetRPCReq) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Data[i] = make([]uint8, extra)
 			}
 
-			if _, err := io.ReadFull(cr, t.Data[i][:]); err != nil {
+			if _, err := io.ReadFull(cr, t.Data[i]); err != nil {
 				return err
 			}
+
 		}
 	}
-
 	return nil
 }
 
@@ -261,9 +262,10 @@ func (t *NetRPCResp) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Data[:]); err != nil {
+	if _, err := cw.Write(t.Data); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -335,9 +337,10 @@ func (t *NetRPCResp) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Data = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Data[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Data); err != nil {
 		return err
 	}
+
 	return nil
 }
 

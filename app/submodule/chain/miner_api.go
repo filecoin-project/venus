@@ -35,6 +35,7 @@ import (
 	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -374,24 +375,33 @@ func (msa *minerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi
 
 	return &types.MarketDeal{
 		Proposal: *proposal,
-		State:    *st,
+		State:    types.MakeDealState(st),
 	}, nil
+}
+
+func (msa *minerStateAPI) StateGetAllocationIdForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) {
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return verifreg.NoAllocationID, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	mas, err := view.LoadMarketState(ctx)
+	if err != nil {
+		return verifreg.NoAllocationID, fmt.Errorf("failed to load miner actor state: %v", err)
+	}
+
+	allocationID, err := mas.GetAllocationIdForPendingDeal(dealID)
+	if err != nil {
+		return verifreg.NoAllocationID, err
+	}
+
+	return allocationID, nil
 }
 
 // StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
 // pending allocation is not found.
 func (msa *minerStateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.Allocation, error) {
-	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
-	if err != nil {
-		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
-	}
-
-	st, err := view.LoadMarketState(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
-	}
-
-	allocationID, err := st.GetAllocationIdForPendingDeal(dealID)
+	allocationID, err := msa.StateGetAllocationIdForPendingDeal(ctx, dealID, tsk)
 	if err != nil {
 		return nil, err
 	}

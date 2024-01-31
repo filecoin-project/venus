@@ -15,6 +15,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -185,6 +186,8 @@ type IMinerState interface {
 	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
 	// pending allocation is not found.
 	StateGetAllocationForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.Allocation, error) //perm:read
+	// StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID
+	StateGetAllocationIdForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) //perm:read
 	// StateGetAllocation returns the allocation for a given address and allocation ID.
 	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationID types.AllocationId, tsk types.TipSetKey) (*types.Allocation, error) //perm:read
 	// StateGetAllocations returns the all the allocations for a given client.
