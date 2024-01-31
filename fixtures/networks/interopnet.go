@@ -9,7 +9,7 @@ import (
 )
 
 func InteropNet() *NetworkConf {
-	return &NetworkConf{
+	nc := &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
 				"/dns4/bootstrap-0.interop.fildev.network/tcp/1347/p2p/12D3KooWDpppr8csCNvEPnD2Z83KTPdBTM7iJhL66qK8LK3bB5NU",
@@ -68,4 +68,9 @@ func InteropNet() *NetworkConf {
 			ActorDebugging:          false,
 		},
 	}
+
+	nc.Network.ForkUpgradeParam.UpgradeMangoHeight = nc.Network.ForkUpgradeParam.UpgradePineappleHeight + 10
+	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradeMangoHeight] = config.DrandQuicknet
+
+	return nc
 }

@@ -9,7 +9,7 @@ import (
 )
 
 func ForceNet() *NetworkConf {
-	return &NetworkConf{
+	nc := &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{},
 
@@ -60,7 +60,7 @@ func ForceNet() *NetworkConf {
 				UpgradeWatermelonHeight:     -24,
 				UpgradeWatermelonFixHeight:  -100, // This fix upgrade only ran on calibrationnet
 				UpgradeWatermelonFix2Height: -101, // This fix upgrade only ran on calibrationnet
-				UpgradePineappleHeight:      200,
+				UpgradePineappleHeight:      20,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
 			AddressNetwork:          address.Testnet,
@@ -70,4 +70,8 @@ func ForceNet() *NetworkConf {
 			ActorDebugging:          true,
 		},
 	}
+	nc.Network.ForkUpgradeParam.UpgradeMangoHeight = nc.Network.ForkUpgradeParam.UpgradePineappleHeight + 10
+	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradeMangoHeight] = config.DrandQuicknet
+
+	return nc
 }

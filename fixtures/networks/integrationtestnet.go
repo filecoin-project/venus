@@ -9,7 +9,7 @@ import (
 )
 
 func IntegrationNet() *NetworkConf {
-	return &NetworkConf{
+	nc := &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{},
 			Period:    "30s",
@@ -63,4 +63,9 @@ func IntegrationNet() *NetworkConf {
 			ActorDebugging:          false,
 		},
 	}
+
+	nc.Network.ForkUpgradeParam.UpgradeMangoHeight = nc.Network.ForkUpgradeParam.UpgradePineappleHeight + 10
+	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradeMangoHeight] = config.DrandQuicknet
+
+	return nc
 }

@@ -343,7 +343,7 @@ func (cia *chainInfoAPI) GetEntry(ctx context.Context, height abi.ChainEpoch, ro
 
 // VerifyEntry verifies that child is a valid entry if its parent is.
 func (cia *chainInfoAPI) VerifyEntry(parent, child *types.BeaconEntry, height abi.ChainEpoch) bool {
-	return cia.chain.Drand.BeaconForEpoch(height).VerifyEntry(*parent, *child) != nil
+	return cia.chain.Drand.BeaconForEpoch(height).VerifyEntry(*parent, child.Data) != nil
 }
 
 // StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If

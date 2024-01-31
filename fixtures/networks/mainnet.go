@@ -10,7 +10,7 @@ import (
 )
 
 func Mainnet() *NetworkConf {
-	return &NetworkConf{
+	nc := &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
 				"/dns4/bootstrap-0.mainnet.filops.net/tcp/1347/p2p/12D3KooWCVe8MmsEMes2FzgTpt9fXtmCY7wrq91GRiaC8PHSCCBj",
@@ -83,4 +83,10 @@ func Mainnet() *NetworkConf {
 			ActorDebugging:          false,
 		},
 	}
+
+	// This epoch, 10 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
+	nc.Network.ForkUpgradeParam.UpgradeMangoHeight = nc.Network.ForkUpgradeParam.UpgradePineappleHeight + 10
+	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradeMangoHeight] = config.DrandQuicknet
+
+	return nc
 }
