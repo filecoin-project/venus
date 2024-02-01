@@ -410,13 +410,33 @@ func SetupStorageMiners(ctx context.Context,
 		// Commit sectors
 		{
 			for pi, preseal := range m.Sectors {
-				params := &minertypes.SectorPreCommitInfo{
-					SealProof:     preseal.ProofType,
-					SectorNumber:  preseal.SectorID,
-					SealedCID:     preseal.CommR,
-					SealRandEpoch: -1,
-					DealIDs:       []abi.DealID{minerInfos[i].dealIDs[pi]},
-					Expiration:    minerInfos[i].presealExp, // TODO: Allow setting externally!
+				var paramEnc []byte
+				var preCommitMethodNum abi.MethodNum
+				if nv >= network.Version22 {
+					paramEnc = mustEnc(&miner.PreCommitSectorBatchParams2{
+						Sectors: []miner.SectorPreCommitInfo{
+							{
+								SealProof:     preseal.ProofType,
+								SectorNumber:  preseal.SectorID,
+								SealedCID:     preseal.CommR,
+								SealRandEpoch: -1,
+								DealIDs:       []abi.DealID{minerInfos[i].dealIDs[pi]},
+								Expiration:    minerInfos[i].presealExp, // TODO: Allow setting externally!
+								UnsealedCid:   &preseal.CommD,
+							},
+						},
+					})
+					preCommitMethodNum = builtintypes.MethodsMiner.PreCommitSectorBatch2
+				} else {
+					paramEnc = mustEnc(&minertypes.SectorPreCommitInfo{
+						SealProof:     preseal.ProofType,
+						SectorNumber:  preseal.SectorID,
+						SealedCID:     preseal.CommR,
+						SealRandEpoch: -1,
+						DealIDs:       []abi.DealID{minerInfos[i].dealIDs[pi]},
+						Expiration:    minerInfos[i].presealExp, // TODO: Allow setting externally!
+					})
+					preCommitMethodNum = builtintypes.MethodsMiner.PreCommitSector
 				}
 
 				sectorWeight := minerInfos[i].sectorWeight[pi]
@@ -504,7 +524,7 @@ func SetupStorageMiners(ctx context.Context,
 				pledge = big.Add(pcd, pledge)
 
 				fmt.Println(types.FIL(pledge))
-				_, err = doExecValue(ctx, genesisVM, minerInfos[i].maddr, m.Worker, pledge, builtintypes.MethodsMiner.PreCommitSector, mustEnc(params))
+				_, err = doExecValue(ctx, genesisVM, minerInfos[i].maddr, m.Worker, pledge, preCommitMethodNum, paramEnc)
 				if err != nil {
 					return cid.Undef, fmt.Errorf("failed to confirm presealed sectors: %w", err)
 				}
