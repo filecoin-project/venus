@@ -220,10 +220,11 @@ type DirectDealParams struct {
 }
 
 type DirectDealParam struct {
-	// car file path
-	FilePath string
-	DealUUID uuid.UUID
+	// FilePath and PayloadSize cannot both be empty
+	FilePath    string
+	PayloadSize uint64
 
+	DealUUID     uuid.UUID
 	AllocationID uint64
 	PieceCID     cid.Cid
 	Client       address.Address

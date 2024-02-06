@@ -76,6 +76,7 @@ type DirectDealInfo struct {
 	Provider     address.Address
 	Offset       abi.PaddedPieceSize
 	Length       abi.PaddedPieceSize
+	PayloadSize  uint64
 	StartEpoch   abi.ChainEpoch
 	EndEpoch     abi.ChainEpoch
 }

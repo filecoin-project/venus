@@ -265,6 +265,7 @@ Response:
     "Provider": "f01234",
     "Offset": 1032,
     "Length": 1032,
+    "PayloadSize": 42,
     "StartEpoch": 10101,
     "EndEpoch": 10101
   }
@@ -1210,6 +1211,7 @@ Inputs:
     "DealParams": [
       {
         "FilePath": "string value",
+        "PayloadSize": 42,
         "DealUUID": "07070707-0707-0707-0707-070707070707",
         "AllocationID": 42,
         "PieceCID": {
