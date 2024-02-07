@@ -152,19 +152,19 @@ func (mr *MockIMarketMockRecorder) AddS3PieceStorage(arg0, arg1, arg2, arg3, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddS3PieceStorage", reflect.TypeOf((*MockIMarket)(nil).AddS3PieceStorage), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 }
 
-// AssignDirectDeals mocks base method.
-func (m *MockIMarket) AssignDirectDeals(arg0 context.Context, arg1 abi.SectorID, arg2 abi.SectorSize, arg3 *market.GetDealSpec) ([]*market.DirectDealInfo, error) {
+// AssignDeals mocks base method.
+func (m *MockIMarket) AssignDeals(arg0 context.Context, arg1 abi.SectorID, arg2 abi.SectorSize, arg3 *market.GetDealSpec) ([]*market.DealInfoV2, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AssignDirectDeals", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].([]*market.DirectDealInfo)
+	ret := m.ctrl.Call(m, "AssignDeals", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]*market.DealInfoV2)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// AssignDirectDeals indicates an expected call of AssignDirectDeals.
-func (mr *MockIMarketMockRecorder) AssignDirectDeals(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+// AssignDeals indicates an expected call of AssignDeals.
+func (mr *MockIMarketMockRecorder) AssignDeals(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AssignDirectDeals", reflect.TypeOf((*MockIMarket)(nil).AssignDirectDeals), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AssignDeals", reflect.TypeOf((*MockIMarket)(nil).AssignDeals), arg0, arg1, arg2, arg3)
 }
 
 // AssignUnPackedDeals mocks base method.

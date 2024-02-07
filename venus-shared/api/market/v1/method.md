@@ -14,7 +14,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [ActorUpsert](#actorupsert)
   * [AddFsPieceStorage](#addfspiecestorage)
   * [AddS3PieceStorage](#adds3piecestorage)
-  * [AssignDirectDeals](#assigndirectdeals)
+  * [AssignDeals](#assigndeals)
   * [AssignUnPackedDeals](#assignunpackeddeals)
   * [DagstoreDestroyShard](#dagstoredestroyshard)
   * [DagstoreGC](#dagstoregc)
@@ -226,7 +226,7 @@ Inputs:
 
 Response: `{}`
 
-### AssignDirectDeals
+### AssignDeals
 
 
 Perms: read
@@ -256,6 +256,10 @@ Response:
 ```json
 [
   {
+    "DealID": 5432,
+    "PublishCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "AllocationID": 0,
     "PieceCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"

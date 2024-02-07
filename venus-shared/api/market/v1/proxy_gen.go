@@ -30,7 +30,7 @@ type IMarketStruct struct {
 		ActorUpsert                             func(context.Context, market.User) (bool, error)                                                                                                                                                    `perm:"admin"`
 		AddFsPieceStorage                       func(ctx context.Context, name string, path string, readonly bool) error                                                                                                                            `perm:"admin"`
 		AddS3PieceStorage                       func(ctx context.Context, name, endpoit, bucket, subdir, accessKey, secretKey, token string, readonly bool) error                                                                                   `perm:"admin"`
-		AssignDirectDeals                       func(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DirectDealInfo, error)                                                                       `perm:"read"`
+		AssignDeals                             func(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoV2, error)                                                                           `perm:"read"`
 		AssignUnPackedDeals                     func(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                  `perm:"write"`
 		DagstoreDestroyShard                    func(ctx context.Context, key string) error                                                                                                                                                         `perm:"admin"`
 		DagstoreGC                              func(ctx context.Context) ([]market.DagstoreShardResult, error)                                                                                                                                     `perm:"admin"`
@@ -150,8 +150,8 @@ func (s *IMarketStruct) AddFsPieceStorage(p0 context.Context, p1 string, p2 stri
 func (s *IMarketStruct) AddS3PieceStorage(p0 context.Context, p1, p2, p3, p4, p5, p6, p7 string, p8 bool) error {
 	return s.Internal.AddS3PieceStorage(p0, p1, p2, p3, p4, p5, p6, p7, p8)
 }
-func (s *IMarketStruct) AssignDirectDeals(p0 context.Context, p1 abi.SectorID, p2 abi.SectorSize, p3 *market.GetDealSpec) ([]*market.DirectDealInfo, error) {
-	return s.Internal.AssignDirectDeals(p0, p1, p2, p3)
+func (s *IMarketStruct) AssignDeals(p0 context.Context, p1 abi.SectorID, p2 abi.SectorSize, p3 *market.GetDealSpec) ([]*market.DealInfoV2, error) {
+	return s.Internal.AssignDeals(p0, p1, p2, p3)
 }
 func (s *IMarketStruct) AssignUnPackedDeals(p0 context.Context, p1 abi.SectorID, p2 abi.SectorSize, p3 *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) {
 	return s.Internal.AssignUnPackedDeals(p0, p1, p2, p3)

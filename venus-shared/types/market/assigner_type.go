@@ -68,6 +68,27 @@ type DealInfoIncludePath struct {
 	PublishCid      cid.Cid
 }
 
+type DealInfoV2 struct {
+	DealID     abi.DealID
+	PublishCid cid.Cid
+
+	AllocationID types.AllocationId
+
+	PieceCID    cid.Cid
+	PieceSize   abi.PaddedPieceSize
+	Client      address.Address
+	Provider    address.Address
+	Offset      abi.PaddedPieceSize
+	Length      abi.PaddedPieceSize
+	PayloadSize uint64
+	StartEpoch  abi.ChainEpoch
+	EndEpoch    abi.ChainEpoch
+}
+
+func (d *DealInfoV2) IsBuiltinMarket() bool {
+	return d.PublishCid.Defined()
+}
+
 type DirectDealInfo struct {
 	AllocationID types.AllocationId
 	PieceCID     cid.Cid

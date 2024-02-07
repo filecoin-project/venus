@@ -166,7 +166,7 @@ type IMarket interface {
 	ReleaseDeals(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                                //perm:write
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                     //perm:read
 	UpdateStorageDealStatus(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState market.PieceStatus) error //perm:write
-	AssignDirectDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DirectDealInfo, error)        //perm:read
+	AssignDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoV2, error)                  //perm:read
 	ReleaseDirectDeals(ctx context.Context, miner address.Address, allocationIDs []types.AllocationId) error                                          //perm:write
 	// market event
 	ResponseMarketEvent(ctx context.Context, resp *gateway.ResponseEvent) error                                        //perm:read
