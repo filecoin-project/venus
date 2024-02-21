@@ -33,7 +33,7 @@ func (t *SimpleParams) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Name (string) (string)
-	if len(t.Name) > cbg.MaxLength {
+	if len(t.Name) > 8192 {
 		return xerrors.Errorf("Value in field t.Name was too long")
 	}
 
@@ -72,7 +72,7 @@ func (t *SimpleParams) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Name (string) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
