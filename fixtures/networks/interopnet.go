@@ -58,7 +58,7 @@ func InteropNet() *NetworkConf {
 				UpgradeWatermelonHeight:     -24,
 				UpgradeWatermelonFixHeight:  -100, // This fix upgrade only ran on calibrationnet
 				UpgradeWatermelonFix2Height: -101, // This fix upgrade only ran on calibrationnet
-				UpgradePineappleHeight:      50,
+				UpgradeDragonHeight:         50,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,
@@ -69,8 +69,8 @@ func InteropNet() *NetworkConf {
 		},
 	}
 
-	nc.Network.ForkUpgradeParam.UpgradeMangoHeight = nc.Network.ForkUpgradeParam.UpgradePineappleHeight + 10
-	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradeMangoHeight] = config.DrandQuicknet
+	nc.Network.ForkUpgradeParam.UpgradePhoenixHeight = nc.Network.ForkUpgradeParam.UpgradeDragonHeight + 100
+	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
 
 	return nc
 }

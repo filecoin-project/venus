@@ -414,7 +414,7 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			Migration: cf.buildUpgradeActorsV12MinerFix(calibnetv12BuggyMinerCID2, calibnetv12CorrectManifestCID1),
 		},
 		{
-			Height:    upgradeHeight.UpgradePineappleHeight,
+			Height:    upgradeHeight.UpgradeDragonHeight,
 			Network:   network.Version22,
 			Migration: cf.UpgradeActorsV13,
 			PreMigrations: []PreMigration{{
