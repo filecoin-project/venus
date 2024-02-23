@@ -375,8 +375,8 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeWatermelonFixHeight: -1,
 	// This fix upgrade only ran on calibrationnet
 	UpgradeWatermelonFix2Height: -2,
-	UpgradeDragonHeight:         999999999999,
-	UpgradePhoenixHeight:        1999999999999,
+	UpgradeDragonHeight:         3792000,
+	UpgradePhoenixHeight:        3792000 + 120,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
