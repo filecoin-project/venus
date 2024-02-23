@@ -110,6 +110,12 @@ func (s *state5) GetAllocations(clientIdAddr address.Address) (map[AllocationId]
 
 }
 
+func (s *state5) GetAllAllocations() (map[AllocationId]Allocation, error) {
+
+	return nil, fmt.Errorf("unsupported in actors v5")
+
+}
+
 func (s *state5) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
 
 	return nil, false, fmt.Errorf("unsupported in actors v5")
@@ -117,6 +123,12 @@ func (s *state5) GetClaim(providerIdAddr address.Address, claimId verifreg9.Clai
 }
 
 func (s *state5) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
+
+	return nil, fmt.Errorf("unsupported in actors v5")
+
+}
+
+func (s *state5) GetAllClaims() (map[ClaimId]Claim, error) {
 
 	return nil, fmt.Errorf("unsupported in actors v5")
 

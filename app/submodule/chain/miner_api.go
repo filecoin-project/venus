@@ -432,7 +432,7 @@ func (msa *minerStateAPI) StateGetAllocation(ctx context.Context, clientAddr add
 
 	st, err := view.LoadVerifregActor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+		return nil, fmt.Errorf("failed to load verifreg actor state: %v", err)
 	}
 
 	allocation, found, err := st.GetAllocation(idAddr, allocationID)
@@ -444,6 +444,25 @@ func (msa *minerStateAPI) StateGetAllocation(ctx context.Context, clientAddr add
 	}
 
 	return allocation, nil
+}
+
+func (msa *minerStateAPI) StateGetAllAllocations(ctx context.Context, tsk types.TipSetKey) (map[types.AllocationId]types.Allocation, error) {
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load verifreg actor state: %v", err)
+	}
+
+	allocations, err := st.GetAllAllocations()
+	if err != nil {
+		return nil, fmt.Errorf("getting all allocations: %w", err)
+	}
+
+	return allocations, nil
 }
 
 // StateGetAllocations returns the all the allocations for a given client.
@@ -460,7 +479,7 @@ func (msa *minerStateAPI) StateGetAllocations(ctx context.Context, clientAddr ad
 
 	st, err := view.LoadVerifregActor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+		return nil, fmt.Errorf("failed to load verifreg actor state: %v", err)
 	}
 
 	allocations, err := st.GetAllocations(idAddr)
@@ -485,7 +504,7 @@ func (msa *minerStateAPI) StateGetClaim(ctx context.Context, providerAddr addres
 
 	st, err := view.LoadVerifregActor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+		return nil, fmt.Errorf("failed to load verifreg actor state: %v", err)
 	}
 
 	claim, found, err := st.GetClaim(idAddr, claimID)
@@ -513,12 +532,31 @@ func (msa *minerStateAPI) StateGetClaims(ctx context.Context, providerAddr addre
 
 	st, err := view.LoadVerifregActor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+		return nil, fmt.Errorf("failed to load verifreg actor state: %v", err)
 	}
 
 	claims, err := st.GetClaims(idAddr)
 	if err != nil {
 		return nil, fmt.Errorf("getting claims: %w", err)
+	}
+
+	return claims, nil
+}
+
+func (msa *minerStateAPI) StateGetAllClaims(ctx context.Context, tsk types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load verifreg actor state: %v", err)
+	}
+
+	claims, err := st.GetAllClaims()
+	if err != nil {
+		return nil, fmt.Errorf("getting all claims: %w", err)
 	}
 
 	return claims, nil

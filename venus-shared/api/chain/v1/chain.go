@@ -190,12 +190,16 @@ type IMinerState interface {
 	StateGetAllocationIdForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) //perm:read
 	// StateGetAllocation returns the allocation for a given address and allocation ID.
 	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationID types.AllocationId, tsk types.TipSetKey) (*types.Allocation, error) //perm:read
+	// StateGetAllAllocations returns the all the allocations available in verified registry actor.
+	StateGetAllAllocations(ctx context.Context, tsk types.TipSetKey) (map[types.AllocationId]types.Allocation, error) //perm:read
 	// StateGetAllocations returns the all the allocations for a given client.
 	StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[types.AllocationId]types.Allocation, error) //perm:read
 	// StateGetClaim returns the claim for a given address and claim ID.
 	StateGetClaim(ctx context.Context, providerAddr address.Address, claimID types.ClaimId, tsk types.TipSetKey) (*types.Claim, error) //perm:read
 	// StateGetClaims returns the all the claims for a given provider.
 	StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[types.ClaimId]types.Claim, error) //perm:read
+	// StateGetAllClaims returns the all the claims available in verified registry actor.
+	StateGetAllClaims(ctx context.Context, tsk types.TipSetKey) (map[types.ClaimId]types.Claim, error) //perm:read
 	// StateComputeDataCID computes DataCID from a set of on-chain deals
 	StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) //perm:read
 	StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci types.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)           //perm:read
