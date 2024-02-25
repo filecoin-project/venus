@@ -30,7 +30,7 @@ type IMarketStruct struct {
 		ActorUpsert                             func(context.Context, market.User) (bool, error)                                                                                                                                                    `perm:"admin"`
 		AddFsPieceStorage                       func(ctx context.Context, name string, path string, readonly bool) error                                                                                                                            `perm:"admin"`
 		AddS3PieceStorage                       func(ctx context.Context, name, endpoit, bucket, subdir, accessKey, secretKey, token string, readonly bool) error                                                                                   `perm:"admin"`
-		AssignDeals                             func(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoV2, error)                                                                           `perm:"read"`
+		AssignDeals                             func(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoV2, error)                                                                           `perm:"write"`
 		AssignUnPackedDeals                     func(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                  `perm:"write"`
 		DagstoreDestroyShard                    func(ctx context.Context, key string) error                                                                                                                                                         `perm:"admin"`
 		DagstoreGC                              func(ctx context.Context) ([]market.DagstoreShardResult, error)                                                                                                                                     `perm:"admin"`
@@ -66,7 +66,7 @@ type IMarketStruct struct {
 		DealsSetPublishMsgPeriod                func(context.Context, address.Address, time.Duration) error                                                                                                                                         `perm:"write"`
 		GetDeals                                func(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*market.DealInfo, error)                                                                                               `perm:"read"`
 		GetDirectDeal                           func(ctx context.Context, id uuid.UUID) (*market.DirectDeal, error)                                                                                                                                 `perm:"read"`
-		GetDirectDealByAllocatinoID             func(ctx context.Context, id uint64) (*market.DirectDeal, error)                                                                                                                                    `perm:"read"`
+		GetDirectDealByAllocationID             func(ctx context.Context, id types.AllocationId) (*market.DirectDeal, error)                                                                                                                        `perm:"read"`
 		GetRetrievalDealStatistic               func(ctx context.Context, miner address.Address) (*market.RetrievalDealStatistic, error)                                                                                                            `perm:"read"`
 		GetStorageDealStatistic                 func(ctx context.Context, miner address.Address) (*market.StorageDealStatistic, error)                                                                                                              `perm:"read"`
 		GetUnPackedDeals                        func(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                                   `perm:"read"`
@@ -258,8 +258,8 @@ func (s *IMarketStruct) GetDeals(p0 context.Context, p1 address.Address, p2, p3 
 func (s *IMarketStruct) GetDirectDeal(p0 context.Context, p1 uuid.UUID) (*market.DirectDeal, error) {
 	return s.Internal.GetDirectDeal(p0, p1)
 }
-func (s *IMarketStruct) GetDirectDealByAllocatinoID(p0 context.Context, p1 uint64) (*market.DirectDeal, error) {
-	return s.Internal.GetDirectDealByAllocatinoID(p0, p1)
+func (s *IMarketStruct) GetDirectDealByAllocationID(p0 context.Context, p1 types.AllocationId) (*market.DirectDeal, error) {
+	return s.Internal.GetDirectDealByAllocationID(p0, p1)
 }
 func (s *IMarketStruct) GetRetrievalDealStatistic(p0 context.Context, p1 address.Address) (*market.RetrievalDealStatistic, error) {
 	return s.Internal.GetRetrievalDealStatistic(p0, p1)

@@ -50,7 +50,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [DealsSetPublishMsgPeriod](#dealssetpublishmsgperiod)
   * [GetDeals](#getdeals)
   * [GetDirectDeal](#getdirectdeal)
-  * [GetDirectDealByAllocatinoID](#getdirectdealbyallocatinoid)
+  * [GetDirectDealByAllocationID](#getdirectdealbyallocationid)
   * [GetRetrievalDealStatistic](#getretrievaldealstatistic)
   * [GetStorageDealStatistic](#getstoragedealstatistic)
   * [GetUnPackedDeals](#getunpackeddeals)
@@ -229,7 +229,7 @@ Response: `{}`
 ### AssignDeals
 
 
-Perms: read
+Perms: write
 
 Inputs:
 ```json
@@ -1055,7 +1055,7 @@ Response:
 }
 ```
 
-### GetDirectDealByAllocatinoID
+### GetDirectDealByAllocationID
 
 
 Perms: read
@@ -1063,7 +1063,7 @@ Perms: read
 Inputs:
 ```json
 [
-  42
+  0
 ]
 ```
 

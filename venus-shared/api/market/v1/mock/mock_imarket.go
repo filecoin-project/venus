@@ -676,19 +676,19 @@ func (mr *MockIMarketMockRecorder) GetDirectDeal(arg0, arg1 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDirectDeal", reflect.TypeOf((*MockIMarket)(nil).GetDirectDeal), arg0, arg1)
 }
 
-// GetDirectDealByAllocatinoID mocks base method.
-func (m *MockIMarket) GetDirectDealByAllocatinoID(arg0 context.Context, arg1 uint64) (*market.DirectDeal, error) {
+// GetDirectDealByAllocationID mocks base method.
+func (m *MockIMarket) GetDirectDealByAllocationID(arg0 context.Context, arg1 verifreg.AllocationId) (*market.DirectDeal, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDirectDealByAllocatinoID", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetDirectDealByAllocationID", arg0, arg1)
 	ret0, _ := ret[0].(*market.DirectDeal)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetDirectDealByAllocatinoID indicates an expected call of GetDirectDealByAllocatinoID.
-func (mr *MockIMarketMockRecorder) GetDirectDealByAllocatinoID(arg0, arg1 interface{}) *gomock.Call {
+// GetDirectDealByAllocationID indicates an expected call of GetDirectDealByAllocationID.
+func (mr *MockIMarketMockRecorder) GetDirectDealByAllocationID(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDirectDealByAllocatinoID", reflect.TypeOf((*MockIMarket)(nil).GetDirectDealByAllocatinoID), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDirectDealByAllocationID", reflect.TypeOf((*MockIMarket)(nil).GetDirectDealByAllocationID), arg0, arg1)
 }
 
 // GetRetrievalDealStatistic mocks base method.

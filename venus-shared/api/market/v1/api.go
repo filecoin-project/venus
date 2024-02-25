@@ -166,7 +166,7 @@ type IMarket interface {
 	ReleaseDeals(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                                //perm:write
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                     //perm:read
 	UpdateStorageDealStatus(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState market.PieceStatus) error //perm:write
-	AssignDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoV2, error)                  //perm:read
+	AssignDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoV2, error)                  //perm:write
 	ReleaseDirectDeals(ctx context.Context, miner address.Address, allocationIDs []types.AllocationId) error                                          //perm:write
 	// market event
 	ResponseMarketEvent(ctx context.Context, resp *gateway.ResponseEvent) error                                        //perm:read
@@ -194,8 +194,8 @@ type IMarket interface {
 	// ImportDirectDeal import direct deals
 	ImportDirectDeal(ctx context.Context, deal *market.DirectDealParams) error                                   //perm:write
 	GetDirectDeal(ctx context.Context, id uuid.UUID) (*market.DirectDeal, error)                                 //perm:read
+	GetDirectDealByAllocationID(ctx context.Context, id types.AllocationId) (*market.DirectDeal, error)          //perm:read
 	ListDirectDeals(ctx context.Context, queryParams market.DirectDealQueryParams) ([]*market.DirectDeal, error) //perm:read
-	GetDirectDealByAllocatinoID(ctx context.Context, id uint64) (*market.DirectDeal, error)                      //perm:read
 
 	api.Version
 }
