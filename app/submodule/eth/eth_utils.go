@@ -362,28 +362,12 @@ func parseEthRevert(ret []byte) string {
 //  3. Otherwise, we fall back to returning a masked ID Ethereum address. If the supplied address is an f0 address, we
 //     use that ID to form the masked ID address.
 //  4. Otherwise, we fetch the actor's ID from the state tree and form the masked ID with it.
+//
+// If the actor doesn't exist in the state-tree but we have its ID, we use a masked ID address. It could have been deleted.
 func lookupEthAddress(ctx context.Context, addr address.Address, ca v1.IChain) (types.EthAddress, error) {
-	// BLOCK A: We are trying to get an actual Ethereum address from an f410 address.
 	// Attempt to convert directly, if it's an f4 address.
 	ethAddr, err := types.EthAddressFromFilecoinAddress(addr)
 	if err == nil && !ethAddr.IsMaskedID() {
-		return ethAddr, nil
-	}
-
-	// Lookup on the target actor and try to get an f410 address.
-	actor, err := ca.StateGetActor(ctx, addr, types.EmptyTSK)
-	if err != nil {
-		return types.EthAddress{}, err
-	}
-	if actor.Address != nil {
-		if ethAddr, err := types.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
-			return ethAddr, nil
-		}
-	}
-
-	// BLOCK B: We gave up on getting an actual Ethereum address and are falling back to a Masked ID address.
-	// Check if we already have an ID addr, and use it if possible.
-	if err == nil && ethAddr.IsMaskedID() {
 		return ethAddr, nil
 	}
 
@@ -392,6 +376,21 @@ func lookupEthAddress(ctx context.Context, addr address.Address, ca v1.IChain) (
 	if err != nil {
 		return types.EthAddress{}, err
 	}
+
+	// Lookup on the target actor and try to get an f410 address.
+	if actor, err := ca.GetActor(ctx, idAddr); errors.Is(err, types.ErrActorNotFound) {
+		// Not found -> use a masked ID address
+	} else if err != nil {
+		// Any other error -> fail.
+		return types.EthAddress{}, err
+	} else if actor.Address == nil {
+		// No delegated address -> use masked ID address.
+	} else if ethAddr, err := types.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
+		// Conversable into an eth address, use it.
+		return ethAddr, nil
+	}
+
+	// Otherwise, use the masked address.
 	return types.EthAddressFromFilecoinAddress(idAddr)
 }
 
