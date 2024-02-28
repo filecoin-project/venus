@@ -469,7 +469,7 @@ type ForkUpgradeParams struct {
 	UpgradeLightningHeight   abi.ChainEpoch
 	UpgradeThunderHeight     abi.ChainEpoch
 	UpgradeWatermelonHeight  abi.ChainEpoch
-	UpgradePineappleHeight   abi.ChainEpoch
+	UpgradeDragonHeight      abi.ChainEpoch
 	UpgradePhoenixHeight     abi.ChainEpoch
 }
 

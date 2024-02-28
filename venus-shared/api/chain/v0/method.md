@@ -1659,7 +1659,7 @@ Response:
     "UpgradeLightningHeight": 10101,
     "UpgradeThunderHeight": 10101,
     "UpgradeWatermelonHeight": 10101,
-    "UpgradePineappleHeight": 10101,
+    "UpgradeDragonHeight": 10101,
     "UpgradePhoenixHeight": 10101
   },
   "Eip155ChainID": 123

@@ -384,11 +384,11 @@ func traceNativeCreate(env *environment, addr []int, et *types.ExecutionTrace) (
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to decode init params after a successful Init.Exec call: %w", err)
 		}
-		actorId, err := address.IDFromAddress(initReturn.IDAddress)
+		actorID, err := address.IDFromAddress(initReturn.IDAddress)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to extract created actor ID from address: %w", err)
 		}
-		ethAddr := types.EthAddressFromActorID(abi.ActorID(actorId))
+		ethAddr := types.EthAddressFromActorID(abi.ActorID(actorID))
 		createdAddr = &ethAddr
 	}
 

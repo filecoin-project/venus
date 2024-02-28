@@ -1728,7 +1728,7 @@ Response:
     "UpgradeLightningHeight": 10101,
     "UpgradeThunderHeight": 10101,
     "UpgradeWatermelonHeight": 10101,
-    "UpgradePineappleHeight": 10101,
+    "UpgradeDragonHeight": 10101,
     "UpgradePhoenixHeight": 10101
   },
   "Eip155ChainID": 123
@@ -2914,8 +2914,6 @@ Response: `false`
 ### EthTraceBlock
 TraceAPI related methods
 
-Returns traces created at given block
-
 
 Perms: read
 
@@ -2930,23 +2928,14 @@ Response:
 ```json
 [
   {
-    "action": {
-      "callType": "string value",
-      "from": "0x0707070707070707070707070707070707070707",
-      "to": "0x0707070707070707070707070707070707070707",
-      "gas": "0x5",
-      "input": "0x07",
-      "value": "0x0"
-    },
-    "result": {
-      "gasUsed": "0x5",
-      "output": "0x07"
-    },
+    "type": "string value",
+    "error": "string value",
     "subtraces": 123,
     "traceAddress": [
       123
     ],
-    "Type": "string value",
+    "action": {},
+    "result": {},
     "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
     "blockNumber": 9,
     "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
@@ -2979,23 +2968,14 @@ Response:
     "stateDiff": "string value",
     "trace": [
       {
-        "action": {
-          "callType": "string value",
-          "from": "0x0707070707070707070707070707070707070707",
-          "to": "0x0707070707070707070707070707070707070707",
-          "gas": "0x5",
-          "input": "0x07",
-          "value": "0x0"
-        },
-        "result": {
-          "gasUsed": "0x5",
-          "output": "0x07"
-        },
+        "type": "string value",
+        "error": "string value",
         "subtraces": 123,
         "traceAddress": [
           123
         ],
-        "Type": "string value"
+        "action": {},
+        "result": {}
       }
     ],
     "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",

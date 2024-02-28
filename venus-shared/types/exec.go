@@ -18,7 +18,7 @@ type GasTrace struct {
 }
 
 type ActorTrace struct {
-	Id    abi.ActorID
+	Id    abi.ActorID // nolint
 	State Actor
 }
 
