@@ -155,6 +155,7 @@ func init() {
 		Msg:    ExampleValue("init", reflect.TypeOf(types.MessageTrace{}), nil).(types.MessageTrace),
 		MsgRct: ExampleValue("init", reflect.TypeOf(types.ReturnTrace{}), nil).(types.ReturnTrace),
 	})
+	addExample(abi.ActorID(1000))
 	addExample(map[string]types.Actor{
 		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
 	})

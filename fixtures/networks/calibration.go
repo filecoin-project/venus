@@ -23,6 +23,9 @@ func Calibration() *NetworkConf {
 				"/dns4/bootstrap-2.calibration.fildev.network/tcp/1347/p2p/12D3KooWNRxTHUn8bf7jz1KEUPMc2dMgGfa4f8ZJTsquVSn3vHCG",
 				"/dns4/bootstrap-3.calibration.fildev.network/tcp/1347/p2p/12D3KooWFWUqE9jgXvcKHWieYs9nhyp6NF4ftwLGAHm4sCv73jjK",
 				"/dns4/calibration.node.glif.io/tcp/1237/p2p/12D3KooWQPYouEAsUQKzvFUA9sQ8tz4rfpqtTzh2eL6USd9bwg7x",
+				"/dns4/bootstrap-calibnet-0.chainsafe-fil.io/tcp/34000/p2p/12D3KooWABQ5gTDHPWyvhJM7jPhtNwNJruzTEo32Lo4gcS5ABAMm",
+				"/dns4/bootstrap-calibnet-1.chainsafe-fil.io/tcp/34000/p2p/12D3KooWS3ZRhMYL67b4bD5XQ6fcpTyVQXnDe8H89LvwrDqaSbiT",
+				"/dns4/bootstrap-calibnet-2.chainsafe-fil.io/tcp/34000/p2p/12D3KooWEiBN8jBX8EBoM3M47pVRLRWV812gDRUJhMxgyVkUoR48",
 			},
 			Period: "30s",
 		},
@@ -66,7 +69,7 @@ func Calibration() *NetworkConf {
 				UpgradeWatermelonHeight:     1013134,       // 2023-10-19T13:00:00Z
 				UpgradeWatermelonFixHeight:  1070494,       // 2023-11-07T13:00:00Z
 				UpgradeWatermelonFix2Height: 1108174,       // 2023-11-21T13:00:00Z
-				UpgradePineappleHeight:      999999999999999,
+				UpgradeDragonHeight:         1413574,       // 2024-03-06T14:00:00Z
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,
@@ -77,8 +80,8 @@ func Calibration() *NetworkConf {
 		},
 	}
 
-	nc.Network.ForkUpgradeParam.UpgradeMangoHeight = nc.Network.ForkUpgradeParam.UpgradePineappleHeight + 10
-	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradeMangoHeight] = config.DrandQuicknet
+	nc.Network.ForkUpgradeParam.UpgradePhoenixHeight = nc.Network.ForkUpgradeParam.UpgradeDragonHeight + 120
+	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
 
 	return nc
 }

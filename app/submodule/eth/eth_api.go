@@ -1107,19 +1107,21 @@ func (a *ethAPI) EthTraceBlock(ctx context.Context, blkNum string) ([]*types.Eth
 			return nil, fmt.Errorf("failed to get transaction hash by cid: %w", err)
 		}
 		if txHash == nil {
-			log.Warnf("cannot find transaction hash for cid %s", ir.MsgCid)
-			continue
+			return nil, fmt.Errorf("cannot find transaction hash for cid %s", ir.MsgCid)
 		}
 
-		traces := []*types.EthTrace{}
-		err = buildTraces(ctx, &traces, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()), a.chain)
+		env, err := baseEnvironment(ctx, ir.Msg.From, a.chain)
 		if err != nil {
-			return nil, fmt.Errorf("failed building traces: %w", err)
+			return nil, fmt.Errorf("when processing message %s: %w", ir.MsgCid, err)
 		}
 
-		traceBlocks := make([]*types.EthTraceBlock, 0, len(traces))
-		for _, trace := range traces {
-			traceBlocks = append(traceBlocks, &types.EthTraceBlock{
+		err = buildTraces(env, []int{}, &ir.ExecutionTrace)
+		if err != nil {
+			return nil, fmt.Errorf("failed building traces for msg %s: %w", ir.MsgCid, err)
+		}
+
+		for _, trace := range env.traces {
+			allTraces = append(allTraces, &types.EthTraceBlock{
 				EthTrace:            trace,
 				BlockHash:           blkHash,
 				BlockNumber:         int64(ts.Height()),
@@ -1127,8 +1129,6 @@ func (a *ethAPI) EthTraceBlock(ctx context.Context, blkNum string) ([]*types.Eth
 				TransactionPosition: msgIdx,
 			})
 		}
-
-		allTraces = append(allTraces, traceBlocks...)
 	}
 
 	return allTraces, nil
@@ -1161,34 +1161,36 @@ func (a *ethAPI) EthTraceReplayBlockTransactions(ctx context.Context, blkNum str
 			return nil, fmt.Errorf("failed to get transaction hash by cid: %w", err)
 		}
 		if txHash == nil {
-			log.Warnf("cannot find transaction hash for cid %s", ir.MsgCid)
-			continue
+			return nil, fmt.Errorf("cannot find transaction hash for cid %s", ir.MsgCid)
 		}
 
-		var output types.EthBytes
-		invokeCreateOnEAM := ir.Msg.To == builtin.EthereumAddressManagerActorAddr && (ir.Msg.Method == builtin.MethodsEAM.Create || ir.Msg.Method == builtin.MethodsEAM.Create2)
-		if ir.Msg.Method == builtin.MethodsEVM.InvokeContract || invokeCreateOnEAM {
-			output, err = decodePayload(ir.ExecutionTrace.MsgRct.Return, ir.ExecutionTrace.MsgRct.ReturnCodec)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decode payload: %w", err)
+		env, err := baseEnvironment(ctx, ir.Msg.From, a.chain)
+		if err != nil {
+			return nil, fmt.Errorf("when processing message %s: %w", ir.MsgCid, err)
+		}
+
+		err = buildTraces(env, []int{}, &ir.ExecutionTrace)
+		if err != nil {
+			return nil, fmt.Errorf("failed building traces for msg %s: %w", ir.MsgCid, err)
+		}
+
+		var output []byte
+		if len(env.traces) > 0 {
+			switch r := env.traces[0].Result.(type) {
+			case *types.EthCallTraceResult:
+				output = r.Output
+			case *types.EthCreateTraceResult:
+				output = r.Code
 			}
-		} else {
-			output = encodeFilecoinReturnAsABI(ir.ExecutionTrace.MsgRct.ExitCode, ir.ExecutionTrace.MsgRct.ReturnCodec, ir.ExecutionTrace.MsgRct.Return)
 		}
 
-		t := types.EthTraceReplayBlockTransaction{
+		allTraces = append(allTraces, &types.EthTraceReplayBlockTransaction{
 			Output:          output,
 			TransactionHash: *txHash,
+			Trace:           env.traces,
 			StateDiff:       nil,
 			VMTrace:         nil,
-		}
-
-		err = buildTraces(ctx, &t.Trace, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()), a.chain)
-		if err != nil {
-			return nil, fmt.Errorf("failed building traces: %w", err)
-		}
-
-		allTraces = append(allTraces, &t)
+		})
 	}
 
 	return allTraces, nil

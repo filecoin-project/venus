@@ -85,6 +85,8 @@ type IMinerStateStruct struct {
 		StateDealProviderCollateralBounds  func(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (types.DealCollateralBounds, error)                    `perm:"read"`
 		StateDecodeParams                  func(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error)               `perm:"read"`
 		StateEncodeParams                  func(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error)                                     `perm:"read"`
+		StateGetAllAllocations             func(ctx context.Context, tsk types.TipSetKey) (map[types.AllocationId]types.Allocation, error)                                                `perm:"read"`
+		StateGetAllClaims                  func(ctx context.Context, tsk types.TipSetKey) (map[types.ClaimId]types.Claim, error)                                                          `perm:"read"`
 		StateGetAllocation                 func(ctx context.Context, clientAddr address.Address, allocationID types.AllocationId, tsk types.TipSetKey) (*types.Allocation, error)         `perm:"read"`
 		StateGetAllocationForPendingDeal   func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.Allocation, error)                                                   `perm:"read"`
 		StateGetAllocationIdForPendingDeal func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error)                                               `perm:"read"`
@@ -146,6 +148,12 @@ func (s *IMinerStateStruct) StateDecodeParams(p0 context.Context, p1 address.Add
 }
 func (s *IMinerStateStruct) StateEncodeParams(p0 context.Context, p1 cid.Cid, p2 abi.MethodNum, p3 json.RawMessage) ([]byte, error) {
 	return s.Internal.StateEncodeParams(p0, p1, p2, p3)
+}
+func (s *IMinerStateStruct) StateGetAllAllocations(p0 context.Context, p1 types.TipSetKey) (map[types.AllocationId]types.Allocation, error) {
+	return s.Internal.StateGetAllAllocations(p0, p1)
+}
+func (s *IMinerStateStruct) StateGetAllClaims(p0 context.Context, p1 types.TipSetKey) (map[types.ClaimId]types.Claim, error) {
+	return s.Internal.StateGetAllClaims(p0, p1)
 }
 func (s *IMinerStateStruct) StateGetAllocation(p0 context.Context, p1 address.Address, p2 types.AllocationId, p3 types.TipSetKey) (*types.Allocation, error) {
 	return s.Internal.StateGetAllocation(p0, p1, p2, p3)

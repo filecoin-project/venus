@@ -57,6 +57,7 @@ func main() {
 				types.Event{},
 				types.EventEntry{},
 				types.GasTrace{},
+				types.ActorTrace{},
 				types.MessageTrace{},
 				types.ReturnTrace{},
 				types.ExecutionTrace{},
