@@ -104,6 +104,15 @@ func (ts *TipSet) Defined() bool {
 	return ts != nil && len(ts.blocks) > 0
 }
 
+func (ts *TipSet) Contains(oc cid.Cid) bool {
+	for _, c := range ts.cids {
+		if c == oc {
+			return true
+		}
+	}
+	return false
+}
+
 func (ts *TipSet) Equals(ots *TipSet) bool {
 	if ts == nil && ots == nil {
 		return true
