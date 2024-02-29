@@ -31,6 +31,10 @@ func NewMockSchedule(interval time.Duration) Schedule {
 	}}
 }
 
+func (mb *mockBeacon) IsChained() bool {
+	return true
+}
+
 func (mb *mockBeacon) RoundTime() time.Duration {
 	return mb.interval
 }
