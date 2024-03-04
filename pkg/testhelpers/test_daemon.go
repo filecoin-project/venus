@@ -396,9 +396,9 @@ func (td *TestDaemon) WaitForAPI() error {
 		if err == nil {
 			return nil
 		}
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Second * 20)
 	}
-	return fmt.Errorf("filecoin node failed to come online in given time period (10 seconds); last err = %s", err)
+	return fmt.Errorf("filecoin node failed to come online in given time period (20 seconds); last err = %s", err)
 }
 
 // CreateStorageMinerAddr issues a new message to the network, mines the message

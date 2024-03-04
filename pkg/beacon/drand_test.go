@@ -36,7 +36,17 @@ func TestMaxBeaconRoundForEpoch(t *testing.T) {
 	drandCfg := config.DrandConfigs[config.DrandDevnet]
 	db, err := NewDrandBeacon(todayTS, config.NewDefaultConfig().NetworkParams.BlockDelay, drandCfg)
 	assert.NoError(t, err)
+	assert.True(t, db.IsChained())
 	mbr15 := db.MaxBeaconRoundForEpoch(network.Version15, 100)
 	mbr16 := db.MaxBeaconRoundForEpoch(network.Version16, 100)
 	assert.Equal(t, mbr15+1, mbr16)
+}
+
+func TestQuicknetIsChained(t *testing.T) {
+	tf.UnitTest(t)
+	todayTS := uint64(1652222222)
+	drandCfg := config.DrandConfigs[config.DrandQuicknet]
+	db, err := NewDrandBeacon(todayTS, config.NewDefaultConfig().NetworkParams.BlockDelay, drandCfg)
+	assert.NoError(t, err)
+	assert.False(t, db.IsChained())
 }
