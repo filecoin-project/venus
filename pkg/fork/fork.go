@@ -2857,6 +2857,7 @@ func (c *ChainFork) PreUpgradeActorsV13(ctx context.Context,
 	config := migration.Config{
 		MaxWorkers:        uint(workerCount),
 		ProgressLogPeriod: time.Minute * 5,
+		UpgradeEpoch:      c.forkUpgrade.UpgradeDragonHeight,
 	}
 
 	_, err = c.upgradeActorsV13Common(ctx, cache, lbRoot, epoch, lbts, config)
@@ -2879,6 +2880,7 @@ func (c *ChainFork) UpgradeActorsV13(ctx context.Context,
 		JobQueueSize:      1000,
 		ResultQueueSize:   100,
 		ProgressLogPeriod: 10 * time.Second,
+		UpgradeEpoch:      c.forkUpgrade.UpgradeDragonHeight,
 	}
 	newRoot, err := c.upgradeActorsV13Common(ctx, cache, root, epoch, ts, config)
 	if err != nil {

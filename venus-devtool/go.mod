@@ -8,7 +8,7 @@ require (
 	github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc7
 	github.com/filecoin-project/go-fil-markets v1.28.3
 	github.com/filecoin-project/go-jsonrpc v0.3.1
-	github.com/filecoin-project/go-state-types v0.13.0-rc.1
+	github.com/filecoin-project/go-state-types v0.13.0-rc.2
 	github.com/filecoin-project/lotus v1.25.3-0.20240227185223-01ec166e3a9e
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
 	github.com/google/uuid v1.3.0
