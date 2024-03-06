@@ -448,26 +448,11 @@ func (s *IChainInfoStruct) VerifyEntry(p0, p1 *types.BeaconEntry, p2 abi.ChainEp
 	return s.Internal.VerifyEntry(p0, p1, p2)
 }
 
-type IActorEventStruct struct {
-	Internal struct {
-		GetActorEvents       func(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error)      `perm:"read"`
-		SubscribeActorEvents func(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) `perm:"read"`
-	}
-}
-
-func (s *IActorEventStruct) GetActorEvents(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
-	return s.Internal.GetActorEvents(p0, p1)
-}
-func (s *IActorEventStruct) SubscribeActorEvents(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
-	return s.Internal.SubscribeActorEvents(p0, p1)
-}
-
 type IChainStruct struct {
 	IAccountStruct
 	IActorStruct
 	IMinerStateStruct
 	IChainInfoStruct
-	IActorEventStruct
 }
 
 type IMarketStruct struct {
@@ -1063,6 +1048,20 @@ type FullETHStruct struct {
 	IETHEventStruct
 }
 
+type IActorEventStruct struct {
+	Internal struct {
+		GetActorEvents       func(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error)      `perm:"read"`
+		SubscribeActorEvents func(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) `perm:"read"`
+	}
+}
+
+func (s *IActorEventStruct) GetActorEvents(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+	return s.Internal.GetActorEvents(p0, p1)
+}
+func (s *IActorEventStruct) SubscribeActorEvents(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+	return s.Internal.SubscribeActorEvents(p0, p1)
+}
+
 type FullNodeStruct struct {
 	IBlockStoreStruct
 	IChainStruct
@@ -1075,4 +1074,5 @@ type FullNodeStruct struct {
 	IWalletStruct
 	ICommonStruct
 	FullETHStruct
+	IActorEventStruct
 }
