@@ -31,6 +31,10 @@ func main() {
 		_ = logging.SetLogLevel("pubsub", "error")
 		_ = logging.SetLogLevel("relay", "error")
 		_ = logging.SetLogLevel("dht/RtRefreshManager", "error")
+		// todo: remove it
+		_ = logging.SetLogLevel("splitstore", "debug")
+		_ = logging.SetLogLevel("chainsync.syncer", "debug")
+
 	} else {
 		level, err := logging.LevelFromString(lvl)
 		if err != nil {

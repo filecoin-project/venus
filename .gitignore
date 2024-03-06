@@ -52,3 +52,4 @@ gengen
 dockerfile
 coverage_unit.txt
 coverage_venus_shared.txt
+venus-shared/blockstore/splitstore/test_data/base_583_bafy2bzaceazuutcexhvwkyyesszohrkjjzk2zgknasgs7bb7zgfnwghtnu5w2.db/LOCK

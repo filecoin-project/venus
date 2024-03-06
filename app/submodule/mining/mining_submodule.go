@@ -11,7 +11,11 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+
+	logging "github.com/ipfs/go-log/v2"
 )
+
+var log = logging.Logger("mining")
 
 type miningConfig interface {
 	Repo() repo.Repo

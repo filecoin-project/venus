@@ -33,3 +33,7 @@ func LoggerFromContext(ctx context.Context, fallback *EventLogger) *TaggedLogger
 
 	return &fallback.SugaredLogger
 }
+
+func SetLogLevel(name, level string) error {
+	return logging.SetLogLevel(name, level)
+}
