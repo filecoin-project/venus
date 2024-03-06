@@ -11,7 +11,7 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
-type ActorEventSubModule struct {
+type ActorEventSubModule struct { // nolint
 	chainModule       *chain.ChainSubmodule
 	ethModule         *eth.EthSubModule
 	cfg               *config.Config

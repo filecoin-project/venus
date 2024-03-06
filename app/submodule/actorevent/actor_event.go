@@ -36,7 +36,7 @@ type EventFilterManager interface {
 	Remove(ctx context.Context, id types.FilterID) error
 }
 
-type ActorEventHandler struct {
+type ActorEventHandler struct { // nolint
 	chain                ChainAccessor
 	eventFilterManager   EventFilterManager
 	blockDelay           time.Duration

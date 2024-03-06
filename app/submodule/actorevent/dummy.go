@@ -10,7 +10,7 @@ import (
 
 var ErrActorEventModuleDisabled = errors.New("module disabled, enable with Fevm.EnableActorEventsAPI")
 
-type ActorEventDummy struct{}
+type ActorEventDummy struct{} // nolint
 
 func (a *ActorEventDummy) GetActorEvents(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error) {
 	return nil, ErrActorEventModuleDisabled
