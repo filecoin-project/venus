@@ -296,6 +296,25 @@ func init() {
 		Address:   []types.EthAddress{ethaddr},
 	})
 
+	addExample(&types.ActorEventBlock{
+		Codec: 0x51,
+		Value: []byte("ddata"),
+	})
+
+	addExample(&types.ActorEventFilter{
+		Addresses: []address.Address{addr},
+		Fields: map[string][]types.ActorEventBlock{
+			"abc": {
+				{
+					Codec: 0x51,
+					Value: []byte("ddata"),
+				},
+			},
+		},
+		FromHeight: epochPtr(1010),
+		ToHeight:   epochPtr(1020),
+	})
+
 	percent := types.Percent(123)
 	addExample(percent)
 	addExample(&percent)
@@ -385,4 +404,9 @@ func shouldIgnoreField(f reflect.StructField, parentType reflect.Type) bool {
 	}
 
 	return strings.Split(jtag, ",")[0] == "-"
+}
+
+func epochPtr(ei int64) *abi.ChainEpoch {
+	ep := abi.ChainEpoch(ei)
+	return &ep
 }

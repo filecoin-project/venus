@@ -21,6 +21,19 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
+func keysToKeysWithCodec(keys map[string][][]byte) map[string][]types.ActorEventBlock {
+	keysWithCodec := make(map[string][]types.ActorEventBlock)
+	for k, v := range keys {
+		for _, vv := range v {
+			keysWithCodec[k] = append(keysWithCodec[k], types.ActorEventBlock{
+				Codec: cid.Raw,
+				Value: vv,
+			})
+		}
+	}
+	return keysWithCodec
+}
+
 func TestEventFilterCollectEvents(t *testing.T) {
 	rng := pseudo.New(pseudo.NewSource(299792458))
 	a1 := randomF4Addr(t, rng)
@@ -72,13 +85,13 @@ func TestEventFilterCollectEvents(t *testing.T) {
 
 	testCases := []struct {
 		name   string
-		filter *EventFilter
+		filter *eventFilter
 		te     *TipSetEvents
 		want   []*CollectedEvent
 	}{
 		{
 			name: "nomatch tipset min height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: 14001,
 				maxHeight: -1,
 			},
@@ -87,7 +100,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "nomatch tipset max height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: 13999,
 			},
@@ -96,7 +109,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "match tipset min height",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: 14000,
 				maxHeight: -1,
 			},
@@ -105,7 +118,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "match tipset cid",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				tipsetCid: cid14000,
@@ -115,7 +128,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "nomatch address",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				addresses: []address.Address{a2},
@@ -125,7 +138,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "match address",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
 				addresses: []address.Address{a1},
@@ -135,124 +148,124 @@ func TestEventFilterCollectEvents(t *testing.T) {
 		},
 		{
 			name: "match one entry",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
 		},
 		{
 			name: "match one entry with alternate values",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("cancel"),
 						[]byte("propose"),
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
 		},
 		{
 			name: "nomatch one entry by missing value",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("cancel"),
 						[]byte("propose"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
 		},
 		{
 			name: "nomatch one entry by missing key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"method": {
 						[]byte("approval"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
 		},
 		{
 			name: "match one entry with multiple keys",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"signer": {
 						[]byte("addr1"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: oneCollectedEvent,
 		},
 		{
 			name: "nomatch one entry with one mismatching key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"approver": {
 						[]byte("addr1"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
 		},
 		{
 			name: "nomatch one entry with one mismatching value",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"type": {
 						[]byte("approval"),
 					},
 					"signer": {
 						[]byte("addr2"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
 		},
 		{
 			name: "nomatch one entry with one unindexed key",
-			filter: &EventFilter{
+			filter: &eventFilter{
 				minHeight: -1,
 				maxHeight: -1,
-				keys: map[string][][]byte{
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
 					"amount": {
 						[]byte("2988181"),
 					},
-				},
+				}),
 			},
 			te:   events14000,
 			want: noCollectedEvents,
