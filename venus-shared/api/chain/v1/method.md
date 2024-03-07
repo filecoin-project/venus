@@ -11,6 +11,9 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
 * [Actor](#actor)
   * [ListActor](#listactor)
   * [StateGetActor](#stategetactor)
+* [ActorEvent](#actorevent)
+  * [GetActorEvents](#getactorevents)
+  * [SubscribeActorEvents](#subscribeactorevents)
 * [BlockStore](#blockstore)
   * [ChainDeleteObj](#chaindeleteobj)
   * [ChainHasObj](#chainhasobj)
@@ -322,6 +325,133 @@ Response:
   "Nonce": 42,
   "Balance": "0",
   "Address": "f01234"
+}
+```
+
+## ActorEvent
+
+### GetActorEvents
+Actor events
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "addresses": [
+      "f01234"
+    ],
+    "fields": {
+      "abc": [
+        {
+          "codec": 81,
+          "value": "ZGRhdGE="
+        }
+      ]
+    },
+    "fromHeight": 1010,
+    "toHeight": 1020
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "entries": [
+      {
+        "Flags": 7,
+        "Key": "string value",
+        "Codec": 42,
+        "Value": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "emitter": "f01234",
+    "reverted": true,
+    "height": 10101,
+    "tipsetKey": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      {
+        "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+      }
+    ],
+    "msgCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  }
+]
+```
+
+### SubscribeActorEvents
+SubscribeActorEvents returns a long-lived stream of all user-programmed and built-in actor
+events that match the given filter.
+Events that match the given filter are written to the stream in real-time as they are emitted
+from the FVM.
+The response stream is closed when the client disconnects, when a ToHeight is specified and is
+reached, or if there is an error while writing an event to the stream.
+This API also allows clients to read all historical events matching the given filter before any
+real-time events are written to the response stream if the filter specifies an earlier
+FromHeight.
+Results available from this API may be limited by the MaxFilterResults and MaxFilterHeightRange
+configuration options and also the amount of historical data available in the node.
+
+Note: this API is only available via websocket connections.
+This is an EXPERIMENTAL API and may be subject to change.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "addresses": [
+      "f01234"
+    ],
+    "fields": {
+      "abc": [
+        {
+          "codec": 81,
+          "value": "ZGRhdGE="
+        }
+      ]
+    },
+    "fromHeight": 1010,
+    "toHeight": 1020
+  }
+]
+```
+
+Response:
+```json
+{
+  "entries": [
+    {
+      "Flags": 7,
+      "Key": "string value",
+      "Codec": 42,
+      "Value": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "emitter": "f01234",
+  "reverted": true,
+  "height": 10101,
+  "tipsetKey": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  "msgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 }
 ```
 

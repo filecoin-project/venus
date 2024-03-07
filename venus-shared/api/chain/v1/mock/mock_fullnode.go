@@ -1145,6 +1145,21 @@ func (mr *MockFullNodeMockRecorder) GetActor(arg0, arg1 interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActor", reflect.TypeOf((*MockFullNode)(nil).GetActor), arg0, arg1)
 }
 
+// GetActorEvents mocks base method.
+func (m *MockFullNode) GetActorEvents(arg0 context.Context, arg1 *types0.ActorEventFilter) ([]*types0.ActorEvent, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetActorEvents", arg0, arg1)
+	ret0, _ := ret[0].([]*types0.ActorEvent)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetActorEvents indicates an expected call of GetActorEvents.
+func (mr *MockFullNodeMockRecorder) GetActorEvents(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetActorEvents", reflect.TypeOf((*MockFullNode)(nil).GetActorEvents), arg0, arg1)
+}
+
 // GetEntry mocks base method.
 func (m *MockFullNode) GetEntry(arg0 context.Context, arg1 abi.ChainEpoch, arg2 uint64) (*types0.BeaconEntry, error) {
 	m.ctrl.T.Helper()
@@ -3228,6 +3243,21 @@ func (m *MockFullNode) StateWaitMsg(arg0 context.Context, arg1 cid.Cid, arg2 uin
 func (mr *MockFullNodeMockRecorder) StateWaitMsg(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateWaitMsg", reflect.TypeOf((*MockFullNode)(nil).StateWaitMsg), arg0, arg1, arg2, arg3, arg4)
+}
+
+// SubscribeActorEvents mocks base method.
+func (m *MockFullNode) SubscribeActorEvents(arg0 context.Context, arg1 *types0.ActorEventFilter) (<-chan *types0.ActorEvent, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeActorEvents", arg0, arg1)
+	ret0, _ := ret[0].(<-chan *types0.ActorEvent)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SubscribeActorEvents indicates an expected call of SubscribeActorEvents.
+func (mr *MockFullNodeMockRecorder) SubscribeActorEvents(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeActorEvents", reflect.TypeOf((*MockFullNode)(nil).SubscribeActorEvents), arg0, arg1)
 }
 
 // SyncIncomingBlocks mocks base method.

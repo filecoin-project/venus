@@ -12,4 +12,5 @@ type FullNode interface {
 	IWallet
 	ICommon
 	FullETH
+	IActorEvent
 }

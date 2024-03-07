@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/events/filter"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
@@ -90,6 +91,10 @@ func (em *EthSubModule) Close(ctx context.Context) error {
 	}
 
 	return em.ethAPIAdapter.close()
+}
+
+func (em *EthSubModule) GetEventFilterManager() *filter.EventFilterManager {
+	return em.ethEventAPI.EventFilterManager
 }
 
 type ethAPIAdapter interface {

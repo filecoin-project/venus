@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/venus/app/submodule/actorevent"
 	"github.com/filecoin-project/venus/app/submodule/eth"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -40,6 +41,7 @@ func (builder *RPCBuilder) AddServices(services ...RPCService) error {
 }
 
 var ethSubModuleTyp = reflect.TypeOf(&eth.EthSubModule{}).Elem()
+var actorEventSubModuleTyp = reflect.TypeOf(&actorevent.ActorEventSubModule{}).Elem()
 
 func skipV0API(in interface{}) bool {
 	inT := reflect.TypeOf(in)
@@ -47,7 +49,7 @@ func skipV0API(in interface{}) bool {
 		inT = inT.Elem()
 	}
 
-	return inT.AssignableTo(ethSubModuleTyp)
+	return inT.AssignableTo(ethSubModuleTyp) || inT.AssignableTo(actorEventSubModuleTyp)
 }
 
 func (builder *RPCBuilder) AddV0API(service RPCService) error {

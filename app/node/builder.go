@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/venus/app/submodule/actorevent"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/common"
@@ -171,6 +172,10 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
+	if nd.actorEvent, err = actorevent.NewActorEventSubModule(ctx, b.repo.Config(), nd.chain, nd.eth); err != nil {
+		return nil, err
+	}
+
 	apiBuilder := NewBuilder()
 	apiBuilder.NameSpace("Filecoin")
 
@@ -188,6 +193,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.market,
 		nd.common,
 		nd.eth,
+		nd.actorEvent,
 	)
 
 	if err != nil {
