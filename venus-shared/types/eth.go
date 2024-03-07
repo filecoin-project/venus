@@ -31,6 +31,11 @@ type (
 	EthBlockNumberOrHash           = types.EthBlockNumberOrHash
 	EthBytes                       = types.EthBytes
 	EthCall                        = types.EthCall
+	EthCallTraceAction             = types.EthCallTraceAction
+	EthCallTraceResult             = types.EthCallTraceResult
+	EthCreateTraceAction           = types.EthCreateTraceAction
+	EthCreateTraceResult           = types.EthCreateTraceResult
+	EthEstimateGasParams           = types.EthEstimateGasParams
 	EthFeeHistory                  = types.EthFeeHistory
 	EthFeeHistoryParams            = types.EthFeeHistoryParams
 	EthFilterID                    = types.EthFilterID
@@ -47,10 +52,8 @@ type (
 	EthSyncingResult               = types.EthSyncingResult
 	EthTopicSpec                   = types.EthTopicSpec
 	EthTrace                       = types.EthTrace
-	EthTraceAction                 = types.EthTraceAction
 	EthTraceBlock                  = types.EthTraceBlock
 	EthTraceReplayBlockTransaction = types.EthTraceReplayBlockTransaction
-	EthTraceResult                 = types.EthTraceResult
 	EthTxReceipt                   = types.EthTxReceipt
 	EthUint64                      = types.EthUint64
 )
@@ -59,6 +62,7 @@ var (
 	CastEthAddress                        = types.CastEthAddress
 	DecodeHexString                       = types.DecodeHexString
 	DecodeHexStringTrimSpace              = types.DecodeHexStringTrimSpace
+	EthAddressFromActorID                 = types.EthAddressFromActorID
 	EthAddressFromFilecoinAddress         = types.EthAddressFromFilecoinAddress
 	EthAddressFromPubKey                  = types.EthAddressFromPubKey
 	EthBloomSet                           = types.EthBloomSet

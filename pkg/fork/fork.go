@@ -38,6 +38,7 @@ import (
 	nv18 "github.com/filecoin-project/go-state-types/builtin/v10/migration"
 	nv19 "github.com/filecoin-project/go-state-types/builtin/v11/migration"
 	nv21 "github.com/filecoin-project/go-state-types/builtin/v12/migration"
+	nv22 "github.com/filecoin-project/go-state-types/builtin/v13/migration"
 	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/go-state-types/migration"
 	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
@@ -412,6 +413,18 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			Network:   network.Version21,
 			Migration: cf.buildUpgradeActorsV12MinerFix(calibnetv12BuggyMinerCID2, calibnetv12CorrectManifestCID1),
 		},
+		{
+			Height:    upgradeHeight.UpgradeDragonHeight,
+			Network:   network.Version22,
+			Migration: cf.UpgradeActorsV13,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV13,
+				StartWithin:     120,
+				DontStartWithin: 15,
+				StopWithin:      10,
+			}},
+			Expensive: true,
+		},
 	}
 
 	for _, u := range updates {
@@ -671,10 +684,7 @@ func (c *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, height a
 			log.Errorw("FAILED migration", "height", height, "from", root, "error", err)
 			return cid.Undef, err
 		}
-		// Yes, we update the cache, even for the final upgrade epoch. Why? Reverts. This
-		// can save us a _lot_ of time because very few actors will have changed if we
-		// do a small revert then need to re-run the migration.
-		u.cache.Update(tmpCache)
+
 		log.Warnw("COMPLETED migration",
 			"height", height,
 			"from", root,
@@ -2800,6 +2810,123 @@ func (c *ChainFork) upgradeActorsV12Common(
 		migrationLogger{}, cache)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("upgrading to actors v12: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := adtStore.Put(ctx, &vmstate.StateRoot{
+		Version: vmstate.StateTreeVersion5,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, fmt.Errorf("writeStore flush failed: %w", err)
+	}
+
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, fmt.Errorf("writeStore shutdown failed: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) PreUpgradeActorsV13(ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := MigrationMaxWorkerCount
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	nv := c.GetNetworkVersion(ctx, epoch)
+	lbts, lbRoot, err := c.cr.GetLookbackTipSetForRound(ctx, ts, epoch, nv)
+	if err != nil {
+		return fmt.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5,
+		UpgradeEpoch:      c.forkUpgrade.UpgradeDragonHeight,
+	}
+
+	_, err = c.upgradeActorsV13Common(ctx, cache, lbRoot, epoch, lbts, config)
+	return err
+}
+
+func (c *ChainFork) UpgradeActorsV13(ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+) (cid.Cid, error) {
+	// Use all the CPUs except 2.
+	workerCount := MigrationMaxWorkerCount - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+		UpgradeEpoch:      c.forkUpgrade.UpgradeDragonHeight,
+	}
+	newRoot, err := c.upgradeActorsV13Common(ctx, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("migrating actors v11 state: %w", err)
+	}
+	return newRoot, nil
+}
+
+func (c *ChainFork) upgradeActorsV13Common(ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+	config migration.Config,
+) (cid.Cid, error) {
+	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB/4)
+	adtStore := adt.WrapStore(ctx, cbor.NewCborStore(writeStore))
+
+	// ensure that the manifest is loaded in the blockstore
+	if err := actors.LoadBundles(ctx, writeStore, actorstypes.Version13); err != nil {
+		return cid.Undef, fmt.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot vmstate.StateRoot
+	if err := adtStore.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, fmt.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != vmstate.StateTreeVersion5 {
+		return cid.Undef, fmt.Errorf(
+			"expected state root version 5 for actors v13 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version13)
+	if !ok {
+		return cid.Undef, fmt.Errorf("no manifest CID for v13 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv22.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
+		migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("upgrading to actors v11: %w", err)
 	}
 
 	// Persist the result.

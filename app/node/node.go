@@ -11,6 +11,7 @@ import (
 	"github.com/awnumar/memguard"
 	"github.com/etherlabsio/healthcheck/v2"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/venus/app/submodule/actorevent"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/common"
@@ -100,7 +101,8 @@ type Node struct {
 
 	common *common.CommonModule
 
-	eth *eth.EthSubModule
+	eth        *eth.EthSubModule
+	actorEvent *actorevent.ActorEventSubModule
 
 	//
 	// Jsonrpc

@@ -38,7 +38,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- CreateBackup
 	- Discover
 	+ GasBatchEstimateMessageGas
-	> GasEstimateMessageGas {[func(context.Context, *types.Message, *types.MessageSendSpec, types.TipSetKey) (*types.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
+	> GasEstimateMessageGas {[func(context.Context, *types.Message, *types.MessageSendSpec, types.TipSetKey) (*types.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported field name: #1 field, GasOverEstimation != MsgUuid; nested=nil}}}}
 	+ GetActor
 	+ GetEntry
 	+ GetFullBlock
@@ -54,11 +54,11 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- MarketReleaseFunds
 	- MarketReserveFunds
 	- MarketWithdraw
-	> MpoolBatchPushMessage {[func(context.Context, []*types.Message, *types.MessageSendSpec) ([]*types.SignedMessage, error) <> func(context.Context, []*types.Message, *api.MessageSendSpec) ([]*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
+	> MpoolBatchPushMessage {[func(context.Context, []*types.Message, *types.MessageSendSpec) ([]*types.SignedMessage, error) <> func(context.Context, []*types.Message, *api.MessageSendSpec) ([]*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported field name: #1 field, GasOverEstimation != MsgUuid; nested=nil}}}}
 	+ MpoolDeleteByAdress
 	+ MpoolPublishByAddr
 	+ MpoolPublishMessage
-	> MpoolPushMessage {[func(context.Context, *types.Message, *types.MessageSendSpec) (*types.SignedMessage, error) <> func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
+	> MpoolPushMessage {[func(context.Context, *types.Message, *types.MessageSendSpec) (*types.SignedMessage, error) <> func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported field name: #1 field, GasOverEstimation != MsgUuid; nested=nil}}}}
 	+ MpoolSelects
 	- MsigAddApprove
 	- MsigAddCancel
@@ -90,7 +90,8 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
-	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported fields count: 7 != 6; nested=nil}}}}
+	- StateGetAllAllocations
+	- StateGetAllClaims
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- SyncCheckBad
@@ -158,10 +159,10 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ Concurrent
 	- CreateBackup
 	- Discover
-	+ EthTraceBlock
-	+ EthTraceReplayBlockTransactions
+	> EthTraceBlock {[func(context.Context, string) ([]*types.EthTraceBlock, error) <> func(context.Context, string) ([]*ethtypes.EthTraceBlock, error)] base=func out type: #0 input; nested={[[]*types.EthTraceBlock <> []*ethtypes.EthTraceBlock] base=slice element; nested={[*types.EthTraceBlock <> *ethtypes.EthTraceBlock] base=pointed type; nested={[types.EthTraceBlock <> ethtypes.EthTraceBlock] base=struct field; nested={[types.EthTraceBlock <> ethtypes.EthTraceBlock] base=exported field type: #0 field named EthTrace; nested={[*types.EthTrace <> *ethtypes.EthTrace] base=pointed type; nested={[types.EthTrace <> ethtypes.EthTrace] base=struct field; nested={[types.EthTrace <> ethtypes.EthTrace] base=exported fields count: 8 != 6; nested=nil}}}}}}}}
+	> EthTraceReplayBlockTransactions {[func(context.Context, string, []string) ([]*types.EthTraceReplayBlockTransaction, error) <> func(context.Context, string, []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)] base=func out type: #0 input; nested={[[]*types.EthTraceReplayBlockTransaction <> []*ethtypes.EthTraceReplayBlockTransaction] base=slice element; nested={[*types.EthTraceReplayBlockTransaction <> *ethtypes.EthTraceReplayBlockTransaction] base=pointed type; nested={[types.EthTraceReplayBlockTransaction <> ethtypes.EthTraceReplayBlockTransaction] base=struct field; nested={[types.EthTraceReplayBlockTransaction <> ethtypes.EthTraceReplayBlockTransaction] base=exported field type: #2 field named Trace; nested={[[]*types.EthTrace <> []*ethtypes.EthTrace] base=slice element; nested={[*types.EthTrace <> *ethtypes.EthTrace] base=pointed type; nested={[types.EthTrace <> ethtypes.EthTrace] base=struct field; nested={[types.EthTrace <> ethtypes.EthTrace] base=exported fields count: 8 != 6; nested=nil}}}}}}}}}
 	+ GasBatchEstimateMessageGas
-	> GasEstimateMessageGas {[func(context.Context, *types.Message, *types.MessageSendSpec, types.TipSetKey) (*types.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
+	> GasEstimateMessageGas {[func(context.Context, *types.Message, *types.MessageSendSpec, types.TipSetKey) (*types.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported field name: #1 field, GasOverEstimation != MsgUuid; nested=nil}}}}
 	+ GetActor
 	+ GetEntry
 	+ GetFullBlock
@@ -177,11 +178,11 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- MarketReleaseFunds
 	- MarketReserveFunds
 	- MarketWithdraw
-	> MpoolBatchPushMessage {[func(context.Context, []*types.Message, *types.MessageSendSpec) ([]*types.SignedMessage, error) <> func(context.Context, []*types.Message, *api.MessageSendSpec) ([]*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
+	> MpoolBatchPushMessage {[func(context.Context, []*types.Message, *types.MessageSendSpec) ([]*types.SignedMessage, error) <> func(context.Context, []*types.Message, *api.MessageSendSpec) ([]*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported field name: #1 field, GasOverEstimation != MsgUuid; nested=nil}}}}
 	+ MpoolDeleteByAdress
 	+ MpoolPublishByAddr
 	+ MpoolPublishMessage
-	> MpoolPushMessage {[func(context.Context, *types.Message, *types.MessageSendSpec) (*types.SignedMessage, error) <> func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
+	> MpoolPushMessage {[func(context.Context, *types.Message, *types.MessageSendSpec) (*types.SignedMessage, error) <> func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported field name: #1 field, GasOverEstimation != MsgUuid; nested=nil}}}}
 	+ MpoolSelects
 	- MsigAddApprove
 	- MsigAddCancel
@@ -216,7 +217,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
-	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported fields count: 7 != 6; nested=nil}}}}
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- SyncCheckBad

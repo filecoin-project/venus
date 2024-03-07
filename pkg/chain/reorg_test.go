@@ -73,7 +73,7 @@ func TestReorgDiffSubset(t *testing.T) {
 // This function returns the forked head, the main head and the common ancestor.
 func getForkOldNewCommon(ctx context.Context, t *testing.T, builder *chain.Builder, a, b, c int) (*types.TipSet, *types.TipSet, *types.TipSet) {
 	// Add "a" tipsets to the head of the chainStore.
-	commonHead := builder.AppendManyOn(ctx, a, types.UndefTipSet)
+	commonHead := builder.AppendManyOn(ctx, a, builder.Genesis())
 	oldHead := commonHead
 
 	if c > 0 {
@@ -89,7 +89,7 @@ func getForkOldNewCommon(ctx context.Context, t *testing.T, builder *chain.Build
 // consists of this single block and another block together forming a tipset
 // that is a superset of the forked head.
 func getSubsetOldNewCommon(ctx context.Context, t *testing.T, builder *chain.Builder, a int) (*types.TipSet, *types.TipSet, *types.TipSet) {
-	commonHead := builder.AppendManyBlocksOnBlocks(ctx, a)
+	commonHead := builder.AppendManyBlocksOnBlocks(ctx, a, builder.Genesis().At(0))
 	block1 := builder.AppendBlockOnBlocks(ctx, commonHead)
 	block2 := builder.AppendBlockOnBlocks(ctx, commonHead)
 

@@ -343,6 +343,13 @@ func IsEthAddress(addr address.Address) bool {
 	return namespace == builtintypes.EthereumAddressManagerActorID && len(payload) == 20 && !bytes.HasPrefix(payload, maskedIDPrefix[:])
 }
 
+func EthAddressFromActorID(id abi.ActorID) EthAddress {
+	var ethaddr EthAddress
+	ethaddr[0] = 0xff
+	binary.BigEndian.PutUint64(ethaddr[12:], uint64(id))
+	return ethaddr
+}
+
 func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 	switch addr.Protocol() {
 	case address.ID:
@@ -350,10 +357,7 @@ func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 		if err != nil {
 			return EthAddress{}, err
 		}
-		var ethaddr EthAddress
-		ethaddr[0] = 0xff
-		binary.BigEndian.PutUint64(ethaddr[12:], id)
-		return ethaddr, nil
+		return EthAddressFromActorID(abi.ActorID(id)), nil
 	case address.Delegated:
 		payload := addr.Payload()
 		namespace, n, err := varint.FromUvarint(payload)
@@ -651,7 +655,7 @@ type EthFilterSpec struct {
 	Topics EthTopicSpec `json:"topics"`
 
 	// Restricts event logs returned to those emitted from messages contained in this tipset.
-	// If BlockHash is present in in the filter criteria, then neither FromBlock nor ToBlock are allowed.
+	// If BlockHash is present in the filter criteria, then neither FromBlock nor ToBlock are allowed.
 	// Added in EIP-234
 	BlockHash *EthHash `json:"blockHash,omitempty"`
 }
@@ -856,6 +860,45 @@ func GetContractEthAddressFromCode(sender EthAddress, salt [32]byte, initcode []
 	return ethAddr, nil
 }
 
+// EthEstimateGasParams handles raw jsonrpc params for eth_estimateGas
+type EthEstimateGasParams struct {
+	Tx       EthCall
+	BlkParam *EthBlockNumberOrHash
+}
+
+func (e *EthEstimateGasParams) UnmarshalJSON(b []byte) error {
+	var params []json.RawMessage
+	err := json.Unmarshal(b, &params)
+	if err != nil {
+		return err
+	}
+
+	switch len(params) {
+	case 2:
+		err = json.Unmarshal(params[1], &e.BlkParam)
+		if err != nil {
+			return err
+		}
+		fallthrough
+	case 1:
+		err = json.Unmarshal(params[0], &e.Tx)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("expected 1 or 2 params, got %d", len(params))
+	}
+
+	return nil
+}
+
+func (e EthEstimateGasParams) MarshalJSON() ([]byte, error) {
+	if e.BlkParam != nil {
+		return json.Marshal([]interface{}{e.Tx, e.BlkParam})
+	}
+	return json.Marshal([]interface{}{e.Tx})
+}
+
 // EthFeeHistoryParams handles raw jsonrpc params for eth_feeHistory
 type EthFeeHistoryParams struct {
 	BlkCount          EthUint64
@@ -989,22 +1032,18 @@ func (e *EthBlockNumberOrHash) UnmarshalJSON(b []byte) error {
 }
 
 type EthTrace struct {
-	Action       EthTraceAction `json:"action"`
-	Result       EthTraceResult `json:"result"`
-	Subtraces    int            `json:"subtraces"`
-	TraceAddress []int          `json:"traceAddress"`
-	Type         string         `json:"Type"`
+	Type         string `json:"type"`
+	Error        string `json:"error,omitempty"`
+	Subtraces    int    `json:"subtraces"`
+	TraceAddress []int  `json:"traceAddress"`
+	Action       any    `json:"action"`
+	Result       any    `json:"result"`
 
 	Parent *EthTrace `json:"-"`
 
 	// if a subtrace makes a call to GetBytecode, we store a pointer to that subtrace here
 	// which we then lookup when checking for delegatecall (InvokeContractDelegate)
 	LastByteCode *EthTrace `json:"-"`
-}
-
-func (t *EthTrace) SetCallType(callType string) {
-	t.Action.CallType = callType
-	t.Type = callType
 }
 
 type EthTraceBlock struct {
@@ -1023,21 +1062,29 @@ type EthTraceReplayBlockTransaction struct {
 	VMTrace         *string     `json:"vmTrace"`
 }
 
-type EthTraceAction struct {
+type EthCallTraceAction struct {
 	CallType string     `json:"callType"`
 	From     EthAddress `json:"from"`
 	To       EthAddress `json:"to"`
 	Gas      EthUint64  `json:"gas"`
-	Input    EthBytes   `json:"input"`
 	Value    EthBigInt  `json:"value"`
-
-	FilecoinMethod  abi.MethodNum   `json:"-"`
-	FilecoinCodeCid cid.Cid         `json:"-"`
-	FilecoinFrom    address.Address `json:"-"`
-	FilecoinTo      address.Address `json:"-"`
+	Input    EthBytes   `json:"input"`
 }
 
-type EthTraceResult struct {
+type EthCallTraceResult struct {
 	GasUsed EthUint64 `json:"gasUsed"`
 	Output  EthBytes  `json:"output"`
+}
+
+type EthCreateTraceAction struct {
+	From  EthAddress `json:"from"`
+	Gas   EthUint64  `json:"gas"`
+	Value EthBigInt  `json:"value"`
+	Init  EthBytes   `json:"init"`
+}
+
+type EthCreateTraceResult struct {
+	Address *EthAddress `json:"address,omitempty"`
+	GasUsed EthUint64   `json:"gasUsed"`
+	Code    EthBytes    `json:"code"`
 }

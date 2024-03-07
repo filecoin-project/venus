@@ -11,6 +11,9 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
 * [Actor](#actor)
   * [ListActor](#listactor)
   * [StateGetActor](#stategetactor)
+* [ActorEvent](#actorevent)
+  * [GetActorEvents](#getactorevents)
+  * [SubscribeActorEvents](#subscribeactorevents)
 * [BlockStore](#blockstore)
   * [ChainDeleteObj](#chaindeleteobj)
   * [ChainHasObj](#chainhasobj)
@@ -146,8 +149,11 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [StateDealProviderCollateralBounds](#statedealprovidercollateralbounds)
   * [StateDecodeParams](#statedecodeparams)
   * [StateEncodeParams](#stateencodeparams)
+  * [StateGetAllAllocations](#stategetallallocations)
+  * [StateGetAllClaims](#stategetallclaims)
   * [StateGetAllocation](#stategetallocation)
   * [StateGetAllocationForPendingDeal](#stategetallocationforpendingdeal)
+  * [StateGetAllocationIdForPendingDeal](#stategetallocationidforpendingdeal)
   * [StateGetAllocations](#stategetallocations)
   * [StateGetClaim](#stategetclaim)
   * [StateGetClaims](#stategetclaims)
@@ -319,6 +325,133 @@ Response:
   "Nonce": 42,
   "Balance": "0",
   "Address": "f01234"
+}
+```
+
+## ActorEvent
+
+### GetActorEvents
+Actor events
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "addresses": [
+      "f01234"
+    ],
+    "fields": {
+      "abc": [
+        {
+          "codec": 81,
+          "value": "ZGRhdGE="
+        }
+      ]
+    },
+    "fromHeight": 1010,
+    "toHeight": 1020
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "entries": [
+      {
+        "Flags": 7,
+        "Key": "string value",
+        "Codec": 42,
+        "Value": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "emitter": "f01234",
+    "reverted": true,
+    "height": 10101,
+    "tipsetKey": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      {
+        "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+      }
+    ],
+    "msgCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  }
+]
+```
+
+### SubscribeActorEvents
+SubscribeActorEvents returns a long-lived stream of all user-programmed and built-in actor
+events that match the given filter.
+Events that match the given filter are written to the stream in real-time as they are emitted
+from the FVM.
+The response stream is closed when the client disconnects, when a ToHeight is specified and is
+reached, or if there is an error while writing an event to the stream.
+This API also allows clients to read all historical events matching the given filter before any
+real-time events are written to the response stream if the filter specifies an earlier
+FromHeight.
+Results available from this API may be limited by the MaxFilterResults and MaxFilterHeightRange
+configuration options and also the amount of historical data available in the node.
+
+Note: this API is only available via websocket connections.
+This is an EXPERIMENTAL API and may be subject to change.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "addresses": [
+      "f01234"
+    ],
+    "fields": {
+      "abc": [
+        {
+          "codec": 81,
+          "value": "ZGRhdGE="
+        }
+      ]
+    },
+    "fromHeight": 1010,
+    "toHeight": 1020
+  }
+]
+```
+
+Response:
+```json
+{
+  "entries": [
+    {
+      "Flags": 7,
+      "Key": "string value",
+      "Codec": 42,
+      "Value": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "emitter": "f01234",
+  "reverted": true,
+  "height": 10101,
+  "tipsetKey": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  "msgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 }
 ```
 
@@ -1264,7 +1397,7 @@ Perms: read
 Inputs:
 ```json
 [
-  21
+  22
 ]
 ```
 
@@ -1279,7 +1412,7 @@ Perms: read
 Inputs:
 ```json
 [
-  21
+  22
 ]
 ```
 
@@ -1374,15 +1507,26 @@ Response:
       "Params": "Ynl0ZSBhcnJheQ==",
       "ParamsCodec": 42,
       "GasLimit": 42,
-      "ReadOnly": true,
-      "CodeCid": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      }
+      "ReadOnly": true
     },
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
       "ReturnCodec": 42
+    },
+    "InvokedActor": {
+      "Id": 1000,
+      "State": {
+        "Code": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Head": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Nonce": 42,
+        "Balance": "0",
+        "Address": "f01234"
+      }
     },
     "GasCharges": [
       {
@@ -1403,15 +1547,26 @@ Response:
           "Params": "Ynl0ZSBhcnJheQ==",
           "ParamsCodec": 42,
           "GasLimit": 42,
-          "ReadOnly": true,
-          "CodeCid": {
-            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-          }
+          "ReadOnly": true
         },
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
           "ReturnCodec": 42
+        },
+        "InvokedActor": {
+          "Id": 1000,
+          "State": {
+            "Code": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Head": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Nonce": 42,
+            "Balance": "0",
+            "Address": "f01234"
+          }
         },
         "GasCharges": [
           {
@@ -1555,15 +1710,26 @@ Response:
           "Params": "Ynl0ZSBhcnJheQ==",
           "ParamsCodec": 42,
           "GasLimit": 42,
-          "ReadOnly": true,
-          "CodeCid": {
-            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-          }
+          "ReadOnly": true
         },
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
           "ReturnCodec": 42
+        },
+        "InvokedActor": {
+          "Id": 1000,
+          "State": {
+            "Code": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Head": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Nonce": 42,
+            "Balance": "0",
+            "Address": "f01234"
+          }
         },
         "GasCharges": [
           {
@@ -1584,15 +1750,26 @@ Response:
               "Params": "Ynl0ZSBhcnJheQ==",
               "ParamsCodec": 42,
               "GasLimit": 42,
-              "ReadOnly": true,
-              "CodeCid": {
-                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-              }
+              "ReadOnly": true
             },
             "MsgRct": {
               "ExitCode": 0,
               "Return": "Ynl0ZSBhcnJheQ==",
               "ReturnCodec": 42
+            },
+            "InvokedActor": {
+              "Id": 1000,
+              "State": {
+                "Code": {
+                  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                },
+                "Head": {
+                  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                },
+                "Nonce": 42,
+                "Balance": "0",
+                "Address": "f01234"
+              }
             },
             "GasCharges": [
               {
@@ -1680,7 +1857,9 @@ Response:
     "UpgradeHyggeHeight": 10101,
     "UpgradeLightningHeight": 10101,
     "UpgradeThunderHeight": 10101,
-    "UpgradeWatermelonHeight": 10101
+    "UpgradeWatermelonHeight": 10101,
+    "UpgradeDragonHeight": 10101,
+    "UpgradePhoenixHeight": 10101
   },
   "Eip155ChainID": 123
 }
@@ -1808,7 +1987,7 @@ Inputs:
 ]
 ```
 
-Response: `21`
+Response: `22`
 
 ### StateReplay
 
@@ -1882,15 +2061,26 @@ Response:
       "Params": "Ynl0ZSBhcnJheQ==",
       "ParamsCodec": 42,
       "GasLimit": 42,
-      "ReadOnly": true,
-      "CodeCid": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      }
+      "ReadOnly": true
     },
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
       "ReturnCodec": 42
+    },
+    "InvokedActor": {
+      "Id": 1000,
+      "State": {
+        "Code": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Head": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Nonce": 42,
+        "Balance": "0",
+        "Address": "f01234"
+      }
     },
     "GasCharges": [
       {
@@ -1911,15 +2101,26 @@ Response:
           "Params": "Ynl0ZSBhcnJheQ==",
           "ParamsCodec": 42,
           "GasLimit": 42,
-          "ReadOnly": true,
-          "CodeCid": {
-            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-          }
+          "ReadOnly": true
         },
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
           "ReturnCodec": 42
+        },
+        "InvokedActor": {
+          "Id": 1000,
+          "State": {
+            "Code": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Head": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Nonce": 42,
+            "Balance": "0",
+            "Address": "f01234"
+          }
         },
         "GasCharges": [
           {
@@ -2278,14 +2479,7 @@ Perms: read
 Inputs:
 ```json
 [
-  {
-    "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-    "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-    "gas": "0x5",
-    "gasPrice": "0x0",
-    "value": "0x0",
-    "data": "0x07"
-  }
+  "Bw=="
 ]
 ```
 
@@ -2850,8 +3044,6 @@ Response: `false`
 ### EthTraceBlock
 TraceAPI related methods
 
-Returns traces created at given block
-
 
 Perms: read
 
@@ -2866,23 +3058,14 @@ Response:
 ```json
 [
   {
-    "action": {
-      "callType": "string value",
-      "from": "0x0707070707070707070707070707070707070707",
-      "to": "0x0707070707070707070707070707070707070707",
-      "gas": "0x5",
-      "input": "0x07",
-      "value": "0x0"
-    },
-    "result": {
-      "gasUsed": "0x5",
-      "output": "0x07"
-    },
+    "type": "string value",
+    "error": "string value",
     "subtraces": 123,
     "traceAddress": [
       123
     ],
-    "Type": "string value",
+    "action": {},
+    "result": {},
     "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
     "blockNumber": 9,
     "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
@@ -2915,23 +3098,14 @@ Response:
     "stateDiff": "string value",
     "trace": [
       {
-        "action": {
-          "callType": "string value",
-          "from": "0x0707070707070707070707070707070707070707",
-          "to": "0x0707070707070707070707070707070707070707",
-          "gas": "0x5",
-          "input": "0x07",
-          "value": "0x0"
-        },
-        "result": {
-          "gasUsed": "0x5",
-          "output": "0x07"
-        },
+        "type": "string value",
+        "error": "string value",
         "subtraces": 123,
         "traceAddress": [
           123
         ],
-        "Type": "string value"
+        "action": {},
+        "result": {}
       }
     ],
     "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
@@ -4348,6 +4522,50 @@ Inputs:
 
 Response: `"Ynl0ZSBhcnJheQ=="`
 
+### StateGetAllAllocations
+StateGetAllAllocations returns the all the allocations available in verified registry actor.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
+### StateGetAllClaims
+StateGetAllClaims returns the all the claims available in verified registry actor.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
 ### StateGetAllocation
 StateGetAllocation returns the allocation for a given address and allocation ID.
 
@@ -4421,6 +4639,29 @@ Response:
   "Expiration": 10101
 }
 ```
+
+### StateGetAllocationIdForPendingDeal
+StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  5432,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `0`
 
 ### StateGetAllocations
 StateGetAllocations returns the all the allocations for a given client.
@@ -4705,8 +4946,7 @@ Response:
     "State": {
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101,
-      "VerifiedClaim": 0
+      "SlashEpoch": 10101
     }
   }
 }
@@ -4753,8 +4993,7 @@ Response:
   "State": {
     "SectorStartEpoch": 10101,
     "LastUpdatedEpoch": 10101,
-    "SlashEpoch": 10101,
-    "VerifiedClaim": 0
+    "SlashEpoch": 10101
   }
 }
 ```

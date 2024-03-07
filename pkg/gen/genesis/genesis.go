@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/filecoin-project/venus/pkg/consensus/chainselector"
 	"github.com/filecoin-project/venus/pkg/consensusfault"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/fvm"
@@ -591,7 +592,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 	}
 
 	// temp chainstore
-	cs := chain.NewStore(rep.ChainDatastore(), bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator())
+	cs := chain.NewStore(rep.ChainDatastore(), bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight)
 
 	// Verify PreSealed Data
 	stateroot, err = VerifyPreSealedData(ctx, cs, stateroot, template, keyIDs, template.NetworkVersion, para)

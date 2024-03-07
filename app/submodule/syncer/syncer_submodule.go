@@ -15,7 +15,6 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
@@ -50,7 +49,6 @@ type SyncerSubmodule struct { //nolint
 	//  'venus/pkg/net/pubsub/topic.go'
 	BlockTopic       *pubsub.Topic
 	BlockSub         pubsub.Subscription
-	ChainSelector    nodeChainSelector
 	Stmgr            *statemanger.Stmgr
 	ChainSyncManager *chainsync.Manager
 	Drand            beacon.Schedule
@@ -70,11 +68,6 @@ type syncerConfig interface {
 	Verifier() ffiwrapper.Verifier
 }
 
-type nodeChainSelector interface {
-	Weight(context.Context, *types.TipSet) (fbig.Int, error)
-	IsHeavier(ctx context.Context, a, b *types.TipSet) (bool, error)
-}
-
 // NewSyncerSubmodule creates a new chain submodule.
 func NewSyncerSubmodule(ctx context.Context,
 	config syncerConfig,
@@ -89,7 +82,6 @@ func NewSyncerSubmodule(ctx context.Context,
 	tickets := consensus.NewTicketMachine(chn.ChainReader)
 	cborStore := cbor.NewCborStore(config.Repo().Datastore())
 	stateViewer := consensus.AsDefaultStateViewer(state.NewViewer(cborStore))
-	nodeChainSelector := consensus.NewChainSelector(cborStore, &stateViewer)
 
 	blkValid := consensus.NewBlockValidator(tickets,
 		blockstore.Blockstore,
@@ -99,7 +91,6 @@ func NewSyncerSubmodule(ctx context.Context,
 		config.Verifier(),
 		&stateViewer,
 		chn.ChainReader,
-		nodeChainSelector,
 		chn.Fork,
 		config.Repo().Config().NetworkParams,
 		gasPriceSchedule)
@@ -134,7 +125,7 @@ func NewSyncerSubmodule(ctx context.Context,
 	chn.Stmgr = stmgr
 	chn.Waiter.Stmgr = stmgr
 
-	chainSyncManager, err := chainsync.NewManager(stmgr, blkValid, chn, nodeChainSelector,
+	chainSyncManager, err := chainsync.NewManager(stmgr, blkValid, chn,
 		blockstore.Blockstore, network.ExchangeClient, config.ChainClock(), chn.Fork)
 	if err != nil {
 		return nil, err
@@ -150,13 +141,15 @@ func NewSyncerSubmodule(ctx context.Context,
 		}
 	}
 
-	network.HelloHandler.Register(func(ci *types.ChainInfo) {
+	if err := network.HelloHandler.Register(ctx, func(ci *types.ChainInfo) {
 		err := chainSyncManager.BlockProposer().SendHello(ci)
 		if err != nil {
 			log.Errorf("error receiving chain info from hello %s: %s", ci, err)
 			return
 		}
-	})
+	}); err != nil {
+		return nil, err
+	}
 
 	return &SyncerSubmodule{
 		Stmgr:            stmgr,
@@ -164,7 +157,6 @@ func NewSyncerSubmodule(ctx context.Context,
 		ChainModule:      chn,
 		NetworkModule:    network,
 		SlashFilter:      slashFilter,
-		ChainSelector:    nodeChainSelector,
 		ChainSyncManager: &chainSyncManager,
 		Drand:            chn.Drand,
 		SyncProvider:     *NewChainSyncProvider(&chainSyncManager),

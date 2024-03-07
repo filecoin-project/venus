@@ -35,6 +35,7 @@ import (
 	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -374,24 +375,33 @@ func (msa *minerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi
 
 	return &types.MarketDeal{
 		Proposal: *proposal,
-		State:    *st,
+		State:    types.MakeDealState(st),
 	}, nil
+}
+
+func (msa *minerStateAPI) StateGetAllocationIdForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error) {
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return verifreg.NoAllocationID, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	mas, err := view.LoadMarketState(ctx)
+	if err != nil {
+		return verifreg.NoAllocationID, fmt.Errorf("failed to load miner actor state: %v", err)
+	}
+
+	allocationID, err := mas.GetAllocationIdForPendingDeal(dealID)
+	if err != nil {
+		return verifreg.NoAllocationID, err
+	}
+
+	return allocationID, nil
 }
 
 // StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
 // pending allocation is not found.
 func (msa *minerStateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.Allocation, error) {
-	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
-	if err != nil {
-		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
-	}
-
-	st, err := view.LoadMarketState(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
-	}
-
-	allocationID, err := st.GetAllocationIdForPendingDeal(dealID)
+	allocationID, err := msa.StateGetAllocationIdForPendingDeal(ctx, dealID, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -422,7 +432,7 @@ func (msa *minerStateAPI) StateGetAllocation(ctx context.Context, clientAddr add
 
 	st, err := view.LoadVerifregActor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+		return nil, fmt.Errorf("failed to load verifreg actor state: %v", err)
 	}
 
 	allocation, found, err := st.GetAllocation(idAddr, allocationID)
@@ -434,6 +444,25 @@ func (msa *minerStateAPI) StateGetAllocation(ctx context.Context, clientAddr add
 	}
 
 	return allocation, nil
+}
+
+func (msa *minerStateAPI) StateGetAllAllocations(ctx context.Context, tsk types.TipSetKey) (map[types.AllocationId]types.Allocation, error) {
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load verifreg actor state: %v", err)
+	}
+
+	allocations, err := st.GetAllAllocations()
+	if err != nil {
+		return nil, fmt.Errorf("getting all allocations: %w", err)
+	}
+
+	return allocations, nil
 }
 
 // StateGetAllocations returns the all the allocations for a given client.
@@ -450,7 +479,7 @@ func (msa *minerStateAPI) StateGetAllocations(ctx context.Context, clientAddr ad
 
 	st, err := view.LoadVerifregActor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+		return nil, fmt.Errorf("failed to load verifreg actor state: %v", err)
 	}
 
 	allocations, err := st.GetAllocations(idAddr)
@@ -475,7 +504,7 @@ func (msa *minerStateAPI) StateGetClaim(ctx context.Context, providerAddr addres
 
 	st, err := view.LoadVerifregActor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+		return nil, fmt.Errorf("failed to load verifreg actor state: %v", err)
 	}
 
 	claim, found, err := st.GetClaim(idAddr, claimID)
@@ -503,12 +532,31 @@ func (msa *minerStateAPI) StateGetClaims(ctx context.Context, providerAddr addre
 
 	st, err := view.LoadVerifregActor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+		return nil, fmt.Errorf("failed to load verifreg actor state: %v", err)
 	}
 
 	claims, err := st.GetClaims(idAddr)
 	if err != nil {
 		return nil, fmt.Errorf("getting claims: %w", err)
+	}
+
+	return claims, nil
+}
+
+func (msa *minerStateAPI) StateGetAllClaims(ctx context.Context, tsk types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load verifreg actor state: %v", err)
+	}
+
+	claims, err := st.GetAllClaims()
+	if err != nil {
+		return nil, fmt.Errorf("getting all claims: %w", err)
 	}
 
 	return claims, nil

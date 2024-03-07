@@ -9,7 +9,7 @@ import (
 )
 
 func InteropNet() *NetworkConf {
-	return &NetworkConf{
+	nc := &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
 				"/dns4/bootstrap-0.interop.fildev.network/tcp/1347/p2p/12D3KooWDpppr8csCNvEPnD2Z83KTPdBTM7iJhL66qK8LK3bB5NU",
@@ -55,9 +55,10 @@ func InteropNet() *NetworkConf {
 				UpgradeHyggeHeight:          -21,
 				UpgradeLightningHeight:      -22,
 				UpgradeThunderHeight:        -23,
-				UpgradeWatermelonHeight:     50,
+				UpgradeWatermelonHeight:     -24,
 				UpgradeWatermelonFixHeight:  -100, // This fix upgrade only ran on calibrationnet
 				UpgradeWatermelonFix2Height: -101, // This fix upgrade only ran on calibrationnet
+				UpgradeDragonHeight:         50,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,
@@ -67,4 +68,9 @@ func InteropNet() *NetworkConf {
 			ActorDebugging:          false,
 		},
 	}
+
+	nc.Network.ForkUpgradeParam.UpgradePhoenixHeight = nc.Network.ForkUpgradeParam.UpgradeDragonHeight + 100
+	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
+
+	return nc
 }

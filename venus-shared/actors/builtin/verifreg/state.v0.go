@@ -108,6 +108,12 @@ func (s *state0) GetAllocations(clientIdAddr address.Address) (map[AllocationId]
 
 }
 
+func (s *state0) GetAllAllocations() (map[AllocationId]Allocation, error) {
+
+	return nil, fmt.Errorf("unsupported in actors v0")
+
+}
+
 func (s *state0) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
 
 	return nil, false, fmt.Errorf("unsupported in actors v0")
@@ -115,6 +121,12 @@ func (s *state0) GetClaim(providerIdAddr address.Address, claimId verifreg9.Clai
 }
 
 func (s *state0) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
+
+	return nil, fmt.Errorf("unsupported in actors v0")
+
+}
+
+func (s *state0) GetAllClaims() (map[ClaimId]Claim, error) {
 
 	return nil, fmt.Errorf("unsupported in actors v0")
 

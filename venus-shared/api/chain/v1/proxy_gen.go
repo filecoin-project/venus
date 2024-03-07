@@ -22,6 +22,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 
 	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -84,8 +85,11 @@ type IMinerStateStruct struct {
 		StateDealProviderCollateralBounds  func(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (types.DealCollateralBounds, error)                    `perm:"read"`
 		StateDecodeParams                  func(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error)               `perm:"read"`
 		StateEncodeParams                  func(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error)                                     `perm:"read"`
+		StateGetAllAllocations             func(ctx context.Context, tsk types.TipSetKey) (map[types.AllocationId]types.Allocation, error)                                                `perm:"read"`
+		StateGetAllClaims                  func(ctx context.Context, tsk types.TipSetKey) (map[types.ClaimId]types.Claim, error)                                                          `perm:"read"`
 		StateGetAllocation                 func(ctx context.Context, clientAddr address.Address, allocationID types.AllocationId, tsk types.TipSetKey) (*types.Allocation, error)         `perm:"read"`
 		StateGetAllocationForPendingDeal   func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.Allocation, error)                                                   `perm:"read"`
+		StateGetAllocationIdForPendingDeal func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (verifreg.AllocationId, error)                                               `perm:"read"`
 		StateGetAllocations                func(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[types.AllocationId]types.Allocation, error)                    `perm:"read"`
 		StateGetClaim                      func(ctx context.Context, providerAddr address.Address, claimID types.ClaimId, tsk types.TipSetKey) (*types.Claim, error)                      `perm:"read"`
 		StateGetClaims                     func(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[types.ClaimId]types.Claim, error)                            `perm:"read"`
@@ -145,11 +149,20 @@ func (s *IMinerStateStruct) StateDecodeParams(p0 context.Context, p1 address.Add
 func (s *IMinerStateStruct) StateEncodeParams(p0 context.Context, p1 cid.Cid, p2 abi.MethodNum, p3 json.RawMessage) ([]byte, error) {
 	return s.Internal.StateEncodeParams(p0, p1, p2, p3)
 }
+func (s *IMinerStateStruct) StateGetAllAllocations(p0 context.Context, p1 types.TipSetKey) (map[types.AllocationId]types.Allocation, error) {
+	return s.Internal.StateGetAllAllocations(p0, p1)
+}
+func (s *IMinerStateStruct) StateGetAllClaims(p0 context.Context, p1 types.TipSetKey) (map[types.ClaimId]types.Claim, error) {
+	return s.Internal.StateGetAllClaims(p0, p1)
+}
 func (s *IMinerStateStruct) StateGetAllocation(p0 context.Context, p1 address.Address, p2 types.AllocationId, p3 types.TipSetKey) (*types.Allocation, error) {
 	return s.Internal.StateGetAllocation(p0, p1, p2, p3)
 }
 func (s *IMinerStateStruct) StateGetAllocationForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.Allocation, error) {
 	return s.Internal.StateGetAllocationForPendingDeal(p0, p1, p2)
+}
+func (s *IMinerStateStruct) StateGetAllocationIdForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (verifreg.AllocationId, error) {
+	return s.Internal.StateGetAllocationIdForPendingDeal(p0, p1, p2)
 }
 func (s *IMinerStateStruct) StateGetAllocations(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[types.AllocationId]types.Allocation, error) {
 	return s.Internal.StateGetAllocations(p0, p1, p2)
@@ -855,7 +868,7 @@ type IETHStruct struct {
 		EthBlockNumber                         func(ctx context.Context) (types.EthUint64, error)                                                                                        `perm:"read"`
 		EthCall                                func(ctx context.Context, tx types.EthCall, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error)                                  `perm:"read"`
 		EthChainId                             func(ctx context.Context) (types.EthUint64, error)                                                                                        `perm:"read"`
-		EthEstimateGas                         func(ctx context.Context, tx types.EthCall) (types.EthUint64, error)                                                                      `perm:"read"`
+		EthEstimateGas                         func(ctx context.Context, p jsonrpc.RawParams) (types.EthUint64, error)                                                                   `perm:"read"`
 		EthFeeHistory                          func(ctx context.Context, p jsonrpc.RawParams) (types.EthFeeHistory, error)                                                               `perm:"read"`
 		EthGasPrice                            func(ctx context.Context) (types.EthBigInt, error)                                                                                        `perm:"read"`
 		EthGetBalance                          func(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBigInt, error)                         `perm:"read"`
@@ -902,7 +915,7 @@ func (s *IETHStruct) EthCall(p0 context.Context, p1 types.EthCall, p2 types.EthB
 func (s *IETHStruct) EthChainId(p0 context.Context) (types.EthUint64, error) {
 	return s.Internal.EthChainId(p0)
 }
-func (s *IETHStruct) EthEstimateGas(p0 context.Context, p1 types.EthCall) (types.EthUint64, error) {
+func (s *IETHStruct) EthEstimateGas(p0 context.Context, p1 jsonrpc.RawParams) (types.EthUint64, error) {
 	return s.Internal.EthEstimateGas(p0, p1)
 }
 func (s *IETHStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (types.EthFeeHistory, error) {
@@ -1035,6 +1048,20 @@ type FullETHStruct struct {
 	IETHEventStruct
 }
 
+type IActorEventStruct struct {
+	Internal struct {
+		GetActorEvents       func(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error)      `perm:"read"`
+		SubscribeActorEvents func(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) `perm:"read"`
+	}
+}
+
+func (s *IActorEventStruct) GetActorEvents(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+	return s.Internal.GetActorEvents(p0, p1)
+}
+func (s *IActorEventStruct) SubscribeActorEvents(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+	return s.Internal.SubscribeActorEvents(p0, p1)
+}
+
 type FullNodeStruct struct {
 	IBlockStoreStruct
 	IChainStruct
@@ -1047,4 +1074,5 @@ type FullNodeStruct struct {
 	IWalletStruct
 	ICommonStruct
 	FullETHStruct
+	IActorEventStruct
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/ipfs/go-cid"
 )
 
 type GasTrace struct {
@@ -18,6 +17,11 @@ type GasTrace struct {
 	TimeTaken  time.Duration `json:"tt"`
 }
 
+type ActorTrace struct {
+	Id    abi.ActorID // nolint
+	State Actor
+}
+
 type ReturnTrace struct {
 	ExitCode    exitcode.ExitCode
 	Return      []byte
@@ -25,10 +29,11 @@ type ReturnTrace struct {
 }
 
 type ExecutionTrace struct {
-	Msg        MessageTrace
-	MsgRct     ReturnTrace
-	GasCharges []*GasTrace      `cborgen:"maxlen=1000000000"`
-	Subcalls   []ExecutionTrace `cborgen:"maxlen=1000000000"`
+	Msg          MessageTrace
+	MsgRct       ReturnTrace
+	InvokedActor *ActorTrace      `json:",omitempty"`
+	GasCharges   []*GasTrace      `cborgen:"maxlen=1000000000"`
+	Subcalls     []ExecutionTrace `cborgen:"maxlen=1000000000"`
 }
 
 func (et ExecutionTrace) SumGas() GasTrace {
@@ -61,5 +66,4 @@ type MessageTrace struct {
 	ParamsCodec uint64
 	GasLimit    uint64
 	ReadOnly    bool
-	CodeCid     cid.Cid
 }

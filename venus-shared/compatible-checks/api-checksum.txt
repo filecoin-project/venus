@@ -152,6 +152,8 @@ v0api.FullNode:
 	StateDealProviderCollateralBounds:	In=4,	Out=2,	CheckSum=5231e44843c0b74a04371e1e7170d4b2
 	StateDecodeParams:	In=5,	Out=2,	CheckSum=8c6311be4dc064a657368516c33e1307
 	StateGetActor:	In=3,	Out=2,	CheckSum=5ca2405c99c6a03afc0ca0dedefd263b
+	StateGetAllAllocations:	In=2,	Out=2,	CheckSum=d5fa693dc271bfb4aab231364cf8ea3b
+	StateGetAllClaims:	In=2,	Out=2,	CheckSum=249fd75d6486d5113d443144b732123f
 	StateGetAllocation:	In=4,	Out=2,	CheckSum=306a8d2eb65b1bd436f2230bb96666b5
 	StateGetAllocationForPendingDeal:	In=3,	Out=2,	CheckSum=3d2912f0c80606576bb697499140ae2f
 	StateGetAllocations:	In=3,	Out=2,	CheckSum=570266653b3643cf22e6b47609db7e55
@@ -290,7 +292,7 @@ api.FullNode:
 	EthBlockNumber:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
 	EthCall:	In=3,	Out=2,	CheckSum=4ad62b9ec4eb1da934580efa4878279a
 	EthChainId:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
-	EthEstimateGas:	In=2,	Out=2,	CheckSum=f4d63e320f2fb2778b210a925516a114
+	EthEstimateGas:	In=2,	Out=2,	CheckSum=06642bd8bc4a814495e4d5db5c3d11d5
 	EthFeeHistory:	In=2,	Out=2,	CheckSum=6a4806cfbd9b939d6f7fc3fbe7dc1ff7
 	EthGasPrice:	In=1,	Out=2,	CheckSum=e2f5588dddfc36a9cdef0fad6f4db93e
 	EthGetBalance:	In=3,	Out=2,	CheckSum=80912669b93ebbd53024dbc6b4f39d94
@@ -320,6 +322,8 @@ api.FullNode:
 	EthSendRawTransaction:	In=2,	Out=2,	CheckSum=f63e0b205164d628bc8022b6d5a496f5
 	EthSubscribe:	In=2,	Out=2,	CheckSum=f63e0b205164d628bc8022b6d5a496f5
 	EthSyncing:	In=1,	Out=2,	CheckSum=2c17cf64e376c0e9d0d56053d33c0722
+	EthTraceBlock:	In=2,	Out=2,	CheckSum=87ad85d70d0a285fae530a47eee79d13
+	EthTraceReplayBlockTransactions:	In=3,	Out=2,	CheckSum=ec2c86340cf2a777bc64bab8d10e3fdb
 	EthUninstallFilter:	In=2,	Out=2,	CheckSum=eaa6a477ffaae115413457bbdb11e339
 	EthUnsubscribe:	In=2,	Out=2,	CheckSum=eaa6a477ffaae115413457bbdb11e339
 	FilecoinAddressToEthAddress:	In=2,	Out=2,	CheckSum=13a0b5ce8f82604e17803a00c4086c4c
@@ -327,6 +331,7 @@ api.FullNode:
 	GasEstimateGasLimit:	In=3,	Out=2,	CheckSum=4d1bd57eef0ee90d4c2e89f097d0604d
 	GasEstimateGasPremium:	In=5,	Out=2,	CheckSum=550724ed37e2fdaa64e55147e82214b1
 	GasEstimateMessageGas:	In=4,	Out=2,	CheckSum=6ff6179b579feed33897d96429504624
+	GetActorEvents:	In=2,	Out=2,	CheckSum=e0c47876fd090c7125f3610b99e0dd27
 	ID:	In=1,	Out=2,	CheckSum=1635810444d2b13b381cbefece853ba7
 	LogAlerts:	In=1,	Out=2,	CheckSum=c9262fa7c93e891ec80868e0b83a2222
 	LogList:	In=1,	Out=2,	CheckSum=c6d763b6ec7190283b7c648e735725c0
@@ -432,8 +437,11 @@ api.FullNode:
 	StateDecodeParams:	In=5,	Out=2,	CheckSum=8c6311be4dc064a657368516c33e1307
 	StateEncodeParams:	In=4,	Out=2,	CheckSum=3e1a5390b92b1b69f9be038cd7400e38
 	StateGetActor:	In=3,	Out=2,	CheckSum=5ca2405c99c6a03afc0ca0dedefd263b
+	StateGetAllAllocations:	In=2,	Out=2,	CheckSum=d5fa693dc271bfb4aab231364cf8ea3b
+	StateGetAllClaims:	In=2,	Out=2,	CheckSum=249fd75d6486d5113d443144b732123f
 	StateGetAllocation:	In=4,	Out=2,	CheckSum=306a8d2eb65b1bd436f2230bb96666b5
 	StateGetAllocationForPendingDeal:	In=3,	Out=2,	CheckSum=3d2912f0c80606576bb697499140ae2f
+	StateGetAllocationIdForPendingDeal:	In=3,	Out=2,	CheckSum=7008c851d474bd08a8df23d7a7368098
 	StateGetAllocations:	In=3,	Out=2,	CheckSum=570266653b3643cf22e6b47609db7e55
 	StateGetBeaconEntry:	In=2,	Out=2,	CheckSum=c74f5c0f4039207ea45c11bfe3319c38
 	StateGetClaim:	In=4,	Out=2,	CheckSum=79bc50cf65a4d6b102267fd020b97510
@@ -481,6 +489,7 @@ api.FullNode:
 	StateVerifiedRegistryRootKey:	In=2,	Out=2,	CheckSum=5ad3a497ee24e321c780a69b8d2f0936
 	StateVerifierStatus:	In=3,	Out=2,	CheckSum=e33ae4cd2315832f2d6f2aa74b68c34e
 	StateWaitMsg:	In=5,	Out=2,	CheckSum=561c18d1417310b5cd35cfffb0b75a00
+	SubscribeActorEvents:	In=2,	Out=2,	CheckSum=af75eb1b19217696987fdf472121561c
 	SyncCheckBad:	In=2,	Out=2,	CheckSum=ba06470da0ca1d6cc2f9ada7f0288a6c
 	SyncCheckpoint:	In=2,	Out=1,	CheckSum=cdfe593ac791e823186abb77bfad49a0
 	SyncIncomingBlocks:	In=1,	Out=2,	CheckSum=f6ad051ba2ce73511f74f9c08032acc3

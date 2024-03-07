@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 )
 
@@ -170,9 +171,47 @@ type Deadline struct {
 
 var MarketBalanceNil = MarketBalance{}
 
+type MarketDealState struct {
+	SectorStartEpoch abi.ChainEpoch // -1 if not yet included in proven sector
+	LastUpdatedEpoch abi.ChainEpoch // -1 if deal state never updated
+	SlashEpoch       abi.ChainEpoch // -1 if deal never slashed
+}
+
+func MakeDealState(mds market.DealState) MarketDealState {
+	return MarketDealState{
+		SectorStartEpoch: mds.SectorStartEpoch(),
+		LastUpdatedEpoch: mds.LastUpdatedEpoch(),
+		SlashEpoch:       mds.SlashEpoch(),
+	}
+}
+
+type mstate struct {
+	s MarketDealState
+}
+
+func (m mstate) SectorStartEpoch() abi.ChainEpoch {
+	return m.s.SectorStartEpoch
+}
+
+func (m mstate) LastUpdatedEpoch() abi.ChainEpoch {
+	return m.s.LastUpdatedEpoch
+}
+
+func (m mstate) SlashEpoch() abi.ChainEpoch {
+	return m.s.SlashEpoch
+}
+
+func (m mstate) Equals(o market.DealState) bool {
+	return market.DealStatesEqual(m, o)
+}
+
+func (m MarketDealState) Iface() market.DealState {
+	return mstate{m}
+}
+
 type MarketDeal struct {
 	Proposal DealProposal
-	State    DealState
+	State    MarketDealState
 }
 
 type MinerPower struct {
@@ -430,6 +469,8 @@ type ForkUpgradeParams struct {
 	UpgradeLightningHeight   abi.ChainEpoch
 	UpgradeThunderHeight     abi.ChainEpoch
 	UpgradeWatermelonHeight  abi.ChainEpoch
+	UpgradeDragonHeight      abi.ChainEpoch
+	UpgradePhoenixHeight     abi.ChainEpoch
 }
 
 type NodeStatus struct {

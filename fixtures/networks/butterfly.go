@@ -9,7 +9,7 @@ import (
 )
 
 func ButterflySnapNet() *NetworkConf {
-	return &NetworkConf{
+	nc := &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
 				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWNwAkUtWuLtKCyyFP2vBzmpTHSrQao7KQx7Xfa8YvSg1N",
@@ -20,7 +20,7 @@ func ButterflySnapNet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.NetworkButterfly,
-			GenesisNetworkVersion: network.Version20,
+			GenesisNetworkVersion: network.Version21,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -55,9 +55,10 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeHyggeHeight:          -21,
 				UpgradeLightningHeight:      -22,
 				UpgradeThunderHeight:        -23,
-				UpgradeWatermelonHeight:     400,
+				UpgradeWatermelonHeight:     -24,
 				UpgradeWatermelonFixHeight:  -100, // This fix upgrade only ran on calibrationnet
 				UpgradeWatermelonFix2Height: -101, // This fix upgrade only ran on calibrationnet
+				UpgradeDragonHeight:         5760,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,
@@ -67,4 +68,9 @@ func ButterflySnapNet() *NetworkConf {
 			ActorDebugging:          false,
 		},
 	}
+
+	nc.Network.ForkUpgradeParam.UpgradePhoenixHeight = nc.Network.ForkUpgradeParam.UpgradeDragonHeight + 120
+	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
+
+	return nc
 }

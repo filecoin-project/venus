@@ -160,7 +160,7 @@ func (t *MsgInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ChannelID (string) (string)
-	if len(t.ChannelID) > cbg.MaxLength {
+	if len(t.ChannelID) > 8192 {
 		return xerrors.Errorf("Value in field t.ChannelID was too long")
 	}
 
@@ -183,7 +183,7 @@ func (t *MsgInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Err (string) (string)
-	if len(t.Err) > cbg.MaxLength {
+	if len(t.Err) > 8192 {
 		return xerrors.Errorf("Value in field t.Err was too long")
 	}
 
@@ -227,7 +227,7 @@ func (t *MsgInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.ChannelID (string) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -266,7 +266,7 @@ func (t *MsgInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Err (string) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -300,7 +300,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ChannelID (string) (string)
-	if len(t.ChannelID) > cbg.MaxLength {
+	if len(t.ChannelID) > 8192 {
 		return xerrors.Errorf("Value in field t.ChannelID was too long")
 	}
 
@@ -333,7 +333,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Vouchers ([]*market.VoucherInfo) (slice)
-	if len(t.Vouchers) > cbg.MaxLength {
+	if len(t.Vouchers) > 8192 {
 		return xerrors.Errorf("Slice value in field t.Vouchers was too long")
 	}
 
@@ -344,6 +344,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
+
 	}
 
 	// t.NextLane (uint64) (uint64)
@@ -434,7 +435,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.ChannelID (string) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -499,7 +500,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 8192 {
 		return fmt.Errorf("t.Vouchers: array too large (%d)", extra)
 	}
 
@@ -537,9 +538,9 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
+
 		}
 	}
-
 	// t.NextLane (uint64) (uint64)
 
 	{
@@ -683,7 +684,7 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Proof ([]uint8) (slice)
-	if len(t.Proof) > cbg.ByteArrayMaxLen {
+	if len(t.Proof) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.Proof was too long")
 	}
 
@@ -691,7 +692,7 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Proof[:]); err != nil {
+	if _, err := cw.Write(t.Proof); err != nil {
 		return err
 	}
 
@@ -751,7 +752,7 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.ByteArrayMaxLen {
+	if extra > 2097152 {
 		return fmt.Errorf("t.Proof: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
@@ -762,9 +763,10 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Proof = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Proof[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Proof); err != nil {
 		return err
 	}
+
 	// t.Submitted (bool) (bool)
 
 	maj, extra, err = cr.ReadHeader()
@@ -800,7 +802,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ID (uuid.UUID) (array)
-	if len(t.ID) > cbg.ByteArrayMaxLen {
+	if len(t.ID) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.ID was too long")
 	}
 
@@ -848,7 +850,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Miner (peer.ID) (string)
-	if len(t.Miner) > cbg.MaxLength {
+	if len(t.Miner) > 8192 {
 		return xerrors.Errorf("Value in field t.Miner was too long")
 	}
 
@@ -860,7 +862,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Client (peer.ID) (string)
-	if len(t.Client) > cbg.MaxLength {
+	if len(t.Client) > 8192 {
 		return xerrors.Errorf("Value in field t.Client was too long")
 	}
 
@@ -878,7 +880,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.PiecePath (filestore.Path) (string)
-	if len(t.PiecePath) > cbg.MaxLength {
+	if len(t.PiecePath) > 8192 {
 		return xerrors.Errorf("Value in field t.PiecePath was too long")
 	}
 
@@ -896,7 +898,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.MetadataPath (filestore.Path) (string)
-	if len(t.MetadataPath) > cbg.MaxLength {
+	if len(t.MetadataPath) > 8192 {
 		return xerrors.Errorf("Value in field t.MetadataPath was too long")
 	}
 
@@ -924,7 +926,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Message (string) (string)
-	if len(t.Message) > cbg.MaxLength {
+	if len(t.Message) > 8192 {
 		return xerrors.Errorf("Value in field t.Message was too long")
 	}
 
@@ -979,7 +981,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.PieceStatus (market.PieceStatus) (string)
-	if len(t.PieceStatus) > cbg.MaxLength {
+	if len(t.PieceStatus) > 8192 {
 		return xerrors.Errorf("Value in field t.PieceStatus was too long")
 	}
 
@@ -991,7 +993,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.InboundCAR (string) (string)
-	if len(t.InboundCAR) > cbg.MaxLength {
+	if len(t.InboundCAR) > 8192 {
 		return xerrors.Errorf("Value in field t.InboundCAR was too long")
 	}
 
@@ -1039,19 +1041,17 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.ByteArrayMaxLen {
+	if extra > 2097152 {
 		return fmt.Errorf("t.ID: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
-
 	if extra != 16 {
 		return fmt.Errorf("expected array to have 16 elements")
 	}
 
 	t.ID = [16]uint8{}
-
 	if _, err := io.ReadFull(cr, t.ID[:]); err != nil {
 		return err
 	}
@@ -1123,7 +1123,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Miner (peer.ID) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -1133,7 +1133,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Client (peer.ID) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -1157,7 +1157,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.PiecePath (filestore.Path) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -1181,7 +1181,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.MetadataPath (filestore.Path) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -1191,10 +1191,10 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.SlashEpoch (abi.ChainEpoch) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -1233,7 +1233,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Message (string) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -1358,7 +1358,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.PieceStatus (market.PieceStatus) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -1368,7 +1368,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.InboundCAR (string) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -1568,7 +1568,7 @@ func (t *ProviderDealState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Receiver (peer.ID) (string)
-	if len(t.Receiver) > cbg.MaxLength {
+	if len(t.Receiver) > 8192 {
 		return xerrors.Errorf("Value in field t.Receiver was too long")
 	}
 
@@ -1591,7 +1591,7 @@ func (t *ProviderDealState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Message (string) (string)
-	if len(t.Message) > cbg.MaxLength {
+	if len(t.Message) > 8192 {
 		return xerrors.Errorf("Value in field t.Message was too long")
 	}
 
@@ -1714,7 +1714,7 @@ func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Receiver (peer.ID) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}
@@ -1747,7 +1747,7 @@ func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Message (string) (string)
 
 	{
-		sval, err := cbg.ReadString(cr)
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
 		if err != nil {
 			return err
 		}

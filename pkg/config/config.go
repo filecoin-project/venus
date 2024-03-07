@@ -40,6 +40,7 @@ type Config struct {
 	SlashFilterDs *SlashFilterDsConfig `json:"slashFilter"`
 	RateLimitCfg  *RateLimitCfg        `json:"rateLimit"`
 	FevmConfig    *FevmConfig          `json:"fevm"`
+	EventsConfig  *EventsConfig        `json:"events"`
 	PubsubConfig  *PubsubConfig        `json:"pubsub"`
 	FaultReporter *FaultReporterConfig `json:"faultReporter"`
 }
@@ -337,6 +338,8 @@ type ForkUpgradeConfig struct {
 	UpgradeWatermelonHeight     abi.ChainEpoch `json:"upgradeWatermelonHeight"`
 	UpgradeWatermelonFixHeight  abi.ChainEpoch `json:"upgradeWatermelonFixHeight"`
 	UpgradeWatermelonFix2Height abi.ChainEpoch `json:"upgradeWatermelonFix2Height"`
+	UpgradeDragonHeight         abi.ChainEpoch `json:"upgradeDragonHeight"`
+	UpgradePhoenixHeight        abi.ChainEpoch `json:"upgradePhoenixHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -373,6 +376,8 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeWatermelonFixHeight: -1,
 	// This fix upgrade only ran on calibrationnet
 	UpgradeWatermelonFix2Height: -2,
+	UpgradeDragonHeight:         3792000,
+	UpgradePhoenixHeight:        3792000 + 120,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
@@ -421,14 +426,13 @@ func newRateLimitConfig() *RateLimitCfg {
 }
 
 type EventConfig struct {
-	// EnableEthRPC enables APIs that
 	// DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	// The API is enabled when EnableEthRPC or Events.EnableActorEventsAPI is true, but can be disabled selectively with this flag.
 	DisableRealTimeFilterAPI bool `json:"disableRealTimeFilterAPI"`
 
 	// DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
 	// that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	// The API is enabled when EnableEthRPC or Events.EnableActorEventsAPI is true, but can be disabled selectively with this flag.
 	DisableHistoricFilterAPI bool `json:"disableHistoricFilterAPI"`
 
 	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
@@ -467,6 +471,14 @@ type FevmConfig struct {
 	Event EventConfig `json:"event"`
 }
 
+type EventsConfig struct {
+	// EnableActorEventsAPI enables the Actor events API that enables clients to consume events
+	// emitted by (smart contracts + built-in Actors).
+	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
+	// disabled by setting their respective Disable* options in Fevm.Event.
+	EnableActorEventsAPI bool `json:"enableActorEventsAPI"`
+}
+
 func newFevmConfig() *FevmConfig {
 	return &FevmConfig{
 		EnableEthRPC:                 false,
@@ -479,6 +491,12 @@ func newFevmConfig() *FevmConfig {
 			MaxFilterResults:         10000,
 			MaxFilterHeightRange:     2880, // conservative limit of one day
 		},
+	}
+}
+
+func newEventsConfig() *EventsConfig {
+	return &EventsConfig{
+		EnableActorEventsAPI: false,
 	}
 }
 
@@ -530,6 +548,7 @@ func NewDefaultConfig() *Config {
 		SlashFilterDs: newDefaultSlashFilterDsConfig(),
 		RateLimitCfg:  newRateLimitConfig(),
 		FevmConfig:    newFevmConfig(),
+		EventsConfig:  newEventsConfig(),
 		PubsubConfig:  newPubsubConfig(),
 		FaultReporter: newFaultReporterConfig(),
 	}

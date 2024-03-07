@@ -89,7 +89,7 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Params ([]uint8) (slice)
-	if len(t.Params) > cbg.ByteArrayMaxLen {
+	if len(t.Params) > 2097152 {
 		return xerrors.Errorf("Byte array in field t.Params was too long")
 	}
 
@@ -97,9 +97,10 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := cw.Write(t.Params[:]); err != nil {
+	if _, err := cw.Write(t.Params); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -184,10 +185,10 @@ func (t *Message) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.GasLimit (int64) (int64)
 	{
 		maj, extra, err := cr.ReadHeader()
-		var extraI int64
 		if err != nil {
 			return err
 		}
+		var extraI int64
 		switch maj {
 		case cbg.MajUnsignedInt:
 			extraI = int64(extra)
@@ -245,7 +246,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.ByteArrayMaxLen {
+	if extra > 2097152 {
 		return fmt.Errorf("t.Params: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
@@ -256,9 +257,10 @@ func (t *Message) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Params = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(cr, t.Params[:]); err != nil {
+	if _, err := io.ReadFull(cr, t.Params); err != nil {
 		return err
 	}
+
 	return nil
 }
 
