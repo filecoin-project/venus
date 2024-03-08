@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -165,6 +166,8 @@ type IMarket interface {
 	ReleaseDeals(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                                //perm:write
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                     //perm:read
 	UpdateStorageDealStatus(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState market.PieceStatus) error //perm:write
+	AssignDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoV2, error)                  //perm:write
+	ReleaseDirectDeals(ctx context.Context, miner address.Address, allocationIDs []types.AllocationId) error                                          //perm:write
 	// market event
 	ResponseMarketEvent(ctx context.Context, resp *gateway.ResponseEvent) error                                        //perm:read
 	ListenMarketEvent(ctx context.Context, policy *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error) //perm:read
@@ -187,6 +190,12 @@ type IMarket interface {
 	// GetRetrievalDealStatistic get retrieval deal statistic information
 	// todo address undefined is invalid, it is currently not possible to directly associate an order with a miner
 	GetRetrievalDealStatistic(ctx context.Context, miner address.Address) (*market.RetrievalDealStatistic, error) //perm:read
+
+	// ImportDirectDeal import direct deals
+	ImportDirectDeal(ctx context.Context, deal *market.DirectDealParams) error                                   //perm:write
+	GetDirectDeal(ctx context.Context, id uuid.UUID) (*market.DirectDeal, error)                                 //perm:read
+	GetDirectDealByAllocationID(ctx context.Context, id types.AllocationId) (*market.DirectDeal, error)          //perm:read
+	ListDirectDeals(ctx context.Context, queryParams market.DirectDealQueryParams) ([]*market.DirectDeal, error) //perm:read
 
 	api.Version
 }

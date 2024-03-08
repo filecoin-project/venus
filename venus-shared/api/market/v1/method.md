@@ -14,6 +14,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [ActorUpsert](#actorupsert)
   * [AddFsPieceStorage](#addfspiecestorage)
   * [AddS3PieceStorage](#adds3piecestorage)
+  * [AssignDeals](#assigndeals)
   * [AssignUnPackedDeals](#assignunpackeddeals)
   * [DagstoreDestroyShard](#dagstoredestroyshard)
   * [DagstoreGC](#dagstoregc)
@@ -48,10 +49,14 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [DealsSetPieceCidBlocklist](#dealssetpiececidblocklist)
   * [DealsSetPublishMsgPeriod](#dealssetpublishmsgperiod)
   * [GetDeals](#getdeals)
+  * [GetDirectDeal](#getdirectdeal)
+  * [GetDirectDealByAllocationID](#getdirectdealbyallocationid)
   * [GetRetrievalDealStatistic](#getretrievaldealstatistic)
   * [GetStorageDealStatistic](#getstoragedealstatistic)
   * [GetUnPackedDeals](#getunpackeddeals)
   * [ID](#id)
+  * [ImportDirectDeal](#importdirectdeal)
+  * [ListDirectDeals](#listdirectdeals)
   * [ListPieceStorageInfos](#listpiecestorageinfos)
   * [ListenMarketEvent](#listenmarketevent)
   * [MarkDealsAsPacking](#markdealsaspacking)
@@ -96,6 +101,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [PiecesListCidInfos](#pieceslistcidinfos)
   * [PiecesListPieces](#pieceslistpieces)
   * [ReleaseDeals](#releasedeals)
+  * [ReleaseDirectDeals](#releasedirectdeals)
   * [RemovePieceStorage](#removepiecestorage)
   * [ResponseMarketEvent](#responsemarketevent)
   * [SectorGetExpectedSealDuration](#sectorgetexpectedsealduration)
@@ -219,6 +225,56 @@ Inputs:
 ```
 
 Response: `{}`
+
+### AssignDeals
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  {
+    "Miner": 1000,
+    "Number": 9
+  },
+  34359738368,
+  {
+    "MaxPiece": 123,
+    "MaxPieceSize": 42,
+    "MinPiece": 123,
+    "MinPieceSize": 42,
+    "MinUsedSpace": 42,
+    "StartEpoch": 10101,
+    "EndEpoch": 10101,
+    "SectorExpiration": 10101
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "DealID": 5432,
+    "PublishCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "AllocationID": 0,
+    "PieceCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "PieceSize": 1032,
+    "Client": "f01234",
+    "Provider": "f01234",
+    "Offset": 1032,
+    "Length": 1032,
+    "PayloadSize": 42,
+    "StartEpoch": 10101,
+    "EndEpoch": 10101
+  }
+]
+```
 
 ### AssignUnPackedDeals
 
@@ -962,6 +1018,80 @@ Response:
 ]
 ```
 
+### GetDirectDeal
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "07070707-0707-0707-0707-070707070707"
+]
+```
+
+Response:
+```json
+{
+  "ID": "07070707-0707-0707-0707-070707070707",
+  "PieceCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "PieceSize": 1032,
+  "Client": "f01234",
+  "Provider": "f01234",
+  "PayloadSize": 42,
+  "State": 1,
+  "AllocationID": 42,
+  "ClaimID": 42,
+  "SectorID": 9,
+  "Offset": 1032,
+  "Length": 1032,
+  "StartEpoch": 10101,
+  "EndEpoch": 10101,
+  "Message": "string value",
+  "CreatedAt": 42,
+  "UpdatedAt": 42
+}
+```
+
+### GetDirectDealByAllocationID
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  0
+]
+```
+
+Response:
+```json
+{
+  "ID": "07070707-0707-0707-0707-070707070707",
+  "PieceCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "PieceSize": 1032,
+  "Client": "f01234",
+  "Provider": "f01234",
+  "PayloadSize": 42,
+  "State": 1,
+  "AllocationID": 42,
+  "ClaimID": 42,
+  "SectorID": 9,
+  "Offset": 1032,
+  "Length": 1032,
+  "StartEpoch": 10101,
+  "EndEpoch": 10101,
+  "Message": "string value",
+  "CreatedAt": 42,
+  "UpdatedAt": 42
+}
+```
+
 ### GetRetrievalDealStatistic
 GetRetrievalDealStatistic get retrieval deal statistic information
 todo address undefined is invalid, it is currently not possible to directly associate an order with a miner
@@ -1068,6 +1198,83 @@ Perms: read
 Inputs: `[]`
 
 Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
+
+### ImportDirectDeal
+ImportDirectDeal import direct deals
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  {
+    "SkipCommP": true,
+    "NoCopyCarFile": true,
+    "SkipGenerateIndex": true,
+    "DealParams": [
+      {
+        "FilePath": "string value",
+        "PayloadSize": 42,
+        "DealUUID": "07070707-0707-0707-0707-070707070707",
+        "AllocationID": 42,
+        "PieceCID": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Client": "f01234"
+      }
+    ]
+  }
+]
+```
+
+Response: `{}`
+
+### ListDirectDeals
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "Provider": "f01234",
+    "Client": "f01234",
+    "State": 1,
+    "Offset": 123,
+    "Limit": 123,
+    "Asc": true
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": "07070707-0707-0707-0707-070707070707",
+    "PieceCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "PieceSize": 1032,
+    "Client": "f01234",
+    "Provider": "f01234",
+    "PayloadSize": 42,
+    "State": 1,
+    "AllocationID": 42,
+    "ClaimID": 42,
+    "SectorID": 9,
+    "Offset": 1032,
+    "Length": 1032,
+    "StartEpoch": 10101,
+    "EndEpoch": 10101,
+    "Message": "string value",
+    "CreatedAt": 42,
+    "UpdatedAt": 42
+  }
+]
+```
 
 ### ListPieceStorageInfos
 
@@ -2424,6 +2631,23 @@ Inputs:
   "f01234",
   [
     5432
+  ]
+]
+```
+
+Response: `{}`
+
+### ReleaseDirectDeals
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    0
   ]
 ]
 ```
