@@ -1,5 +1,44 @@
 # venus changelog
 
+## v1.15.0-rc1
+
+* feat: import data by uuid [[#6197](https://github.com/filecoin-project/venus/pull/6197)]
+* chore(deps): bump TheDoctor0/zip-release from 0.7.1 to 0.7.5 [[#6205](https://github.com/filecoin-project/venus/pull/6205)]
+* chore(deps): bump TheDoctor0/zip-release from 0.7.5 to 0.7.6 [[#6212](https://github.com/filecoin-project/venus/pull/6212)]
+* chore: ci: update go versin to v1.20 [[#6224](https://github.com/filecoin-project/venus/pull/6224)]
+* chore: merge release v1.14 to master [[#6234](https://github.com/filecoin-project/venus/pull/6234)]
+* fix: sync category [[#6233](https://github.com/filecoin-project/venus/pull/6233)]
+* opt: remove CachedBlockstore [[#6218](https://github.com/filecoin-project/venus/pull/6218)]
+* opt: update badger ValueLogLoadingMode and TableLoadingMode to MemoryMap [[#6235](https://github.com/filecoin-project/venus/pull/6235)]
+* chore: support update log level [[#6239](https://github.com/filecoin-project/venus/pull/6239)]
+* opt: use bin_name [[#6240](https://github.com/filecoin-project/venus/pull/6240)]
+* fix: eth: correctly encode and simplify native input/output encoding [[#6242](https://github.com/filecoin-project/venus/pull/6242)]
+* feat: chain import: don't walk to genesis [[#6243](https://github.com/filecoin-project/venus/pull/6243)]
+* chore: cmd: sort actor CIDs alphabetically before printing [[#6244](https://github.com/filecoin-project/venus/pull/6244)]
+* chore: remove hyperspace and wallaby [[#6245](https://github.com/filecoin-project/venus/pull/6245)]
+* fix: exchange: allow up to 10k messages per block [[#6247](https://github.com/filecoin-project/venus/pull/6247)]
+* feat: add more metrics [[#6165](https://github.com/filecoin-project/venus/pull/6165)]
+* chore(deps): bump actions/setup-go from 4 to 5 [[#6248](https://github.com/filecoin-project/venus/pull/6248)]
+* feat: msg list with time [[#6249](https://github.com/filecoin-project/venus/pull/6249)]
+* chore(deps): bump actions/upload-artifact from 3 to 4 [[#6253](https://github.com/filecoin-project/venus/pull/6253)]
+* chore(deps): bump golang.org/x/crypto from 0.14.0 to 0.17.0 in /venus-devtool [[#6255](https://github.com/filecoin-project/venus/pull/6255)]
+* chore(deps): bump golang.org/x/crypto from 0.14.0 to 0.17.0 [[#6254](https://github.com/filecoin-project/venus/pull/6254)]
+* fix: index too large may out of range [[#6258](https://github.com/filecoin-project/venus/pull/6258)]
+* feat: implement frc-0051 [[#6266](https://github.com/filecoin-project/venus/pull/6266)]
+* feat: Add nv22 skeleton [[#6268](https://github.com/filecoin-project/venus/pull/6268)]
+* feat: implement fip 0063 [[#6269](https://github.com/filecoin-project/venus/pull/6269)]
+* feat: drand: refactor round verification [[#6270](https://github.com/filecoin-project/venus/pull/6270)]
+* feat: refactor market deal state [[#6271](https://github.com/filecoin-project/venus/pull/6271)]
+* fix: generate pre sector for 2k [[#6272](https://github.com/filecoin-project/venus/pull/6272)]
+* chore: transport [[#6276](https://github.com/filecoin-project/venus/pull/6276)]
+* opt: syncer: optimize syncFork for one-epoch forks [[#6275](https://github.com/filecoin-project/venus/pull/6275)]
+* chore: update deps and add drand test [[#6277](https://github.com/filecoin-project/venus/pull/6277)]
+* chore: update go-state-types to v0.13.0-rc.2 [[#6278](https://github.com/filecoin-project/venus/pull/6278)]
+* feat: events: Add APIs to consume smart contract and built-in actor events [[#6279](https://github.com/filecoin-project/venus/pull/6279)]
+* fix: beacon: validate drand change at nv16 correctly [[#6280](https://github.com/filecoin-project/venus/pull/6280)]
+* feat: implement nv22 [[#6265](https://github.com/filecoin-project/venus/pull/6265)]
+* feat: direct deal [[#6274](https://github.com/filecoin-project/venus/pull/6274)]
+
 ## v1.14.0
 
 * chore: update sophon-auth
