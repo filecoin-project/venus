@@ -102,9 +102,10 @@ var daemonCmd = &cmds.Command{
 				return err
 			}
 
-			cfg, err := repo.LoadConfig(repoDir) //use exit config, allow user prepare config before
+			cfg, err := repo.LoadConfig(repoDir) // use exit config, allow user prepare config before
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
+					log.Infof("config not exist, use default config")
 					cfg = config.NewDefaultConfig()
 				} else {
 					return err
