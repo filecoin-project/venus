@@ -114,6 +114,7 @@ func InitFSRepoDirect(targetPath string, version uint, cfg *config.Config) error
 	if err := initConfig(repoPath, cfg); err != nil {
 		return errors.Wrap(err, "initializing config file failed")
 	}
+
 	if err := initDataTransfer(repoPath); err != nil {
 		return errors.Wrap(err, "initializing data-transfer directory failed")
 	}
@@ -479,6 +480,7 @@ func initConfig(p string, cfg *config.Config) error {
 		return errors.Wrap(err, "error inspecting config file")
 	} else if exists {
 		//config file prepared before
+		Config = cfg
 		return nil
 	}
 
