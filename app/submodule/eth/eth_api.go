@@ -36,6 +36,8 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
+const maxEthFeeHistoryRewardPercentiles = 100
+
 var log = logging.Logger("eth_api")
 
 var ErrNullRound = errors.New("requested epoch was a null round")
@@ -665,6 +667,9 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.
 	}
 	rewardPercentiles := make([]float64, 0)
 	if params.RewardPercentiles != nil {
+		if len(*params.RewardPercentiles) > maxEthFeeHistoryRewardPercentiles {
+			return types.EthFeeHistory{}, errors.New("length of the reward percentile array cannot be greater than 100")
+		}
 		rewardPercentiles = append(rewardPercentiles, *params.RewardPercentiles...)
 	}
 	for i, rp := range rewardPercentiles {
