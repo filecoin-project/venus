@@ -152,7 +152,7 @@ type ImportDataResult struct {
 type DirectDealState int
 
 const (
-	DealAllocation DirectDealState = iota + 1
+	DealAllocated DirectDealState = iota + 1
 	DealSealing
 	DealActive
 	DealExpired
@@ -163,8 +163,8 @@ const (
 
 func (d DirectDealState) String() string {
 	switch d {
-	case DealAllocation:
-		return "DealAllocation"
+	case DealAllocated:
+		return "DealAllocated"
 	// case DealWaitForData:
 	// 	return "DealWaitForData"
 	case DealSealing:
