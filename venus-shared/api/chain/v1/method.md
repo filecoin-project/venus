@@ -12,8 +12,8 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [ListActor](#listactor)
   * [StateGetActor](#stategetactor)
 * [ActorEvent](#actorevent)
-  * [GetActorEvents](#getactorevents)
-  * [SubscribeActorEvents](#subscribeactorevents)
+  * [GetActorEventsRaw](#getactoreventsraw)
+  * [SubscribeActorEventsRaw](#subscribeactoreventsraw)
 * [BlockStore](#blockstore)
   * [ChainDeleteObj](#chaindeleteobj)
   * [ChainHasObj](#chainhasobj)
@@ -330,7 +330,7 @@ Response:
 
 ## ActorEvent
 
-### GetActorEvents
+### GetActorEventsRaw
 Actor events
 
 
@@ -387,8 +387,8 @@ Response:
 ]
 ```
 
-### SubscribeActorEvents
-SubscribeActorEvents returns a long-lived stream of all user-programmed and built-in actor
+### SubscribeActorEventsRaw
+SubscribeActorEventsRaw returns a long-lived stream of all user-programmed and built-in actor
 events that match the given filter.
 Events that match the given filter are written to the stream in real-time as they are emitted
 from the FVM.
