@@ -119,7 +119,7 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, store *chain.Store, bl
 	return nil, errors.New("invalid block param")
 }
 
-func ethCallToFilecoinMessage(ctx context.Context, tx types.EthCall) (*types.Message, error) {
+func ethCallToFilecoinMessage(_ context.Context, tx types.EthCall) (*types.Message, error) {
 	var from address.Address
 	if tx.From == nil || *tx.From == (types.EthAddress{}) {
 		var err error

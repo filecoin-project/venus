@@ -70,7 +70,7 @@ func Mainnet() *NetworkConf {
 				UpgradeWatermelonHeight:     3469380,           // 2023-12-12T13:30:00Z
 				UpgradeWatermelonFixHeight:  -100,              // This fix upgrade only ran on calibrationnet
 				UpgradeWatermelonFix2Height: -101,              // This fix upgrade only ran on calibrationnet
-				UpgradeDragonHeight:         3792000,           // 2024-04-02T14:00:00Z
+				UpgradeDragonHeight:         3817920,           // 2024-04-11T14:00:00Z
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:          address.Mainnet,
@@ -82,7 +82,7 @@ func Mainnet() *NetworkConf {
 	}
 
 	// This epoch, 120 epochs after the "rest" of the nv22 upgrade, is when we switch to Drand quicknet
-	// 2024-04-02T15:00:00Z
+	// 2024-04-11T15:00:00Z
 	nc.Network.ForkUpgradeParam.UpgradePhoenixHeight = nc.Network.ForkUpgradeParam.UpgradeDragonHeight + 120
 	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
 

@@ -1050,16 +1050,16 @@ type FullETHStruct struct {
 
 type IActorEventStruct struct {
 	Internal struct {
-		GetActorEvents       func(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error)      `perm:"read"`
-		SubscribeActorEvents func(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) `perm:"read"`
+		GetActorEventsRaw       func(ctx context.Context, filter *types.ActorEventFilter) ([]*types.ActorEvent, error)      `perm:"read"`
+		SubscribeActorEventsRaw func(ctx context.Context, filter *types.ActorEventFilter) (<-chan *types.ActorEvent, error) `perm:"read"`
 	}
 }
 
-func (s *IActorEventStruct) GetActorEvents(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
-	return s.Internal.GetActorEvents(p0, p1)
+func (s *IActorEventStruct) GetActorEventsRaw(p0 context.Context, p1 *types.ActorEventFilter) ([]*types.ActorEvent, error) {
+	return s.Internal.GetActorEventsRaw(p0, p1)
 }
-func (s *IActorEventStruct) SubscribeActorEvents(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
-	return s.Internal.SubscribeActorEvents(p0, p1)
+func (s *IActorEventStruct) SubscribeActorEventsRaw(p0 context.Context, p1 *types.ActorEventFilter) (<-chan *types.ActorEvent, error) {
+	return s.Internal.SubscribeActorEventsRaw(p0, p1)
 }
 
 type FullNodeStruct struct {

@@ -148,7 +148,7 @@ func (a *ethAPI) FilecoinAddressToEthAddress(ctx context.Context, filecoinAddres
 	return types.EthAddressFromFilecoinAddress(filecoinAddress)
 }
 
-func (a *ethAPI) countTipsetMsgs(ctx context.Context, ts *types.TipSet) (int, error) {
+func (a *ethAPI) countTipsetMsgs(_ context.Context, ts *types.TipSet) (int, error) {
 	msgs, err := a.em.chainModule.MessageStore.MessagesForTipset(ts)
 	if err != nil {
 		return 0, fmt.Errorf("error loading messages for tipset: %v: %w", ts, err)
@@ -881,9 +881,6 @@ func (a *ethAPI) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (types
 		}
 	}
 	gassedMsg, err := a.mpool.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
-	if err != nil {
-		return types.EthUint64(0), fmt.Errorf("failed to estimate gas: %w", err)
-	}
 	if err != nil {
 		// On failure, GasEstimateMessageGas doesn't actually return the invocation result,
 		// it just returns an error. That means we can't get the revert reason.

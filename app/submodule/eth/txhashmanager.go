@@ -117,7 +117,7 @@ func waitForMpoolUpdates(ctx context.Context, ch <-chan types.MpoolUpdate, manag
 	}
 }
 
-func ethTxHashGC(ctx context.Context, retentionDays int, manager *ethTxHashManager) {
+func ethTxHashGC(_ context.Context, retentionDays int, manager *ethTxHashManager) {
 	if retentionDays == 0 {
 		return
 	}
