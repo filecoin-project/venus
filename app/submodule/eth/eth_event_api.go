@@ -783,7 +783,7 @@ type ethSubscription struct {
 	sendCond     chan struct{}
 }
 
-func (e *ethSubscription) addFilter(ctx context.Context, f filter.Filter) {
+func (e *ethSubscription) addFilter(_ context.Context, f filter.Filter) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -821,7 +821,7 @@ func (e *ethSubscription) startOut(ctx context.Context) {
 	}
 }
 
-func (e *ethSubscription) send(ctx context.Context, v interface{}) {
+func (e *ethSubscription) send(_ context.Context, v interface{}) {
 	resp := types.EthSubscriptionResponse{
 		SubscriptionID: e.id,
 		Result:         v,
