@@ -228,6 +228,7 @@ type DirectDealParam struct {
 	AllocationID uint64
 	PieceCID     cid.Cid
 	Client       address.Address
+	StartEpoch   abi.ChainEpoch
 }
 
 type DirectDealQueryParams struct {

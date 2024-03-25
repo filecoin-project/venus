@@ -1221,7 +1221,8 @@ Inputs:
         "PieceCID": {
           "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
         },
-        "Client": "f01234"
+        "Client": "f01234",
+        "StartEpoch": 10101
       }
     ]
   }
