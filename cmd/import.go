@@ -106,10 +106,5 @@ func importChain(ctx context.Context, r repo.Repo, fname string) error {
 		return fmt.Errorf("persist genesis failed: %v", err)
 	}
 
-	err = chainStore.WriteCheckPoint(context.TODO(), tip.Key())
-	if err != nil {
-		logImport.Errorf("set check point error: %s", err.Error())
-	}
-
 	return err
 }
