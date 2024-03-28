@@ -249,7 +249,7 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 	Network: "calibrationnet",
 	Version: 13,
 
-	ManifestCid: mustParseCid("bafy2bzacea4firkyvt2zzdwqjrws5pyeluaesh6uaid246tommayr4337xpmi"),
+	ManifestCid: mustParseCid("bafy2bzacect4ktyujrwp6mjlsitnpvuw2pbuppz6w52sfljyo4agjevzm75qs"),
 	Actors: map[string]cid.Cid{
 		"account":          mustParseCid("bafk2bzaceb3j36ri5y5mfklgp5emlvrms6g4733ss2j3l7jismrxq6ng3tcc6"),
 		"cron":             mustParseCid("bafk2bzaceaz6rocamdxehgpwcbku6wlapwpgzyyvkrploj66mlqptsulf52bs"),
@@ -266,7 +266,7 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 		"storageminer":     mustParseCid("bafk2bzaceckzw3v7wqliyggvjvihz4wywchnnsie4frfvkm3fm5znb64mofri"),
 		"storagepower":     mustParseCid("bafk2bzacea7t4wynzjajl442mpdqbnh3wusjusqtnzgpvefvweh4n2tgzgqhu"),
 		"system":           mustParseCid("bafk2bzacedjnrb5glewazsxpcx6rwiuhl4kwrfcqolyprn6rrjtlzmthlhdq6"),
-		"verifiedregistry": mustParseCid("bafk2bzacednskl3bykz5qpo54z2j2p4q44t5of4ktd6vs6ymmg2zebsbxazkm"),
+		"verifiedregistry": mustParseCid("bafk2bzacebj2zdquagzy2xxn7up574oemg3w7ed3fe4aujkyhgdwj57voesn2"),
 	},
 }, {
 	Network: "caterpillarnet",
