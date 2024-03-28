@@ -38,34 +38,35 @@ func Calibration() *NetworkConf {
 			MinVerifiedDealSize:     1 << 20,
 			PreCommitChallengeDelay: abi.ChainEpoch(150),
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
-				BreezeGasTampingDuration:    120,
-				UpgradeBreezeHeight:         -1,
-				UpgradeSmokeHeight:          -2,
-				UpgradeIgnitionHeight:       -3,
-				UpgradeRefuelHeight:         -4,
-				UpgradeAssemblyHeight:       30,
-				UpgradeTapeHeight:           60,
-				UpgradeLiftoffHeight:        -5,
-				UpgradeKumquatHeight:        90,
-				UpgradeCalicoHeight:         120,
-				UpgradePersianHeight:        120 + (builtin2.EpochsInHour * 1),
-				UpgradeClausHeight:          270,
-				UpgradeOrangeHeight:         300,
-				UpgradeTrustHeight:          330,
-				UpgradeNorwegianHeight:      360,
-				UpgradeTurboHeight:          390,
-				UpgradeHyperdriveHeight:     420,
-				UpgradeChocolateHeight:      450,
-				UpgradeOhSnapHeight:         480,
-				UpgradeSkyrHeight:           510,
-				UpgradeSharkHeight:          16800,
-				UpgradeHyggeHeight:          322354,        // 2023-02-21T16:30:00Z
-				UpgradeLightningHeight:      489094,        // 2023-04-20T14:00:00Z
-				UpgradeThunderHeight:        489094 + 3120, // 2023-04-21T16:00:00Z
-				UpgradeWatermelonHeight:     1013134,       // 2023-10-19T13:00:00Z
-				UpgradeWatermelonFixHeight:  1070494,       // 2023-11-07T13:00:00Z
-				UpgradeWatermelonFix2Height: 1108174,       // 2023-11-21T13:00:00Z
-				UpgradeDragonHeight:         1427974,       // 2024-03-11T14:00:00Z
+				BreezeGasTampingDuration:          120,
+				UpgradeBreezeHeight:               -1,
+				UpgradeSmokeHeight:                -2,
+				UpgradeIgnitionHeight:             -3,
+				UpgradeRefuelHeight:               -4,
+				UpgradeAssemblyHeight:             30,
+				UpgradeTapeHeight:                 60,
+				UpgradeLiftoffHeight:              -5,
+				UpgradeKumquatHeight:              90,
+				UpgradeCalicoHeight:               120,
+				UpgradePersianHeight:              120 + (builtin2.EpochsInHour * 1),
+				UpgradeClausHeight:                270,
+				UpgradeOrangeHeight:               300,
+				UpgradeTrustHeight:                330,
+				UpgradeNorwegianHeight:            360,
+				UpgradeTurboHeight:                390,
+				UpgradeHyperdriveHeight:           420,
+				UpgradeChocolateHeight:            450,
+				UpgradeOhSnapHeight:               480,
+				UpgradeSkyrHeight:                 510,
+				UpgradeSharkHeight:                16800,
+				UpgradeHyggeHeight:                322354,        // 2023-02-21T16:30:00Z
+				UpgradeLightningHeight:            489094,        // 2023-04-20T14:00:00Z
+				UpgradeThunderHeight:              489094 + 3120, // 2023-04-21T16:00:00Z
+				UpgradeWatermelonHeight:           1013134,       // 2023-10-19T13:00:00Z
+				UpgradeWatermelonFixHeight:        1070494,       // 2023-11-07T13:00:00Z
+				UpgradeWatermelonFix2Height:       1108174,       // 2023-11-21T13:00:00Z
+				UpgradeDragonHeight:               1427974,       // 2024-03-11T14:00:00Z
+				UpgradeCalibrationDragonFixHeight: 1493854,       // 2024-04-03T11:00:00Z
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,
