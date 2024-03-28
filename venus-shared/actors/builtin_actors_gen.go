@@ -269,29 +269,6 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 		"verifiedregistry": mustParseCid("bafk2bzacebj2zdquagzy2xxn7up574oemg3w7ed3fe4aujkyhgdwj57voesn2"),
 	},
 }, {
-	Network: "calibrationnet-13-rc3",
-	Version: 13,
-
-	ManifestCid: mustParseCid("bafy2bzacea4firkyvt2zzdwqjrws5pyeluaesh6uaid246tommayr4337xpmi"),
-	Actors: map[string]cid.Cid{
-		"account":          mustParseCid("bafk2bzaceb3j36ri5y5mfklgp5emlvrms6g4733ss2j3l7jismrxq6ng3tcc6"),
-		"cron":             mustParseCid("bafk2bzaceaz6rocamdxehgpwcbku6wlapwpgzyyvkrploj66mlqptsulf52bs"),
-		"datacap":          mustParseCid("bafk2bzacea22nv5g3yngpxvonqfj4r2nkfk64y6yw2malicm7odk77x7zuads"),
-		"eam":              mustParseCid("bafk2bzaceatqtjzj7623i426noaslouvluhz6e3md3vvquqzku5qj3532uaxg"),
-		"ethaccount":       mustParseCid("bafk2bzacean3hs7ga5csw6g3uu7watxfnqv5uvxviebn3ba6vg4sagwdur5pu"),
-		"evm":              mustParseCid("bafk2bzacec5ibmbtzuzjgwjmksm2n6zfq3gkicxqywwu7tsscqgdzajpfctxk"),
-		"init":             mustParseCid("bafk2bzaced5sq72oemz6qwi6yssxwlos2g54zfprslrx5qfhhx2vlgsbvdpcs"),
-		"multisig":         mustParseCid("bafk2bzacedbgei6jkx36fwdgvoohce4aghvpohqdhoco7p4thszgssms7olv2"),
-		"paymentchannel":   mustParseCid("bafk2bzaceasmgmfsi4mjanxlowsub65fmevhzky4toeqbtw4kp6tmu4kxjpgq"),
-		"placeholder":      mustParseCid("bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro"),
-		"reward":           mustParseCid("bafk2bzacedjyp6ll5ez27dfgldjj4tntxfvyp4pa5zkk7s5uhipzqjyx2gmuc"),
-		"storagemarket":    mustParseCid("bafk2bzaceabolct6qdnefwcrtati2us3sxtxfghyqk6aamfhl6byyefmtssqi"),
-		"storageminer":     mustParseCid("bafk2bzaceckzw3v7wqliyggvjvihz4wywchnnsie4frfvkm3fm5znb64mofri"),
-		"storagepower":     mustParseCid("bafk2bzacea7t4wynzjajl442mpdqbnh3wusjusqtnzgpvefvweh4n2tgzgqhu"),
-		"system":           mustParseCid("bafk2bzacedjnrb5glewazsxpcx6rwiuhl4kwrfcqolyprn6rrjtlzmthlhdq6"),
-		"verifiedregistry": mustParseCid("bafk2bzacednskl3bykz5qpo54z2j2p4q44t5of4ktd6vs6ymmg2zebsbxazkm"),
-	},
-}, {
 	Network: "caterpillarnet",
 	Version: 8,
 
