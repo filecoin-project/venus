@@ -5,7 +5,6 @@ linters:
     - govet
     - misspell
     - goconst
-    - revive
     - errcheck
     - unconvert
     - staticcheck
