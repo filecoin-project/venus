@@ -124,6 +124,7 @@ type IMarketStruct struct {
 		SectorSetExpectedSealDuration           func(context.Context, address.Address, time.Duration) error                                                                                                                                         `perm:"write"`
 		UpdateDealOnPacking                     func(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error                                                                    `perm:"write"`
 		UpdateDealStatus                        func(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus market.PieceStatus, dealStatus storagemarket.StorageDealStatus) error                                               `perm:"write"`
+		UpdateDirectDealState                   func(ctx context.Context, id uuid.UUID, state market.DirectDealState) error                                                                                                                         `perm:"write"`
 		UpdateStorageDealStatus                 func(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState market.PieceStatus) error                                                                      `perm:"write"`
 		Version                                 func(ctx context.Context) (types.Version, error)                                                                                                                                                    `perm:"read"`
 	}
@@ -429,6 +430,9 @@ func (s *IMarketStruct) UpdateDealOnPacking(p0 context.Context, p1 address.Addre
 }
 func (s *IMarketStruct) UpdateDealStatus(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 market.PieceStatus, p4 storagemarket.StorageDealStatus) error {
 	return s.Internal.UpdateDealStatus(p0, p1, p2, p3, p4)
+}
+func (s *IMarketStruct) UpdateDirectDealState(p0 context.Context, p1 uuid.UUID, p2 market.DirectDealState) error {
+	return s.Internal.UpdateDirectDealState(p0, p1, p2)
 }
 func (s *IMarketStruct) UpdateStorageDealStatus(p0 context.Context, p1 cid.Cid, p2 storagemarket.StorageDealStatus, p3 market.PieceStatus) error {
 	return s.Internal.UpdateStorageDealStatus(p0, p1, p2, p3)
