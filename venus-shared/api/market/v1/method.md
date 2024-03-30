@@ -108,6 +108,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [SectorSetExpectedSealDuration](#sectorsetexpectedsealduration)
   * [UpdateDealOnPacking](#updatedealonpacking)
   * [UpdateDealStatus](#updatedealstatus)
+  * [UpdateDirectDealState](#updatedirectdealstate)
   * [UpdateStorageDealStatus](#updatestoragedealstatus)
   * [Version](#version)
 
@@ -2750,6 +2751,21 @@ Inputs:
   5432,
   "Undefine",
   42
+]
+```
+
+Response: `{}`
+
+### UpdateDirectDealState
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "07070707-0707-0707-0707-070707070707",
+  1
 ]
 ```
 
