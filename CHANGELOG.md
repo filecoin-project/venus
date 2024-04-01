@@ -1,6 +1,6 @@
 # venus changelog
 
-## v1.15.0-rc1
+## v1.15.0
 
 * feat: import data by uuid [[#6197](https://github.com/filecoin-project/venus/pull/6197)]
 * chore(deps): bump TheDoctor0/zip-release from 0.7.1 to 0.7.5 [[#6205](https://github.com/filecoin-project/venus/pull/6205)]

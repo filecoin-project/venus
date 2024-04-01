@@ -57,7 +57,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/ipfs-force-community/metrics v1.0.1-0.20231207081445-30178e706d09
-	github.com/ipfs-force-community/sophon-auth v1.15.0-rc1
+	github.com/ipfs-force-community/sophon-auth v1.15.0
 	github.com/ipfs/boxo v0.10.1
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/go-datastore v0.6.0
