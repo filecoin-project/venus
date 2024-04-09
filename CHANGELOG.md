@@ -1,5 +1,9 @@
 # venus changelog
 
+## v1.15.1
+
+* fix: update UpgradeDragonHeight to 3855360
+
 ## v1.15.0
 
 * feat: import data by uuid [[#6197](https://github.com/filecoin-project/venus/pull/6197)]
