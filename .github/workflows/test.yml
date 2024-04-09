@@ -67,7 +67,7 @@ jobs:
       - name: Upload
         uses: codecov/codecov-action@v3
         with:
-          token:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage_unit.txt,./coverage_integration.txt,./coverage_venus_shared.txt
           name: venus
           fail_ci_if_error: true
