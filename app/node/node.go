@@ -168,7 +168,7 @@ func (node *Node) Start(ctx context.Context) error {
 		return errors.Wrap(err, "failed to setup metrics")
 	}
 
-	if node.jaeger, err = metricsPKG.SetupJaegerTracing(node.network.Host.ID().Pretty(),
+	if node.jaeger, err = metricsPKG.SetupJaegerTracing(node.network.Host.ID().String(),
 		node.repo.Config().Observability.Tracing); err != nil {
 		return errors.Wrap(err, "failed to setup tracing")
 	}

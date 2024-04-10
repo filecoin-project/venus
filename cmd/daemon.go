@@ -287,7 +287,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	if fcn.OfflineMode() {
 		_ = re.Emit("Filecoin node running in offline mode (libp2p is disabled)\n")
 	} else {
-		_ = re.Emit(fmt.Sprintf("My peer ID is %s\n", fcn.Network().Host.ID().Pretty()))
+		_ = re.Emit(fmt.Sprintf("My peer ID is %s\n", fcn.Network().Host.ID().String()))
 		for _, a := range fcn.Network().Host.Addrs() {
 			_ = re.Emit(fmt.Sprintf("Swarm listening on: %s\n", a))
 		}

@@ -153,7 +153,7 @@ var newMinerCmd = &cmds.Command{
 			return err
 		}
 
-		minerCmdLog.Info("peer id: ", peerID.Pretty())
+		minerCmdLog.Info("peer id: ", peerID.String())
 
 		sender := owner
 		fromstr, _ := req.Options["from"].(string)
