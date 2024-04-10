@@ -179,7 +179,7 @@ func MakeTestGenCfg(t *testing.T, numSectors int) *gengen.GenesisCfg {
 		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				Owner:            0,
-				PeerID:           mustPeerID(PeerKeys[0]).Pretty(),
+				PeerID:           mustPeerID(PeerKeys[0]).String(),
 				CommittedSectors: commCfgs,
 				SealProofType:    constants.DevSealProofType,
 				MarketBalance:    abi.NewTokenAmount(0),

@@ -223,7 +223,7 @@ venus swarm connect /ip4/104.131.131.82/tcp/4001/p2p/QmaCpDMGvV2BGHeYERUEnRQAwe3
 			if err != nil {
 				return err
 			}
-			if err := re.Emit(pi.ID.Pretty()); err != nil {
+			if err := re.Emit(pi.ID.String()); err != nil {
 				return err
 			}
 		}
@@ -460,7 +460,7 @@ var idCmd = &cmds.Command{
 		}
 
 		for i, addr := range addrs.Addrs {
-			subAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", hostID.Pretty()))
+			subAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", hostID.String()))
 			if err != nil {
 				return err
 			}
@@ -494,7 +494,7 @@ var disconnectCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			writer.Printf("disconnect %s", pid.Pretty())
+			writer.Printf("disconnect %s", pid.String())
 			err = env.(*node.Env).NetworkAPI.NetDisconnect(ctx, pid)
 			if err != nil {
 				return err
@@ -704,7 +704,7 @@ func (idd IDDetails) MarshalJSON() ([]byte, error) {
 	}
 
 	if idd.ID != "" {
-		v["ID"] = idd.ID.Pretty()
+		v["ID"] = idd.ID.String()
 	}
 	if idd.AgentVersion != "" {
 		v["AgentVersion"] = idd.AgentVersion

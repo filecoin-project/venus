@@ -97,7 +97,7 @@ func TestDhtFindPeer(t *testing.T) {
 
 	pi, err := n2.Network().API().NetAddrsListen(ctx)
 	assert.Nil(t, err)
-	findpeerOutput := cmdClient.RunSuccess(ctx, "swarm", "findpeer", pi.ID.Pretty()).ReadStdoutTrimNewlines()
+	findpeerOutput := cmdClient.RunSuccess(ctx, "swarm", "findpeer", pi.ID.String()).ReadStdoutTrimNewlines()
 
 	assert.Contains(t, findpeerOutput, pi.Addrs[0].String())
 }
