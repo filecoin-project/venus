@@ -71,7 +71,7 @@ jobs:
           go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./... -v --timeout ${{ inputs.test_timeout }}m
 
       - name: Upload
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v3.1.0
         with:
           # https://github.com/codecov/codecov-action/issues/557#issuecomment-1216749652
           token: ${{ secrets.CODECOV_TOKEN }}
