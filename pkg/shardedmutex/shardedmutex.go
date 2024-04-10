@@ -5,14 +5,11 @@ import (
 	"sync"
 )
 
-const cacheline = 64
-
 // padding a mutex to a cacheline improves performance as the cachelines are not contested
 // name     old time/op  new time/op  delta
 // Locks-8  74.6ns ± 7%  12.3ns ± 2%  -83.54%  (p=0.000 n=20+18)
 type paddedMutex struct {
-	mt  sync.Mutex
-	pad [cacheline - 8]uint8 //nolint:unused
+	mt sync.Mutex
 }
 
 type ShardedMutex struct { //nolint:revive
