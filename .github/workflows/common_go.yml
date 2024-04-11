@@ -70,13 +70,13 @@ jobs:
           export GOLOG_LOG_LEVEL=${{ inputs.log_level }}
           go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./... -v --timeout ${{ inputs.test_timeout }}m
 
+      # https://github.com/codecov/codecov-action/issues/557#issuecomment-1216749652
       - name: Upload
         uses: codecov/codecov-action@v3
         with:
-          # https://github.com/codecov/codecov-action/issues/557#issuecomment-1216749652
           token: ${{ secrets.CODECOV_TOKEN }}
           files:  ./coverage.txt
           flags: unittests
           name: ${{steps.vars.outputs.repo_name}}
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           verbose: true
