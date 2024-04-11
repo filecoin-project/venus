@@ -454,7 +454,8 @@ loop:
 		return chainTipsets, nil
 	}
 
-	logSyncer.Warnf("(fork detected) synced header chain")
+	logSyncer.Warnf("(fork detected) synced header chain, base: %d, %v, target: %d, %v", base.Height(), base.Cids(), targetTip.Height(), targetTip.Cids())
+	logSyncer.Warnf("(fork detected) synced header chain, knownTip: %d, %v", knownTip.Height(), knownTip.Cids())
 	fork, err := syncer.syncFork(ctx, base, knownTip)
 	if err != nil {
 		if errors.Is(err, ErrForkTooLong) {
@@ -551,6 +552,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 			if err != nil {
 				return nil, fmt.Errorf("loading next local tipset: %w", err)
 			}
+			logSyncer.Infof("forked chain: %d >= %d , %s ", nts.Height(), tips[cur].Height(), nts.Cids())
 		}
 	}
 
