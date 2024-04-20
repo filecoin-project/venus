@@ -468,7 +468,7 @@ func (vm *LegacyVM) shouldBurn(ctx context.Context, msg *types.Message, errcode 
 // transfer debits money From one account and credits it To another.
 // avoid calling this Method with a zero amount else it will perform unnecessary actor loading.
 //
-// WARNING: this Method will panic if the the amount is negative, accounts dont exist, or have inssuficient funds.
+// WARNING: this Method will panic if the amount is negative, accounts dont exist, or have inssuficient funds.
 //
 // Note: this is not idiomatic, it follows the Spec expectations for this Method.
 func (vm *LegacyVM) transfer(from address.Address, to address.Address, amount abi.TokenAmount, networkVersion network.Version) {

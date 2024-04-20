@@ -1099,7 +1099,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 func TestOptimalMessageSelection3(t *testing.T) {
 	tf.UnitTest(t)
 
-	// this test uses 10 actors sending a block of messages to each other, with the the first
+	// this test uses 10 actors sending a block of messages to each other, with the first
 	// actors paying higher gas premium than the subsequent actors.
 	// We select with a low ticket quality; the chain depenent merging algorithm should pick
 	// messages from the median actor from the start

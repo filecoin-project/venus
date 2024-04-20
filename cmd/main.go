@@ -65,7 +65,7 @@ const (
 	// Network populates config with network-specific parameters for a known network (e.g. testnet2)
 	Network = "network"
 
-	// IsRelay when set causes the the daemon to provide libp2p relay
+	// IsRelay when set causes the daemon to provide libp2p relay
 	// services allowing other filecoin nodes behind NATs to talk directly.
 	IsRelay = "is-relay"
 

@@ -93,7 +93,7 @@ type ExecuteTipsetResult struct {
 // parentEpoch is the last epoch in which an actual tipset was processed. This
 // is used by Lotus for null block counting and cron firing.
 //
-// This method returns the the receipts root, the poststate root, and the LegacyVM
+// This method returns the receipts root, the poststate root, and the LegacyVM
 // message results. The latter _include_ implicit messages, such as cron ticks
 // and reward withdrawal per miner.
 func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
