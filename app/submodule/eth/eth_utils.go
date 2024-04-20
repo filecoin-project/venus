@@ -28,7 +28,7 @@ import (
 
 func getTipsetByBlockNumber(ctx context.Context, store *chain.Store, blkParam string, strict bool) (*types.TipSet, error) {
 	if blkParam == "earliest" {
-		return nil, fmt.Errorf("block param \"earliest\" is not supported")
+		return nil, errors.New("block param \"earliest\" is not supported")
 	}
 
 	head := store.GetHead()
@@ -38,7 +38,7 @@ func getTipsetByBlockNumber(ctx context.Context, store *chain.Store, blkParam st
 	case "latest":
 		parent, err := store.GetTipSet(ctx, head.Parents())
 		if err != nil {
-			return nil, fmt.Errorf("cannot get parent tipset")
+			return nil, errors.New("cannot get parent tipset")
 		}
 		return parent, nil
 	default:
@@ -48,7 +48,7 @@ func getTipsetByBlockNumber(ctx context.Context, store *chain.Store, blkParam st
 			return nil, fmt.Errorf("cannot parse block number: %v", err)
 		}
 		if abi.ChainEpoch(num) > head.Height()-1 {
-			return nil, fmt.Errorf("requested a future epoch (beyond 'latest')")
+			return nil, errors.New("requested a future epoch (beyond 'latest')")
 		}
 		ts, err := store.GetTipSetByHeight(ctx, head, abi.ChainEpoch(num), true)
 		if err != nil {
@@ -67,13 +67,13 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, store *chain.Store, bl
 	predefined := blkParam.PredefinedBlock
 	if predefined != nil {
 		if *predefined == "earliest" {
-			return nil, fmt.Errorf("block param \"earliest\" is not supported")
+			return nil, errors.New("block param \"earliest\" is not supported")
 		} else if *predefined == "pending" {
 			return head, nil
 		} else if *predefined == "latest" {
 			parent, err := store.GetTipSet(ctx, head.Parents())
 			if err != nil {
-				return nil, fmt.Errorf("cannot get parent tipset")
+				return nil, errors.New("cannot get parent tipset")
 			}
 			return parent, nil
 		} else {
@@ -84,7 +84,7 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, store *chain.Store, bl
 	if blkParam.BlockNumber != nil {
 		height := abi.ChainEpoch(*blkParam.BlockNumber)
 		if height > head.Height()-1 {
-			return nil, fmt.Errorf("requested a future epoch (beyond 'latest')")
+			return nil, errors.New("requested a future epoch (beyond 'latest')")
 		}
 		ts, err := store.GetTipSetByHeight(ctx, head, height, true)
 		if err != nil {

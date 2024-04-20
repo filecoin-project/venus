@@ -2,8 +2,7 @@ package v0api
 
 import (
 	"context"
-	"fmt"
-
+	"errors"
 	"github.com/filecoin-project/go-address"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -69,7 +68,7 @@ func (a *WrapperV1IChain) StateSectorPreCommitInfo(ctx context.Context, maddr ad
 		return types.SectorPreCommitOnChainInfo{}, err
 	}
 	if pi == nil {
-		return types.SectorPreCommitOnChainInfo{}, fmt.Errorf("precommit info does not exist")
+		return types.SectorPreCommitOnChainInfo{}, errors.New("precommit info does not exist")
 	}
 
 	return *pi, nil

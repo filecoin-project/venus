@@ -2,6 +2,7 @@ package actorevent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -124,7 +125,7 @@ func (fp filterParams) GetTipSetCid() (cid.Cid, error) {
 func (a *ActorEventHandler) parseFilter(f types.ActorEventFilter) (*filterParams, error) {
 	if f.TipSetKey != nil && !f.TipSetKey.IsEmpty() {
 		if f.FromHeight != nil || f.ToHeight != nil {
-			return nil, fmt.Errorf("cannot specify both TipSetKey and FromHeight/ToHeight")
+			return nil, errors.New("cannot specify both TipSetKey and FromHeight/ToHeight")
 		}
 
 		return &filterParams{
@@ -154,7 +155,7 @@ func (a *ActorEventHandler) parseFilter(f types.ActorEventFilter) (*filterParams
 // * No option for hex representation
 func parseHeightRange(heaviest abi.ChainEpoch, fromHeight, toHeight *abi.ChainEpoch, maxRange abi.ChainEpoch) (minHeight abi.ChainEpoch, maxHeight abi.ChainEpoch, err error) {
 	if fromHeight != nil && *fromHeight < 0 {
-		return 0, 0, fmt.Errorf("range 'from' must be greater than or equal to 0")
+		return 0, 0, errors.New("range 'from' must be greater than or equal to 0")
 	}
 	if fromHeight == nil {
 		minHeight = -1

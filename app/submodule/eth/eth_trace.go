@@ -3,6 +3,7 @@ package eth
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/multiformats/go-multicodec"
@@ -348,7 +349,7 @@ func traceNativeCreate(env *environment, addr []int, et *types.ExecutionTrace) (
 		// something, we have a bug in our tracing logic or a mismatch between our
 		// tracing logic and the actors.
 		if et.MsgRct.ExitCode.IsSuccess() {
-			return nil, nil, fmt.Errorf("successful Exec/Exec4 call failed to call a constructor")
+			return nil, nil, errors.New("successful Exec/Exec4 call failed to call a constructor")
 		}
 		// Otherwise, this can happen if creation fails early (bad params,
 		// out of gas, contract already exists, etc.). The EVM wouldn't
@@ -367,7 +368,7 @@ func traceNativeCreate(env *environment, addr []int, et *types.ExecutionTrace) (
 	// actor. I'm catching this here because it likely means that there's a bug
 	// in our trace-conversion logic.
 	if et.Msg.Method == builtin.MethodsInit.Exec4 {
-		return nil, nil, fmt.Errorf("direct call to Exec4 successfully called a constructor")
+		return nil, nil, errors.New("direct call to Exec4 successfully called a constructor")
 	}
 
 	var output types.EthBytes

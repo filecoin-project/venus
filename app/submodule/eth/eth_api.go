@@ -186,7 +186,7 @@ func (a *ethAPI) EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, f
 
 func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool) (tipset *types.TipSet, err error) {
 	if blkParam == "earliest" {
-		return nil, fmt.Errorf("block param \"earliest\" is not supported")
+		return nil, errors.New("block param \"earliest\" is not supported")
 	}
 
 	head, err := a.chain.ChainHead(ctx)
@@ -199,7 +199,7 @@ func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool
 	case "latest":
 		parent, err := a.chain.ChainGetTipSet(ctx, head.Parents())
 		if err != nil {
-			return nil, fmt.Errorf("cannot get parent tipset")
+			return nil, errors.New("cannot get parent tipset")
 		}
 		return parent, nil
 	default:
@@ -209,7 +209,7 @@ func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool
 			return nil, fmt.Errorf("cannot parse block number: %v", err)
 		}
 		if abi.ChainEpoch(num) > head.Height()-1 {
-			return nil, fmt.Errorf("requested a future epoch (beyond 'latest')")
+			return nil, errors.New("requested a future epoch (beyond 'latest')")
 		}
 		ts, err := a.chain.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(num), head.Key())
 		if err != nil {

@@ -182,7 +182,7 @@ func (e *ethEventAPI) EthGetFilterChanges(ctx context.Context, id types.EthFilte
 		return ethFilterResultFromMessages(fc.TakeCollectedMessages(ctx), e.ChainAPI)
 	}
 
-	return nil, fmt.Errorf("unknown filter type")
+	return nil, errors.New("unknown filter type")
 }
 
 func (e *ethEventAPI) EthGetFilterLogs(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error) {
@@ -200,7 +200,7 @@ func (e *ethEventAPI) EthGetFilterLogs(ctx context.Context, id types.EthFilterID
 		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore, e.ChainAPI)
 	}
 
-	return nil, fmt.Errorf("wrong filter type")
+	return nil, errors.New("wrong filter type")
 }
 
 // parseBlockRange is similar to actor event's parseHeightRange but with slightly different semantics
@@ -215,11 +215,11 @@ func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRan
 		minHeight = 0
 	} else {
 		if !strings.HasPrefix(*fromBlock, "0x") {
-			return 0, 0, fmt.Errorf("FromBlock is not a hex")
+			return 0, 0, errors.New("FromBlock is not a hex")
 		}
 		epoch, err := types.EthUint64FromHex(*fromBlock)
 		if err != nil {
-			return 0, 0, fmt.Errorf("invalid epoch")
+			return 0, 0, errors.New("invalid epoch")
 		}
 		minHeight = abi.ChainEpoch(epoch)
 	}
@@ -231,11 +231,11 @@ func parseBlockRange(heaviest abi.ChainEpoch, fromBlock, toBlock *string, maxRan
 		maxHeight = 0
 	} else {
 		if !strings.HasPrefix(*toBlock, "0x") {
-			return 0, 0, fmt.Errorf("ToBlock is not a hex")
+			return 0, 0, errors.New("ToBlock is not a hex")
 		}
 		epoch, err := types.EthUint64FromHex(*toBlock)
 		if err != nil {
-			return 0, 0, fmt.Errorf("invalid epoch")
+			return 0, 0, errors.New("invalid epoch")
 		}
 		maxHeight = abi.ChainEpoch(epoch)
 	}
