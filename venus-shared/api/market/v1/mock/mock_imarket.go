@@ -1539,6 +1539,20 @@ func (mr *MockIMarketMockRecorder) UpdateDirectDealState(arg0, arg1, arg2 interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDirectDealState", reflect.TypeOf((*MockIMarket)(nil).UpdateDirectDealState), arg0, arg1, arg2)
 }
 
+// UpdateStorageDealPayloadSize mocks base method.
+func (m *MockIMarket) UpdateStorageDealPayloadSize(arg0 context.Context, arg1 cid.Cid, arg2 uint64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateStorageDealPayloadSize", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateStorageDealPayloadSize indicates an expected call of UpdateStorageDealPayloadSize.
+func (mr *MockIMarketMockRecorder) UpdateStorageDealPayloadSize(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStorageDealPayloadSize", reflect.TypeOf((*MockIMarket)(nil).UpdateStorageDealPayloadSize), arg0, arg1, arg2)
+}
+
 // UpdateStorageDealStatus mocks base method.
 func (m *MockIMarket) UpdateStorageDealStatus(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 market.PieceStatus) error {
 	m.ctrl.T.Helper()
