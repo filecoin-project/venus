@@ -68,7 +68,7 @@ Obviously, we need specs too. But specs often arrive late, and are less useful f
 ##### Github issues.
 
 We could capture a designdoc in a github issue, and this may in fact
-be a good convention. But let's not mistake dicussions in an issue for
+be a good convention. But let's not mistake discussions in an issue for
 a clear summary of the conclusion. Sometimes you want the latter without 
 having to parse all the discussions that went into it.
 
