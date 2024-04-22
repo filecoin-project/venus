@@ -1,6 +1,6 @@
 ## droplet module design & roadmap
 
-by Venus team
+by Venus Team
 
 Sep 2021
 
