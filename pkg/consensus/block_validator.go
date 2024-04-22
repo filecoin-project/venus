@@ -915,7 +915,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context,
 		return fmt.Errorf("serialize tx meta failed: %v", err)
 	}
 	if blk.Messages != b.Cid() {
-		return fmt.Errorf("messages didnt match message root in header")
+		return fmt.Errorf("messages didn't match message root in header")
 	}
 	return nil
 }

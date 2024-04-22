@@ -673,7 +673,7 @@ func (syncer *Syncer) Head() *types.TipSet {
 // maybe this code should actually live in blocksync??
 func zipTipSetAndMessages(bs blockstore.Blockstore, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) (*types.FullTipSet, error) {
 	if len(ts.Blocks()) != len(smi) || len(ts.Blocks()) != len(bmi) {
-		return nil, fmt.Errorf("msgincl length didnt match tipset size")
+		return nil, fmt.Errorf("msgincl length didn't match tipset size")
 	}
 
 	fts := &types.FullTipSet{}
@@ -704,7 +704,7 @@ func zipTipSetAndMessages(bs blockstore.Blockstore, ts *types.TipSet, allbmsgs [
 		}
 
 		if b.Messages != mrcid {
-			return nil, fmt.Errorf("messages didnt match message root in header for ts %s", ts.Key())
+			return nil, fmt.Errorf("messages didn't match message root in header for ts %s", ts.Key())
 		}
 
 		fb := &types.FullBlock{
