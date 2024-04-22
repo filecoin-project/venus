@@ -18,25 +18,12 @@
    协议规定了请求和响应的消息格式和错误码。
     Venus和Lotus都实现了此协议，所以才能两个客户端才能进行区块同步。
     
-
 ## 2. 同步流程
-`venus/app/submodule/syncer/syncer_submodule.go`的`Start()`方法会启动 一个for循环，
-不停的接受订阅`/fil/blocks/#{networkName}`的区块信息，
-然后调用`handleIncomingBlocks()`方法处理收到的区块。处理方法逻辑也非常简单，
-只有两个动作，一个是把收到的区块header存储到数据库。
-另一动作是开启一个goroutine，在goroutine里面请求一下header对应的messages（但是不存储，奇怪，为什么不存储呐？），
-然后把header通过调用`pkg/chainsync/dispatcher/dispatcher.go::SendGossipBlock()`方法把区块header广播出去。
+`venus/app/submodule/syncer/syncer_submodule.go`的`Start()`方法会启动 一个for循环，不停的接受订阅`/fil/blocks/#{networkName}`的区块信息，然后调用`handleIncomingBlocks()`方法处理收到的区块。处理方法逻辑也非常简单，只有两个动作，一个是把收到的区块header存储到数据库。另一动作是开启一个goroutine，在goroutine里面请求一下header对应的messages（但是不存储，奇怪，为什么不存储呐？），然后把header通过调用`pkg/chainsync/dispatcher/dispatcher.go::SendGossipBlock()`方法把区块header广播出去。
 
-不管是`SendGossipBlock()`还是`SendOwnBlock()`，两个方法都是把要发送出去的参数放进`imcomming`的一个channel，
-然后`processingIncoming()`会通过for循环不停的读取`incomming`channel的信息，
-然后把信息通过调用`pkc/chainsync/types/target_tracker.go::Add()`方法，
-把`Target`对象放入`TargetTracker`对象，这个对象主要作用是一个优先级队列。
+不管是`SendGossipBlock()`还是`SendOwnBlock()`，两个方法都是把要发送出去的参数放进`imcomming`的一个channel，然后`processingIncoming()`会通过for循环不停的读取`incoming`channel的信息，然后把信息通过调用`pkc/chainsync/types/target_tracker.go::Add()`方法，把`Target`对象放入`TargetTracker`对象，这个对象主要作用是一个优先级队列。
 
-`pkg/chainsync/dispatcher/dispatcher.go::syncWoker()`方法是在系统启动时就开启的一个for循环goroutine，
-方法会监听一个target的channel，每当有新的target通过`target_tracker::Add()`加入到队列时，就会触发channel，
-`syncWorkder()`方法内部就会调用`selectTarget()`来获取优先级最高的target，
-然后开启一个goroutine去调用`syncer.HandleNewTipSet()`方法来获取一系列tipset，
-对tipset的block进行验证，计算里面的messsage，修改区块状态。
+`pkg/chainsync/dispatcher/dispatcher.go::syncWoker()`方法是在系统启动时就开启的一个for循环goroutine，方法会监听一个target的channel，每当有新的target通过`target_tracker::Add()`加入到队列时，就会触发channel，`syncWorkder()`方法内部就会调用`selectTarget()`来获取优先级最高的target，然后开启一个goroutine去调用`syncer.HandleNewTipSet()`方法来获取一系列tipset，对tipset的block进行验证，计算里面的messsage，修改区块状态。
 
 ## 3. 同步事件
 1. `venus-miner`通过调用`SyncSubmitBlock`API 出块时。
@@ -44,10 +31,6 @@
 3. 新peer链接时，通过hello协议，会通知新peer的最新高度。
 
 ## 4. 同步模式
-因为状态数据量太大，如果要从某个高度才开始进行执行区块同步的话，
-需要链下从Filecoin官方下载快照，然后用导入命令的方式同步到指定块高。
-链上现在只支持一种同步模式，就是从peer获取区块，然后执行消息，更改状态信息。
-Venus支持多线程的同步多个Target，线程的最大数通过`maxCount`字段来控制。
-当下默认值是1，可以通过`SetConcurrent`API进行修改。
-现在Venus还不支持轻节点同步模式。
+因为状态数据量太大，如果要从某个高度才开始进行执行区块同步的话，需要链下从Filecoin官方下载快照，然后用导入命令的方式同步到指定块高。链上现在只支持一种同步模式，就是从peer获取区块，然后执行消息，更改状态信息。Venus支持多线程的同步多个Target，线程的最大数通过`maxCount`字段来控制。当下默认值是1，可以通过`SetConcurrent`API进行修改。现在Venus还不支持轻节点同步模式。
+
 Target类有一个State状态字段，但本字段只是用于Target对象的选择。共识算法无法感知节点是否在同步状态。
