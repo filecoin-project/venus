@@ -109,6 +109,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [UpdateDealOnPacking](#updatedealonpacking)
   * [UpdateDealStatus](#updatedealstatus)
   * [UpdateDirectDealState](#updatedirectdealstate)
+  * [UpdateStorageDealPayloadSize](#updatestoragedealpayloadsize)
   * [UpdateStorageDealStatus](#updatestoragedealstatus)
   * [Version](#version)
 
@@ -2766,6 +2767,23 @@ Inputs:
 [
   "07070707-0707-0707-0707-070707070707",
   1
+]
+```
+
+Response: `{}`
+
+### UpdateStorageDealPayloadSize
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  42
 ]
 ```
 
