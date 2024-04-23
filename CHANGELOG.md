@@ -1,5 +1,12 @@
 # venus changelog
 
+## v1.15.2
+
+* feat: update payload size [[#6324](https://github.com/filecoin-project/venus/pull/6324)]
+* chore: update deps [[#6325](https://github.com/filecoin-project/venus/pull/6325)]
+* chore: pick 6294 6313 [[#6326](https://github.com/filecoin-project/venus/pull/6326)]
+
+
 ## v1.15.1
 
 * fix: update UpgradeDragonHeight to 3855360
