@@ -227,6 +227,8 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 
 		if err = syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo); err != nil {
 			log.Errorf("failed to notify syncer of new block, block: %s", err)
+		} else {
+			syncer.NetworkModule.ExchangeClient.AddPeer(chainInfo.Sender)
 		}
 	}()
 	return nil
