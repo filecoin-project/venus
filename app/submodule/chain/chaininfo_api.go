@@ -60,7 +60,7 @@ func (cia *chainInfoAPI) BlockTime(ctx context.Context) time.Duration {
 	return cia.chain.config.BlockTime()
 }
 
-// ChainLs returns an iterator of tipsets from specified head by tsKey to genesis
+// ChainList returns an iterator of tipsets from specified head by tsKey to genesis
 func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error) {
 	fromTS, err := cia.chain.ChainReader.GetTipSet(ctx, tsKey)
 	if err != nil {
@@ -114,7 +114,7 @@ func (cia *chainInfoAPI) ChainSetHead(ctx context.Context, key types.TipSetKey) 
 	return cia.chain.ChainReader.SetHead(ctx, ts)
 }
 
-// ChainTipSet returns the tipset at the given key
+// ChainGetTipSet returns the tipset at the given key
 func (cia *chainInfoAPI) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
 	return cia.chain.ChainReader.GetTipSet(ctx, key)
 }
@@ -141,7 +141,7 @@ func (cia *chainInfoAPI) ChainGetTipSetAfterHeight(ctx context.Context, h abi.Ch
 	return cia.chain.ChainReader.GetTipSetByHeight(ctx, ts, h, false)
 }
 
-// GetParentStateRootActor get the ts ParentStateRoot actor
+// GetActor get the ts ParentStateRoot actor
 func (cia *chainInfoAPI) GetActor(ctx context.Context, addr address.Address) (*types.Actor, error) {
 	return cia.chain.Stmgr.GetActorAtTsk(ctx, addr, types.EmptyTSK)
 }
@@ -174,7 +174,7 @@ func (cia *chainInfoAPI) ChainGetMessage(ctx context.Context, msgID cid.Cid) (*t
 	return msg.VMMessage(), nil
 }
 
-// ChainGetMessages gets a message collection by CID
+// ChainGetBlockMessages gets a message collection by CID
 func (cia *chainInfoAPI) ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*types.BlockMessages, error) {
 	b, err := cia.chain.ChainReader.GetBlock(ctx, bid)
 	if err != nil {
