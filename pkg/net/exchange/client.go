@@ -126,9 +126,6 @@ func (c *client) doRequest(
 			if !errors.Is(err, network.ErrNoConn) {
 				exchangeClientLogger.Warnf("could not send request(%v) to peer %s, error %s, took: %v",
 					req.Head, peer.String(), err, time.Since(now))
-			} else {
-				exchangeClientLogger.Debugf("could not send request(%v) to peer %s, error %s, took: %v",
-					req.Head, peer.String(), err, time.Since(now))
 			}
 			continue
 		}

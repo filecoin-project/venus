@@ -18,8 +18,8 @@ var NoSlashFilter = os.Getenv("VENUS_NO_SLASHFILTER") == "_yes_i_know_and_i_acce
 // NoMigrationResultCache will not use cached migration results
 var NoMigrationResultCache = os.Getenv("VENUS_NO_MIGRATION_RESULT_CACHE") == "1"
 
-// SyncForkTimeout in seconds, default is 5 minutes
-var SyncForkTimeout = 5 * 60
+// SyncForkTimeout in seconds, default is 2 minutes
+var SyncForkTimeout = 2 * 60
 
 func init() {
 	syncForkTimeoutStr := os.Getenv("VENUS_SYNC_FORK_TIMEOUT")

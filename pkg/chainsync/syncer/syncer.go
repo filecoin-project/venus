@@ -520,7 +520,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 	defer cancel()
 
 	defer func() {
-		logSyncer.Infof("fork detected, fetch blocks took: %v", time.Since(now))
+		logSyncer.Infof("fork detected, fetch blocks %d(%v) took: %v", incoming.Height(), incoming.Parents(), time.Since(now))
 	}()
 
 	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2?

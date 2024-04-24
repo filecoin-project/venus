@@ -114,7 +114,7 @@ func (h *HelloProtocolHandler) Register(ctx context.Context, peerDiscoveredCallb
 	}
 	go func() {
 		// We want to get information on connected peers, we don't want to trigger new connections.
-		ctx := net.WithNoDial(ctx, "filecoin hello")
+		// ctx := net.WithNoDial(ctx, "filecoin hello")
 		for evt := range sub.Out() {
 			pic := evt.(event.EvtPeerIdentificationCompleted)
 			// We just finished identifying the peer, that means we should know what
