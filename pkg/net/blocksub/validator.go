@@ -27,7 +27,7 @@ type BlockHeaderValidator interface {
 	ValidateBlockMsg(context.Context, *types.BlockMsg) pubsub.ValidationResult
 }
 
-// NewBlockTopicValidator retruns a BlockTopicValidator using `bv` for message validation
+// NewBlockTopicValidator returns a BlockTopicValidator using `bv` for message validation
 func NewBlockTopicValidator(bv BlockHeaderValidator, opts ...pubsub.ValidatorOpt) *BlockTopicValidator {
 	return &BlockTopicValidator{
 		opts: opts,

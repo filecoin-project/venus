@@ -148,15 +148,15 @@ func TestKeystoreBasics(t *testing.T) {
 	}
 
 	if err := ks.Put("..///foo/", k1); err == nil {
-		t.Fatal("shouldnt be able to put a poorly named key")
+		t.Fatal("shouldn't be able to put a poorly named key")
 	}
 
 	if err := ks.Put("", k1); err == nil {
-		t.Fatal("shouldnt be able to put a key with no name")
+		t.Fatal("shouldn't be able to put a key with no name")
 	}
 
 	if err := ks.Put(".foo", k1); err == nil {
-		t.Fatal("shouldnt be able to put a key with a 'hidden' name")
+		t.Fatal("shouldn't be able to put a key with a 'hidden' name")
 	}
 }
 
@@ -205,7 +205,7 @@ func TestInvalidKeyFiles(t *testing.T) {
 	}
 
 	if _, err = ks.Has(".invalid"); err == nil {
-		t.Fatal("shouldnt be able to put a key with a 'hidden' name")
+		t.Fatal("shouldn't be able to put a key with a 'hidden' name")
 	}
 }
 
@@ -233,7 +233,7 @@ func TestMakeKeystoreNoDir(t *testing.T) {
 
 	_, err := NewFSKeystore("/this/is/not/a/real/dir")
 	if err == nil {
-		t.Fatal("shouldnt be able to make a keystore in a nonexistant directory")
+		t.Fatal("shouldn't be able to make a keystore in a nonexistant directory")
 	}
 }
 
@@ -264,7 +264,7 @@ func assertGetKey(ks Keystore, name string, exp []byte) error {
 	}
 
 	if !bytes.Equal(outK, exp) {
-		return fmt.Errorf("key we got out didnt match expectation")
+		return fmt.Errorf("key we got out didn't match expectation")
 	}
 
 	return nil

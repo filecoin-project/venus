@@ -242,7 +242,7 @@ func (c *client) processResponse(req *exchange.Request, res *exchange.Response, 
 			// If we didn't request the headers they should have been provided
 			// by the caller.
 			if len(tipsets) < len(res.Chain) {
-				return nil, fmt.Errorf("not enought tipsets provided for message response validation, needed %d, have %d", len(res.Chain), len(tipsets))
+				return nil, fmt.Errorf("not enough tipsets provided for message response validation, needed %d, have %d", len(res.Chain), len(tipsets))
 			}
 			chain := make([]*exchange.BSTipSet, 0, resLength)
 			for i, resChain := range res.Chain {
