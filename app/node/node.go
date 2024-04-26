@@ -339,7 +339,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	return <-terminate
 }
 
-// RunAPIAndWait starts an API server and waits for it to finish.
+// runRestfulAPI starts an API server and waits for it to finish.
 // The `ready` channel is closed when the server is running and its API address has been
 // saved to the node's repo.
 // A message sent to or closure of the `terminate` channel signals the server to stop.
