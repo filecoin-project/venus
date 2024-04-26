@@ -157,7 +157,7 @@ func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*ex
 
 	chain, err := collectChainSegment(ctx, s.cr, s.mr, req)
 	if err != nil {
-		exchangeServerLog.Warn("block sync request: collectChainSegment failed: ", err)
+		exchangeServerLog.Infof("block sync request: collectChainSegment failed: ", err)
 		return &exchange.Response{
 			Status:       exchange.InternalError,
 			ErrorMessage: err.Error(),

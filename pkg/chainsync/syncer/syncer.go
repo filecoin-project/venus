@@ -516,16 +516,13 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 	}
 
 	now := time.Now()
-	ctxT, cancel := context.WithTimeout(ctx, time.Second*time.Duration(constants.SyncForkTimeout))
-	defer cancel()
-
 	defer func() {
 		logSyncer.Infof("fork detected, fetch blocks %d(%v) took: %v", incoming.Height(), incoming.Parents(), time.Since(now))
 	}()
 
 	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2?
 	// Would it not be better to ask in smaller chunks, given that an ~ForkLengthThreshold is very rare?
-	tips, err := syncer.exchangeClient.GetBlocks(ctxT, incoming.Parents(), int(policy.ChainFinality))
+	tips, err := syncer.exchangeClient.GetBlocks(ctx, incoming.Parents(), int(policy.ChainFinality))
 	if err != nil {
 		return nil, err
 	}

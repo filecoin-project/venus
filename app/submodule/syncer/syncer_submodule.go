@@ -217,6 +217,7 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 		}
 
 		syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "new-block", 20)
+		syncer.NetworkModule.ExchangeClient.AddPeer(sender)
 
 		fullBlock := &types.FullBlock{
 			Header:       header,
