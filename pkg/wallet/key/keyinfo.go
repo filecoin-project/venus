@@ -84,7 +84,7 @@ func (ki KeyInfo) MarshalJSON() ([]byte, error) {
 		} else if ki.SigType == crypto.SigTypeDelegated {
 			k.SigType = types.KTDelegated
 		} else {
-			return fmt.Errorf("unsupport keystore types %T", k.SigType)
+			return fmt.Errorf("unsupported keystore types %T", k.SigType)
 		}
 		b, err = json.Marshal(k)
 		return err

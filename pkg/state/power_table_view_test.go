@@ -26,7 +26,7 @@ import (
 
 func TestTotal(t *testing.T) {
 	// todo think a way to mock power directly
-	t.Skipf("skip it due to cant mock power directly ")
+	t.Skipf("skip it due to can't mock power directly ")
 	tf.UnitTest(t)
 
 	ctx := context.Background()
@@ -48,7 +48,7 @@ func TestTotal(t *testing.T) {
 
 func TestMiner(t *testing.T) {
 	// todo think a way to mock power directly
-	t.Skipf("skip it due to cant mock power directly ")
+	t.Skipf("skip it due to can't mock power directly ")
 	tf.UnitTest(t)
 
 	ctx := context.Background()
@@ -69,7 +69,7 @@ func TestMiner(t *testing.T) {
 
 func TestNoPowerAfterSlash(t *testing.T) {
 	// todo think a way to mock power directly
-	t.Skipf("skip it due to cant mock power directly ")
+	t.Skipf("skip it due to can't mock power directly ")
 	tf.UnitTest(t)
 	// setup lookback state with 3 miners
 	ctx := context.Background()
@@ -88,7 +88,7 @@ func TestNoPowerAfterSlash(t *testing.T) {
 
 func TestTotalPowerUnaffectedBySlash(t *testing.T) {
 	// todo think a way to mock power directly
-	t.Skipf("skip it due to cant mock power directly ")
+	t.Skipf("skip it due to can't mock power directly ")
 	tf.UnitTest(t)
 	ctx := context.Background()
 	numCommittedSectors := uint64(19)

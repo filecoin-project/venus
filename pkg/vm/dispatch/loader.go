@@ -32,7 +32,7 @@ func (cl CodeLoader) GetActorImpl(code cid.Cid, rt vmr.Runtime) (Dispatcher, *Ex
 		return nil, NewExcuteError(exitcode.SysErrorIllegalActor, "Actor code not found. code: %s", code)
 	}
 	if err := actor.predicate(rt, code); err != nil {
-		return nil, NewExcuteError(exitcode.SysErrorIllegalActor, "unsupport actor. code: %s", code)
+		return nil, NewExcuteError(exitcode.SysErrorIllegalActor, "unsupported actor. code: %s", code)
 	}
 
 	return &actorDispatcher{code: code, actor: actor.vmActor}, nil
