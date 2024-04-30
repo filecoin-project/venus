@@ -206,8 +206,8 @@ func (backend *DSBackend) putKeyInfo(ctx context.Context, ki *key.KeyInfo) error
 }
 
 func (backend *DSBackend) DeleteAddress(ctx context.Context, addr address.Address) error {
-	backend.lk.RLock()
-	defer backend.lk.RUnlock()
+	backend.lk.Lock()
+	defer backend.lk.Unlock()
 
 	if _, ok := backend.cache[addr]; ok {
 		err := backend.ds.Delete(ctx, ds.NewKey(addr.String()))

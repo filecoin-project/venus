@@ -54,6 +54,36 @@ func TestDSBackendSimple(t *testing.T) {
 	assert.False(t, fs2.HasAddress(ctx, addr))
 }
 
+func TestDSBackendDeleteAddress(t *testing.T) {
+	tf.UnitTest(t)
+
+	ds := datastore.NewMapDatastore()
+	defer func() {
+		require.NoError(t, ds.Close())
+	}()
+
+	ctx := context.Background()
+	fs, err := NewDSBackend(ctx, ds, config.TestPassphraseConfig(), TestPassword)
+	assert.NoError(t, err)
+
+	addrs := make([]address.Address, 10)
+	for i := 0; i < len(addrs); i++ {
+		addr, err := fs.NewAddress(ctx, address.SECP256K1)
+		assert.NoError(t, err)
+		addrs[i] = addr
+	}
+
+	wg := sync.WaitGroup{}
+	for i := 0; i < len(addrs); i++ {
+		wg.Add(1)
+		go func(i int) {
+			assert.NoError(t, fs.DeleteAddress(ctx, addrs[i]))
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+}
+
 func TestDSBackendKeyPairMatchAddress(t *testing.T) {
 	tf.UnitTest(t)
 
