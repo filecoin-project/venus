@@ -54,7 +54,7 @@ func (uid *UUID) Scan(value interface{}) error {
 	case []byte:
 		id, err = uuid.ParseBytes(value)
 	default:
-		return fmt.Errorf("unsupport %t type for uuid", value)
+		return fmt.Errorf("unsupported %t type for uuid", value)
 	}
 	if err != nil {
 		return err

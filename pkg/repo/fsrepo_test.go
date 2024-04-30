@@ -92,7 +92,7 @@ func TestFSRepoRoundtrip(t *testing.T) {
 	tf.UnitTest(t)
 
 	cfg := config.NewDefaultConfig()
-	cfg.API.APIAddress = "foo" // testing that what we get back isnt just the default
+	cfg.API.APIAddress = "foo" // testing that what we get back isn't just the default
 
 	repoPath := path.Join(t.TempDir(), "repo")
 	assert.NoError(t, InitFSRepo(repoPath, 42, cfg))

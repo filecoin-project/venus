@@ -298,7 +298,7 @@ func (tma *testMpoolAPI) MessagesForBlock(ctx context.Context, h *types.BlockHea
 
 func (tma *testMpoolAPI) MessagesForTipset(ctx context.Context, ts *types.TipSet) ([]types.ChainMsg, error) {
 	if len(ts.Blocks()) != 1 {
-		panic("cant deal with multiblock tipsets in this test")
+		panic("can't deal with multiblock tipsets in this test")
 	}
 
 	bm, sm, err := tma.MessagesForBlock(ctx, ts.Blocks()[0])

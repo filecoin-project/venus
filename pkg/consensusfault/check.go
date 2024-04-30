@@ -166,7 +166,7 @@ func verifyBlockSignature(ctx context.Context, blk types.BlockHeader, nv network
 
 	lbstate, err := getter(ctx, blk.Height)
 	if err != nil {
-		return fmt.Errorf("fialed to look back state at height %d", blk.Height)
+		return fmt.Errorf("failed to look back state at height %d", blk.Height)
 	}
 
 	act, err := lbstate.LoadActor(ctx, receiver)
