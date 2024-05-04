@@ -250,7 +250,7 @@ func decodeTypedParams(ctx context.Context, fapi *node.Env, to address.Address, 
 	p := reflect.New(methodMeta.Params.Elem()).Interface().(cbg.CBORMarshaler)
 
 	if err := json.Unmarshal([]byte(paramstr), p); err != nil {
-		return nil, fmt.Errorf("unmarshaling input into params type: %s", err)
+		return nil, fmt.Errorf("unmarshalling input into params type: %s", err)
 	}
 
 	buf := new(bytes.Buffer)

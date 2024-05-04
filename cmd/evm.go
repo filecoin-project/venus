@@ -275,7 +275,7 @@ var evmDeployCmd = &cmds.Command{
 		var result eam.CreateReturn
 		r := bytes.NewReader(wait.Receipt.Return)
 		if err := result.UnmarshalCBOR(r); err != nil {
-			return fmt.Errorf("error unmarshaling return value: %w", err)
+			return fmt.Errorf("error unmarshalling return value: %w", err)
 		}
 
 		addr, err := address.NewIDAddress(result.ActorID)

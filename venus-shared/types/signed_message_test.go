@@ -38,7 +38,7 @@ func TestSignedMessageBasic(t *testing.T) {
 			},
 
 			Finished: func() {
-				require.Equal(t, src, dst, "after unmarshaling")
+				require.Equal(t, src, dst, "after unmarshalling")
 				require.Equal(t, src.String(), dst.String())
 
 				c := src.Cid()

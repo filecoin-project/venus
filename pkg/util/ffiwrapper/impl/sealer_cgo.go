@@ -300,7 +300,7 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector storage.SectorRef, 
 	}
 	p1odec := map[string]interface{}{}
 	if err := json.Unmarshal(p1o, &p1odec); err != nil {
-		return nil, fmt.Errorf("unmarshaling pc1 output: %w", err)
+		return nil, fmt.Errorf("unmarshalling pc1 output: %w", err)
 	}
 
 	p1odec["_lotus_SealRandomness"] = ticket
@@ -329,7 +329,7 @@ func (sb *Sealer) SealPreCommit2(ctx context.Context, sector storage.SectorRef, 
 
 	p1odec := map[string]interface{}{}
 	if err := json.Unmarshal(phase1Out, &p1odec); err != nil {
-		return storage.SectorCids{}, fmt.Errorf("unmarshaling pc1 output: %w", err)
+		return storage.SectorCids{}, fmt.Errorf("unmarshalling pc1 output: %w", err)
 	}
 
 	var ticket abi.SealRandomness

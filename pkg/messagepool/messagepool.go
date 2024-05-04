@@ -1652,7 +1652,7 @@ func (mp *MessagePool) loadLocal(ctx context.Context) error {
 
 		var sm types.SignedMessage
 		if err := sm.UnmarshalCBOR(bytes.NewReader(r.Value)); err != nil {
-			return fmt.Errorf("unmarshaling local message: %v", err)
+			return fmt.Errorf("unmarshalling local message: %v", err)
 		}
 
 		if err := mp.addLoaded(ctx, &sm); err != nil {

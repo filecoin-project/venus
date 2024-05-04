@@ -98,7 +98,7 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.Addr.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.Addr: %w", err)
+			return xerrors.Errorf("unmarshalling t.Addr: %w", err)
 		}
 
 	}
@@ -107,7 +107,7 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.AmtReserved.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.AmtReserved: %w", err)
+			return xerrors.Errorf("unmarshalling t.AmtReserved: %w", err)
 		}
 
 	}
@@ -138,7 +138,7 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.TimeStamp.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.TimeStamp: %w", err)
+			return xerrors.Errorf("unmarshalling t.TimeStamp: %w", err)
 		}
 
 	}
@@ -278,7 +278,7 @@ func (t *MsgInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.TimeStamp.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.TimeStamp: %w", err)
+			return xerrors.Errorf("unmarshalling t.TimeStamp: %w", err)
 		}
 
 	}
@@ -456,7 +456,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 			t.Channel = new(address.Address)
 			if err := t.Channel.UnmarshalCBOR(cr); err != nil {
-				return xerrors.Errorf("unmarshaling t.Channel pointer: %w", err)
+				return xerrors.Errorf("unmarshalling t.Channel pointer: %w", err)
 			}
 		}
 
@@ -466,7 +466,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.Control.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.Control: %w", err)
+			return xerrors.Errorf("unmarshalling t.Control: %w", err)
 		}
 
 	}
@@ -475,7 +475,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.Target.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.Target: %w", err)
+			return xerrors.Errorf("unmarshalling t.Target: %w", err)
 		}
 
 	}
@@ -533,7 +533,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 					}
 					t.Vouchers[i] = new(VoucherInfo)
 					if err := t.Vouchers[i].UnmarshalCBOR(cr); err != nil {
-						return xerrors.Errorf("unmarshaling t.Vouchers[i] pointer: %w", err)
+						return xerrors.Errorf("unmarshalling t.Vouchers[i] pointer: %w", err)
 					}
 				}
 
@@ -560,7 +560,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.Amount.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.Amount: %w", err)
+			return xerrors.Errorf("unmarshalling t.Amount: %w", err)
 		}
 
 	}
@@ -569,7 +569,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.AvailableAmount.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.AvailableAmount: %w", err)
+			return xerrors.Errorf("unmarshalling t.AvailableAmount: %w", err)
 		}
 
 	}
@@ -578,7 +578,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.PendingAvailableAmount.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.PendingAvailableAmount: %w", err)
+			return xerrors.Errorf("unmarshalling t.PendingAvailableAmount: %w", err)
 		}
 
 	}
@@ -587,7 +587,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.PendingAmount.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.PendingAmount: %w", err)
+			return xerrors.Errorf("unmarshalling t.PendingAmount: %w", err)
 		}
 
 	}
@@ -657,7 +657,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.TimeStamp.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.TimeStamp: %w", err)
+			return xerrors.Errorf("unmarshalling t.TimeStamp: %w", err)
 		}
 
 	}
@@ -740,7 +740,7 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 			t.Voucher = new(paych.SignedVoucher)
 			if err := t.Voucher.UnmarshalCBOR(cr); err != nil {
-				return xerrors.Errorf("unmarshaling t.Voucher pointer: %w", err)
+				return xerrors.Errorf("unmarshalling t.Voucher pointer: %w", err)
 			}
 		}
 
@@ -1060,7 +1060,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.ClientDealProposal.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.ClientDealProposal: %w", err)
+			return xerrors.Errorf("unmarshalling t.ClientDealProposal: %w", err)
 		}
 
 	}
@@ -1245,7 +1245,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.FundsReserved.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.FundsReserved: %w", err)
+			return xerrors.Errorf("unmarshalling t.FundsReserved: %w", err)
 		}
 
 	}
@@ -1263,7 +1263,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 			t.Ref = new(storagemarket.DataRef)
 			if err := t.Ref.UnmarshalCBOR(cr); err != nil {
-				return xerrors.Errorf("unmarshaling t.Ref pointer: %w", err)
+				return xerrors.Errorf("unmarshalling t.Ref pointer: %w", err)
 			}
 		}
 
@@ -1304,7 +1304,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.CreationTime.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.CreationTime: %w", err)
+			return xerrors.Errorf("unmarshalling t.CreationTime: %w", err)
 		}
 
 	}
@@ -1322,7 +1322,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 			t.TransferChannelID = new(datatransfer.ChannelID)
 			if err := t.TransferChannelID.UnmarshalCBOR(cr); err != nil {
-				return xerrors.Errorf("unmarshaling t.TransferChannelID pointer: %w", err)
+				return xerrors.Errorf("unmarshalling t.TransferChannelID pointer: %w", err)
 			}
 		}
 
@@ -1380,7 +1380,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.TimeStamp.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.TimeStamp: %w", err)
+			return xerrors.Errorf("unmarshalling t.TimeStamp: %w", err)
 		}
 
 	}
@@ -1463,7 +1463,7 @@ func (t *RetrievalAsk) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.Miner.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.Miner: %w", err)
+			return xerrors.Errorf("unmarshalling t.Miner: %w", err)
 		}
 
 	}
@@ -1472,7 +1472,7 @@ func (t *RetrievalAsk) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.PricePerByte.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.PricePerByte: %w", err)
+			return xerrors.Errorf("unmarshalling t.PricePerByte: %w", err)
 		}
 
 	}
@@ -1481,7 +1481,7 @@ func (t *RetrievalAsk) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.UnsealPrice.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.UnsealPrice: %w", err)
+			return xerrors.Errorf("unmarshalling t.UnsealPrice: %w", err)
 		}
 
 	}
@@ -1518,7 +1518,7 @@ func (t *RetrievalAsk) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.TimeStamp.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.TimeStamp: %w", err)
+			return xerrors.Errorf("unmarshalling t.TimeStamp: %w", err)
 		}
 
 	}
@@ -1648,7 +1648,7 @@ func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.DealProposal.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.DealProposal: %w", err)
+			return xerrors.Errorf("unmarshalling t.DealProposal: %w", err)
 		}
 
 	}
@@ -1692,7 +1692,7 @@ func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 			t.ChannelID = new(datatransfer.ChannelID)
 			if err := t.ChannelID.UnmarshalCBOR(cr); err != nil {
-				return xerrors.Errorf("unmarshaling t.ChannelID pointer: %w", err)
+				return xerrors.Errorf("unmarshalling t.ChannelID pointer: %w", err)
 			}
 		}
 
@@ -1740,7 +1740,7 @@ func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.FundsReceived.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.FundsReceived: %w", err)
+			return xerrors.Errorf("unmarshalling t.FundsReceived: %w", err)
 		}
 
 	}
@@ -1790,7 +1790,7 @@ func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.TimeStamp.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.TimeStamp: %w", err)
+			return xerrors.Errorf("unmarshalling t.TimeStamp: %w", err)
 		}
 
 	}
@@ -1948,7 +1948,7 @@ func (t *SignedStorageAsk) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 			t.Ask = new(storagemarket.StorageAsk)
 			if err := t.Ask.UnmarshalCBOR(cr); err != nil {
-				return xerrors.Errorf("unmarshaling t.Ask pointer: %w", err)
+				return xerrors.Errorf("unmarshalling t.Ask pointer: %w", err)
 			}
 		}
 
@@ -1967,7 +1967,7 @@ func (t *SignedStorageAsk) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 			t.Signature = new(crypto.Signature)
 			if err := t.Signature.UnmarshalCBOR(cr); err != nil {
-				return xerrors.Errorf("unmarshaling t.Signature pointer: %w", err)
+				return xerrors.Errorf("unmarshalling t.Signature pointer: %w", err)
 			}
 		}
 
@@ -1977,7 +1977,7 @@ func (t *SignedStorageAsk) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.TimeStamp.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.TimeStamp: %w", err)
+			return xerrors.Errorf("unmarshalling t.TimeStamp: %w", err)
 		}
 
 	}

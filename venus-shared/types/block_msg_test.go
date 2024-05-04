@@ -56,7 +56,7 @@ func TestBlockMsgBasic(t *testing.T) {
 			},
 
 			Finished: func() {
-				require.Equal(t, src, dst, "after unmarshaling")
+				require.Equal(t, src, dst, "after unmarshalling")
 			},
 		}
 

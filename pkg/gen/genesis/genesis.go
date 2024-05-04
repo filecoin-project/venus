@@ -279,7 +279,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 	case TAccount:
 		var ainfo AccountMeta
 		if err := json.Unmarshal(template.VerifregRootKey.Meta, &ainfo); err != nil {
-			return nil, nil, fmt.Errorf("unmarshaling account meta: %w", err)
+			return nil, nil, fmt.Errorf("unmarshalling account meta: %w", err)
 		}
 
 		_, ok := keyIDs[ainfo.Owner]
@@ -358,7 +358,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 	case TAccount:
 		var ainfo AccountMeta
 		if err := json.Unmarshal(template.RemainderAccount.Meta, &ainfo); err != nil {
-			return nil, nil, fmt.Errorf("unmarshaling account meta: %w", err)
+			return nil, nil, fmt.Errorf("unmarshalling account meta: %w", err)
 		}
 
 		_, ok := keyIDs[ainfo.Owner]
@@ -412,7 +412,7 @@ func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actorstypes.Ve
 func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.State, info Actor, keyIDs map[address.Address]address.Address, av actorstypes.Version) error {
 	var ainfo AccountMeta
 	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
-		return fmt.Errorf("unmarshaling account meta: %w", err)
+		return fmt.Errorf("unmarshalling account meta: %w", err)
 	}
 
 	aa, err := makeAccountActor(ctx, cst, av, ainfo.Owner, info.Balance)
@@ -438,7 +438,7 @@ func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *tree.
 	}
 	var ainfo MultisigMeta
 	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
-		return fmt.Errorf("unmarshaling account meta: %w", err)
+		return fmt.Errorf("unmarshalling account meta: %w", err)
 	}
 
 	var signers []address.Address

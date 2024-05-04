@@ -19,7 +19,7 @@ type KeyType string
 
 func (kt *KeyType) UnmarshalJSON(bb []byte) error {
 	{
-		// first option, try unmarshaling as string
+		// first option, try unmarshalling as string
 		var s string
 		err := json.Unmarshal(bb, &s)
 		if err == nil {

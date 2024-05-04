@@ -50,7 +50,7 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 		if a.Type == TMultisig {
 			var ainfo MultisigMeta
 			if err := json.Unmarshal(a.Meta, &ainfo); err != nil {
-				return 0, nil, nil, fmt.Errorf("unmarshaling account meta: %w", err)
+				return 0, nil, nil, fmt.Errorf("unmarshalling account meta: %w", err)
 			}
 			for _, e := range ainfo.Signers {
 
@@ -82,7 +82,7 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 
 		var ainfo AccountMeta
 		if err := json.Unmarshal(a.Meta, &ainfo); err != nil {
-			return 0, nil, nil, fmt.Errorf("unmarshaling account meta: %w", err)
+			return 0, nil, nil, fmt.Errorf("unmarshalling account meta: %w", err)
 		}
 
 		fmt.Printf("init set %s t0%d\n", ainfo.Owner, counter)
@@ -103,7 +103,7 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 	setupMsig := func(meta json.RawMessage) error {
 		var ainfo MultisigMeta
 		if err := json.Unmarshal(meta, &ainfo); err != nil {
-			return fmt.Errorf("unmarshaling account meta: %w", err)
+			return fmt.Errorf("unmarshalling account meta: %w", err)
 		}
 		for _, e := range ainfo.Signers {
 			if _, ok := keyToID[e]; ok {
@@ -130,7 +130,7 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 	if rootVerifier.Type == TAccount {
 		var ainfo AccountMeta
 		if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
-			return 0, nil, nil, fmt.Errorf("unmarshaling account meta: %w", err)
+			return 0, nil, nil, fmt.Errorf("unmarshalling account meta: %w", err)
 		}
 		value := cbg.CborInt(80)
 		if err := amap.Put(abi.AddrKey(ainfo.Owner), &value); err != nil {
@@ -146,7 +146,7 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 	if remainder.Type == TAccount {
 		var ainfo AccountMeta
 		if err := json.Unmarshal(remainder.Meta, &ainfo); err != nil {
-			return 0, nil, nil, fmt.Errorf("unmarshaling account meta: %w", err)
+			return 0, nil, nil, fmt.Errorf("unmarshalling account meta: %w", err)
 		}
 
 		// TODO: Use builtin.ReserveAddress...

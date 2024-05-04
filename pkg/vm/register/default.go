@@ -63,7 +63,7 @@ func DumpActorState(codeLoader *dispatch.CodeLoader, act *types.Actor, b []byte)
 		return nil, nil
 	}
 	if err := um.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
-		return nil, fmt.Errorf("unmarshaling actor state: %w", err)
+		return nil, fmt.Errorf("unmarshalling actor state: %w", err)
 	}
 
 	return um, nil

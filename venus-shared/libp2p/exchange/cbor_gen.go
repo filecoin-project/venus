@@ -296,7 +296,7 @@ func (t *Response) UnmarshalCBOR(r io.Reader) (err error) {
 					}
 					t.Chain[i] = new(BSTipSet)
 					if err := t.Chain[i].UnmarshalCBOR(cr); err != nil {
-						return xerrors.Errorf("unmarshaling t.Chain[i] pointer: %w", err)
+						return xerrors.Errorf("unmarshalling t.Chain[i] pointer: %w", err)
 					}
 				}
 
@@ -446,7 +446,7 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 					}
 					t.Bls[i] = new(types.Message)
 					if err := t.Bls[i].UnmarshalCBOR(cr); err != nil {
-						return xerrors.Errorf("unmarshaling t.Bls[i] pointer: %w", err)
+						return xerrors.Errorf("unmarshalling t.Bls[i] pointer: %w", err)
 					}
 				}
 
@@ -485,7 +485,7 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 			{
 
 				if err := t.BlsIncludes[i].UnmarshalCBOR(cr); err != nil {
-					return xerrors.Errorf("unmarshaling t.BlsIncludes[i]: %w", err)
+					return xerrors.Errorf("unmarshalling t.BlsIncludes[i]: %w", err)
 				}
 
 			}
@@ -532,7 +532,7 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 					}
 					t.Secpk[i] = new(types.SignedMessage)
 					if err := t.Secpk[i].UnmarshalCBOR(cr); err != nil {
-						return xerrors.Errorf("unmarshaling t.Secpk[i] pointer: %w", err)
+						return xerrors.Errorf("unmarshalling t.Secpk[i] pointer: %w", err)
 					}
 				}
 
@@ -571,7 +571,7 @@ func (t *CompactedMessagesCBOR) UnmarshalCBOR(r io.Reader) (err error) {
 			{
 
 				if err := t.SecpkIncludes[i].UnmarshalCBOR(cr); err != nil {
-					return xerrors.Errorf("unmarshaling t.SecpkIncludes[i]: %w", err)
+					return xerrors.Errorf("unmarshalling t.SecpkIncludes[i]: %w", err)
 				}
 
 			}
@@ -680,7 +680,7 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 					}
 					t.Blocks[i] = new(types1.BlockHeader)
 					if err := t.Blocks[i].UnmarshalCBOR(cr); err != nil {
-						return xerrors.Errorf("unmarshaling t.Blocks[i] pointer: %w", err)
+						return xerrors.Errorf("unmarshalling t.Blocks[i] pointer: %w", err)
 					}
 				}
 
@@ -702,7 +702,7 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 			t.Messages = new(CompactedMessages)
 			if err := t.Messages.UnmarshalCBOR(cr); err != nil {
-				return xerrors.Errorf("unmarshaling t.Messages pointer: %w", err)
+				return xerrors.Errorf("unmarshalling t.Messages pointer: %w", err)
 			}
 		}
 

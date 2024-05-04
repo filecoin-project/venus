@@ -379,7 +379,7 @@ func (t *CreateActorArgs) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.Address.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.APIAddress: %w", err)
+			return xerrors.Errorf("unmarshalling t.APIAddress: %w", err)
 		}
 
 	}
@@ -432,7 +432,7 @@ func (t *ResolveAddressResponse) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.Address.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.APIAddress: %w", err)
+			return xerrors.Errorf("unmarshalling t.APIAddress: %w", err)
 		}
 
 	}
@@ -523,7 +523,7 @@ func (t *SendArgs) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.To.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.To: %w", err)
+			return xerrors.Errorf("unmarshalling t.To: %w", err)
 		}
 
 	}
@@ -532,7 +532,7 @@ func (t *SendArgs) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.Value.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.Value: %w", err)
+			return xerrors.Errorf("unmarshalling t.Value: %w", err)
 		}
 
 	}
@@ -964,7 +964,7 @@ func (t *InspectRuntimeReturn) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.Caller.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.Caller: %w", err)
+			return xerrors.Errorf("unmarshalling t.Caller: %w", err)
 		}
 
 	}
@@ -973,7 +973,7 @@ func (t *InspectRuntimeReturn) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.Receiver.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.Receiver: %w", err)
+			return xerrors.Errorf("unmarshalling t.Receiver: %w", err)
 		}
 
 	}
@@ -982,7 +982,7 @@ func (t *InspectRuntimeReturn) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.ValueReceived.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.ValueReceived: %w", err)
+			return xerrors.Errorf("unmarshalling t.ValueReceived: %w", err)
 		}
 
 	}
@@ -1016,7 +1016,7 @@ func (t *InspectRuntimeReturn) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.CurrentBalance.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.CurrentBalance: %w", err)
+			return xerrors.Errorf("unmarshalling t.CurrentBalance: %w", err)
 		}
 
 	}
@@ -1025,7 +1025,7 @@ func (t *InspectRuntimeReturn) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.State.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.State: %w", err)
+			return xerrors.Errorf("unmarshalling t.State: %w", err)
 		}
 
 	}

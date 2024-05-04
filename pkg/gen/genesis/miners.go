@@ -197,7 +197,7 @@ func SetupStorageMiners(ctx context.Context,
 
 			var ma power0.CreateMinerReturn
 			if err := ma.UnmarshalCBOR(bytes.NewReader(rval)); err != nil {
-				return cid.Undef, fmt.Errorf("unmarshaling CreateMinerReturn: %w", err)
+				return cid.Undef, fmt.Errorf("unmarshalling CreateMinerReturn: %w", err)
 			}
 
 			expma := MinerAddress(uint64(i))

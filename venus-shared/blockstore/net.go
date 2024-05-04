@@ -175,7 +175,7 @@ func (n *NetworkStore) receive() {
 
 		var resp NetRPCResp
 		if err := resp.UnmarshalCBOR(bytes.NewReader(msg)); err != nil {
-			n.shutdown(fmt.Sprintf("unmarshaling netstore response: %s", err))
+			n.shutdown(fmt.Sprintf("unmarshalling netstore response: %s", err))
 			return
 		}
 
@@ -251,7 +251,7 @@ func (n *NetworkStore) waitResp(ctx context.Context, rch <-chan NetRPCResp, rid 
 		if resp.Type == NRpcErr {
 			var e NetRPCErr
 			if err := e.UnmarshalCBOR(bytes.NewReader(resp.Data)); err != nil {
-				return NetRPCResp{}, xerrors.Errorf("unmarshaling error data: %w", err)
+				return NetRPCResp{}, xerrors.Errorf("unmarshalling error data: %w", err)
 			}
 
 			var err error
