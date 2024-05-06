@@ -85,7 +85,7 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.Addr.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshalling t.Addr: %w", err)
+			return xerrors.Errorf("unmarshaling t.Addr: %w", err)
 		}
 
 	}
@@ -94,7 +94,7 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.AmtReserved.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshalling t.AmtReserved: %w", err)
+			return xerrors.Errorf("unmarshaling t.AmtReserved: %w", err)
 		}
 
 	}

@@ -168,7 +168,7 @@ func (t *GreetingMessage) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.HeaviestTipSetWeight.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshalling t.HeaviestTipSetWeight: %w", err)
+			return xerrors.Errorf("unmarshaling t.HeaviestTipSetWeight: %w", err)
 		}
 
 	}

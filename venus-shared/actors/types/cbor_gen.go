@@ -146,7 +146,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.To.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshalling t.To: %w", err)
+			return xerrors.Errorf("unmarshaling t.To: %w", err)
 		}
 
 	}
@@ -155,7 +155,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.From.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshalling t.From: %w", err)
+			return xerrors.Errorf("unmarshaling t.From: %w", err)
 		}
 
 	}
@@ -178,7 +178,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.Value.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshalling t.Value: %w", err)
+			return xerrors.Errorf("unmarshaling t.Value: %w", err)
 		}
 
 	}
@@ -212,7 +212,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.GasFeeCap.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshalling t.GasFeeCap: %w", err)
+			return xerrors.Errorf("unmarshaling t.GasFeeCap: %w", err)
 		}
 
 	}
@@ -221,7 +221,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.GasPremium.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshalling t.GasPremium: %w", err)
+			return xerrors.Errorf("unmarshaling t.GasPremium: %w", err)
 		}
 
 	}
@@ -318,7 +318,7 @@ func (t *SignedMessage) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.Message.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshalling t.Message: %w", err)
+			return xerrors.Errorf("unmarshaling t.Message: %w", err)
 		}
 
 	}
@@ -327,7 +327,7 @@ func (t *SignedMessage) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.Signature.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshalling t.Signature: %w", err)
+			return xerrors.Errorf("unmarshaling t.Signature: %w", err)
 		}
 
 	}
@@ -439,7 +439,7 @@ func (t *ActorV4) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.Balance.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshalling t.Balance: %w", err)
+			return xerrors.Errorf("unmarshaling t.Balance: %w", err)
 		}
 
 	}
@@ -556,7 +556,7 @@ func (t *ActorV5) UnmarshalCBOR(r io.Reader) (err error) {
 	{
 
 		if err := t.Balance.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshalling t.Balance: %w", err)
+			return xerrors.Errorf("unmarshaling t.Balance: %w", err)
 		}
 
 	}
@@ -574,7 +574,7 @@ func (t *ActorV5) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 			t.Address = new(address.Address)
 			if err := t.Address.UnmarshalCBOR(cr); err != nil {
-				return xerrors.Errorf("unmarshalling t.Address pointer: %w", err)
+				return xerrors.Errorf("unmarshaling t.Address pointer: %w", err)
 			}
 		}
 
