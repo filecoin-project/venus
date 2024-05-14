@@ -702,7 +702,7 @@ var (
 	initialPledgeDen = big.NewInt(100)
 )
 
-// StateMinerInitialPledgeCollateral returns the precommit deposit for the specified miner's sector
+// StateMinerPreCommitDepositForPower returns the precommit deposit for the specified miner's sector
 func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci types.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error) {
 	ts, err := msa.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {

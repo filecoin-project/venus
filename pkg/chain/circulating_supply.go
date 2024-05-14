@@ -283,7 +283,7 @@ func (caculator *CirculatingSupplyCalculator) setupPostCalicoVesting(ctx context
 	return nil
 }
 
-// GetVestedFunds returns all funds that have "left" actors that are in the genesis state:
+// GetFilVested returns all funds that have "left" actors that are in the genesis state:
 // - For Multisigs, it counts the actual amounts that have vested at the given epoch
 // - For Accounts, it counts max(currentBalance - genesisBalance, 0).
 func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
