@@ -906,7 +906,7 @@ func (f *Builder) LoadSignedMessagesFromCids(ctx context.Context, secpCids []cid
 	return f.mstore.LoadSignedMessagesFromCids(ctx, secpCids)
 }
 
-// LoadMessages returns the message collections tracked by the builder.
+// LoadMetaMessages returns the message collections tracked by the builder.
 func (f *Builder) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) ([]*types.SignedMessage, []*types.Message, error) {
 	return f.mstore.LoadMetaMessages(ctx, metaCid)
 }
