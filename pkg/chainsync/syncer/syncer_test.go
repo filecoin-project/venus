@@ -490,7 +490,7 @@ func (pv *poisonValidator) ValidateHeaderSemantic(_ context.Context, header *typ
 	return nil
 }
 
-// ValidateHeaderSemantic is a stub that always returns no error
+// ValidateMessagesSemantic is a stub that always returns no error
 func (pv *poisonValidator) ValidateMessagesSemantic(_ context.Context, _ *types.BlockHeader, _ *types.TipSet) error {
 	return nil
 }
