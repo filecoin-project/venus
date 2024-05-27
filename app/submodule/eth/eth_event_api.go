@@ -791,7 +791,7 @@ func (e *ethSubscription) addFilter(_ context.Context, f filter.Filter) {
 	e.filters = append(e.filters, f)
 }
 
-// sendOut processes the final subscription queue. It's here in case the subscriber
+// startOut processes the final subscription queue. It's here in case the subscriber
 // is slow, and we need to buffer the messages.
 func (e *ethSubscription) startOut(ctx context.Context) {
 	for {
