@@ -24,7 +24,7 @@ func NewTestStorage(state interface{}) *TestStorage {
 
 var _ rt5.Store = (*TestStorage)(nil)
 
-// Put implements runtime.Store.
+// StorePut implements runtime.Store.
 func (ts *TestStorage) StorePut(v cbor.Marshaler) cid.Cid {
 	ts.state = v
 	buf := new(bytes.Buffer)
@@ -35,7 +35,7 @@ func (ts *TestStorage) StorePut(v cbor.Marshaler) cid.Cid {
 	panic("failed to encode")
 }
 
-// Get implements runtime.Store.
+// StoreGet implements runtime.Store.
 func (ts *TestStorage) StoreGet(cid cid.Cid, obj cbor.Unmarshaler) bool {
 	node, err := cborUtil.WrapObject(ts.state, constants.DefaultHashFunction, -1)
 	if err != nil {

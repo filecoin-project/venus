@@ -38,7 +38,7 @@ func (cl CodeLoader) GetActorImpl(code cid.Cid, rt vmr.Runtime) (Dispatcher, *Ex
 	return &actorDispatcher{code: code, actor: actor.vmActor}, nil
 }
 
-// GetActorImpl returns executable code for an actor by code cid at a specific protocol version
+// GetUnsafeActorImpl returns executable code for an actor by code cid at a specific protocol version
 func (cl CodeLoader) GetUnsafeActorImpl(code cid.Cid) (Dispatcher, error) {
 	// todo version check
 	actor, ok := cl.actors[code]

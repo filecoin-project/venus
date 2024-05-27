@@ -308,7 +308,7 @@ func TestFundManagerReserveByWallet(t *testing.T) {
 	checkAddMessageFields(t, msg, walletAddrB, s.acctAddr, big.Add(amtB1, amtB2))
 }
 
-// TestFundManagerWithdrawal verifies that as many withdraw operations as
+// TestFundManagerWithdrawalLimit verifies that as many withdraw operations as
 // possible are processed
 func TestFundManagerWithdrawalLimit(t *testing.T) {
 	tf.UnitTest(t)

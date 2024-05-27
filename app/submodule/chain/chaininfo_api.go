@@ -55,7 +55,6 @@ func NewChainInfoAPI(chain *ChainSubmodule) v1api.IChainInfo {
 
 // todo think which module should this api belong
 // BlockTime returns the block time used by the consensus protocol.
-// BlockTime returns the block time
 func (cia *chainInfoAPI) BlockTime(ctx context.Context) time.Duration {
 	return cia.chain.config.BlockTime()
 }
@@ -208,7 +207,7 @@ func (cia *chainInfoAPI) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]ty
 	return cia.chain.MessageStore.LoadReceipts(ctx, id)
 }
 
-// ChainGetFullBlock gets full block(include message) by cid
+// GetFullBlock gets full block(include message) by cid
 func (cia *chainInfoAPI) GetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error) {
 	var out types.FullBlock
 	var err error

@@ -18,7 +18,7 @@ type ConfigModule struct { //nolint
 	lock sync.Mutex
 }
 
-// NewConfig returns a new configModule.
+// NewConfigModule returns a new configModule.
 func NewConfigModule(repo repo2.Repo) *ConfigModule {
 	return &ConfigModule{repo: repo}
 }

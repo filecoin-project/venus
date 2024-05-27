@@ -42,7 +42,7 @@ func (walletAPI *WalletAPI) WalletHas(ctx context.Context, addr address.Address)
 	return walletAPI.adapter.HasAddress(ctx, addr), nil
 }
 
-// SetWalletDefaultAddress set the specified address as the default in the config.
+// WalletDefaultAddress returns default address.
 func (walletAPI *WalletAPI) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
 	ret, err := walletAPI.walletModule.Config.Get("walletModule.defaultAddress")
 	addr := ret.(address.Address)
@@ -69,7 +69,7 @@ func (walletAPI *WalletAPI) WalletAddresses(ctx context.Context) []address.Addre
 	return walletAPI.adapter.Addresses(ctx)
 }
 
-// SetWalletDefaultAddress set the specified address as the default in the config.
+// WalletSetDefault set the specified address as the default in the config.
 func (walletAPI *WalletAPI) WalletSetDefault(ctx context.Context, addr address.Address) error {
 	localAddrs := walletAPI.WalletAddresses(ctx)
 	for _, localAddr := range localAddrs {

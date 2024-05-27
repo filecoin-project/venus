@@ -314,7 +314,6 @@ func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.
 	return root, receipts, nil
 }
 
-// ctx context.Context, ts *types.TipSet, addr address.Address
 func (s *Stmgr) GetActorAtTsk(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 	ts, err := s.cs.GetTipSet(ctx, tsk)
 	if err != nil {

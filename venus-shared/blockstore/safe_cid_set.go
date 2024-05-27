@@ -38,7 +38,7 @@ func (s *Set) Has(c cid.Cid) bool {
 	return ok
 }
 
-// Has returns if the Set contains a given Cid.
+// has returns if the Set contains a given Cid.
 func (s *Set) has(c cid.Cid) bool {
 	_, ok := s.set[c]
 	return ok

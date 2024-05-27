@@ -91,12 +91,12 @@ func (mr *MemRepo) ChainDatastore() Datastore {
 	return mr.Chain
 }
 
-// ChainDatastore returns the chain datastore.
+// PaychDatastore returns the paych datastore.
 func (mr *MemRepo) PaychDatastore() Datastore {
 	return mr.Paych
 }
 
-// ChainDatastore returns the chain datastore.
+// MetaDatastore returns the meta datastore.
 func (mr *MemRepo) MetaDatastore() Datastore {
 	return mr.Meta
 }
@@ -152,7 +152,7 @@ func (mr *MemRepo) SqlitePath() (string, error) {
 	return ":memory:", nil
 }
 
-// repo return the repo
+// Repo return the repo
 func (mr *MemRepo) Repo() Repo {
 	return mr
 }

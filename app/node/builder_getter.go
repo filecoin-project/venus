@@ -15,7 +15,7 @@ import (
 
 type builder Builder
 
-// repo returns the repo.
+// Repo returns the repo.
 func (b Builder) Repo() repo.Repo {
 	return b.repo
 }
@@ -66,7 +66,7 @@ func (b builder) OfflineMode() bool {
 	return b.offlineMode
 }
 
-// Verify export ffi verify
+// Verifier export ffi verify
 func (b builder) Verifier() ffiwrapper.Verifier {
 	return b.verifier
 }

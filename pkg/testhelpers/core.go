@@ -54,7 +54,7 @@ func NewMockMessagePoolValidator() *MockMessagePoolValidator {
 	return &MockMessagePoolValidator{Valid: true}
 }
 
-// Validate returns true if the mock validator is set to validate the message
+// ValidateSignedMessageSyntax returns nil if the message is valid
 func (v *MockMessagePoolValidator) ValidateSignedMessageSyntax(ctx context.Context, msg *types.SignedMessage) error {
 	if v.Valid {
 		return nil

@@ -55,7 +55,7 @@ func NewStubBlockValidator() *StubBlockValidator {
 	}
 }
 
-// ValidateSyntax return nil or error for stubbed block `blk`.
+// ValidateBlockMsg return nil or error for stubbed block `blk`.
 func (mbv *StubBlockValidator) ValidateBlockMsg(ctx context.Context, blk *types.BlockMsg) pubsub.ValidationResult {
 	if mbv.syntaxStubs[blk.Header.Cid()] == nil {
 		return pubsub.ValidationAccept

@@ -18,7 +18,7 @@ type incrt struct {
 	maxWait     time.Duration
 }
 
-// New creates an Incremental Reader Timeout, with minimum sustained speed of
+// NewInct creates an Incremental Reader Timeout, with minimum sustained speed of
 // minSpeed bytes per second and with maximum wait of maxWait
 func NewInct(rd ReaderDeadline, minSpeed int64, maxWait time.Duration) io.Reader {
 	return &incrt{

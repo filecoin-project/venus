@@ -53,7 +53,7 @@ func (h *actorStateHandle) StateCreate(obj cbor.Marshaler) {
 	h.usedObjs[obj] = c
 }
 
-// Readonly is the implementation of the ActorStateHandle interface.
+// StateReadonly is the implementation of the ActorStateHandle interface.
 func (h *actorStateHandle) StateReadonly(obj cbor.Unmarshaler) {
 	// Load stateView To obj.
 	c := h.ctx.Load(obj)
@@ -61,7 +61,7 @@ func (h *actorStateHandle) StateReadonly(obj cbor.Unmarshaler) {
 	h.usedObjs[obj] = c
 }
 
-// Transaction is the implementation of the ActorStateHandle interface.
+// StateTransaction is the implementation of the ActorStateHandle interface.
 func (h *actorStateHandle) StateTransaction(obj cbor.Er, f func()) {
 	if obj == nil {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil To Transaction()")

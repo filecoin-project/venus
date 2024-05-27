@@ -27,7 +27,7 @@ func (a *MessagePoolAPI) MpoolDeleteByAdress(ctx context.Context, addr address.A
 	return a.mp.MPool.DeleteByAdress(addr)
 }
 
-// MpoolPublish publish message of address
+// MpoolPublishByAddr publish message of address
 func (a *MessagePoolAPI) MpoolPublishByAddr(ctx context.Context, addr address.Address) error {
 	return a.mp.MPool.PublishMsgForWallet(ctx, addr)
 }

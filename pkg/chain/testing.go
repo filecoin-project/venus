@@ -780,7 +780,7 @@ func (f *Builder) GetBlock(ctx context.Context, c cid.Cid) (*types.BlockHeader, 
 	return &block, nil
 }
 
-// GetBlocks returns the blocks identified by `cids`.
+// GetBlocksByIds returns the blocks identified by `cids`.
 func (f *Builder) GetBlocksByIds(ctx context.Context, cids []cid.Cid) ([]*types.BlockHeader, error) {
 	ret := make([]*types.BlockHeader, len(cids))
 	for i, c := range cids {
@@ -906,7 +906,7 @@ func (f *Builder) LoadSignedMessagesFromCids(ctx context.Context, secpCids []cid
 	return f.mstore.LoadSignedMessagesFromCids(ctx, secpCids)
 }
 
-// LoadMessages returns the message collections tracked by the builder.
+// LoadMetaMessages returns the message collections tracked by the builder.
 func (f *Builder) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) ([]*types.SignedMessage, []*types.Message, error) {
 	return f.mstore.LoadMetaMessages(ctx, metaCid)
 }

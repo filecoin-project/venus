@@ -636,7 +636,7 @@ func GetChainMsgRoot(ctx context.Context, messages []types.ChainMsg) (cid.Cid, e
 	return arr.Root()
 }
 
-// computeMsgMeta computes the root CID of the combined arrays of message CIDs
+// ComputeMsgMeta computes the root CID of the combined arrays of message CIDs
 // of both types (BLS and Secpk).
 func ComputeMsgMeta(bs blockstore.Blockstore, bmsgCids, smsgCids []cid.Cid) (cid.Cid, error) {
 	// block headers use adt0

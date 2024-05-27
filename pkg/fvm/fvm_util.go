@@ -11,7 +11,7 @@ import (
 
 const MaxEventSliceLength = 6_000_000
 
-// DecodeEvents decodes a CBOR list of CBOR-encoded events.
+// decodeEvents decodes a CBOR list of CBOR-encoded events.
 func decodeEvents(input []byte) ([]types.Event, error) {
 	r := bytes.NewReader(input)
 	typ, length, err := cbg.NewCborReader(r).ReadHeader()
