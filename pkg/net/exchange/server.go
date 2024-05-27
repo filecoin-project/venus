@@ -56,7 +56,7 @@ func (s *server) Register() {
 	s.h.SetStreamHandler(exchange.ChainExchangeProtocolID, s.handleStream) // new
 }
 
-// HandleStream implements Server.HandleStream. Refer to the godocs there.
+// handleStream implements Server.HandleStream. Refer to the godocs there.
 func (s *server) handleStream(stream inet.Stream) {
 	ctx, span := trace.StartSpan(context.Background(), "chainxchg.HandleStream")
 	defer span.End()

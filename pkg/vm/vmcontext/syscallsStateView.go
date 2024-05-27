@@ -56,7 +56,7 @@ func (vm *syscallsStateView) GetNetworkVersion(ctx context.Context, ce abi.Chain
 	return vm.vmOption.NetworkVersion
 }
 
-// GetNetworkVersion get network version
+// TotalFilCircSupply get total circulation supply
 func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error) {
 	return vm.GetCircSupply(context.TODO())
 }

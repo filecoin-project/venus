@@ -192,7 +192,7 @@ func (ts *TipSet) Parents() TipSetKey {
 	return EmptyTSK
 }
 
-// Parents returns the CIDs of the parents of the blocks in the tipset.
+// ParentState returns the CIDs of the parents of the blocks in the tipset.
 func (ts *TipSet) ParentState() cid.Cid {
 	if ts.Defined() {
 		return ts.blocks[0].ParentStateRoot

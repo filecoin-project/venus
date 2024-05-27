@@ -24,7 +24,7 @@ func (actorAPI *actorAPI) StateGetActor(ctx context.Context, actor address.Addre
 	return actorAPI.chain.Stmgr.GetActorAtTsk(ctx, actor, tsk)
 }
 
-// ActorLs returns a channel with actors from the latest state on the chain
+// ListActor returns a channel with actors from the latest state on the chain
 func (actorAPI *actorAPI) ListActor(ctx context.Context) (map[address.Address]*types.Actor, error) {
 	return actorAPI.chain.ChainReader.LsActors(ctx)
 }

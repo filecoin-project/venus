@@ -96,7 +96,7 @@ func (cc *chainClock) WaitForEpoch(ctx context.Context, e abi.ChainEpoch) {
 	cc.waitForEpochOffset(ctx, e, 0)
 }
 
-// waitNextEpochOffset returns when time is offset past the start of the epoch, or ctx is done.
+// waitForEpochOffset returns when time is offset past the start of the epoch, or ctx is done.
 func (cc *chainClock) waitForEpochOffset(ctx context.Context, e abi.ChainEpoch, offset time.Duration) {
 	targetTime := cc.StartTimeOfEpoch(e).Add(offset)
 	nowB4 := cc.Now()

@@ -85,7 +85,7 @@ func (ci *ChannelInfo) To() address.Address {
 	return ci.Control
 }
 
-// infoForVoucher gets the VoucherInfo for the given voucher.
+// InfoForVoucher gets the VoucherInfo for the given voucher.
 // returns nil if the channel doesn't have the voucher.
 func (ci *ChannelInfo) InfoForVoucher(sv *types.SignedVoucher) (*VoucherInfo, error) {
 	for _, v := range ci.Vouchers {
@@ -105,7 +105,7 @@ func (ci *ChannelInfo) HasVoucher(sv *types.SignedVoucher) (bool, error) {
 	return vi != nil, err
 }
 
-// markVoucherSubmitted marks the voucher, and any vouchers of lower nonce
+// MarkVoucherSubmitted marks the voucher, and any vouchers of lower nonce
 // in the same lane, as being submitted.
 // Note: This method doesn't write anything to the store.
 func (ci *ChannelInfo) MarkVoucherSubmitted(sv *types.SignedVoucher) error {
@@ -131,7 +131,7 @@ func (ci *ChannelInfo) MarkVoucherSubmitted(sv *types.SignedVoucher) error {
 	return nil
 }
 
-// wasVoucherSubmitted returns true if the voucher has been submitted
+// WasVoucherSubmitted returns true if the voucher has been submitted
 func (ci *ChannelInfo) WasVoucherSubmitted(sv *types.SignedVoucher) (bool, error) {
 	vi, err := ci.InfoForVoucher(sv)
 	if err != nil {

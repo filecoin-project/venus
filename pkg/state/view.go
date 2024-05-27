@@ -236,7 +236,7 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 	return out, nil
 }
 
-// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
+// SectorPreCommitInfo returns the PreCommit info for the specified miner's sector
 func (v *View) SectorPreCommitInfo(ctx context.Context, maddr addr.Address, sid abi.SectorNumber) (*types.SectorPreCommitOnChainInfo, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {

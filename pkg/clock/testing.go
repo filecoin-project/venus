@@ -143,7 +143,7 @@ func (fc *fakeClock) Sleep(d time.Duration) {
 	<-fc.After(d)
 }
 
-// Time returns the current time of the fakeClock
+// Now returns the current time of the fakeClock
 func (fc *fakeClock) Now() time.Time {
 	fc.l.RLock()
 	t := fc.time

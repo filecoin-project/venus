@@ -516,7 +516,7 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 	require.Nil(t, ci.AddFundsMsg)
 }
 
-// TestPaychGetRecoverAfterAddFundsError tests that after an add funds fails, the
+// TestPaychGetRestartAfterCreateChannelMsg tests that after an add funds fails, the
 // next attempt to add funds can succeed.
 func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	tf.UnitTest(t)

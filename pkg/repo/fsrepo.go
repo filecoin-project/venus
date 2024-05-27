@@ -237,7 +237,7 @@ func (r *FSRepo) loadFromDisk() error {
 	return nil
 }
 
-// configModule returns the configuration object.
+// Config returns the configuration object.
 func (r *FSRepo) Config() *config.Config {
 	r.lk.RLock()
 	defer r.lk.RUnlock()

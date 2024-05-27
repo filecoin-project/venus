@@ -453,7 +453,7 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	return code
 }
 
-// / Balance implements runtime.InvocationContext.
+// Balance implements runtime.InvocationContext.
 func (ctx *invocationContext) Balance() abi.TokenAmount {
 	toActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, ctx.originMsg.To)
 	if err != nil {

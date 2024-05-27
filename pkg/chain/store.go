@@ -321,7 +321,7 @@ func (store *Store) GetBlock(ctx context.Context, blockID cid.Cid) (*types.Block
 	return &block, nil
 }
 
-// GetBlock returns the block identified by `cid`.
+// PutObject put the block to storage.
 func (store *Store) PutObject(ctx context.Context, obj interface{}) (cid.Cid, error) {
 	return store.stateAndBlockSource.Put(ctx, obj)
 }
@@ -806,7 +806,7 @@ func (store *Store) writeTipSetMetadata(ctx context.Context, tsm *TipSetMetadata
 	return store.ds.Put(ctx, key, buf.Bytes())
 }
 
-// deleteTipSetMetadata delete the state root id from the datastore for the tipset key.
+// DeleteTipSetMetadata delete the state root id from the datastore for the tipset key.
 func (store *Store) DeleteTipSetMetadata(ctx context.Context, ts *types.TipSet) error { // nolint
 	store.tipIndex.Del(ts)
 	h := ts.Height()

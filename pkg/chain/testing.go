@@ -780,7 +780,7 @@ func (f *Builder) GetBlock(ctx context.Context, c cid.Cid) (*types.BlockHeader, 
 	return &block, nil
 }
 
-// GetBlocks returns the blocks identified by `cids`.
+// GetBlocksByIds returns the blocks identified by `cids`.
 func (f *Builder) GetBlocksByIds(ctx context.Context, cids []cid.Cid) ([]*types.BlockHeader, error) {
 	ret := make([]*types.BlockHeader, len(cids))
 	for i, c := range cids {

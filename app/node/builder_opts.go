@@ -17,7 +17,7 @@ import (
 // BuilderOpt is an option for building a filecoin node.
 type BuilderOpt func(*Builder) error
 
-// offlineMode enables or disables offline mode.
+// OfflineMode enables or disables offline mode.
 func OfflineMode(offlineMode bool) BuilderOpt {
 	return func(c *Builder) error {
 		c.offlineMode = offlineMode
