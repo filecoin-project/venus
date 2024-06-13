@@ -35,6 +35,7 @@ var versionMap = []versionInfo{
 	{version: 10, upgrade: Version10Upgrade},
 	{version: 11, upgrade: Version11Upgrade},
 	{version: 12, upgrade: Version12Upgrade},
+	{version: 14, upgrade: Version14Upgrade},
 }
 
 // TryToMigrate used to migrate data(db,config,file,etc) in local repo
@@ -435,4 +436,30 @@ func Version12Upgrade(repoPath string) (err error) {
 	}
 
 	return repo.WriteVersion(repoPath, 12)
+}
+
+// Version14Upgrade will modify mainnet bootstrap
+func Version14Upgrade(repoPath string) (err error) {
+	var fsrRepo repo.Repo
+	if fsrRepo, err = repo.OpenFSRepo(repoPath, 12); err != nil {
+		return
+	}
+	cfg := fsrRepo.Config()
+
+	switch cfg.NetworkParams.NetworkType {
+	case types.NetworkMainnet:
+		cfg.Bootstrap = &networks.Mainnet().Bootstrap
+	case types.NetworkCalibnet:
+		cfg.Bootstrap = &networks.Calibration().Bootstrap
+	}
+
+	if err = fsrRepo.ReplaceConfig(cfg); err != nil {
+		return
+	}
+
+	if err = fsrRepo.Close(); err != nil {
+		return
+	}
+
+	return repo.WriteVersion(repoPath, 14)
 }
