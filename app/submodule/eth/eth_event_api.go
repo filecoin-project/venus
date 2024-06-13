@@ -654,6 +654,10 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageSt
 		if err != nil {
 			return nil, err
 		}
+		if log.TransactionHash == types.EmptyEthHash {
+			// We've garbage collected the message, ignore the events and continue.
+			continue
+		}
 
 		c, err := ev.TipSetKey.Cid()
 		if err != nil {
