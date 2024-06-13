@@ -785,6 +785,8 @@ type ethSubscription struct {
 	sendQueueLen int
 	toSend       *queue.Queue[[]byte]
 	sendCond     chan struct{}
+
+	lastSentTipset *types.TipSetKey
 }
 
 func (e *ethSubscription) addFilter(_ context.Context, f filter.Filter) {
@@ -856,39 +858,56 @@ func (e *ethSubscription) send(_ context.Context, v interface{}) {
 }
 
 func (e *ethSubscription) start(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case v := <-e.in:
-			switch vt := v.(type) {
-			case *filter.CollectedEvent:
-				evs, err := ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.messageStore, e.chainAPI)
-				if err != nil {
-					continue
-				}
+	if ctx.Err() == nil {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case v := <-e.in:
+				switch vt := v.(type) {
+				case *filter.CollectedEvent:
+					evs, err := ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.messageStore, e.chainAPI)
+					if err != nil {
+						continue
+					}
 
-				for _, r := range evs.Results {
-					e.send(ctx, r)
-				}
-			case *types.TipSet:
-				ev, err := newEthBlockFromFilecoinTipSet(ctx, vt, true, e.messageStore, e.chainAPI)
-				if err != nil {
-					break
-				}
+					for _, r := range evs.Results {
+						e.send(ctx, r)
+					}
+				case *types.TipSet:
+					// Skip processing for tipset at epoch 0 as it has no parent
+					if vt.Height() == 0 {
+						continue
+					}
+					// Check if the parent has already been processed
+					parentTipSetKey := vt.Parents()
+					if e.lastSentTipset != nil && (*e.lastSentTipset) == parentTipSetKey {
+						continue
+					}
+					parentTipSet, loadErr := e.chainAPI.ChainGetTipSet(ctx, parentTipSetKey)
+					if loadErr != nil {
+						log.Warnw("failed to load parent tipset", "tipset", parentTipSetKey, "error", loadErr)
+						continue
+					}
+					ethBlock, ethBlockErr := newEthBlockFromFilecoinTipSet(ctx, parentTipSet, true, e.messageStore, e.chainAPI)
+					if ethBlockErr != nil {
+						continue
+					}
 
-				e.send(ctx, ev)
-			case *types.SignedMessage: // mpool txid
-				evs, err := ethFilterResultFromMessages([]*types.SignedMessage{vt}, e.chainAPI)
-				if err != nil {
-					continue
-				}
+					e.send(ctx, ethBlock)
+					e.lastSentTipset = &parentTipSetKey
+				case *types.SignedMessage: // mpool txid
+					evs, err := ethFilterResultFromMessages([]*types.SignedMessage{vt}, e.chainAPI)
+					if err != nil {
+						continue
+					}
 
-				for _, r := range evs.Results {
-					e.send(ctx, r)
+					for _, r := range evs.Results {
+						e.send(ctx, r)
+					}
+				default:
+					log.Warnf("unexpected subscription value type: %T", vt)
 				}
-			default:
-				log.Warnf("unexpected subscription value type: %T", vt)
 			}
 		}
 	}
