@@ -202,6 +202,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 type ExecuteMessageParams struct {
 	Preroot        cid.Cid
 	Epoch          abi.ChainEpoch
+	Timestamp      uint64
 	Message        *types.Message
 	CircSupply     abi.TokenAmount
 	BaseFee        abi.TokenAmount
@@ -278,6 +279,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 			Fork:                chainFork,
 			ActorCodeLoader:     &coderLoader,
 			Epoch:               params.Epoch,
+			Timestamp:           params.Timestamp,
 			GasPriceSchedule:    gas.NewPricesSchedule(mainNetParams.Network.ForkUpgradeParam),
 			PRoot:               params.Preroot,
 			Bsstore:             bs,
