@@ -29,7 +29,6 @@ var _ v1.IETHEvent = (*ethEventAPI)(nil)
 
 func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error) {
 	chainAPI := em.chainModule.API()
-	bsstore := em.chainModule.ChainReader.Blockstore()
 	cfg := em.cfg.FevmConfig
 	ee := &ethEventAPI{
 		em:                   em,
@@ -70,7 +69,7 @@ func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error)
 
 	ee.EventFilterManager = &filter.EventFilterManager{
 		MessageStore: ee.em.chainModule.MessageStore,
-		ChainStore:   bsstore,
+		ChainStore:   ee.em.chainModule.ChainReader,
 		EventIndex:   eventIndex, // will be nil unless EnableHistoricFilterAPI is true
 		AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
 			// we only want to match using f4 addresses
