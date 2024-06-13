@@ -18,7 +18,6 @@ import (
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	"github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
@@ -303,7 +302,7 @@ func (e *executedMessage) Events() []*types.Event {
 
 type EventFilterManager struct {
 	MessageStore     *chain.MessageStore
-	ChainStore       blockstore.Blockstore
+	ChainStore       *chain.Store
 	AddressResolver  func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
 	MaxFilterResults int
 	EventIndex       *EventIndex
@@ -378,6 +377,10 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight abi.ChainEpoch, tipsetCid cid.Cid, addresses []address.Address,
 	keysWithCodec map[string][]types.ActorEventBlock, excludeReverted bool) (EventFilter, error) {
 	m.mu.Lock()
+	if m.currentHeight == 0 {
+		// sync in progress, we haven't had an Apply
+		m.currentHeight = m.ChainStore.GetHead().Height()
+	}
 	currentHeight := m.currentHeight
 	m.mu.Unlock()
 
@@ -433,7 +436,7 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTS, rc
 		return nil, xerrors.Errorf("read messages: %w", err)
 	}
 
-	st := adt.WrapStore(ctx, cbor.NewCborStore(m.ChainStore))
+	st := adt.WrapStore(ctx, cbor.NewCborStore(m.ChainStore.Blockstore()))
 
 	arr, err := blockadt.AsArray(st, rctTS.Blocks()[0].ParentMessageReceipts)
 	if err != nil {
