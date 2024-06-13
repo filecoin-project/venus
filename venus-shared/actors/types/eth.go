@@ -203,7 +203,7 @@ func init() {
 	}
 }
 
-func NewEthBlock(hasTransactions bool) EthBlock {
+func NewEthBlock(hasTransactions bool, tipsetLen int) EthBlock {
 	b := EthBlock{
 		Sha3Uncles:       EmptyUncleHash, // Sha3Uncles set to a hardcoded value which is used by some clients to determine if has no uncles.,
 		StateRoot:        EmptyEthHash,
@@ -214,7 +214,7 @@ func NewEthBlock(hasTransactions bool) EthBlock {
 		Extradata:        []byte{},
 		MixHash:          EmptyEthHash,
 		Nonce:            EmptyEthNonce,
-		GasLimit:         EthUint64(constants.BlockGasLimit), // TODO we map Ethereum blocks to Filecoin tipsets; this is inconsistent.
+		GasLimit:         EthUint64(constants.BlockGasLimit * uint64(tipsetLen)),
 		Uncles:           []EthHash{},
 		Transactions:     []interface{}{},
 	}

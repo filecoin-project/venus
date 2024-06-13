@@ -203,7 +203,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return types.EthBlock{}, fmt.Errorf("error loading messages for tipset: %v: %w", ts, err)
 	}
 
-	block := types.NewEthBlock(len(msgs) > 0)
+	block := types.NewEthBlock(len(msgs) > 0, len(ts.Blocks()))
 
 	gasUsed := int64(0)
 	compOutput, err := ca.StateCompute(ctx, ts.Height(), nil, ts.Key())
