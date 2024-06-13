@@ -75,39 +75,28 @@ type executionEnv struct {
 }
 
 func (e *executionEnv) getToken(lane ExecutionLane) *executionToken {
-
 	e.mx.Lock()
-	defer e.mx.Unlock()
 
-	switch lane {
-	case ExecutionLaneDefault:
+	reserving := 0
+	if lane == ExecutionLaneDefault {
 		for e.available <= e.reserved {
 			e.cond.Wait()
 		}
 
-		e.available--
-
-		return &executionToken{lane: lane, reserved: 0}
-
-	case ExecutionLanePriority:
+	} else {
 		for e.available == 0 {
 			e.cond.Wait()
 		}
-
-		e.available--
-
-		reserving := 0
 		if e.reserved > 0 {
 			e.reserved--
 			reserving = 1
 		}
-
-		return &executionToken{lane: lane, reserved: reserving}
-
-	default:
-		// already checked at interface boundary in NewVM, so this is appropriate
-		panic("bogus execution lane")
 	}
+
+	e.available--
+	e.mx.Unlock()
+
+	return &executionToken{lane: lane, reserved: reserving}
 }
 
 func (e *executionEnv) putToken(token *executionToken) {
@@ -118,9 +107,8 @@ func (e *executionEnv) putToken(token *executionToken) {
 	e.reserved += token.reserved
 
 	// Note: Signal is unsound, because a priority token could wake up a non-priority
-	// goroutnie and lead to deadlock. So Broadcast it must be.
+	// goroutine and lead to deadlock. So Broadcast it must be.
 	e.cond.Broadcast()
-
 }
 
 func init() {
