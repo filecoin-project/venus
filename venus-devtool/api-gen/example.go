@@ -221,6 +221,7 @@ func init() {
 	addExample(types.CheckStatusCode(0))
 	addExample(map[string]interface{}{"abc": 123})
 	addExample(types.HCApply)
+	addExample(types.SectorOnChainInfoFlags(0))
 
 	// messager
 	i64 := int64(10000)
