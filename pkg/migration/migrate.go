@@ -35,7 +35,7 @@ var versionMap = []versionInfo{
 	{version: 10, upgrade: Version10Upgrade},
 	{version: 11, upgrade: Version11Upgrade},
 	{version: 12, upgrade: Version12Upgrade},
-	{version: 14, upgrade: Version14Upgrade},
+	{version: 13, upgrade: Version13Upgrade},
 }
 
 // TryToMigrate used to migrate data(db,config,file,etc) in local repo
@@ -438,8 +438,8 @@ func Version12Upgrade(repoPath string) (err error) {
 	return repo.WriteVersion(repoPath, 12)
 }
 
-// Version14Upgrade will modify mainnet bootstrap
-func Version14Upgrade(repoPath string) (err error) {
+// Version13Upgrade will modify mainnet bootstrap
+func Version13Upgrade(repoPath string) (err error) {
 	var fsrRepo repo.Repo
 	if fsrRepo, err = repo.OpenFSRepo(repoPath, 12); err != nil {
 		return
@@ -461,5 +461,5 @@ func Version14Upgrade(repoPath string) (err error) {
 		return
 	}
 
-	return repo.WriteVersion(repoPath, 14)
+	return repo.WriteVersion(repoPath, 13)
 }
