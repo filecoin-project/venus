@@ -111,6 +111,14 @@ var stateTypesOpt = option{
 			{pkgName: "multisig", newName: "MultisigConstructorParams"},
 			{pkgName: "paych", newName: "PaychConstructorParams"},
 		},
+		"BatchReturn": {
+			{pkgName: "miner", newName: "MinerBatchReturn"},
+			{pkgName: "verifreg", newName: "VerifregBatchReturn"},
+		},
+		"FailCode": {
+			{pkgName: "miner", newName: "MinerFailCode"},
+			{pkgName: "verifreg", newName: "VerifregFailCode"},
+		},
 	},
 }
 
@@ -129,6 +137,7 @@ var getStateTypesIncludePkgs = func() []string {
 	pkgs := make([]string, 0, 4)
 	aliasVesion := map[string]actors.Version{
 		"paych": actors.Version8,
+		"miner": actors.Version13,
 	}
 	for _, pkg := range []string{"market", "miner", "verifreg", "paych", "multisig", "datacap"} {
 		if v, ok := aliasVesion[pkg]; ok {

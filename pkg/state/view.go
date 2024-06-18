@@ -243,7 +243,24 @@ func (v *View) SectorPreCommitInfo(ctx context.Context, maddr addr.Address, sid 
 		return nil, fmt.Errorf("(get sset) failed to load miner actor: %v", err)
 	}
 
-	return mas.GetPrecommittedSector(sid)
+	sectorInfo, err := mas.GetPrecommittedSector(sid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.SectorPreCommitOnChainInfo{
+		Info: types.SectorPreCommitInfo{
+			SealProof:     sectorInfo.Info.SealProof,
+			SectorNumber:  sectorInfo.Info.SectorNumber,
+			SealedCID:     sectorInfo.Info.SealedCID,
+			SealRandEpoch: sectorInfo.Info.SealRandEpoch,
+			DealIDs:       sectorInfo.Info.DealIDs,
+			Expiration:    sectorInfo.Info.Expiration,
+			UnsealedCid:   sectorInfo.Info.UnsealedCid,
+		},
+		PreCommitDeposit: sectorInfo.PreCommitDeposit,
+		PreCommitEpoch:   sectorInfo.PreCommitEpoch,
+	}, nil
 }
 
 // StateSectorPartition finds deadline/partition with the specified sector
@@ -295,7 +312,20 @@ func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Addres
 	if err != nil {
 		return nil, false, err
 	}
-	return info, true, nil
+
+	return &types.SectorPreCommitOnChainInfo{
+		Info: types.SectorPreCommitInfo{
+			SealProof:     info.Info.SealProof,
+			SectorNumber:  info.Info.SectorNumber,
+			SealedCID:     info.Info.SealedCID,
+			SealRandEpoch: info.Info.SealRandEpoch,
+			DealIDs:       info.Info.DealIDs,
+			Expiration:    info.Info.Expiration,
+			UnsealedCid:   info.Info.UnsealedCid,
+		},
+		PreCommitDeposit: info.PreCommitDeposit,
+		PreCommitEpoch:   info.PreCommitEpoch,
+	}, true, nil
 }
 
 // MarketEscrowBalance looks up a token amount in the escrow table for the given address

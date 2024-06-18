@@ -141,8 +141,18 @@ func (msa *minerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Addr
 		ConsensusFaultElapsed:      minfo.ConsensusFaultElapsed,
 		PendingOwnerAddress:        minfo.PendingOwnerAddress,
 		Beneficiary:                minfo.Beneficiary,
-		BeneficiaryTerm:            &minfo.BeneficiaryTerm,
-		PendingBeneficiaryTerm:     minfo.PendingBeneficiaryTerm,
+		BeneficiaryTerm: &types.BeneficiaryTerm{
+			Quota:      minfo.BeneficiaryTerm.Quota,
+			UsedQuota:  minfo.BeneficiaryTerm.UsedQuota,
+			Expiration: minfo.BeneficiaryTerm.Expiration,
+		},
+		PendingBeneficiaryTerm: &types.PendingBeneficiaryChange{
+			NewBeneficiary:        minfo.PendingBeneficiaryTerm.NewBeneficiary,
+			NewQuota:              minfo.PendingBeneficiaryTerm.NewQuota,
+			NewExpiration:         minfo.PendingBeneficiaryTerm.NewExpiration,
+			ApprovedByBeneficiary: minfo.PendingBeneficiaryTerm.ApprovedByBeneficiary,
+			ApprovedByNominee:     minfo.PendingBeneficiaryTerm.ApprovedByNominee,
+		},
 	}
 
 	if minfo.PendingWorkerKey != nil {

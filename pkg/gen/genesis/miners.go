@@ -29,6 +29,7 @@ import (
 
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
@@ -511,9 +512,10 @@ func SetupStorageMiners(ctx context.Context,
 					return cid.Undef, fmt.Errorf("getting current total power: %w", err)
 				}
 
-				pcd := types.PreCommitDepositForPower(smoothing9.FilterEstimate(rewardSmoothed), smoothing9.FilterEstimate(*tpow.QualityAdjPowerSmoothed), types.QAPowerMax(m.SectorSize))
+				pcd := miner9.PreCommitDepositForPower(smoothing9.FilterEstimate(rewardSmoothed),
+					smoothing9.FilterEstimate(*tpow.QualityAdjPowerSmoothed), types.QAPowerMax(m.SectorSize))
 
-				pledge := types.InitialPledgeForPower(
+				pledge := miner9.InitialPledgeForPower(
 					sectorWeight,
 					baselinePower,
 					smoothing9.FilterEstimate(rewardSmoothed),

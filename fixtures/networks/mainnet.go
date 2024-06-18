@@ -67,6 +67,7 @@ func Mainnet() *NetworkConf {
 				UpgradeWatermelonFix2Height:       -101,              // This fix upgrade only ran on calibrationnet
 				UpgradeDragonHeight:               3855360,           // 2024-04-24T14:00:00Z
 				UpgradeCalibrationDragonFixHeight: -102,              // This fix upgrade only ran on calibrationnet
+				UpgradeWaffleHeight:               999999999999,      //
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:          address.Mainnet,
