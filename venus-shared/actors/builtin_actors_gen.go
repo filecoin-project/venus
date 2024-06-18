@@ -140,6 +140,29 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 		"verifiedregistry": mustParseCid("bafk2bzacebs5muoq7ft2wgqojhjio7a4vltbyprqkmlr43ojlzbil4nwvj3jg"),
 	},
 }, {
+	Network: "butterflynet",
+	Version: 14,
+
+	ManifestCid: mustParseCid("bafy2bzacec75zk7ufzwx6tg5avls5fxdjx5asaqmd2bfqdvkqrkzoxgyflosu"),
+	Actors: map[string]cid.Cid{
+		"account":          mustParseCid("bafk2bzacedl533kwbzouqxibejpwp6syfdekvmzy4vmmno6j4iaydbdmv4xek"),
+		"cron":             mustParseCid("bafk2bzacecimv5xnuwyoqgxk26qt4xqpgntleret475pnh35s3vvhqtdct4ow"),
+		"datacap":          mustParseCid("bafk2bzacebpdd4ctavhs7wkcykfahpifct3p4hbptgtf4jfrqcp2trtlygvow"),
+		"eam":              mustParseCid("bafk2bzaceahw5rrgj7prgbnmn237di7ymjz2ssea32wr525jydpfrwpuhs67m"),
+		"ethaccount":       mustParseCid("bafk2bzacebrslcbew5mq3le2zsn36xqxd4gt5hryeoslxnuqwgw3rhuwh6ygu"),
+		"evm":              mustParseCid("bafk2bzaced5smz4lhpem4mbr7igcskv3e5qopbdp7dqshww2qs4ahacgzjzo4"),
+		"init":             mustParseCid("bafk2bzacedgj6hawhdw2ot2ufisci374o2bq6bfkvlvdt6q7s3uoe5ffyv43k"),
+		"multisig":         mustParseCid("bafk2bzacectnnnpwyqiccaymy3h6ghu74ghjrqyhtqv5odfd4opivzebjj6to"),
+		"paymentchannel":   mustParseCid("bafk2bzaceckhx44jawhzhkz6k23gfnv2gcutgb4j4ekhonj2plwaent4b2tpk"),
+		"placeholder":      mustParseCid("bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro"),
+		"reward":           mustParseCid("bafk2bzacebbs3rlg7y3wbvxrj4wgbsqmasw4ksbbr3lyqbkaxj2t25qz6zzuy"),
+		"storagemarket":    mustParseCid("bafk2bzaced3zmxsmlhp2nsiwkxcp2ugonbsebcd53t7htzo2jcoidvu464xmm"),
+		"storageminer":     mustParseCid("bafk2bzacebedx7iaa2ruspxvghkg46ez7un5b7oiijjtnvddq2aot5wk7p7ry"),
+		"storagepower":     mustParseCid("bafk2bzacebvne7m2l3hxxw4xa6oujol75x35yqpnlqiwx74jilyrop4cs7cse"),
+		"system":           mustParseCid("bafk2bzaceacjmlxrvydlud77ilpzbscez46yedx6zjsj6olxsdeuv6d4x4cwe"),
+		"verifiedregistry": mustParseCid("bafk2bzacebs5muoq7ft2wgqojhjio7a4vltbyprqkmlr43ojlzbil4nwvj3jg"),
+	},
+}, {
 	Network: "calibrationnet",
 	Version: 8,
 
@@ -248,6 +271,29 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network: "calibrationnet",
 	Version: 13,
+
+	ManifestCid: mustParseCid("bafy2bzacect4ktyujrwp6mjlsitnpvuw2pbuppz6w52sfljyo4agjevzm75qs"),
+	Actors: map[string]cid.Cid{
+		"account":          mustParseCid("bafk2bzaceb3j36ri5y5mfklgp5emlvrms6g4733ss2j3l7jismrxq6ng3tcc6"),
+		"cron":             mustParseCid("bafk2bzaceaz6rocamdxehgpwcbku6wlapwpgzyyvkrploj66mlqptsulf52bs"),
+		"datacap":          mustParseCid("bafk2bzacea22nv5g3yngpxvonqfj4r2nkfk64y6yw2malicm7odk77x7zuads"),
+		"eam":              mustParseCid("bafk2bzaceatqtjzj7623i426noaslouvluhz6e3md3vvquqzku5qj3532uaxg"),
+		"ethaccount":       mustParseCid("bafk2bzacean3hs7ga5csw6g3uu7watxfnqv5uvxviebn3ba6vg4sagwdur5pu"),
+		"evm":              mustParseCid("bafk2bzacec5ibmbtzuzjgwjmksm2n6zfq3gkicxqywwu7tsscqgdzajpfctxk"),
+		"init":             mustParseCid("bafk2bzaced5sq72oemz6qwi6yssxwlos2g54zfprslrx5qfhhx2vlgsbvdpcs"),
+		"multisig":         mustParseCid("bafk2bzacedbgei6jkx36fwdgvoohce4aghvpohqdhoco7p4thszgssms7olv2"),
+		"paymentchannel":   mustParseCid("bafk2bzaceasmgmfsi4mjanxlowsub65fmevhzky4toeqbtw4kp6tmu4kxjpgq"),
+		"placeholder":      mustParseCid("bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro"),
+		"reward":           mustParseCid("bafk2bzacedjyp6ll5ez27dfgldjj4tntxfvyp4pa5zkk7s5uhipzqjyx2gmuc"),
+		"storagemarket":    mustParseCid("bafk2bzaceabolct6qdnefwcrtati2us3sxtxfghyqk6aamfhl6byyefmtssqi"),
+		"storageminer":     mustParseCid("bafk2bzaceckzw3v7wqliyggvjvihz4wywchnnsie4frfvkm3fm5znb64mofri"),
+		"storagepower":     mustParseCid("bafk2bzacea7t4wynzjajl442mpdqbnh3wusjusqtnzgpvefvweh4n2tgzgqhu"),
+		"system":           mustParseCid("bafk2bzacedjnrb5glewazsxpcx6rwiuhl4kwrfcqolyprn6rrjtlzmthlhdq6"),
+		"verifiedregistry": mustParseCid("bafk2bzacebj2zdquagzy2xxn7up574oemg3w7ed3fe4aujkyhgdwj57voesn2"),
+	},
+}, {
+	Network: "calibrationnet",
+	Version: 14,
 
 	ManifestCid: mustParseCid("bafy2bzacect4ktyujrwp6mjlsitnpvuw2pbuppz6w52sfljyo4agjevzm75qs"),
 	Actors: map[string]cid.Cid{
@@ -407,6 +453,29 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 		"verifiedregistry": mustParseCid("bafk2bzacebnkdt42mpf5emypo6iroux3hszfh5yt54v2mmnnura3ketholly4"),
 	},
 }, {
+	Network: "caterpillarnet",
+	Version: 14,
+
+	ManifestCid: mustParseCid("bafy2bzacedu7kk2zngxp7y3lynhtaht6vgadgn5jzkxe5nuowtwzasnogx63w"),
+	Actors: map[string]cid.Cid{
+		"account":          mustParseCid("bafk2bzacecro3uo6ypqhfzwdhnamzcole5qmhrbkx7qny6t2qsrcpqxelt6s2"),
+		"cron":             mustParseCid("bafk2bzaceam3kci46y4siltbw7f4itoap34kp7b7pvn2fco5s2bvnotomwdbe"),
+		"datacap":          mustParseCid("bafk2bzacecmtdspcbqmmjtsaz4vucuqoqjqfsgxjonns7tom7eblkngbcm7bw"),
+		"eam":              mustParseCid("bafk2bzaceaudqhrt7djewopqdnryvwxagfufyt7ja4gdvovrxbh6edh6evgrw"),
+		"ethaccount":       mustParseCid("bafk2bzaced676ds3z6xe333wr7frwq3f2iq5kjwp4okl3te6rne3xf7kuqrwm"),
+		"evm":              mustParseCid("bafk2bzacebeih4jt2s6mel6x4hje7xmnugh6twul2a5axx4iczu7fu4wcdi6k"),
+		"init":             mustParseCid("bafk2bzaceba7vvuzzwj5wqnq2bvpbgtxup53mhr3qybezbllftnxvpqbfymxo"),
+		"multisig":         mustParseCid("bafk2bzaceapkajhnqoczrgry5javqbl7uebgmsbpqqfemzc4yb5q2dqia2qog"),
+		"paymentchannel":   mustParseCid("bafk2bzacebg7xq4ca22gafmdbkcq357x7v6slflib4h3fnj4amsovg6ulqg3o"),
+		"placeholder":      mustParseCid("bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro"),
+		"reward":           mustParseCid("bafk2bzaceajt4idf26ffnyipybcib55fykjxnek7oszkqzi7lu7mbgijmkgos"),
+		"storagemarket":    mustParseCid("bafk2bzaceadfmay7pyl7osjsdmrireafasnjnoziacljy5ewrcsxpp56kzqbw"),
+		"storageminer":     mustParseCid("bafk2bzaceardbn5a7aq5jxl7efr4btmsbl7txnxm4hrrd3llyhujuc2cr5vcs"),
+		"storagepower":     mustParseCid("bafk2bzacear4563jznjqyseoy42xl6kenyqk6umv6xl3bp5bsjb3hbs6sp6bm"),
+		"system":           mustParseCid("bafk2bzacecc5oavxivfnvirx2g7megpdf6lugooyoc2wijloju247xzjcdezy"),
+		"verifiedregistry": mustParseCid("bafk2bzacebnkdt42mpf5emypo6iroux3hszfh5yt54v2mmnnura3ketholly4"),
+	},
+}, {
 	Network: "devnet",
 	Version: 8,
 
@@ -515,6 +584,29 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network: "devnet",
 	Version: 13,
+
+	ManifestCid: mustParseCid("bafy2bzacecn7uxgehrqbcs462ktl2h23u23cmduy2etqj6xrd6tkkja56fna4"),
+	Actors: map[string]cid.Cid{
+		"account":          mustParseCid("bafk2bzacebev3fu5geeehpx577b3kvza4xsmmggmepjj7rlsnr27hpoq27q2i"),
+		"cron":             mustParseCid("bafk2bzacedalzqahtuz2bmnf7uawbcujfhhe5xzv5ys5ufadu6ggs3tcu6lsy"),
+		"datacap":          mustParseCid("bafk2bzaceb7ou2vn7ac4xidespoowq2q5w7ognr7s4ujy3xzzgiishajpe7le"),
+		"eam":              mustParseCid("bafk2bzacedqic2qskattorj4svf6mbto2k76ej3ll3ugsyorqramrg7rpq3by"),
+		"ethaccount":       mustParseCid("bafk2bzaceaoad7iknpywijigv2h3jyvkijff2oxvohzue533v5hby3iix5vdu"),
+		"evm":              mustParseCid("bafk2bzacecjgiw26gagsn6a7tffkrgoor4zfgzfokp76u6cwervtmvjbopmwg"),
+		"init":             mustParseCid("bafk2bzaced2obubqojxggeddr246cpwtyzi6knnq52jsvsc2fs3tuk2kh6dtg"),
+		"multisig":         mustParseCid("bafk2bzacebquruzb6zho45orbdkku624t6w6jt4tudaqzraz4yh3li3jfstpg"),
+		"paymentchannel":   mustParseCid("bafk2bzaceaydrilyxvflsuzr24hmw32qwz6sy4hgls73bhpveydcsqskdgpca"),
+		"placeholder":      mustParseCid("bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro"),
+		"reward":           mustParseCid("bafk2bzaceb74owpuzdddqoj2tson6ymbyuguqrnqefyiaxqvwm4ygitpabjrq"),
+		"storagemarket":    mustParseCid("bafk2bzaceaw6dslv6pfqha4ynghq2imij5khnnjrie22kmfgtpie3bvxho6jq"),
+		"storageminer":     mustParseCid("bafk2bzacecsputz6xygjfyrvx2d7bxkpp7b5v4icrmpckec7gnbabx2w377qs"),
+		"storagepower":     mustParseCid("bafk2bzaceceyaa5yjwhxvvcqouob4l746zp5nesivr6enhtpimakdtby6kafi"),
+		"system":           mustParseCid("bafk2bzaceaxg6k5vuozxlemfi5hv663m6jcawzu5puboo4znj73i36e3tsovs"),
+		"verifiedregistry": mustParseCid("bafk2bzacea2czkb4vt2iiiwdb6e57qfwqse4mk2pcyvwjmdl5ojbnla57oh2u"),
+	},
+}, {
+	Network: "devnet",
+	Version: 14,
 
 	ManifestCid: mustParseCid("bafy2bzacecn7uxgehrqbcs462ktl2h23u23cmduy2etqj6xrd6tkkja56fna4"),
 	Actors: map[string]cid.Cid{
@@ -688,6 +780,29 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 		"verifiedregistry": mustParseCid("bafk2bzacedkxehp7y7iyukbcje3wbpqcvufisos6exatkanyrbotoecdkrbta"),
 	},
 }, {
+	Network: "mainnet",
+	Version: 14,
+
+	ManifestCid: mustParseCid("bafy2bzacecdhvfmtirtojwhw2tyciu4jkbpsbk5g53oe24br27oy62sn4dc4e"),
+	Actors: map[string]cid.Cid{
+		"account":          mustParseCid("bafk2bzacedxnbtlsqdk76fsfmnhyvsblwyfducerwwtp3mqtx2wbrvs5idl52"),
+		"cron":             mustParseCid("bafk2bzacebbopddyn5csb3fsuhh2an4ttd23x6qnwixgohlirj5ahtcudphyc"),
+		"datacap":          mustParseCid("bafk2bzaceah42tfnhd7xnztawgf46gbvc3m2gudoxshlba2ucmmo2vy67t7ci"),
+		"eam":              mustParseCid("bafk2bzaceb23bhvvcjsth7cn7vp3gbaphrutsaz7v6hkls3ogotzs4bnhm4mk"),
+		"ethaccount":       mustParseCid("bafk2bzaceautge6zhuy6jbj3uldwoxwhpywuon6z3xfvmdbzpbdribc6zzmei"),
+		"evm":              mustParseCid("bafk2bzacedq6v2lyuhgywhlllwmudfj2zufzcauxcsvvd34m2ek5xr55mvh2q"),
+		"init":             mustParseCid("bafk2bzacedr4xacm3fts4vilyeiacjr2hpmwzclyzulbdo24lrfxbtau2wbai"),
+		"multisig":         mustParseCid("bafk2bzacecr5zqarfqak42xqcfeulsxlavcltawsx2fvc7zsjtby6ti4b3wqc"),
+		"paymentchannel":   mustParseCid("bafk2bzacebntdhfmyc24e7tm52ggx5tnw4i3hrr3jmllsepv3mibez4hywsa2"),
+		"placeholder":      mustParseCid("bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro"),
+		"reward":           mustParseCid("bafk2bzacedq4q2kwkruu4xm7rkyygumlbw2yt4nimna2ivea4qarvtkohnuwu"),
+		"storagemarket":    mustParseCid("bafk2bzacebjtoltdviyznpj34hh5qp6u257jnnbjole5rhqfixm7ug3epvrfu"),
+		"storageminer":     mustParseCid("bafk2bzacebf4rrqyk7gcfggggul6nfpzay7f2ordnkwm7z2wcf4mq6r7i77t2"),
+		"storagepower":     mustParseCid("bafk2bzacecjy4dkulvxppg3ocbmeixe2wgg6yxoyjxrm4ko2fm3uhpvfvam6e"),
+		"system":           mustParseCid("bafk2bzacecyf523quuq2kdjfdvyty446z2ounmamtgtgeqnr3ynlu5cqrlt6e"),
+		"verifiedregistry": mustParseCid("bafk2bzacedkxehp7y7iyukbcje3wbpqcvufisos6exatkanyrbotoecdkrbta"),
+	},
+}, {
 	Network: "testing",
 	Version: 8,
 
@@ -817,6 +932,29 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 		"verifiedregistry": mustParseCid("bafk2bzaceadw6mxuyb6ipaq3fhekk7u5osyyiis3c4wbkvysy2ut6qfsua5zs"),
 	},
 }, {
+	Network: "testing",
+	Version: 14,
+
+	ManifestCid: mustParseCid("bafy2bzacedg47dqxmtgzjch6i42kth72esd7w23gujyd6c6oppg3n6auag5ou"),
+	Actors: map[string]cid.Cid{
+		"account":          mustParseCid("bafk2bzaceb3tncntgeqvzzr5fzhvpsc5ntv3tpqrsh4jst4irfyzpkdyigibc"),
+		"cron":             mustParseCid("bafk2bzacecwwasmhixpgtshczm5cfspwciyawc25mrefknqhlxfrd6m57tqmc"),
+		"datacap":          mustParseCid("bafk2bzaceckj66by6eohjrybazh5cymmovgl5bmikpvzki2q7huwk2fweoef2"),
+		"eam":              mustParseCid("bafk2bzaceafzm65wvnaam3775homn4vzsv7odftn5tkifmn44wd2t6gupy63y"),
+		"ethaccount":       mustParseCid("bafk2bzaced4q7m4mha2dsezhwub3ru64rgimkg52t25ul4gnekax6uq7hbkqu"),
+		"evm":              mustParseCid("bafk2bzaceakpknw5cuizil3552jr5z35rs6ijaignjigciswtok67drhzdss6"),
+		"init":             mustParseCid("bafk2bzacec7mbkemwugyg2p4oy2xgnovykk4dnsu5ym4wkreooujvxfsxbo3i"),
+		"multisig":         mustParseCid("bafk2bzacebmftoql6dcyqf54xznwjg2bfgdsi67spqquwslpvvtvcx6qenhz2"),
+		"paymentchannel":   mustParseCid("bafk2bzaceau57wpiiikea6pu5om4ryyqjrxjzfksfl4reqosnohydzv3pf4qq"),
+		"placeholder":      mustParseCid("bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro"),
+		"reward":           mustParseCid("bafk2bzacecvlcdgbqlk3dyfzkcjrywg2th5bmn7ilijifikulpxr4ffcrw23o"),
+		"storagemarket":    mustParseCid("bafk2bzacecgj53dwqla7eiubs2uiza7cgxkxtefxkfpjontj5jxefl3a4i2nq"),
+		"storageminer":     mustParseCid("bafk2bzaceailclue4dba2edjethfjw6ycufcwsx4qjjmgsh77xcyprmogdjvu"),
+		"storagepower":     mustParseCid("bafk2bzaceaqw6dhdjlqovhk3p4lb4sb25i5d6mhln2ir5m7tj6m4fegkgkinw"),
+		"system":           mustParseCid("bafk2bzaceby6aiiosnrtb5kzlmrvd4k3o27oo3idmbd6llydz2uqibbp23pzq"),
+		"verifiedregistry": mustParseCid("bafk2bzaceadw6mxuyb6ipaq3fhekk7u5osyyiis3c4wbkvysy2ut6qfsua5zs"),
+	},
+}, {
 	Network: "testing-fake-proofs",
 	Version: 8,
 
@@ -925,6 +1063,29 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network: "testing-fake-proofs",
 	Version: 13,
+
+	ManifestCid: mustParseCid("bafy2bzaceaf7fz33sp2i5ag5xg5ompn3dwppqlbwfacrwuvzaqdbqrtni7m5q"),
+	Actors: map[string]cid.Cid{
+		"account":          mustParseCid("bafk2bzaceb3tncntgeqvzzr5fzhvpsc5ntv3tpqrsh4jst4irfyzpkdyigibc"),
+		"cron":             mustParseCid("bafk2bzacecwwasmhixpgtshczm5cfspwciyawc25mrefknqhlxfrd6m57tqmc"),
+		"datacap":          mustParseCid("bafk2bzaceckj66by6eohjrybazh5cymmovgl5bmikpvzki2q7huwk2fweoef2"),
+		"eam":              mustParseCid("bafk2bzaceafzm65wvnaam3775homn4vzsv7odftn5tkifmn44wd2t6gupy63y"),
+		"ethaccount":       mustParseCid("bafk2bzaced4q7m4mha2dsezhwub3ru64rgimkg52t25ul4gnekax6uq7hbkqu"),
+		"evm":              mustParseCid("bafk2bzaceakpknw5cuizil3552jr5z35rs6ijaignjigciswtok67drhzdss6"),
+		"init":             mustParseCid("bafk2bzacec7mbkemwugyg2p4oy2xgnovykk4dnsu5ym4wkreooujvxfsxbo3i"),
+		"multisig":         mustParseCid("bafk2bzacedy4vldq4viv6bzzh4fueip3by3axsbgbh655lashddgumknc6pvs"),
+		"paymentchannel":   mustParseCid("bafk2bzaceau57wpiiikea6pu5om4ryyqjrxjzfksfl4reqosnohydzv3pf4qq"),
+		"placeholder":      mustParseCid("bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro"),
+		"reward":           mustParseCid("bafk2bzacecvlcdgbqlk3dyfzkcjrywg2th5bmn7ilijifikulpxr4ffcrw23o"),
+		"storagemarket":    mustParseCid("bafk2bzacecgj53dwqla7eiubs2uiza7cgxkxtefxkfpjontj5jxefl3a4i2nq"),
+		"storageminer":     mustParseCid("bafk2bzaceb6atn3k6yhmskgmc3lgfiwpzpfmaxzacohtnb2hivme2oroycqr6"),
+		"storagepower":     mustParseCid("bafk2bzacedameh56mp2g4y7nprhax5sddbzcmpk5p7l523l45rtn2wjc6ah4e"),
+		"system":           mustParseCid("bafk2bzaceby6aiiosnrtb5kzlmrvd4k3o27oo3idmbd6llydz2uqibbp23pzq"),
+		"verifiedregistry": mustParseCid("bafk2bzaceadw6mxuyb6ipaq3fhekk7u5osyyiis3c4wbkvysy2ut6qfsua5zs"),
+	},
+}, {
+	Network: "testing-fake-proofs",
+	Version: 14,
 
 	ManifestCid: mustParseCid("bafy2bzaceaf7fz33sp2i5ag5xg5ompn3dwppqlbwfacrwuvzaqdbqrtni7m5q"),
 	Actors: map[string]cid.Cid{

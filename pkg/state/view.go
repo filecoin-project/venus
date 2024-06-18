@@ -243,7 +243,28 @@ func (v *View) SectorPreCommitInfo(ctx context.Context, maddr addr.Address, sid 
 		return nil, fmt.Errorf("(get sset) failed to load miner actor: %v", err)
 	}
 
-	return mas.GetPrecommittedSector(sid)
+	sectorInfo, err := mas.GetPrecommittedSector(sid)
+	if err != nil {
+		return nil, err
+	}
+
+	if sectorInfo == nil {
+		return nil, nil
+	}
+
+	return &types.SectorPreCommitOnChainInfo{
+		Info: types.SectorPreCommitInfo{
+			SealProof:     sectorInfo.Info.SealProof,
+			SectorNumber:  sectorInfo.Info.SectorNumber,
+			SealedCID:     sectorInfo.Info.SealedCID,
+			SealRandEpoch: sectorInfo.Info.SealRandEpoch,
+			DealIDs:       sectorInfo.Info.DealIDs,
+			Expiration:    sectorInfo.Info.Expiration,
+			UnsealedCid:   sectorInfo.Info.UnsealedCid,
+		},
+		PreCommitDeposit: sectorInfo.PreCommitDeposit,
+		PreCommitEpoch:   sectorInfo.PreCommitEpoch,
+	}, nil
 }
 
 // StateSectorPartition finds deadline/partition with the specified sector
@@ -281,21 +302,6 @@ func (v *View) MinerExists(ctx context.Context, maddr addr.Address) (bool, error
 		return false, nil
 	}
 	return false, err
-}
-
-// MinerGetPrecommittedSector Looks up info for a miners precommitted sector.
-// NOTE: exposes on-chain structures directly for storage FSM API.
-func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*types.SectorPreCommitOnChainInfo, bool, error) {
-	minerState, err := v.LoadMinerState(ctx, maddr)
-	if err != nil {
-		return nil, false, err
-	}
-
-	info, err := minerState.GetPrecommittedSector(sectorNum)
-	if err != nil {
-		return nil, false, err
-	}
-	return info, true, nil
 }
 
 // MarketEscrowBalance looks up a token amount in the escrow table for the given address

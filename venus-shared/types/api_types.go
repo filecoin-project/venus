@@ -172,13 +172,15 @@ type Deadline struct {
 var MarketBalanceNil = MarketBalance{}
 
 type MarketDealState struct {
-	SectorStartEpoch abi.ChainEpoch // -1 if not yet included in proven sector
-	LastUpdatedEpoch abi.ChainEpoch // -1 if deal state never updated
-	SlashEpoch       abi.ChainEpoch // -1 if deal never slashed
+	SectorNumber     abi.SectorNumber // 0 if not yet included in proven sector (0 is also a valid sector number).
+	SectorStartEpoch abi.ChainEpoch   // -1 if not yet included in proven sector
+	LastUpdatedEpoch abi.ChainEpoch   // -1 if deal state never updated
+	SlashEpoch       abi.ChainEpoch   // -1 if deal never slashed
 }
 
 func MakeDealState(mds market.DealState) MarketDealState {
 	return MarketDealState{
+		SectorNumber:     mds.SectorNumber(),
 		SectorStartEpoch: mds.SectorStartEpoch(),
 		LastUpdatedEpoch: mds.LastUpdatedEpoch(),
 		SlashEpoch:       mds.SlashEpoch(),
@@ -187,6 +189,10 @@ func MakeDealState(mds market.DealState) MarketDealState {
 
 type mstate struct {
 	s MarketDealState
+}
+
+func (m mstate) SectorNumber() abi.SectorNumber {
+	return m.s.SectorNumber
 }
 
 func (m mstate) SectorStartEpoch() abi.ChainEpoch {
@@ -471,6 +477,7 @@ type ForkUpgradeParams struct {
 	UpgradeWatermelonHeight  abi.ChainEpoch
 	UpgradeDragonHeight      abi.ChainEpoch
 	UpgradePhoenixHeight     abi.ChainEpoch
+	UpgradeWaffleHeight      abi.ChainEpoch
 }
 
 type NodeStatus struct {

@@ -2,10 +2,10 @@
 package types
 
 import (
+	"github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/builtin/v9/datacap"
 	"github.com/filecoin-project/go-state-types/builtin/v9/market"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v9/multisig"
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 )
@@ -101,9 +101,11 @@ const (
 	MinSectorExpiration                          = miner.MinSectorExpiration
 	PartitionEarlyTerminationArrayAmtBitwidth    = miner.PartitionEarlyTerminationArrayAmtBitwidth
 	PartitionExpirationAmtBitwidth               = miner.PartitionExpirationAmtBitwidth
+	PoStedPartitionsMax                          = miner.PoStedPartitionsMax
 	PreCommitSectorBatchMaxSize                  = miner.PreCommitSectorBatchMaxSize
 	PrecommitCleanUpAmtBitwidth                  = miner.PrecommitCleanUpAmtBitwidth
 	ProveReplicaUpdatesMaxSize                   = miner.ProveReplicaUpdatesMaxSize
+	SIMPLE_QA_POWER                              = miner.SIMPLE_QA_POWER
 	SectorsAmtBitwidth                           = miner.SectorsAmtBitwidth
 	WPoStChallengeLookback                       = miner.WPoStChallengeLookback
 	WPoStPeriodDeadlines                         = miner.WPoStPeriodDeadlines
@@ -113,6 +115,7 @@ const (
 type (
 	ActiveBeneficiary             = miner.ActiveBeneficiary
 	ApplyRewardParams             = miner.ApplyRewardParams
+	MinerBatchReturn              = miner.BatchReturn
 	BeneficiaryTerm               = miner.BeneficiaryTerm
 	ChangeBeneficiaryParams       = miner.ChangeBeneficiaryParams
 	ChangeMultiaddrsParams        = miner.ChangeMultiaddrsParams
@@ -124,6 +127,7 @@ type (
 	ConfirmSectorProofsParams     = miner.ConfirmSectorProofsParams
 	CronEventPayload              = miner.CronEventPayload
 	CronEventType                 = miner.CronEventType
+	DataActivationNotification    = miner.DataActivationNotification
 	Deadlines                     = miner.Deadlines
 	DeclareFaultsParams           = miner.DeclareFaultsParams
 	DeclareFaultsRecoveredParams  = miner.DeclareFaultsRecoveredParams
@@ -135,12 +139,24 @@ type (
 	ExpirationSet                 = miner.ExpirationSet
 	ExtendSectorExpiration2Params = miner.ExtendSectorExpiration2Params
 	ExtendSectorExpirationParams  = miner.ExtendSectorExpirationParams
+	MinerFailCode                 = miner.FailCode
 	FaultDeclaration              = miner.FaultDeclaration
+	GetAvailableBalanceReturn     = miner.GetAvailableBalanceReturn
 	GetBeneficiaryReturn          = miner.GetBeneficiaryReturn
 	GetControlAddressesReturn     = miner.GetControlAddressesReturn
+	GetMultiAddrsReturn           = miner.GetMultiAddrsReturn
+	GetOwnerReturn                = miner.GetOwnerReturn
+	GetPeerIDReturn               = miner.GetPeerIDReturn
+	GetSectorSizeReturn           = miner.GetSectorSizeReturn
+	GetVestingFundsReturn         = miner.GetVestingFundsReturn
+	IsControllingAddressParams    = miner.IsControllingAddressParams
+	IsControllingAddressReturn    = miner.IsControllingAddressReturn
 	MinerConstructorParams        = miner.MinerConstructorParams
 	PartitionKey                  = miner.PartitionKey
 	PendingBeneficiaryChange      = miner.PendingBeneficiaryChange
+	PieceActivationManifest       = miner.PieceActivationManifest
+	PieceChange                   = miner.PieceChange
+	PieceReturn                   = miner.PieceReturn
 	PoStPartition                 = miner.PoStPartition
 	PowerPair                     = miner.PowerPair
 	PreCommitSectorBatchParams    = miner.PreCommitSectorBatchParams
@@ -148,21 +164,33 @@ type (
 	PreCommitSectorParams         = miner.PreCommitSectorParams
 	ProveCommitAggregateParams    = miner.ProveCommitAggregateParams
 	ProveCommitSectorParams       = miner.ProveCommitSectorParams
+	ProveCommitSectors3Params     = miner.ProveCommitSectors3Params
+	ProveCommitSectors3Return     = miner.ProveCommitSectors3Return
+	ProveReplicaUpdates3Params    = miner.ProveReplicaUpdates3Params
+	ProveReplicaUpdates3Return    = miner.ProveReplicaUpdates3Return
 	ProveReplicaUpdatesParams     = miner.ProveReplicaUpdatesParams
 	ProveReplicaUpdatesParams2    = miner.ProveReplicaUpdatesParams2
 	RecoveryDeclaration           = miner.RecoveryDeclaration
 	ReplicaUpdate                 = miner.ReplicaUpdate
 	ReplicaUpdate2                = miner.ReplicaUpdate2
 	ReportConsensusFaultParams    = miner.ReportConsensusFaultParams
+	SectorActivationManifest      = miner.SectorActivationManifest
+	SectorChanges                 = miner.SectorChanges
 	SectorClaim                   = miner.SectorClaim
+	SectorContentChangedParams    = miner.SectorContentChangedParams
+	SectorContentChangedReturn    = miner.SectorContentChangedReturn
 	SectorOnChainInfo             = miner.SectorOnChainInfo
+	SectorOnChainInfoFlags        = miner.SectorOnChainInfoFlags
 	SectorPreCommitInfo           = miner.SectorPreCommitInfo
 	SectorPreCommitOnChainInfo    = miner.SectorPreCommitOnChainInfo
+	SectorReturn                  = miner.SectorReturn
+	SectorUpdateManifest          = miner.SectorUpdateManifest
 	Sectors                       = miner.Sectors
 	SubmitWindowedPoStParams      = miner.SubmitWindowedPoStParams
 	TerminateSectorsParams        = miner.TerminateSectorsParams
 	TerminateSectorsReturn        = miner.TerminateSectorsReturn
 	TerminationDeclaration        = miner.TerminationDeclaration
+	VerifiedAllocationKey         = miner.VerifiedAllocationKey
 	VestSpec                      = miner.VestSpec
 	VestingFund                   = miner.VestingFund
 	VestingFunds                  = miner.VestingFunds
@@ -252,7 +280,7 @@ type (
 	AllocationRequest              = verifreg.AllocationRequest
 	AllocationRequests             = verifreg.AllocationRequests
 	AllocationsResponse            = verifreg.AllocationsResponse
-	BatchReturn                    = verifreg.BatchReturn
+	VerifregBatchReturn            = verifreg.BatchReturn
 	Claim                          = verifreg.Claim
 	ClaimAllocationsParams         = verifreg.ClaimAllocationsParams
 	ClaimAllocationsReturn         = verifreg.ClaimAllocationsReturn
@@ -262,7 +290,7 @@ type (
 	DataCap                        = verifreg.DataCap
 	ExtendClaimTermsParams         = verifreg.ExtendClaimTermsParams
 	ExtendClaimTermsReturn         = verifreg.ExtendClaimTermsReturn
-	FailCode                       = verifreg.FailCode
+	VerifregFailCode               = verifreg.FailCode
 	GetClaimsParams                = verifreg.GetClaimsParams
 	GetClaimsReturn                = verifreg.GetClaimsReturn
 	ReceiverType                   = verifreg.ReceiverType

@@ -6,33 +6,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ ChainGetReceipts
 	+ ChainList
 	+ ChainSyncHandleNewTipSet
-	- ClientCalcCommP
-	- ClientCancelDataTransfer
-	- ClientCancelRetrievalDeal
-	- ClientDataTransferUpdates
-	- ClientDealPieceCID
-	- ClientDealSize
-	- ClientFindData
-	- ClientGenCar
-	- ClientGetDealInfo
-	- ClientGetDealStatus
-	- ClientGetDealUpdates
-	- ClientGetRetrievalUpdates
-	- ClientHasLocal
-	- ClientImport
-	- ClientListDataTransfers
-	- ClientListDeals
-	- ClientListImports
-	- ClientListRetrievals
-	- ClientMinerQueryOffer
-	- ClientQueryAsk
-	- ClientRemoveImport
-	- ClientRestartDataTransfer
-	- ClientRetrieve
-	- ClientRetrieveTryRestartInsufficientFunds
-	- ClientRetrieveWithEvents
-	- ClientStartDeal
-	- ClientStatelessDeal
 	- Closing
 	+ Concurrent
 	- CreateBackup
@@ -92,6 +65,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- Shutdown
 	- StateGetAllAllocations
 	- StateGetAllClaims
+	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported field type: #5 field named ForkUpgradeParams; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=struct field; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=exported field name: #27 field, UpgradeWaffleHeight != UpgradeAussieHeight; nested=nil}}}}}}
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- SyncCheckBad
@@ -127,40 +101,17 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ ChainList
 	- ChainPrune
 	+ ChainSyncHandleNewTipSet
-	- ClientCalcCommP
-	- ClientCancelDataTransfer
-	- ClientCancelRetrievalDeal
-	- ClientDataTransferUpdates
-	- ClientDealPieceCID
-	- ClientDealSize
-	- ClientExport
-	- ClientFindData
-	- ClientGenCar
-	- ClientGetDealInfo
-	- ClientGetDealStatus
-	- ClientGetDealUpdates
-	- ClientGetRetrievalUpdates
-	- ClientHasLocal
-	- ClientImport
-	- ClientListDataTransfers
-	- ClientListDeals
-	- ClientListImports
-	- ClientListRetrievals
-	- ClientMinerQueryOffer
-	- ClientQueryAsk
-	- ClientRemoveImport
-	- ClientRestartDataTransfer
-	- ClientRetrieve
-	- ClientRetrieveTryRestartInsufficientFunds
-	- ClientRetrieveWait
-	- ClientStartDeal
-	- ClientStatelessDeal
 	- Closing
 	+ Concurrent
 	- CreateBackup
 	- Discover
+	> EthGetTransactionByBlockHashAndIndex {[func(context.Context, types.EthHash, types.EthUint64) (types.EthTx, error) <> func(context.Context, ethtypes.EthHash, ethtypes.EthUint64) (ethtypes.EthTx, error)] base=func out type: #0 input; nested={[types.EthTx <> ethtypes.EthTx] base=struct field; nested={[types.EthTx <> ethtypes.EthTx] base=exported fields count: 18 != 19; nested=nil}}}
+	> EthGetTransactionByBlockNumberAndIndex {[func(context.Context, types.EthUint64, types.EthUint64) (types.EthTx, error) <> func(context.Context, ethtypes.EthUint64, ethtypes.EthUint64) (ethtypes.EthTx, error)] base=func out type: #0 input; nested={[types.EthTx <> ethtypes.EthTx] base=struct field; nested={[types.EthTx <> ethtypes.EthTx] base=exported fields count: 18 != 19; nested=nil}}}
+	> EthGetTransactionByHash {[func(context.Context, *types.EthHash) (*types.EthTx, error) <> func(context.Context, *ethtypes.EthHash) (*ethtypes.EthTx, error)] base=func out type: #0 input; nested={[*types.EthTx <> *ethtypes.EthTx] base=pointed type; nested={[types.EthTx <> ethtypes.EthTx] base=struct field; nested={[types.EthTx <> ethtypes.EthTx] base=exported fields count: 18 != 19; nested=nil}}}}
+	> EthGetTransactionByHashLimited {[func(context.Context, *types.EthHash, abi.ChainEpoch) (*types.EthTx, error) <> func(context.Context, *ethtypes.EthHash, abi.ChainEpoch) (*ethtypes.EthTx, error)] base=func out type: #0 input; nested={[*types.EthTx <> *ethtypes.EthTx] base=pointed type; nested={[types.EthTx <> ethtypes.EthTx] base=struct field; nested={[types.EthTx <> ethtypes.EthTx] base=exported fields count: 18 != 19; nested=nil}}}}
 	> EthTraceBlock {[func(context.Context, string) ([]*types.EthTraceBlock, error) <> func(context.Context, string) ([]*ethtypes.EthTraceBlock, error)] base=func out type: #0 input; nested={[[]*types.EthTraceBlock <> []*ethtypes.EthTraceBlock] base=slice element; nested={[*types.EthTraceBlock <> *ethtypes.EthTraceBlock] base=pointed type; nested={[types.EthTraceBlock <> ethtypes.EthTraceBlock] base=struct field; nested={[types.EthTraceBlock <> ethtypes.EthTraceBlock] base=exported field type: #0 field named EthTrace; nested={[*types.EthTrace <> *ethtypes.EthTrace] base=pointed type; nested={[types.EthTrace <> ethtypes.EthTrace] base=struct field; nested={[types.EthTrace <> ethtypes.EthTrace] base=exported fields count: 8 != 6; nested=nil}}}}}}}}
 	> EthTraceReplayBlockTransactions {[func(context.Context, string, []string) ([]*types.EthTraceReplayBlockTransaction, error) <> func(context.Context, string, []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)] base=func out type: #0 input; nested={[[]*types.EthTraceReplayBlockTransaction <> []*ethtypes.EthTraceReplayBlockTransaction] base=slice element; nested={[*types.EthTraceReplayBlockTransaction <> *ethtypes.EthTraceReplayBlockTransaction] base=pointed type; nested={[types.EthTraceReplayBlockTransaction <> ethtypes.EthTraceReplayBlockTransaction] base=struct field; nested={[types.EthTraceReplayBlockTransaction <> ethtypes.EthTraceReplayBlockTransaction] base=exported field type: #2 field named Trace; nested={[[]*types.EthTrace <> []*ethtypes.EthTrace] base=slice element; nested={[*types.EthTrace <> *ethtypes.EthTrace] base=pointed type; nested={[types.EthTrace <> ethtypes.EthTrace] base=struct field; nested={[types.EthTrace <> ethtypes.EthTrace] base=exported fields count: 8 != 6; nested=nil}}}}}}}}}
+	- EthTraceTransaction
 	+ GasBatchEstimateMessageGas
 	> GasEstimateMessageGas {[func(context.Context, *types.Message, *types.MessageSendSpec, types.TipSetKey) (*types.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported field name: #1 field, GasOverEstimation != MsgUuid; nested=nil}}}}
 	+ GetActor
@@ -210,13 +161,12 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- NetSetLimit
 	- NetStat
 	+ ProtocolParameters
-	- RaftLeader
-	- RaftState
 	+ ResolveToKeyAddr
 	- Session
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
+	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported field type: #5 field named ForkUpgradeParams; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=struct field; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=exported field name: #27 field, UpgradeWaffleHeight != UpgradeAussieHeight; nested=nil}}}}}}
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- SyncCheckBad

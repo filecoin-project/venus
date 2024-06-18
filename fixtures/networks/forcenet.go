@@ -18,7 +18,7 @@ func ForceNet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.NetworkForce,
-			GenesisNetworkVersion: network.Version21,
+			GenesisNetworkVersion: network.Version22,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg8MiBV1,
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
@@ -60,8 +60,10 @@ func ForceNet() *NetworkConf {
 				UpgradeWatermelonHeight:           -24,
 				UpgradeWatermelonFixHeight:        -100, // This fix upgrade only ran on calibrationnet
 				UpgradeWatermelonFix2Height:       -101, // This fix upgrade only ran on calibrationnet
-				UpgradeDragonHeight:               20,
+				UpgradeDragonHeight:               -25,
 				UpgradeCalibrationDragonFixHeight: -102, // This fix upgrade only ran on calibrationnet
+				UpgradePhoenixHeight:              -26,
+				UpgradeWaffleHeight:               200,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
 			AddressNetwork:          address.Testnet,
@@ -71,7 +73,6 @@ func ForceNet() *NetworkConf {
 			ActorDebugging:          true,
 		},
 	}
-	nc.Network.ForkUpgradeParam.UpgradePhoenixHeight = nc.Network.ForkUpgradeParam.UpgradeDragonHeight + 120
 	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
 
 	return nc
