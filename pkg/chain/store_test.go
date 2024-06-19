@@ -44,7 +44,7 @@ func newChainStore(r repo.Repo, genTS *types.TipSet) *CborBlockStore {
 	tempBlock := r.Datastore()
 	cborStore := cbor.NewCborStore(tempBlock)
 	return &CborBlockStore{
-		Store:     chain.NewStore(r.ChainDatastore(), tempBlock, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight),
+		Store:     chain.NewStore(r.ChainDatastore(), tempBlock, genTS.At(0).Cid(), chainselector.Weight),
 		cborStore: cborStore,
 	}
 }
@@ -221,9 +221,9 @@ func TestHead(t *testing.T) {
 	genTS := builder.Genesis()
 	r := builder.Repo()
 	bs := builder.BlockStore()
-	cs := chain.NewStore(r.ChainDatastore(), bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight)
+	cs := chain.NewStore(r.ChainDatastore(), bs, genTS.At(0).Cid(), chainselector.Weight)
 	cboreStore := &CborBlockStore{
-		Store: chain.NewStore(r.ChainDatastore(), bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight),
+		Store: chain.NewStore(r.ChainDatastore(), bs, genTS.At(0).Cid(), chainselector.Weight),
 	}
 	// Construct test chain data
 	link1 := builder.AppendOn(ctx, genTS, 2)
@@ -328,7 +328,7 @@ func TestLoadAndReboot(t *testing.T) {
 	requirePutBlocksToCborStore(t, cst, link4.ToSlice()...)
 
 	cborStore := &CborBlockStore{
-		Store:     chain.NewStore(ds, bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight),
+		Store:     chain.NewStore(ds, bs, genTS.At(0).Cid(), chainselector.Weight),
 		cborStore: cst,
 	}
 	requirePutTestChain(ctx, t, cborStore, link4.Key(), builder, 5)
@@ -338,7 +338,7 @@ func TestLoadAndReboot(t *testing.T) {
 	cborStore.Store.Stop()
 
 	// rebuild chain with same datastore and cborstore
-	rebootChain := chain.NewStore(ds, bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight)
+	rebootChain := chain.NewStore(ds, bs, genTS.At(0).Cid(), chainselector.Weight)
 	rebootCbore := &CborBlockStore{
 		Store: rebootChain,
 	}
@@ -357,7 +357,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	{
 		assert.NoError(t, rebootChain.Blockstore().DeleteBlock(ctx, link3.Blocks()[0].Cid()))
-		newStore := chain.NewStore(ds, bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight)
+		newStore := chain.NewStore(ds, bs, genTS.At(0).Cid(), chainselector.Weight)
 		// error occurs while getting tipset identified by parent's cid block,
 		//  because block[0] has been deleted.
 		// stm: @CHAIN_STORE_LOAD_003
@@ -366,7 +366,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	{
 		assert.NoError(t, ds.Put(ctx, chain.HeadKey, []byte("bad chain head data")))
-		newStore := chain.NewStore(ds, bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight)
+		newStore := chain.NewStore(ds, bs, genTS.At(0).Cid(), chainselector.Weight)
 		// error occurs while getting tipset identified by parent's cid block
 		// stm: @CHAIN_STORE_LOAD_002
 		assert.Error(t, newStore.Load(ctx))
@@ -402,7 +402,7 @@ func TestLoadTipsetMeta(t *testing.T) {
 	_ = os.Setenv("CHAIN_INDEX_CACHE", "2")
 	chain.DefaultTipsetLruCacheSize = 2
 
-	cs := chain.NewStore(ds, bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight)
+	cs := chain.NewStore(ds, bs, genTS.At(0).Cid(), chainselector.Weight)
 	cborStore := &CborBlockStore{Store: cs, cborStore: cst}
 
 	requirePutTestChain(ctx, t, cborStore, head.Key(), builder, 5)

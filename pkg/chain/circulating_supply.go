@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 
 	// Used for genesis.
@@ -19,15 +22,22 @@ import (
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	_init "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 )
+
+type GetNetworkVersionFunc func(ctx context.Context, height abi.ChainEpoch) network.Version
 
 type ICirculatingSupplyCalcualtor interface {
 	GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (types.CirculatingSupply, error)
 	GetFilVested(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error)
+	GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error)
 }
 
 // CirculatingSupplyCalculator used to calculate the funds at a specific block height
@@ -42,17 +52,28 @@ type CirculatingSupplyCalculator struct {
 
 	genesisPledge abi.TokenAmount
 
-	genesisMsigLk sync.Mutex
-	upgradeConfig *config.ForkUpgradeConfig
+	genesisMsigLk     sync.Mutex
+	upgradeConfig     *config.ForkUpgradeConfig
+	getNetworkVersion GetNetworkVersionFunc
 }
 
 // NewCirculatingSupplyCalculator create new  circulating supply calculator
-func NewCirculatingSupplyCalculator(bstore blockstoreutil.Blockstore, genesisRoot cid.Cid, upgradeConfig *config.ForkUpgradeConfig) *CirculatingSupplyCalculator {
-	return &CirculatingSupplyCalculator{bstore: bstore, genesisRoot: genesisRoot, upgradeConfig: upgradeConfig}
+func NewCirculatingSupplyCalculator(bstore blockstoreutil.Blockstore,
+	genesisRoot cid.Cid,
+	upgradeConfig *config.ForkUpgradeConfig,
+	getNetworkVersion GetNetworkVersionFunc,
+) *CirculatingSupplyCalculator {
+	return &CirculatingSupplyCalculator{
+		bstore:            bstore,
+		genesisRoot:       genesisRoot,
+		upgradeConfig:     upgradeConfig,
+		getNetworkVersion: getNetworkVersion,
+	}
 }
 
 // GetCirculatingSupplyDetailed query contract and calculate circulation status at specific height and tree state
 func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (types.CirculatingSupply, error) {
+	nv := caculator.getNetworkVersion(ctx, height)
 	filVested, err := caculator.GetFilVested(ctx, height)
 	if err != nil {
 		return types.CirculatingSupply{}, fmt.Errorf("failed to calculate filVested: %v", err)
@@ -74,7 +95,7 @@ func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx c
 	if err != nil {
 		return types.CirculatingSupply{}, fmt.Errorf("failed to calculate filBurnt: %v", err)
 	}
-	filLocked, err := caculator.GetFilLocked(ctx, st)
+	filLocked, err := caculator.GetFilLocked(ctx, st, nv)
 	if err != nil {
 		return types.CirculatingSupply{}, fmt.Errorf("failed to calculate filLocked: %v", err)
 	}
@@ -97,43 +118,113 @@ func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx c
 	}, nil
 }
 
-/*func (c *Expected) processBlock(ctx context.Context, ts *block.TipSet) (cid.Cid, []types.MessageReceipt, error) {
-	var secpMessages [][]*types.SignedMessage
-	var blsMessages [][]*types.Message
-	for i := 0; i < ts.Len(); i++ {
-		blk := ts.At(i)
-		secpMsgs, blsMsgs, err := c.messageStore.LoadMetaMessages(ctx, blk.Messages.Cid)
-		if err != nil {
-			return cid.Undef, []types.MessageReceipt{}, xerrors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
+func (caculator *CirculatingSupplyCalculator) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error) {
+	adtStore := adt.WrapStore(ctx, cbor.NewCborStore(caculator.bstore))
+	circ := big.Zero()
+	unCirc := big.Zero()
+	nv := caculator.getNetworkVersion(ctx, height)
+	err := st.ForEach(func(a address.Address, actor *types.Actor) error {
+		// this can be a lengthy operation, we need to cancel early when
+		// the context is cancelled to avoid resource exhaustion
+		select {
+		case <-ctx.Done():
+			// this will cause ForEach to return
+			return ctx.Err()
+		default:
 		}
 
-		blsMessages = append(blsMessages, blsMsgs)
-		secpMessages = append(secpMessages, secpMsgs)
+		switch {
+		case actor.Balance.IsZero():
+			// Do nothing for zero-balance actors
+			break
+		case a == _init.Address ||
+			a == reward.Address ||
+			a == verifreg.Address ||
+			// The power actor itself should never receive funds
+			a == power.Address ||
+			a == builtin.SystemActorAddr ||
+			a == builtin.CronActorAddr ||
+			a == builtin.BurntFundsActorAddr ||
+			a == builtin.SaftAddress ||
+			a == builtin.ReserveAddress ||
+			a == builtin.EthereumAddressManagerActorAddr:
+
+			unCirc = big.Add(unCirc, actor.Balance)
+
+		case a == market.Address:
+			if nv >= network.Version23 {
+				circ = big.Add(circ, actor.Balance)
+			} else {
+				mst, err := market.Load(adtStore, actor)
+				if err != nil {
+					return err
+				}
+
+				lb, err := mst.TotalLocked()
+				if err != nil {
+					return err
+				}
+
+				circ = big.Add(circ, big.Sub(actor.Balance, lb))
+				unCirc = big.Add(unCirc, lb)
+			}
+
+		case builtin.IsAccountActor(actor.Code) ||
+			builtin.IsPaymentChannelActor(actor.Code) ||
+			builtin.IsEthAccountActor(actor.Code) ||
+			builtin.IsEvmActor(actor.Code) ||
+			builtin.IsPlaceholderActor(actor.Code):
+
+			circ = big.Add(circ, actor.Balance)
+
+		case builtin.IsStorageMinerActor(actor.Code):
+			mst, err := miner.Load(adtStore, actor)
+			if err != nil {
+				return err
+			}
+
+			ab, err := mst.AvailableBalance(actor.Balance)
+
+			if err == nil {
+				circ = big.Add(circ, ab)
+				unCirc = big.Add(unCirc, big.Sub(actor.Balance, ab))
+			} else {
+				// Assume any error is because the miner state is "broken" (lower actor balance than locked funds)
+				// In this case, the actor's entire balance is considered "uncirculating"
+				unCirc = big.Add(unCirc, actor.Balance)
+			}
+
+		case builtin.IsMultisigActor(actor.Code):
+			mst, err := multisig.Load(adtStore, actor)
+			if err != nil {
+				return err
+			}
+
+			lb, err := mst.LockedBalance(height)
+			if err != nil {
+				return err
+			}
+
+			ab := big.Sub(actor.Balance, lb)
+			circ = big.Add(circ, big.Max(ab, big.Zero()))
+			unCirc = big.Add(unCirc, big.Min(actor.Balance, lb))
+		default:
+			return fmt.Errorf("unexpected actor: %s", a)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return abi.TokenAmount{}, err
 	}
 
-	vms := vm.NewStorage(c.bstore)
-	priorState, err := state.LoadState(ctx, vms, ts.At(0).StateRoot.Cid)
-	if err != nil {
-		return cid.Undef, []types.MessageReceipt{}, err
+	total := big.Add(circ, unCirc)
+	if !total.Equals(types.TotalFilecoinInt) {
+		return abi.TokenAmount{}, fmt.Errorf("total filecoin didn't add to expected amount: %s != %s", total, types.TotalFilecoinInt)
 	}
 
-	var newState state.Tree
-	newState, receipts, err := c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages)
-	if err != nil {
-		return cid.Undef, []types.MessageReceipt{}, err
-	}
-	err = vms.Flush()
-	if err != nil {
-		return cid.Undef, []types.MessageReceipt{}, err
-	}
-
-	root, err := newState.Flush(ctx)
-	if err != nil {
-		return cid.Undef, []types.MessageReceipt{}, err
-	}
-	return root, receipts, err
+	return circ, nil
 }
-*/
 
 // sets up information about the vesting schedule
 func (caculator *CirculatingSupplyCalculator) setupGenesisVestingSchedule(ctx context.Context) error {
@@ -190,7 +281,7 @@ func (caculator *CirculatingSupplyCalculator) setupGenesisVestingSchedule(ctx co
 }
 
 // sets up information about the vesting schedule post the ignition upgrade
-func (caculator *CirculatingSupplyCalculator) setupPostIgnitionVesting(ctx context.Context) error {
+func (caculator *CirculatingSupplyCalculator) setupPostIgnitionVesting(_ context.Context) error {
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
 	// 6 months
@@ -234,7 +325,7 @@ func (caculator *CirculatingSupplyCalculator) setupPostIgnitionVesting(ctx conte
 }
 
 // sets up information about the vesting schedule post the calico upgrade
-func (caculator *CirculatingSupplyCalculator) setupPostCalicoVesting(ctx context.Context) error {
+func (caculator *CirculatingSupplyCalculator) setupPostCalicoVesting(_ context.Context) error {
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
 	// 0 days
@@ -375,7 +466,11 @@ func GetFilBurnt(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 }
 
 // GetFilLocked query the market contract and power contract to get the amount of locked fils
-func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
+func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, st tree.Tree, nv network.Version) (abi.TokenAmount, error) {
+	if nv >= network.Version23 {
+		return getFilPowerLocked(ctx, st)
+	}
+
 	filMarketLocked, err := getFilMarketLocked(ctx, st)
 	if err != nil {
 		return big.Zero(), fmt.Errorf("failed to get filMarketLocked: %v", err)

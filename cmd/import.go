@@ -62,7 +62,7 @@ func importChain(ctx context.Context, r repo.Repo, fname string) error {
 
 	bs := r.Datastore()
 	// setup a ipldCbor on top of the local store
-	chainStore := chain.NewStore(r.ChainDatastore(), bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight)
+	chainStore := chain.NewStore(r.ChainDatastore(), bs, cid.Undef, chainselector.Weight)
 
 	bufr := bufio.NewReaderSize(rd, 1<<20)
 

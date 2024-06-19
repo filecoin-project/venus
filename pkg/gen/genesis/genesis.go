@@ -592,7 +592,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 	}
 
 	// temp chainstore
-	cs := chain.NewStore(rep.ChainDatastore(), bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight)
+	cs := chain.NewStore(rep.ChainDatastore(), bs, cid.Undef, chainselector.Weight)
 
 	// Verify PreSealed Data
 	stateroot, err = VerifyPreSealedData(ctx, cs, stateroot, template, keyIDs, template.NetworkVersion, para)

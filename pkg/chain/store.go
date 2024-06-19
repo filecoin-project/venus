@@ -43,13 +43,6 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
-	_init "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -124,8 +117,6 @@ type Store struct {
 	// Tracks tipsets by height/parentset for use by expected consensus.
 	tipIndex *TipStateCache
 
-	circulatingSupplyCalculator ICirculatingSupplyCalcualtor
-
 	chainIndex *ChainIndex
 
 	reorgCh        chan reorg
@@ -143,7 +134,6 @@ type Store struct {
 func NewStore(chainDs repo.Datastore,
 	bsstore blockstoreutil.Blockstore,
 	genesisCid cid.Cid,
-	circulatiingSupplyCalculator ICirculatingSupplyCalcualtor,
 	weight WeightFunc,
 ) *Store {
 	tsCache, _ := arc.NewARC[types.TipSetKey, *types.TipSet](DefaultTipsetLruCacheSize)
@@ -163,7 +153,6 @@ func NewStore(chainDs repo.Datastore,
 	// todo cycle reference , may think a better idea
 	store.tipIndex = NewTipStateCache(store)
 	store.chainIndex = NewChainIndex(store.GetTipSet)
-	store.circulatingSupplyCalculator = circulatiingSupplyCalculator
 
 	val, err := store.ds.Get(context.TODO(), CheckPoint)
 	if err != nil {
@@ -1154,137 +1143,6 @@ func (store *Store) WriteCheckPoint(ctx context.Context, cids types.TipSetKey) e
 	return store.ds.Put(ctx, CheckPoint, buf.Bytes())
 }
 
-func (store *Store) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (types.CirculatingSupply, error) {
-	return store.circulatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, height, st)
-}
-
-func (store *Store) GetFilVested(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
-	return store.circulatingSupplyCalculator.GetFilVested(ctx, height)
-}
-
-// StateCirculatingSupply get circulate supply at specify epoch
-func (store *Store) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
-	ts, err := store.GetTipSet(ctx, tsk)
-	if err != nil {
-		return abi.TokenAmount{}, err
-	}
-
-	root, err := store.GetTipSetStateRoot(ctx, ts)
-	if err != nil {
-		return abi.TokenAmount{}, err
-	}
-
-	sTree, err := tree.LoadState(ctx, store.stateAndBlockSource, root)
-	if err != nil {
-		return abi.TokenAmount{}, err
-	}
-
-	return store.getCirculatingSupply(ctx, ts.Height(), sTree)
-}
-
-func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error) {
-	adtStore := adt.WrapStore(ctx, store.stateAndBlockSource)
-	circ := big.Zero()
-	unCirc := big.Zero()
-	err := st.ForEach(func(a address.Address, actor *types.Actor) error {
-		// this can be a lengthy operation, we need to cancel early when
-		// the context is cancelled to avoid resource exhaustion
-		select {
-		case <-ctx.Done():
-			// this will cause ForEach to return
-			return ctx.Err()
-		default:
-		}
-
-		switch {
-		case actor.Balance.IsZero():
-			// Do nothing for zero-balance actors
-			break
-		case a == _init.Address ||
-			a == reward.Address ||
-			a == verifreg.Address ||
-			// The power actor itself should never receive funds
-			a == power.Address ||
-			a == builtin.SystemActorAddr ||
-			a == builtin.CronActorAddr ||
-			a == builtin.BurntFundsActorAddr ||
-			a == builtin.SaftAddress ||
-			a == builtin.ReserveAddress ||
-			a == builtin.EthereumAddressManagerActorAddr:
-
-			unCirc = big.Add(unCirc, actor.Balance)
-
-		case a == market.Address:
-			mst, err := market.Load(adtStore, actor)
-			if err != nil {
-				return err
-			}
-
-			lb, err := mst.TotalLocked()
-			if err != nil {
-				return err
-			}
-
-			circ = big.Add(circ, big.Sub(actor.Balance, lb))
-			unCirc = big.Add(unCirc, lb)
-
-		case builtin.IsAccountActor(actor.Code) ||
-			builtin.IsPaymentChannelActor(actor.Code) ||
-			builtin.IsEthAccountActor(actor.Code) ||
-			builtin.IsEvmActor(actor.Code) ||
-			builtin.IsPlaceholderActor(actor.Code):
-
-			circ = big.Add(circ, actor.Balance)
-
-		case builtin.IsStorageMinerActor(actor.Code):
-			mst, err := miner.Load(adtStore, actor)
-			if err != nil {
-				return err
-			}
-
-			ab, err := mst.AvailableBalance(actor.Balance)
-
-			if err == nil {
-				circ = big.Add(circ, ab)
-				unCirc = big.Add(unCirc, big.Sub(actor.Balance, ab))
-			} else {
-				// Assume any error is because the miner state is "broken" (lower actor balance than locked funds)
-				// In this case, the actor's entire balance is considered "uncirculating"
-				unCirc = big.Add(unCirc, actor.Balance)
-			}
-
-		case builtin.IsMultisigActor(actor.Code):
-			mst, err := multisig.Load(adtStore, actor)
-			if err != nil {
-				return err
-			}
-
-			lb, err := mst.LockedBalance(height)
-			if err != nil {
-				return err
-			}
-
-			ab := big.Sub(actor.Balance, lb)
-			circ = big.Add(circ, big.Max(ab, big.Zero()))
-			unCirc = big.Add(unCirc, big.Min(actor.Balance, lb))
-		default:
-			return fmt.Errorf("unexpected actor: %s", a)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return abi.TokenAmount{}, err
-	}
-
-	total := big.Add(circ, unCirc)
-	if !total.Equals(types.TotalFilecoinInt) {
-		return abi.TokenAmount{}, fmt.Errorf("total filecoin didn't add to expected amount: %s != %s", total, types.TotalFilecoinInt)
-	}
-
-	return circ, nil
-}
-
 // GetCheckPoint get the check point from store or disk.
 func (store *Store) GetCheckPoint() types.TipSetKey {
 	return store.checkPoint
@@ -1519,6 +1377,10 @@ func (store *Store) ParentStateView(ts *types.TipSet) (*state.View, error) {
 // Store wrap adt store
 func (store *Store) Store(ctx context.Context) adt.Store {
 	return adt.WrapStore(ctx, cbor.NewCborStore(store.bsstore))
+}
+
+func (store *Store) StateStore() cbor.IpldStore {
+	return store.stateAndBlockSource
 }
 
 func (store *Store) Weight(ctx context.Context, ts *types.TipSet) (big.Int, error) {
