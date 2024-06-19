@@ -101,7 +101,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
 	// chainstore
-	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight) // load genesis from car
+	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chainselector.Weight) // load genesis from car
 
 	// chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network, chainDs)
@@ -174,7 +174,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 		results  []*vm.Ret
 	)
 
-	circulatingSupplyCalculator := chain.NewCirculatingSupplyCalculator(bs, preroot, mainNetParams.Network.ForkUpgradeParam)
+	circulatingSupplyCalculator := chain.NewCirculatingSupplyCalculator(bs, preroot, mainNetParams.Network.ForkUpgradeParam, chainFork.GetNetworkVersion)
 	processor := consensus.NewDefaultProcessor(syscalls, circulatingSupplyCalculator, chainStore, &mainNetParams.Network)
 
 	postcid, receipt, err := processor.ApplyBlocks(ctx, blocks, nil, preroot, parentEpoch, execEpoch, vmOption, func(_ cid.Cid, msg *types.Message, ret *vm.Ret) error {
@@ -257,7 +257,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	ipldStore := cbor.NewCborStore(bs)
 	chainDs := ds.NewMapDatastore() // just mock one
 	// chainstore
-	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight) // load genesis from car
+	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chainselector.Weight) // load genesis from car
 
 	// chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network, chainDs)

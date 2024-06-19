@@ -146,13 +146,16 @@ func (msa *minerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Addr
 			UsedQuota:  minfo.BeneficiaryTerm.UsedQuota,
 			Expiration: minfo.BeneficiaryTerm.Expiration,
 		},
-		PendingBeneficiaryTerm: &types.PendingBeneficiaryChange{
+	}
+
+	if minfo.PendingBeneficiaryTerm != nil {
+		ret.PendingBeneficiaryTerm = &types.PendingBeneficiaryChange{
 			NewBeneficiary:        minfo.PendingBeneficiaryTerm.NewBeneficiary,
 			NewQuota:              minfo.PendingBeneficiaryTerm.NewQuota,
 			NewExpiration:         minfo.PendingBeneficiaryTerm.NewExpiration,
 			ApprovedByBeneficiary: minfo.PendingBeneficiaryTerm.ApprovedByBeneficiary,
 			ApprovedByNominee:     minfo.PendingBeneficiaryTerm.ApprovedByNominee,
-		},
+		}
 	}
 
 	if minfo.PendingWorkerKey != nil {
@@ -866,7 +869,7 @@ func (msa *minerStateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, 
 		return types.CirculatingSupply{}, err
 	}
 
-	return msa.ChainReader.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
+	return msa.CirculatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
 }
 
 // StateCirculatingSupply returns the exact circulating supply of Filecoin at the given tipset.
@@ -879,7 +882,22 @@ func (msa *minerStateAPI) StateCirculatingSupply(ctx context.Context, tsk types.
 			tsk.String(), err)
 	}
 
-	return msa.ChainReader.StateCirculatingSupply(ctx, parent.Key())
+	ts, err := msa.ChainReader.GetTipSet(ctx, parent.Key())
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
+
+	root, err := msa.ChainReader.GetTipSetStateRoot(ctx, ts)
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
+
+	sTree, err := tree.LoadState(ctx, msa.ChainReader.StateStore(), root)
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
+
+	return msa.CirculatingSupplyCalculator.GetCirculatingSupply(ctx, ts.Height(), sTree)
 }
 
 // StateMarketDeals returns information about every deal in the Storage Market

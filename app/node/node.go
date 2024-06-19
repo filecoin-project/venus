@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	syncer2 "github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"       // enable bls signatures
@@ -71,8 +70,6 @@ type Node struct {
 	// It contains all persistent artifacts of the filecoin node.
 	repo repo.Repo
 
-	// moduls
-	circulatiingSupplyCalculator chain.ICirculatingSupplyCalcualtor
 	//
 	// Core services
 	//

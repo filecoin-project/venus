@@ -103,9 +103,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		chainClock:  b.chainClock,
 	}
 
-	// modules
-	nd.circulatiingSupplyCalculator = chain2.NewCirculatingSupplyCalculator(b.repo.Datastore(), b.genBlk.ParentStateRoot, b.repo.Config().NetworkParams.ForkUpgradeParam)
-
 	// services
 	nd.configModule = config2.NewConfigModule(b.repo)
 
@@ -114,7 +111,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.blockstore")
 	}
 
-	nd.chain, err = chain.NewChainSubmodule(ctx, (*builder)(b), nd.circulatiingSupplyCalculator)
+	nd.chain, err = chain.NewChainSubmodule(ctx, (*builder)(b))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
@@ -129,7 +126,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.dagservice")
 	}
 
-	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.blockstore, nd.network, nd.chain, nd.circulatiingSupplyCalculator)
+	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.blockstore, nd.network, nd.chain, nd.chain.CirculatingSupplyCalculator)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}

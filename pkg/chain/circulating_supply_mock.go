@@ -30,3 +30,7 @@ func (m MockCirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx contex
 func (m MockCirculatingSupplyCalculator) GetFilVested(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
 	return abi.TokenAmount{}, nil
 }
+
+func (m MockCirculatingSupplyCalculator) GetCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error) {
+	return abi.TokenAmount{}, nil
+}

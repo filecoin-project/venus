@@ -78,7 +78,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 	chainRand := chain.NewGenesisRandomnessSource(genesis.Ticket.VRFProof)
 	chainDs := ds.NewMapDatastore() // just mock one
 	// chainstore
-	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight) // load genesis from car
+	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chainselector.Weight) // load genesis from car
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, cst, bs, config.NewDefaultConfig().NetworkParams, chainDs)
 	if err != nil {
 		panic(xerrors.Errorf("create chain fork error %v", err))

@@ -151,7 +151,7 @@ func (s *Stmgr) callInternal(ctx context.Context, msg *types.Message, priorMsgs 
 	buffStore := blockstoreutil.NewTieredBstore(s.cs.Blockstore(), blockstoreutil.NewTemporarySync())
 	vmopt := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
-			cs, err := s.cs.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			cs, err := s.circulatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, epoch, tree)
 			if err != nil {
 				return abi.TokenAmount{}, err
 			}

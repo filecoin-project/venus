@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/consensus/chainselector"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -30,7 +29,7 @@ func Init(ctx context.Context, r repo.Repo, bs blockstoreutil.Blockstore, cst cb
 	}
 	// todo give fork params
 
-	chainStore := chain.NewStore(r.ChainDatastore(), bs, genesis.Cid(), chain.NewCirculatingSupplyCalculator(bs, genesis.Cid(), config.DefaultForkUpgradeParam), chainselector.Weight)
+	chainStore := chain.NewStore(r.ChainDatastore(), bs, genesis.Cid(), chainselector.Weight)
 
 	// Persist the genesis tipset to the repo.
 	genTsas := &chain.TipSetMetadata{

@@ -26,11 +26,12 @@ import (
 
 // ChainSubmodule enhances the `Node` with chain capabilities.
 type ChainSubmodule struct { //nolint
-	ChainReader  *chain.Store
-	MessageStore *chain.MessageStore
-	Processor    *consensus.DefaultProcessor
-	Fork         fork.IFork
-	SystemCall   vm.SyscallsImpl
+	ChainReader                 *chain.Store
+	MessageStore                *chain.MessageStore
+	Processor                   *consensus.DefaultProcessor
+	Fork                        fork.IFork
+	SystemCall                  vm.SyscallsImpl
+	CirculatingSupplyCalculator *chain.CirculatingSupplyCalculator
 
 	CheckPoint types.TipSetKey
 	Drand      beacon.Schedule
@@ -52,11 +53,10 @@ type chainConfig interface {
 // NewChainSubmodule creates a new chain submodule.
 func NewChainSubmodule(ctx context.Context,
 	config chainConfig,
-	circulatiingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
 ) (*ChainSubmodule, error) {
 	repo := config.Repo()
 	// initialize chain store
-	chainStore := chain.NewStore(repo.ChainDatastore(), repo.Datastore(), config.GenesisCid(), circulatiingSupplyCalculator, chainselector.Weight)
+	chainStore := chain.NewStore(repo.ChainDatastore(), repo.Datastore(), config.GenesisCid(), chainselector.Weight)
 	// drand
 	genBlk, err := chainStore.GetGenesisBlock(context.TODO())
 	if err != nil {
@@ -73,22 +73,26 @@ func NewChainSubmodule(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
+	circulatingSupplyCalculator := chain.NewCirculatingSupplyCalculator(repo.Datastore(), genBlk.ParentStateRoot, repo.Config().NetworkParams.ForkUpgradeParam, fork.GetNetworkVersion)
+
 	faultChecker := consensusfault.NewFaultChecker(chainStore, fork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, config.Verifier())
-	processor := consensus.NewDefaultProcessor(syscalls, circulatiingSupplyCalculator, chainStore, config.Repo().Config().NetworkParams)
+	processor := consensus.NewDefaultProcessor(syscalls, circulatingSupplyCalculator, chainStore, config.Repo().Config().NetworkParams)
 
 	waiter := chain.NewWaiter(chainStore, messageStore, config.Repo().Datastore(), cbor.NewCborStore(config.Repo().Datastore()))
 
 	store := &ChainSubmodule{
-		ChainReader:  chainStore,
-		MessageStore: messageStore,
-		Processor:    processor,
-		SystemCall:   syscalls,
-		Fork:         fork,
-		Drand:        drand,
-		config:       config,
-		Waiter:       waiter,
-		CheckPoint:   chainStore.GetCheckPoint(),
+		ChainReader:                 chainStore,
+		MessageStore:                messageStore,
+		Processor:                   processor,
+		SystemCall:                  syscalls,
+		Fork:                        fork,
+		CirculatingSupplyCalculator: circulatingSupplyCalculator,
+		Drand:                       drand,
+		config:                      config,
+		Waiter:                      waiter,
+		CheckPoint:                  chainStore.GetCheckPoint(),
 	}
 	err = store.ChainReader.Load(context.TODO())
 	if err != nil {
