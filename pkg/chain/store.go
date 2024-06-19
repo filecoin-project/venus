@@ -509,37 +509,6 @@ func (store *Store) GetLatestBeaconEntry(ctx context.Context, ts *types.TipSet) 
 	return nil, fmt.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
 }
 
-// nolint
-func (store *Store) walkBack(ctx context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
-	if to > from.Height() {
-		return nil, fmt.Errorf("looking for tipset with height greater than start point")
-	}
-
-	if to == from.Height() {
-		return from, nil
-	}
-
-	ts := from
-
-	for {
-		pts, err := store.GetTipSet(ctx, ts.Parents())
-		if err != nil {
-			return nil, err
-		}
-
-		if to > pts.Height() {
-			// in case pts is lower than the epoch we're looking for (null blocks)
-			// return a tipset above that height
-			return ts, nil
-		}
-		if to == pts.Height() {
-			return pts, nil
-		}
-
-		ts = pts
-	}
-}
-
 // updateHead sets the passed in tipset as the new head of this chain.
 func (store *Store) updateHead(ctx context.Context, newTS *types.TipSet) ([]*types.TipSet, []*types.TipSet, bool, error) {
 	var dropped []*types.TipSet

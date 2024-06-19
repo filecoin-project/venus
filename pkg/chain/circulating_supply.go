@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	cbornode "github.com/ipfs/go-ipld-cbor"
 
 	// Used for genesis.
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -228,7 +227,7 @@ func (caculator *CirculatingSupplyCalculator) GetCirculatingSupply(ctx context.C
 
 // sets up information about the vesting schedule
 func (caculator *CirculatingSupplyCalculator) setupGenesisVestingSchedule(ctx context.Context) error {
-	cst := cbornode.NewCborStore(caculator.bstore)
+	cst := cbor.NewCborStore(caculator.bstore)
 	sTree, err := tree.LoadState(ctx, cst, caculator.genesisRoot)
 	if err != nil {
 		return fmt.Errorf("loading state tree: %v", err)
