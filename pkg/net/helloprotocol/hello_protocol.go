@@ -149,6 +149,7 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 		// can't process a hello received in error, but leave this connection
 		// open because we connections are innocent until proven guilty
 		// (with bad genesis)
+		_ = s.Conn().Close()
 		return
 	}
 	latencyMsg := &LatencyMessage{TArrival: time.Now().UnixNano()}
@@ -230,13 +231,13 @@ func (h *HelloProtocolHandler) loadLocalFullTipset(ctx context.Context, tsk type
 // ErrBadGenesis is the error returned when a mismatch in genesis blocks happens.
 var ErrBadGenesis = fmt.Errorf("bad genesis block")
 
-func (h *HelloProtocolHandler) receiveHello(ctx context.Context, s net.Stream) (*HelloMessage, error) {
+func (h *HelloProtocolHandler) receiveHello(_ context.Context, s net.Stream) (*HelloMessage, error) {
 	var hello HelloMessage
 	err := hello.UnmarshalCBOR(s)
 	return &hello, err
 }
 
-func (h *HelloProtocolHandler) receiveLatency(ctx context.Context, s net.Stream) (*LatencyMessage, error) {
+func (h *HelloProtocolHandler) receiveLatency(_ context.Context, s net.Stream) (*LatencyMessage, error) {
 	var latency LatencyMessage
 	err := latency.UnmarshalCBOR(s)
 	if err != nil {
