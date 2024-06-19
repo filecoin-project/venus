@@ -88,7 +88,7 @@ func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 
 		var costI, costJ float64
 
-		getPeerInitLat := func(p peer.ID) float64 {
+		getPeerInitLat := func(_ peer.ID) float64 {
 			return float64(bpt.avgGlobalTime) * newPeerMul
 		}
 
