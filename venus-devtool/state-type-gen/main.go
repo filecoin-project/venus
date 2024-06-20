@@ -137,7 +137,6 @@ var getStateTypesIncludePkgs = func() []string {
 	pkgs := make([]string, 0, 4)
 	aliasVesion := map[string]actors.Version{
 		"paych": actors.Version8,
-		"miner": actors.Version13,
 	}
 	for _, pkg := range []string{"market", "miner", "verifreg", "paych", "multisig", "datacap"} {
 		if v, ok := aliasVesion[pkg]; ok {
