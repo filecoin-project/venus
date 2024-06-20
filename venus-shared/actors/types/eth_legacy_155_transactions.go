@@ -84,7 +84,7 @@ func (tx *EthLegacy155TxArgs) ToRawTxBytesSigned() ([]byte, error) {
 		return nil, err
 	}
 
-	packed1 = packed1[:len(packed1)-3] // remove chainId, r and s as they are only used for signature verification
+	packed1 = packed1[:len(packed1)-3] // remove chainID, r and s as they are only used for signature verification
 
 	packed2, err := packSigFields(tx.legacyTx.V, tx.legacyTx.R, tx.legacyTx.S)
 	if err != nil {
@@ -160,8 +160,8 @@ func (tx *EthLegacy155TxArgs) ToVerifiableSignature(sig []byte) ([]byte, error) 
 	}
 
 	// See https://github.com/ethereum/go-ethereum/blob/86a1f0c39494c8f5caddf6bd9fbddd4bdfa944fd/core/types/transaction_signing.go#L424
-	chainIdMul := big.Mul(big.NewIntUnsigned(uint64(Eip155ChainID)), big.NewInt(2))
-	vValue = big.Sub(vValue, chainIdMul)
+	chainIDMul := big.Mul(big.NewIntUnsigned(uint64(Eip155ChainID)), big.NewInt(2))
+	vValue = big.Sub(vValue, chainIDMul)
 	vValue = big.Sub(vValue, big8)
 
 	// Adjust 'v' value for compatibility with new transactions: 27 -> 0, 28 -> 1
@@ -238,8 +238,8 @@ func (tx *EthLegacy155TxArgs) packTxFields() ([]interface{}, error) {
 		return nil, err
 	}
 
-	chainIdBigInt := big.NewIntUnsigned(uint64(Eip155ChainID))
-	chainId, err := formatBigInt(chainIdBigInt)
+	chainIDBigInt := big.NewIntUnsigned(uint64(Eip155ChainID))
+	chainID, err := formatBigInt(chainIDBigInt)
 	if err != nil {
 		return nil, err
 	}
@@ -261,16 +261,16 @@ func (tx *EthLegacy155TxArgs) packTxFields() ([]interface{}, error) {
 		formatEthAddr(tx.legacyTx.To),
 		value,
 		tx.legacyTx.Input,
-		chainId,
+		chainID,
 		r, s,
 	}
 	return res, nil
 }
 
 func validateEIP155ChainId(v big.Int) error {
-	chainId := deriveEIP155ChainId(v)
-	if !chainId.Equals(big.NewIntUnsigned(uint64(Eip155ChainID))) {
-		return fmt.Errorf("invalid chain id, expected %d, got %s", Eip155ChainID, chainId.String())
+	chainID := deriveEIP155ChainId(v)
+	if !chainID.Equals(big.NewIntUnsigned(uint64(Eip155ChainID))) {
+		return fmt.Errorf("invalid chain id, expected %d, got %s", Eip155ChainID, chainID.String())
 	}
 	return nil
 }
@@ -290,8 +290,8 @@ func deriveEIP155ChainId(v big.Int) big.Int {
 }
 
 func calcEIP155TxSignatureLen(chain uint64, v int) int {
-	chainId := big.NewIntUnsigned(chain)
-	vVal := big.Add(big.Mul(chainId, big.NewInt(2)), big.NewInt(int64(v)))
+	chainID := big.NewIntUnsigned(chain)
+	vVal := big.Add(big.Mul(chainID, big.NewInt(2)), big.NewInt(int64(v)))
 	vLen := len(vVal.Int.Bytes())
 
 	// EthLegacyHomesteadTxSignatureLen includes the 1 byte legacy tx marker prefix and also 1 byte for the V value.

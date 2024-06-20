@@ -503,8 +503,8 @@ func parseLegacyTx(data []byte) (EthTransaction, error) {
 		S:        s,
 	}
 
-	chainId := deriveEIP155ChainId(v)
-	if chainId.Equals(big.NewInt(0)) {
+	chainID := deriveEIP155ChainId(v)
+	if chainID.Equals(big.NewInt(0)) {
 		// This is a legacy Homestead transaction
 		if !v.Equals(big.NewInt(27)) && !v.Equals(big.NewInt(28)) {
 			return nil, fmt.Errorf("legacy homestead transactions only support 27 or 28 for v, got %d", v.Uint64())

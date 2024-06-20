@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -549,12 +548,12 @@ func ethTxFromNativeMessage(ctx context.Context, msg *types.Message, ca v1.IChai
 	// Then we try to see if it's "special". If we fail, we ignore the error and keep treating
 	// it as a native message. Unfortunately, the user is free to send garbage that may not
 	// properly decode.
-	if msg.Method == builtintypes.MethodsEVM.InvokeContract {
+	if msg.Method == builtin.MethodsEVM.InvokeContract {
 		// try to decode it as a contract invocation first.
 		if inp, err := decodePayload(msg.Params, codec); err == nil {
 			ethTx.Input = []byte(inp)
 		}
-	} else if msg.To == builtin.EthereumAddressManagerActorAddr && msg.Method == builtintypes.MethodsEAM.CreateExternal {
+	} else if msg.To == builtin.EthereumAddressManagerActorAddr && msg.Method == builtin.MethodsEAM.CreateExternal {
 		// Then, try to decode it as a contract deployment from an EOA.
 		if inp, err := decodePayload(msg.Params, codec); err == nil {
 			ethTx.Input = []byte(inp)

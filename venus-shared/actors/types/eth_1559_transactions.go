@@ -171,7 +171,7 @@ func (tx *Eth1559TxArgs) InitialiseSignature(sig typescrypto.Signature) error {
 }
 
 func (tx *Eth1559TxArgs) packTxFields() ([]interface{}, error) {
-	chainId, err := formatInt(tx.ChainID)
+	chainID, err := formatInt(tx.ChainID)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (tx *Eth1559TxArgs) packTxFields() ([]interface{}, error) {
 	}
 
 	res := []interface{}{
-		chainId,
+		chainID,
 		nonce,
 		maxPriorityFeePerGas,
 		maxFeePerGas,
@@ -233,7 +233,7 @@ func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
 		return nil, xerrors.Errorf("not an EIP-1559 transaction: should have 12 elements in the rlp list")
 	}
 
-	chainId, err := parseInt(decoded[0])
+	chainID, err := parseInt(decoded[0])
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +301,7 @@ func parseEip1559Tx(data []byte) (*Eth1559TxArgs, error) {
 	}
 
 	args := Eth1559TxArgs{
-		ChainID:              chainId,
+		ChainID:              chainID,
 		Nonce:                nonce,
 		To:                   to,
 		MaxPriorityFeePerGas: maxPriorityFeePerGas,

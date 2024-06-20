@@ -107,39 +107,39 @@ func TestDeriveEIP155ChainId(t *testing.T) {
 	tests := []struct {
 		name            string
 		v               big.Int
-		expectedChainId big.Int
+		expectedChainID big.Int
 	}{
 		{
 			name:            "V equals 27",
 			v:               big.NewInt(27),
-			expectedChainId: big.NewInt(0),
+			expectedChainID: big.NewInt(0),
 		},
 		{
 			name:            "V equals 28",
 			v:               big.NewInt(28),
-			expectedChainId: big.NewInt(0),
+			expectedChainID: big.NewInt(0),
 		},
 		{
 			name:            "V small chain ID",
 			v:               big.NewInt(37), // (37 - 35) / 2 = 1
-			expectedChainId: big.NewInt(1),
+			expectedChainID: big.NewInt(1),
 		},
 		{
 			name:            "V large chain ID",
 			v:               big.NewInt(1001), // (1001 - 35) / 2 = 483
-			expectedChainId: big.NewInt(483),
+			expectedChainID: big.NewInt(483),
 		},
 		{
 			name:            "V very large chain ID",
 			v:               big.NewInt(1 << 20), // (1048576 - 35) / 2 = 524770
-			expectedChainId: big.NewInt(524270),
+			expectedChainID: big.NewInt(524270),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := deriveEIP155ChainId(tt.v)
-			require.True(t, result.Equals(tt.expectedChainId), "Expected %s, got %s for V=%s", tt.expectedChainId.String(), result.String(), tt.v.String())
+			require.True(t, result.Equals(tt.expectedChainID), "Expected %s, got %s for V=%s", tt.expectedChainID.String(), result.String(), tt.v.String())
 		})
 	}
 }
