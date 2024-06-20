@@ -12,11 +12,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DataDog/zstd"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipld/go-car"
+	"github.com/klauspost/compress/zstd"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
@@ -193,8 +193,11 @@ func readEmbeddedBuiltinActorsMetadata(bundle string) ([]*BuiltinActorsMetadata,
 	}
 	defer fi.Close() //nolint
 
-	uncompressed := zstd.NewReader(fi)
-	defer uncompressed.Close() //nolint
+	uncompressed, err := zstd.NewReader(fi)
+	if err != nil {
+		return nil, err
+	}
+	defer uncompressed.Close()
 
 	var bundles []*BuiltinActorsMetadata
 
@@ -288,8 +291,11 @@ func GetEmbeddedBuiltinActorsBundle(version actorstypes.Version, networkBundleNa
 	}
 	defer fi.Close() //nolint
 
-	uncompressed := zstd.NewReader(fi)
-	defer uncompressed.Close() //nolint
+	uncompressed, err := zstd.NewReader(fi)
+	if err != nil {
+		return nil, false
+	}
+	defer uncompressed.Close()
 
 	tarReader := tar.NewReader(uncompressed)
 	targetFileName := fmt.Sprintf("builtin-actors-%s.car", networkBundleName)
