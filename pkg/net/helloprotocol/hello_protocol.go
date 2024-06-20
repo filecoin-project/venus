@@ -187,17 +187,22 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 
 	fullTipSet, err := h.loadLocalFullTipset(ctx, types.NewTipSetKey(hello.HeaviestTipSetCids...))
 	if err != nil {
+		// We're trying to fetch the tipset from the peer that just said hello to us. No point in
+		// triggering any dials.
+		ctx := net.WithNoDial(ctx, "fetching filecoin hello tipset")
 		fullTipSet, err = h.exchange.GetFullTipSet(ctx, []peer.ID{from}, types.NewTipSetKey(hello.HeaviestTipSetCids...)) //nolint
-		h.host.ConnManager().TagPeer(from, "new-block", 40)
+		if err != nil {
+			log.Warnf("failed to get tipset message from peer %s", from)
+			return
+		}
 	}
-	if err != nil {
-		log.Warnf("failed to get tipset message from peer %s", from)
-		return
-	}
+
 	if fullTipSet == nil {
 		log.Warnf("handleNewStream get null full tipset, it's scarce!")
 		return
 	}
+
+	h.host.ConnManager().TagPeer(from, "new-block", 40)
 
 	// notify the local node of the new `block.ChainInfo`
 	ci := types.NewChainInfo(from, from, fullTipSet)
