@@ -80,7 +80,7 @@ func (msa *minerStateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr ad
 // NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 // expiration epoch
 // return nil if sector not found
-func (msa *minerStateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*types.SectorOnChainInfo, error) {
+func (msa *minerStateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorOnChainInfo, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("loading tipset %s: %v", tsk, err)
@@ -333,7 +333,7 @@ func (msa *minerStateAPI) StateMinerDeadlines(ctx context.Context, maddr address
 }
 
 // StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
-func (msa *minerStateAPI) StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*types.SectorOnChainInfo, error) {
+func (msa *minerStateAPI) StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*lminer.SectorOnChainInfo, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
@@ -910,7 +910,7 @@ func (msa *minerStateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSet
 }
 
 // StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-func (msa *minerStateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*types.SectorOnChainInfo, error) { // TODO: only used in cli
+func (msa *minerStateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*lminer.SectorOnChainInfo, error) { // TODO: only used in cli
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)

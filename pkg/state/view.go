@@ -127,7 +127,7 @@ func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Ver
 }
 
 // Loads sector info from miner state.
-func (v *View) MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*types.SectorOnChainInfo, error) {
+func (v *View) MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*lminer.SectorOnChainInfo, error) {
 	minerState, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, err
@@ -243,28 +243,7 @@ func (v *View) SectorPreCommitInfo(ctx context.Context, maddr addr.Address, sid 
 		return nil, fmt.Errorf("(get sset) failed to load miner actor: %v", err)
 	}
 
-	sectorInfo, err := mas.GetPrecommittedSector(sid)
-	if err != nil {
-		return nil, err
-	}
-
-	if sectorInfo == nil {
-		return nil, nil
-	}
-
-	return &types.SectorPreCommitOnChainInfo{
-		Info: types.SectorPreCommitInfo{
-			SealProof:     sectorInfo.Info.SealProof,
-			SectorNumber:  sectorInfo.Info.SectorNumber,
-			SealedCID:     sectorInfo.Info.SealedCID,
-			SealRandEpoch: sectorInfo.Info.SealRandEpoch,
-			DealIDs:       sectorInfo.Info.DealIDs,
-			Expiration:    sectorInfo.Info.Expiration,
-			UnsealedCid:   sectorInfo.Info.UnsealedCid,
-		},
-		PreCommitDeposit: sectorInfo.PreCommitDeposit,
-		PreCommitEpoch:   sectorInfo.PreCommitEpoch,
-	}, nil
+	return mas.GetPrecommittedSector(sid)
 }
 
 // StateSectorPartition finds deadline/partition with the specified sector
@@ -663,7 +642,7 @@ func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[s
 }
 
 // StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-func (v *View) StateMinerActiveSectors(ctx context.Context, maddr addr.Address, tsk types.TipSetKey) ([]*types.SectorOnChainInfo, error) {
+func (v *View) StateMinerActiveSectors(ctx context.Context, maddr addr.Address, tsk types.TipSetKey) ([]*lminer.SectorOnChainInfo, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load miner actor state: %v", err)

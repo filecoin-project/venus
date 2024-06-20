@@ -101,7 +101,7 @@ type IMinerStateStruct struct {
 		StateMarketBalance                 func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error)                                              `perm:"read"`
 		StateMarketDeals                   func(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error)                                                           `perm:"read"`
 		StateMarketStorageDeal             func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error)                                                   `perm:"read"`
-		StateMinerActiveSectors            func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*types.SectorOnChainInfo, error)                                      `perm:"read"`
+		StateMinerActiveSectors            func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*lminer.SectorOnChainInfo, error)                                     `perm:"read"`
 		StateMinerAllocated                func(context.Context, address.Address, types.TipSetKey) (*bitfield.BitField, error)                                                            `perm:"read"`
 		StateMinerAvailableBalance         func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (big.Int, error)                                                         `perm:"read"`
 		StateMinerDeadlines                func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]types.Deadline, error)                                                `perm:"read"`
@@ -116,11 +116,11 @@ type IMinerStateStruct struct {
 		StateMinerSectorAllocated          func(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk types.TipSetKey) (bool, error)                                        `perm:"read"`
 		StateMinerSectorCount              func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MinerSectors, error)                                               `perm:"read"`
 		StateMinerSectorSize               func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (abi.SectorSize, error)                                                  `perm:"read"`
-		StateMinerSectors                  func(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*types.SectorOnChainInfo, error)        `perm:"read"`
+		StateMinerSectors                  func(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*lminer.SectorOnChainInfo, error)       `perm:"read"`
 		StateMinerWorkerAddress            func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (address.Address, error)                                                 `perm:"read"`
 		StateReadState                     func(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.ActorState, error)                                               `perm:"read"`
 		StateSectorExpiration              func(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorExpiration, error)         `perm:"read"`
-		StateSectorGetInfo                 func(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*types.SectorOnChainInfo, error)                    `perm:"read"`
+		StateSectorGetInfo                 func(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorOnChainInfo, error)                   `perm:"read"`
 		StateSectorPartition               func(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorLocation, error)           `perm:"read"`
 		StateSectorPreCommitInfo           func(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*types.SectorPreCommitOnChainInfo, error)           `perm:"read"`
 		StateVMCirculatingSupplyInternal   func(ctx context.Context, tsk types.TipSetKey) (types.CirculatingSupply, error)                                                                `perm:"read"`
@@ -197,7 +197,7 @@ func (s *IMinerStateStruct) StateMarketDeals(p0 context.Context, p1 types.TipSet
 func (s *IMinerStateStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.MarketDeal, error) {
 	return s.Internal.StateMarketStorageDeal(p0, p1, p2)
 }
-func (s *IMinerStateStruct) StateMinerActiveSectors(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*types.SectorOnChainInfo, error) {
+func (s *IMinerStateStruct) StateMinerActiveSectors(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*lminer.SectorOnChainInfo, error) {
 	return s.Internal.StateMinerActiveSectors(p0, p1, p2)
 }
 func (s *IMinerStateStruct) StateMinerAllocated(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*bitfield.BitField, error) {
@@ -242,7 +242,7 @@ func (s *IMinerStateStruct) StateMinerSectorCount(p0 context.Context, p1 address
 func (s *IMinerStateStruct) StateMinerSectorSize(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (abi.SectorSize, error) {
 	return s.Internal.StateMinerSectorSize(p0, p1, p2)
 }
-func (s *IMinerStateStruct) StateMinerSectors(p0 context.Context, p1 address.Address, p2 *bitfield.BitField, p3 types.TipSetKey) ([]*types.SectorOnChainInfo, error) {
+func (s *IMinerStateStruct) StateMinerSectors(p0 context.Context, p1 address.Address, p2 *bitfield.BitField, p3 types.TipSetKey) ([]*lminer.SectorOnChainInfo, error) {
 	return s.Internal.StateMinerSectors(p0, p1, p2, p3)
 }
 func (s *IMinerStateStruct) StateMinerWorkerAddress(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
@@ -254,7 +254,7 @@ func (s *IMinerStateStruct) StateReadState(p0 context.Context, p1 address.Addres
 func (s *IMinerStateStruct) StateSectorExpiration(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*lminer.SectorExpiration, error) {
 	return s.Internal.StateSectorExpiration(p0, p1, p2, p3)
 }
-func (s *IMinerStateStruct) StateSectorGetInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*types.SectorOnChainInfo, error) {
+func (s *IMinerStateStruct) StateSectorGetInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*lminer.SectorOnChainInfo, error) {
 	return s.Internal.StateSectorGetInfo(p0, p1, p2, p3)
 }
 func (s *IMinerStateStruct) StateSectorPartition(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*lminer.SectorLocation, error) {
