@@ -269,10 +269,23 @@ func (a *ethAPI) EthGetTransactionByHashLimited(ctx context.Context, txHash *typ
 
 	for _, p := range pending {
 		if p.Cid() == c {
-			tx, err := newEthTxFromSignedMessage(ctx, p, a.chain)
+			// We only return pending eth-account messages because we can't guarantee
+			// that the from/to addresses of other messages are conversable to 0x-style
+			// addresses. So we just ignore them.
+			//
+			// This should be "fine" as anyone using an "Ethereum-centric" block
+			// explorer shouldn't care about seeing pending messages from native
+			// accounts.
+			ethtx, err := types.EthTransactionFromSignedFilecoinMessage(p)
 			if err != nil {
-				return nil, fmt.Errorf("could not convert Filecoin message into tx: %v", err)
+				return nil, fmt.Errorf("could not convert Filecoin message into tx: %w", err)
 			}
+
+			tx, err := ethtx.ToEthTx(p)
+			if err != nil {
+				return nil, fmt.Errorf("could not convert Eth transaction to EthTx: %w", err)
+			}
+
 			return &tx, nil
 		}
 	}
@@ -318,7 +331,7 @@ func (a *ethAPI) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *
 }
 
 func (a *ethAPI) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*types.EthHash, error) {
-	hash, err := ethTxHashFromMessageCid(ctx, cid, a.em.chainModule.MessageStore, a.chain)
+	hash, err := ethTxHashFromMessageCid(ctx, cid, a.em.chainModule.MessageStore)
 	if hash == types.EmptyEthHash {
 		// not found
 		return nil, nil
@@ -800,12 +813,12 @@ func (a *ethAPI) EthGasPrice(ctx context.Context) (types.EthBigInt, error) {
 }
 
 func (a *ethAPI) EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error) {
-	txArgs, err := types.ParseEthTxArgs(rawTx)
+	txArgs, err := types.ParseEthTransaction(rawTx)
 	if err != nil {
 		return types.EmptyEthHash, err
 	}
 
-	smsg, err := txArgs.ToSignedMessage()
+	smsg, err := types.ToSignedFilecoinMessage(txArgs)
 	if err != nil {
 		return types.EmptyEthHash, err
 	}

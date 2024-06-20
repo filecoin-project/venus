@@ -30,6 +30,7 @@ var Eip155ChainID = 314
 
 func SetEip155ChainID(val int) {
 	Eip155ChainID = val
+	initEthLegacy155TxSignature()
 }
 
 type EthUint64 uint64

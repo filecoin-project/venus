@@ -27,10 +27,10 @@ type TxTestcase struct {
 	TxJSON  string
 	NosigTx string
 	Input   EthBytes
-	Output  EthTxArgs
+	Output  Eth1559TxArgs
 }
 
-func TestTxArgs(t *testing.T) {
+func TestEIP1559TxArgs(t *testing.T) {
 	testcases, err := prepareTxTestcases()
 	require.Nil(t, err)
 	require.NotEmpty(t, testcases)
@@ -39,31 +39,31 @@ func TestTxArgs(t *testing.T) {
 		comment := fmt.Sprintf("case %d: \n%s\n%s", i, tc.TxJSON, hex.EncodeToString(tc.Input))
 
 		// parse txargs
-		txArgs, err := ParseEthTxArgs(tc.Input)
-		require.NoErrorf(t, err, comment)
+		txArgs, err := parseEip1559Tx(tc.Input)
+		require.NoError(t, err, comment)
 
 		msgRecovered, err := txArgs.ToRlpUnsignedMsg()
-		require.NoErrorf(t, err, comment)
+		require.NoError(t, err, comment)
 		require.Equal(t, tc.NosigTx, "0x"+hex.EncodeToString(msgRecovered), comment)
 
 		// verify signatures
 		from, err := txArgs.Sender()
-		require.NoErrorf(t, err, comment)
+		require.NoError(t, err, comment)
 
-		smsg, err := txArgs.ToSignedMessage()
-		require.NoErrorf(t, err, comment)
+		smsg, err := ToSignedFilecoinMessage(txArgs)
+		require.NoError(t, err, comment)
 
 		err = crypto.Verify(&smsg.Signature, from, msgRecovered)
-		require.NoErrorf(t, err, comment)
+		require.NoError(t, err, comment)
 
 		// verify data
-		require.Equal(t, tc.Output.ChainID, txArgs.ChainID)
-		require.Equal(t, tc.Output.Nonce, txArgs.Nonce)
-		require.Equal(t, tc.Output.To, txArgs.To)
+		require.Equal(t, tc.Output.ChainID, txArgs.ChainID, comment)
+		require.Equal(t, tc.Output.Nonce, txArgs.Nonce, comment)
+		require.Equal(t, tc.Output.To, txArgs.To, comment)
 	}
 }
 
-func TestSignatures(t *testing.T) {
+func TestEIP1559Signatures(t *testing.T) {
 	testcases := []struct {
 		RawTx     string
 		ExpectedR string
@@ -73,29 +73,29 @@ func TestSignatures(t *testing.T) {
 	}{
 		{
 			"0x02f8598401df5e76028301d69083086a5e835532dd808080c080a0457e33227ac7ceee2ef121755e26b872b6fb04221993f9939349bb7b0a3e1595a02d8ef379e1d2a9e30fa61c92623cc9ed72d80cf6a48cfea341cb916bcc0a81bc",
-			`"0x457e33227ac7ceee2ef121755e26b872b6fb04221993f9939349bb7b0a3e1595"`,
-			`"0x2d8ef379e1d2a9e30fa61c92623cc9ed72d80cf6a48cfea341cb916bcc0a81bc"`,
-			`"0x0"`,
+			"0x457e33227ac7ceee2ef121755e26b872b6fb04221993f9939349bb7b0a3e1595",
+			"0x2d8ef379e1d2a9e30fa61c92623cc9ed72d80cf6a48cfea341cb916bcc0a81bc",
+			"0x0",
 			false,
 		},
 		{
 			"0x02f8598401df5e76038301d69083086a5e835532dd808080c001a012a232866dcb0671eb0ddc01fb9c01d6ef384ec892bb29691ed0d2d293052ddfa052a6ae38c6139930db21a00eee2a4caced9a6500991b823d64ec664d003bc4b1",
-			`"0x12a232866dcb0671eb0ddc01fb9c01d6ef384ec892bb29691ed0d2d293052ddf"`,
-			`"0x52a6ae38c6139930db21a00eee2a4caced9a6500991b823d64ec664d003bc4b1"`,
-			`"0x1"`,
+			"0x12a232866dcb0671eb0ddc01fb9c01d6ef384ec892bb29691ed0d2d293052ddf",
+			"0x52a6ae38c6139930db21a00eee2a4caced9a6500991b823d64ec664d003bc4b1",
+			"0x1",
 			false,
 		},
 		{
 			"0x00",
-			`""`,
-			`""`,
-			`""`,
+			"",
+			"",
+			"",
 			true,
 		},
 	}
 
 	for _, tc := range testcases {
-		tx, err := ParseEthTxArgs(mustDecodeHex(tc.RawTx))
+		tx, err := parseEip1559Tx(mustDecodeHex(tc.RawTx))
 		if tc.ExpectErr {
 			require.Error(t, err)
 			continue
@@ -105,21 +105,11 @@ func TestSignatures(t *testing.T) {
 		sig, err := tx.Signature()
 		require.Nil(t, err)
 
-		r, s, v, err := RecoverSignature(*sig)
-		require.Nil(t, err)
+		require.NoError(t, tx.InitialiseSignature(*sig))
 
-		marshaledR, err := r.MarshalJSON()
-		require.Nil(t, err)
-
-		marshaledS, err := s.MarshalJSON()
-		require.Nil(t, err)
-
-		marshaledV, err := v.MarshalJSON()
-		require.Nil(t, err)
-
-		require.Equal(t, tc.ExpectedR, string(marshaledR))
-		require.Equal(t, tc.ExpectedS, string(marshaledS))
-		require.Equal(t, tc.ExpectedV, string(marshaledV))
+		require.Equal(t, tc.ExpectedR, "0x"+tx.R.Text(16))
+		require.Equal(t, tc.ExpectedS, "0x"+tx.S.Text(16))
+		require.Equal(t, tc.ExpectedV, "0x"+tx.V.Text(16))
 	}
 }
 
@@ -150,6 +140,7 @@ func TestTransformParams(t *testing.T) {
 
 	require.Equal(t, mustDecodeHex("0x1122334455"), evmParams.Initcode)
 }
+
 func TestEcRecover(t *testing.T) {
 	rHex := "0x479ff7fa64cf8bf641eb81635d1e8a698530d2f219951d234539e6d074819529"
 	sHex := "0x4b6146d27be50cdbb2853ba9a42f207af8d730272f1ebe9c9a78aeef1d6aa924"
@@ -233,7 +224,7 @@ func prepareTxTestcases() ([]TxTestcase, error) {
 
 	res := []TxTestcase{}
 	for _, tc := range testcases {
-		tx := EthTxArgs{}
+		tx := Eth1559TxArgs{}
 		err := json.Unmarshal([]byte(tc.Output), &tx)
 		if err != nil {
 			return nil, err
