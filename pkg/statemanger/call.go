@@ -59,8 +59,8 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 }
 
 // ApplyOnStateWithGas applies the given message on top of the given state root with gas tracing enabled
-func (sm *Stmgr) ApplyOnStateWithGas(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*types.InvocResult, error) {
-	return sm.callInternal(ctx, msg, nil, ts, stateCid, sm.GetNetworkVersion, true, execNoMessages)
+func (s *Stmgr) ApplyOnStateWithGas(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*types.InvocResult, error) {
+	return s.callInternal(ctx, msg, nil, ts, stateCid, s.GetNetworkVersion, true, execNoMessages)
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
@@ -199,14 +199,14 @@ func (s *Stmgr) callInternal(ctx context.Context,
 		if strategy == execAllMessages {
 			priorMsgs = append(tsMsgs, priorMsgs...)
 		} else if strategy == execSameSenderMessages {
-			var filteredTsMsgs []types.ChainMsg
+			var filteredTSMsgs []types.ChainMsg
 			for _, tsMsg := range tsMsgs {
 				//TODO we should technically be normalizing the filecoin address of from when we compare here
 				if tsMsg.VMMessage().From == msg.VMMessage().From {
-					filteredTsMsgs = append(filteredTsMsgs, tsMsg)
+					filteredTSMsgs = append(filteredTSMsgs, tsMsg)
 				}
 			}
-			priorMsgs = append(filteredTsMsgs, priorMsgs...)
+			priorMsgs = append(filteredTSMsgs, priorMsgs...)
 		}
 		for i, m := range priorMsgs {
 			_, err = vmi.ApplyMessage(ctx, m)

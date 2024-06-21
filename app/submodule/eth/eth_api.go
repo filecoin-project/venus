@@ -1191,7 +1191,7 @@ func (a *ethAPI) EthTraceReplayBlockTransactions(ctx context.Context, blkNum str
 			TransactionHash: *txHash,
 			Trace:           env.traces,
 			StateDiff:       nil,
-			VmTrace:         nil,
+			VMTrace:         nil,
 		})
 	}
 
