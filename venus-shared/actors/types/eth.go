@@ -1039,12 +1039,6 @@ type EthTrace struct {
 	TraceAddress []int  `json:"traceAddress"`
 	Action       any    `json:"action"`
 	Result       any    `json:"result"`
-
-	Parent *EthTrace `json:"-"`
-
-	// if a subtrace makes a call to GetBytecode, we store a pointer to that subtrace here
-	// which we then lookup when checking for delegatecall (InvokeContractDelegate)
-	LastByteCode *EthTrace `json:"-"`
 }
 
 type EthTraceBlock struct {
@@ -1060,7 +1054,15 @@ type EthTraceReplayBlockTransaction struct {
 	StateDiff       *string     `json:"stateDiff"`
 	Trace           []*EthTrace `json:"trace"`
 	TransactionHash EthHash     `json:"transactionHash"`
-	VMTrace         *string     `json:"vmTrace"`
+	VmTrace         *string     `json:"vmTrace"`
+}
+
+type EthTraceTransaction struct {
+	*EthTrace
+	BlockHash           EthHash `json:"blockHash"`
+	BlockNumber         int64   `json:"blockNumber"`
+	TransactionHash     EthHash `json:"transactionHash"`
+	TransactionPosition int     `json:"transactionPosition"`
 }
 
 type EthCallTraceAction struct {

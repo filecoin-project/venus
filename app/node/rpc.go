@@ -210,6 +210,7 @@ func aliasETHAPI(rpcServer *jsonrpc.RPCServer) {
 
 	rpcServer.AliasMethod("trace_block", "Filecoin.EthTraceBlock")
 	rpcServer.AliasMethod("trace_replayBlockTransactions", "Filecoin.EthTraceReplayBlockTransactions")
+	rpcServer.AliasMethod("trace_transaction", "Filecoin.EthTraceTransaction")
 
 	rpcServer.AliasMethod("net_version", "Filecoin.NetVersion")
 	rpcServer.AliasMethod("net_listening", "Filecoin.NetListening")

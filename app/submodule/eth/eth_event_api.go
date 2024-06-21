@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/events/filter"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/venus-shared/api"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -46,6 +47,7 @@ func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error)
 
 	ee.SubManager = &EthSubscriptionManager{
 		ChainAPI:     chainAPI,
+		stmgr:        ee.em.chainModule.Stmgr,
 		messageStore: ee.em.chainModule.MessageStore,
 	}
 	ee.FilterStore = filter.NewMemFilterStore(cfg.Event.MaxFilters)
@@ -710,6 +712,7 @@ func ethFilterResultFromMessages(cs []*types.SignedMessage) (*types.EthFilterRes
 type EthSubscriptionManager struct { // nolint
 	ChainAPI     v1.IChain
 	messageStore *chain.MessageStore
+	stmgr        *statemanger.Stmgr
 	mu           sync.Mutex
 	subs         map[types.EthSubscriptionID]*ethSubscription
 }
@@ -726,6 +729,7 @@ func (e *EthSubscriptionManager) StartSubscription(ctx context.Context, out ethS
 
 	sub := &ethSubscription{
 		chainAPI:        e.ChainAPI,
+		stmgr:           e.stmgr,
 		messageStore:    e.messageStore,
 		uninstallFilter: dropFilter,
 		id:              id,
@@ -770,6 +774,7 @@ const maxSendQueue = 20000
 
 type ethSubscription struct {
 	chainAPI        v1.IChain
+	stmgr           *statemanger.Stmgr
 	messageStore    *chain.MessageStore
 	uninstallFilter func(context.Context, filter.Filter) error
 	id              types.EthSubscriptionID
@@ -888,7 +893,7 @@ func (e *ethSubscription) start(ctx context.Context) {
 						log.Warnw("failed to load parent tipset", "tipset", parentTipSetKey, "error", loadErr)
 						continue
 					}
-					ethBlock, ethBlockErr := newEthBlockFromFilecoinTipSet(ctx, parentTipSet, true, e.messageStore, e.chainAPI)
+					ethBlock, ethBlockErr := newEthBlockFromFilecoinTipSet(ctx, parentTipSet, true, e.messageStore, e.stmgr)
 					if ethBlockErr != nil {
 						continue
 					}

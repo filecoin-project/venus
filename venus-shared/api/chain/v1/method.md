@@ -99,6 +99,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [EthSyncing](#ethsyncing)
   * [EthTraceBlock](#ethtraceblock)
   * [EthTraceReplayBlockTransactions](#ethtracereplayblocktransactions)
+  * [EthTraceTransaction](#ethtracetransaction)
   * [FilecoinAddressToEthAddress](#filecoinaddresstoethaddress)
   * [NetListening](#netlistening)
   * [NetVersion](#netversion)
@@ -3115,6 +3116,39 @@ Response:
     ],
     "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
     "vmTrace": "string value"
+  }
+]
+```
+
+### EthTraceTransaction
+Implmements OpenEthereum-compatible API method trace_transaction
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+[
+  {
+    "type": "string value",
+    "error": "string value",
+    "subtraces": 123,
+    "traceAddress": [
+      123
+    ],
+    "action": {},
+    "result": {},
+    "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "blockNumber": 9,
+    "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "transactionPosition": 123
   }
 ]
 ```

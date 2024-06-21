@@ -893,6 +893,7 @@ type IETHStruct struct {
 		EthSyncing                             func(ctx context.Context) (types.EthSyncingResult, error)                                                                                 `perm:"read"`
 		EthTraceBlock                          func(ctx context.Context, blkNum string) ([]*types.EthTraceBlock, error)                                                                  `perm:"read"`
 		EthTraceReplayBlockTransactions        func(ctx context.Context, blkNum string, traceTypes []string) ([]*types.EthTraceReplayBlockTransaction, error)                            `perm:"read"`
+		EthTraceTransaction                    func(ctx context.Context, txHash string) ([]*types.EthTraceTransaction, error)                                                            `perm:"read"`
 		FilecoinAddressToEthAddress            func(ctx context.Context, filecoinAddress address.Address) (types.EthAddress, error)                                                      `perm:"read"`
 		NetListening                           func(ctx context.Context) (bool, error)                                                                                                   `perm:"read"`
 		NetVersion                             func(ctx context.Context) (string, error)                                                                                                 `perm:"read"`
@@ -989,6 +990,9 @@ func (s *IETHStruct) EthTraceBlock(p0 context.Context, p1 string) ([]*types.EthT
 }
 func (s *IETHStruct) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*types.EthTraceReplayBlockTransaction, error) {
 	return s.Internal.EthTraceReplayBlockTransactions(p0, p1, p2)
+}
+func (s *IETHStruct) EthTraceTransaction(p0 context.Context, p1 string) ([]*types.EthTraceTransaction, error) {
+	return s.Internal.EthTraceTransaction(p0, p1)
 }
 func (s *IETHStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (types.EthAddress, error) {
 	return s.Internal.FilecoinAddressToEthAddress(p0, p1)

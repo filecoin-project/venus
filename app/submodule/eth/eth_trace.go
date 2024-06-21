@@ -15,8 +15,8 @@ import (
 	evm12 "github.com/filecoin-project/go-state-types/builtin/v12/evm"
 	init12 "github.com/filecoin-project/go-state-types/builtin/v12/init"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/evm"
-	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
 	builtinactors "github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -93,8 +93,8 @@ type environment struct {
 	lastByteCode  *types.EthAddress
 }
 
-func baseEnvironment(ctx context.Context, from address.Address, ca v1.IChain) (*environment, error) {
-	sender, err := lookupEthAddress(ctx, from, ca)
+func baseEnvironment(ctx context.Context, from address.Address, state tree.Tree) (*environment, error) {
+	sender, err := lookupEthAddress(ctx, from, state)
 	if err != nil {
 		return nil, fmt.Errorf("top-level message sender %s s could not be found: %w", from, err)
 	}

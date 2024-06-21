@@ -54,6 +54,7 @@ type (
 	EthTrace                       = types.EthTrace
 	EthTraceBlock                  = types.EthTraceBlock
 	EthTraceReplayBlockTransaction = types.EthTraceReplayBlockTransaction
+	EthTraceTransaction            = types.EthTraceTransaction
 	EthTxReceipt                   = types.EthTxReceipt
 	EthUint64                      = types.EthUint64
 )
