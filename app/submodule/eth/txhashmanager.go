@@ -32,7 +32,7 @@ func (m *ethTxHashManager) Apply(ctx context.Context, from, to *types.TipSet) er
 				continue
 			}
 
-			hash, err := ethTxHashFromSignedMessage(ctx, smsg, m.chainAPI)
+			hash, err := ethTxHashFromSignedMessage(smsg)
 			if err != nil {
 				return err
 			}
@@ -89,13 +89,18 @@ func (m *ethTxHashManager) ProcessSignedMessage(ctx context.Context, msg *types.
 		return
 	}
 
-	ethTx, err := newEthTxFromSignedMessage(ctx, msg, m.chainAPI)
+	ethTx, err := types.EthTransactionFromSignedFilecoinMessage(msg)
 	if err != nil {
 		log.Errorf("error converting filecoin message to eth tx: %s", err)
 		return
 	}
 
-	err = m.TransactionHashLookup.UpsertHash(ethTx.Hash, msg.Cid())
+	txHash, err := ethTx.TxHash()
+	if err != nil {
+		log.Errorf("error hashing transaction: %s", err)
+		return
+	}
+	err = m.TransactionHashLookup.UpsertHash(txHash, msg.Cid())
 	if err != nil {
 		log.Errorf("error inserting tx mapping to db: %s", err)
 		return

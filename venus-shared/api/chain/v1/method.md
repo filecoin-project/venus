@@ -2746,6 +2746,7 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
+  "gasPrice": "0x0",
   "accessList": [
     "0x0707070707070707070707070707070707070707070707070707070707070707"
   ],
@@ -2785,6 +2786,7 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
+  "gasPrice": "0x0",
   "accessList": [
     "0x0707070707070707070707070707070707070707070707070707070707070707"
   ],
@@ -2823,6 +2825,7 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
+  "gasPrice": "0x0",
   "accessList": [
     "0x0707070707070707070707070707070707070707070707070707070707070707"
   ],
@@ -2862,6 +2865,7 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
+  "gasPrice": "0x0",
   "accessList": [
     "0x0707070707070707070707070707070707070707070707070707070707070707"
   ],

@@ -159,7 +159,7 @@ func (e *ethEventAPI) EthGetLogs(ctx context.Context, filterSpec *types.EthFilte
 
 	_ = e.uninstallFilter(ctx, f)
 
-	return ethFilterResultFromEvents(ces, e.em.chainModule.MessageStore, e.ChainAPI)
+	return ethFilterResultFromEvents(ces, e.em.chainModule.MessageStore)
 }
 
 func (e *ethEventAPI) EthGetFilterChanges(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error) {
@@ -174,11 +174,11 @@ func (e *ethEventAPI) EthGetFilterChanges(ctx context.Context, id types.EthFilte
 
 	switch fc := f.(type) {
 	case filterEventCollector:
-		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore, e.ChainAPI)
+		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore)
 	case filterTipSetCollector:
 		return ethFilterResultFromTipSets(fc.TakeCollectedTipSets(ctx))
 	case filterMessageCollector:
-		return ethFilterResultFromMessages(fc.TakeCollectedMessages(ctx), e.ChainAPI)
+		return ethFilterResultFromMessages(fc.TakeCollectedMessages(ctx))
 	}
 
 	return nil, fmt.Errorf("unknown filter type")
@@ -196,7 +196,7 @@ func (e *ethEventAPI) EthGetFilterLogs(ctx context.Context, id types.EthFilterID
 
 	switch fc := f.(type) {
 	case filterEventCollector:
-		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore, e.ChainAPI)
+		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore)
 	}
 
 	return nil, fmt.Errorf("wrong filter type")
@@ -625,7 +625,7 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []types.Et
 	return data, topics, true
 }
 
-func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageStore, ca v1.IChain) (*types.EthFilterResult, error) {
+func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageStore) (*types.EthFilterResult, error) {
 	res := &types.EthFilterResult{}
 	for _, ev := range evs {
 		log := types.EthLog{
@@ -649,7 +649,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageSt
 			return nil, err
 		}
 
-		log.TransactionHash, err = ethTxHashFromMessageCid(context.TODO(), ev.MsgCid, ms, ca)
+		log.TransactionHash, err = ethTxHashFromMessageCid(context.TODO(), ev.MsgCid, ms)
 		if err != nil {
 			return nil, err
 		}
@@ -692,11 +692,11 @@ func ethFilterResultFromTipSets(tsks []types.TipSetKey) (*types.EthFilterResult,
 	return res, nil
 }
 
-func ethFilterResultFromMessages(cs []*types.SignedMessage, ca v1.IChain) (*types.EthFilterResult, error) {
+func ethFilterResultFromMessages(cs []*types.SignedMessage) (*types.EthFilterResult, error) {
 	res := &types.EthFilterResult{}
 
 	for _, c := range cs {
-		hash, err := ethTxHashFromSignedMessage(context.TODO(), c, ca)
+		hash, err := ethTxHashFromSignedMessage(c)
 		if err != nil {
 			return nil, err
 		}
@@ -865,7 +865,7 @@ func (e *ethSubscription) start(ctx context.Context) {
 			case v := <-e.in:
 				switch vt := v.(type) {
 				case *filter.CollectedEvent:
-					evs, err := ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.messageStore, e.chainAPI)
+					evs, err := ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.messageStore)
 					if err != nil {
 						continue
 					}
@@ -896,7 +896,7 @@ func (e *ethSubscription) start(ctx context.Context) {
 					e.send(ctx, ethBlock)
 					e.lastSentTipset = &parentTipSetKey
 				case *types.SignedMessage: // mpool txid
-					evs, err := ethFilterResultFromMessages([]*types.SignedMessage{vt}, e.chainAPI)
+					evs, err := ethFilterResultFromMessages([]*types.SignedMessage{vt})
 					if err != nil {
 						continue
 					}

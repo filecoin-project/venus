@@ -747,6 +747,18 @@ func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network
 	return nil
 }
 
+func IsValidEthTxForSending(nv network.Version, smsg *types.SignedMessage) bool {
+	ethTx, err := types.EthTransactionFromSignedFilecoinMessage(smsg)
+	if err != nil {
+		return false
+	}
+
+	if nv < network.Version23 && ethTx.Type() != types.EIP1559TxType {
+		return false
+	}
+	return true
+}
+
 func IsValidForSending(nv network.Version, act *types.Actor) bool {
 	// Before nv18 (Hygge), we only supported built-in account actors as senders.
 	//
@@ -891,6 +903,10 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context,
 		}
 		if err := checkMsg(m); err != nil {
 			return fmt.Errorf("block had invalid secpk message at index %d: %v", i, err)
+		}
+
+		if m.Signature.Type == crypto.SigTypeDelegated && !IsValidEthTxForSending(nv, m) {
+			return fmt.Errorf("network version should be atleast NV23 for sending legacy ETH transactions; but current network version is %d", nv)
 		}
 
 		secpMsgs[i] = m
