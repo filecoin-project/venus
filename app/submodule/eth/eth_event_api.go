@@ -159,7 +159,7 @@ func (e *ethEventAPI) EthGetLogs(ctx context.Context, filterSpec *types.EthFilte
 
 	_ = e.uninstallFilter(ctx, f)
 
-	return ethFilterResultFromEvents(ces, e.em.chainModule.MessageStore, e.ChainAPI)
+	return ethFilterResultFromEvents(ces, e.em.chainModule.MessageStore)
 }
 
 func (e *ethEventAPI) EthGetFilterChanges(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error) {
@@ -174,7 +174,7 @@ func (e *ethEventAPI) EthGetFilterChanges(ctx context.Context, id types.EthFilte
 
 	switch fc := f.(type) {
 	case filterEventCollector:
-		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore, e.ChainAPI)
+		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore)
 	case filterTipSetCollector:
 		return ethFilterResultFromTipSets(fc.TakeCollectedTipSets(ctx))
 	case filterMessageCollector:
@@ -196,7 +196,7 @@ func (e *ethEventAPI) EthGetFilterLogs(ctx context.Context, id types.EthFilterID
 
 	switch fc := f.(type) {
 	case filterEventCollector:
-		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore, e.ChainAPI)
+		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore)
 	}
 
 	return nil, fmt.Errorf("wrong filter type")
@@ -625,7 +625,7 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []types.Et
 	return data, topics, true
 }
 
-func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageStore, ca v1.IChain) (*types.EthFilterResult, error) {
+func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageStore) (*types.EthFilterResult, error) {
 	res := &types.EthFilterResult{}
 	for _, ev := range evs {
 		log := types.EthLog{
@@ -865,7 +865,7 @@ func (e *ethSubscription) start(ctx context.Context) {
 			case v := <-e.in:
 				switch vt := v.(type) {
 				case *filter.CollectedEvent:
-					evs, err := ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.messageStore, e.chainAPI)
+					evs, err := ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.messageStore)
 					if err != nil {
 						continue
 					}
