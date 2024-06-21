@@ -836,34 +836,30 @@ func (a *ethAPI) applyMessage(ctx context.Context, msg *types.Message, tsk types
 		return nil, fmt.Errorf("failed to got tipset %v", err)
 	}
 
-	applyTSMessages := true
-	if os.Getenv("VENUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
-		applyTSMessages = false
+	if ts.Height() > 0 {
+		pts, err := a.chain.ChainGetTipSet(ctx, ts.Parents())
+		if err != nil {
+			return nil, fmt.Errorf("failed to find a non-forking epoch: %w", err)
+		}
+		// Check for expensive forks from the parents to the tipset, including nil tipsets
+		if a.em.chainModule.Fork.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
+			return nil, fork.ErrExpensiveFork
+		}
 	}
 
-	// Try calling until we find a height with no migration.
-	var res *types.InvocResult
-	for {
-		res, err = a.em.chainModule.Stmgr.CallWithGas(ctx, msg, []types.ChainMsg{}, ts, applyTSMessages)
-		if err != fork.ErrExpensiveFork {
-			break
-		}
-		ts, err = a.chain.ChainGetTipSet(ctx, ts.Parents())
-		if err != nil {
-			return nil, fmt.Errorf("getting parent tipset: %w", err)
-		}
-	}
+	st, err := a.em.chainModule.ChainReader.GetTipSetStateRoot(ctx, ts)
 	if err != nil {
-		return nil, fmt.Errorf("CallWithGas failed: %w", err)
+		return nil, fmt.Errorf("cannot get tipset state: %w", err)
 	}
-	if res.MsgRct == nil {
-		return nil, fmt.Errorf("no message receipt")
+	res, err := a.em.chainModule.Stmgr.ApplyOnStateWithGas(ctx, st, msg, ts)
+	if err != nil {
+		return nil, fmt.Errorf("ApplyWithGasOnState failed: %w", err)
 	}
+
 	if res.MsgRct.ExitCode.IsError() {
 		reason := parseEthRevert(res.MsgRct.Return)
 		return nil, fmt.Errorf("message execution failed: exit %s, revert reason: %s, vm error: %s", res.MsgRct.ExitCode, reason, res.Error)
 	}
-
 	return res, nil
 }
 
