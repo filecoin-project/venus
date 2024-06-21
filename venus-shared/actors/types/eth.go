@@ -1054,7 +1054,7 @@ type EthTraceReplayBlockTransaction struct {
 	StateDiff       *string     `json:"stateDiff"`
 	Trace           []*EthTrace `json:"trace"`
 	TransactionHash EthHash     `json:"transactionHash"`
-	VmTrace         *string     `json:"vmTrace"`
+	VMTrace         *string     `json:"vmTrace"`
 }
 
 type EthTraceTransaction struct {
