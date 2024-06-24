@@ -56,6 +56,22 @@ func getTipsetByBlockNumber(ctx context.Context, store *chain.Store, blkParam st
 			return nil, fmt.Errorf("cannot get parent tipset")
 		}
 		return parent, nil
+	case "safe":
+		latestHeight := head.Height() - 1
+		safeHeight := latestHeight - types.SafeEpochDelay
+		ts, err := store.GetTipSetByHeight(ctx, head, safeHeight, true)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get tipset at height: %v", safeHeight)
+		}
+		return ts, nil
+	case "finalized":
+		latestHeight := head.Height() - 1
+		safeHeight := latestHeight - constants.Finality
+		ts, err := store.GetTipSetByHeight(ctx, head, safeHeight, true)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get tipset at height: %v", safeHeight)
+		}
+		return ts, nil
 	default:
 		var num types.EthUint64
 		err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`))
