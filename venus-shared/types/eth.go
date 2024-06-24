@@ -9,6 +9,7 @@ const (
 	EthAddressLength = types.EthAddressLength
 	EthBloomSize     = types.EthBloomSize
 	EthHashLength    = types.EthHashLength
+	SafeEpochDelay   = types.SafeEpochDelay
 )
 
 var (

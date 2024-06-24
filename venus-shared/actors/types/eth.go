@@ -25,6 +25,12 @@ import (
 
 var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
 
+// Research into Filecoin chain behaviour suggests that probabilistic finality
+// generally approaches the intended stability guarantee at, or near, 30 epochs.
+// Although a strictly "finalized" safe recommendation remains 900 epochs.
+// See https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0089.md
+const SafeEpochDelay = abi.ChainEpoch(30)
+
 // mainnet
 var Eip155ChainID = 314
 
