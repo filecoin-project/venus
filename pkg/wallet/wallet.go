@@ -252,7 +252,7 @@ func (w *Wallet) DSBacked() (*DSBackend, error) {
 	return (backends[0]).(*DSBackend), nil
 }
 
-// LockWallet lock lock wallet
+// LockWallet locks wallet
 func (w *Wallet) LockWallet(ctx context.Context) error {
 	backend, err := w.DSBacked()
 	if err != nil {

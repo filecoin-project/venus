@@ -312,7 +312,7 @@ func NewEventIndex(ctx context.Context, path string, chainStore *chain.Store) (*
 				return nil, fmt.Errorf("could not migrate sql data to version 2: %w", err)
 			}
 
-			// to upgrade to version version 2 we only need to create an index on the event table
+			// to upgrade to version 2 we only need to create an index on the event table
 			// which means we can just recreate the schema (it will not have any effect on existing data)
 			for _, ddl := range ddls {
 				if _, err := db.Exec(ddl); err != nil {
@@ -354,7 +354,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	// rollback the transaction (a no-op if the transaction was already committed)
 	defer tx.Rollback() //nolint:errcheck
 
-	// lets handle the revert case first, since its simpler and we can simply mark all events events in this tipset as reverted and return
+	// lets handle the revert case first, since its simpler and we can simply mark all events in this tipset as reverted and return
 	if revert {
 		_, err = tx.Stmt(ei.stmtRevertEventsInTipset).Exec(te.msgTS.Height(), te.msgTS.Key().Bytes())
 		if err != nil {
