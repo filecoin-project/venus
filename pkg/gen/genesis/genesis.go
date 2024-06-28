@@ -400,10 +400,10 @@ func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actorstypes.Ve
 	}
 
 	act := &types.Actor{
-		Code:    actcid,
-		Head:    statecid,
-		Balance: bal,
-		Address: &addr,
+		Code:             actcid,
+		Head:             statecid,
+		Balance:          bal,
+		DelegatedAddress: &addr,
 	}
 
 	return act, nil

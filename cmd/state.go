@@ -349,7 +349,7 @@ var stateGetActorCmd = &cmds.Command{
 		writer.Printf("Nonce:\t\t%d\n", a.Nonce)
 		writer.Printf("Code:\t\t%s (%s)\n", a.Code, strtype)
 		writer.Printf("Head:\t\t%s\n", a.Head)
-		writer.Printf("Delegated address:\t\t%s\n", a.Address)
+		writer.Printf("Delegated address:\t\t%s\n", a.DelegatedAddress)
 
 		return re.Emit(buf)
 	},

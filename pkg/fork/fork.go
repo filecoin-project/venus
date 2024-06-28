@@ -3110,11 +3110,11 @@ func (c *ChainFork) buildUpgradeActorsV12MinerFix(oldBuggyMinerCID, newManifestC
 			}
 
 			return actorsOut.SetActor(ctx, a, &types.Actor{
-				Code:    newCid,
-				Head:    actor.Head,
-				Nonce:   actor.Nonce,
-				Balance: actor.Balance,
-				Address: actor.Address,
+				Code:             newCid,
+				Head:             actor.Head,
+				Nonce:            actor.Nonce,
+				Balance:          actor.Balance,
+				DelegatedAddress: actor.DelegatedAddress,
 			})
 		})
 		if err != nil {
@@ -3151,8 +3151,8 @@ func (c *ChainFork) buildUpgradeActorsV12MinerFix(oldBuggyMinerCID, newManifestC
 				return fmt.Errorf("mismatched balance for actor %s: %d != %d", a, inActor.Balance, outActor.Balance)
 			}
 
-			if inActor.Address != outActor.Address && inActor.Address.String() != outActor.Address.String() {
-				return fmt.Errorf("mismatched address for actor %s: %s != %s", a, inActor.Address, outActor.Address)
+			if inActor.DelegatedAddress != outActor.DelegatedAddress && inActor.DelegatedAddress.String() != outActor.DelegatedAddress.String() {
+				return fmt.Errorf("mismatched address for actor %s: %s != %s", a, inActor.DelegatedAddress, outActor.DelegatedAddress)
 			}
 
 			if inActor.Head != outActor.Head && a != builtin.SystemActorAddr {
@@ -3273,11 +3273,11 @@ func (c *ChainFork) upgradeActorsV13VerifregFix(oldBuggyVerifregCID, newManifest
 			}
 
 			return actorsOut.SetActor(ctx, a, &types.Actor{
-				Code:    newCid,
-				Head:    actor.Head,
-				Nonce:   actor.Nonce,
-				Balance: actor.Balance,
-				Address: actor.Address,
+				Code:             newCid,
+				Head:             actor.Head,
+				Nonce:            actor.Nonce,
+				Balance:          actor.Balance,
+				DelegatedAddress: actor.DelegatedAddress,
 			})
 		})
 		if err != nil {
@@ -3314,8 +3314,8 @@ func (c *ChainFork) upgradeActorsV13VerifregFix(oldBuggyVerifregCID, newManifest
 				return fmt.Errorf("mismatched balance for actor %s: %d != %d", a, inActor.Balance, outActor.Balance)
 			}
 
-			if inActor.Address != outActor.Address && inActor.Address.String() != outActor.Address.String() {
-				return fmt.Errorf("mismatched address for actor %s: %s != %s", a, inActor.Address, outActor.Address)
+			if inActor.DelegatedAddress != outActor.DelegatedAddress && inActor.DelegatedAddress.String() != outActor.DelegatedAddress.String() {
+				return fmt.Errorf("mismatched address for actor %s: %s != %s", a, inActor.DelegatedAddress, outActor.DelegatedAddress)
 			}
 
 			if inActor.Head != outActor.Head && a != builtin.SystemActorAddr {

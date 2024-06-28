@@ -41,10 +41,10 @@ func SetupEAM(ctx context.Context, nst tree.Tree, nv network.Version) error {
 	}
 
 	header := &types.Actor{
-		Code:    codecid,
-		Head:    vmcontext.EmptyObjectCid,
-		Balance: big.Zero(),
-		Address: &builtintypes.EthereumAddressManagerActorAddr, // so that it can create ETH0
+		Code:             codecid,
+		Head:             vmcontext.EmptyObjectCid,
+		Balance:          big.Zero(),
+		DelegatedAddress: &builtintypes.EthereumAddressManagerActorAddr, // so that it can create ETH0
 	}
 	return nst.SetActor(ctx, builtintypes.EthereumAddressManagerActorAddr, header)
 }
@@ -57,11 +57,11 @@ func MakeEthNullAddressActor(av actorstypes.Version, addr address.Address) (*typ
 	}
 
 	act := &types.Actor{
-		Code:    actcid,
-		Head:    vmcontext.EmptyObjectCid,
-		Nonce:   0,
-		Balance: big.Zero(),
-		Address: &addr,
+		Code:             actcid,
+		Head:             vmcontext.EmptyObjectCid,
+		Nonce:            0,
+		Balance:          big.Zero(),
+		DelegatedAddress: &addr,
 	}
 
 	return act, nil

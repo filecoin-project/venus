@@ -20,7 +20,7 @@ func InteropNet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.NetworkInterop,
-			GenesisNetworkVersion: network.Version16,
+			GenesisNetworkVersion: network.Version22,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg2KiBV1,
 				abi.RegisteredSealProof_StackedDrg8MiBV1,

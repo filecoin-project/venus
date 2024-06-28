@@ -81,11 +81,11 @@ func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error)
 			}
 
 			actor, err := em.chainModule.Stmgr.GetActorAt(ctx, idAddr, ts)
-			if err != nil || actor.Address == nil {
+			if err != nil || actor.DelegatedAddress == nil {
 				return idAddr, true
 			}
 
-			return *actor.Address, true
+			return *actor.DelegatedAddress, true
 		},
 
 		MaxFilterResults: cfg.Event.MaxFilterResults,
