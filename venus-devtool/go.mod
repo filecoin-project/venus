@@ -8,8 +8,8 @@ require (
 	github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc7
 	github.com/filecoin-project/go-fil-markets v1.28.3
 	github.com/filecoin-project/go-jsonrpc v0.3.2
-	github.com/filecoin-project/go-state-types v0.14.0-rc1
-	github.com/filecoin-project/lotus v1.27.0-rc1.0.20240621064120-286fadaca4d2
+	github.com/filecoin-project/go-state-types v0.14.0-rc5
+	github.com/filecoin-project/lotus v1.27.0-rc1.0.20240628052249-b4c2e2e886eb
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-block-format v0.2.0
@@ -55,7 +55,7 @@ require (
 	github.com/drand/kyber v1.3.0 // indirect
 	github.com/drand/kyber-bls12381 v0.3.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20220519234331-bfd1f5f9fe38 // indirect
+	github.com/filecoin-project/filecoin-ffi v1.28.0-rc2 // indirect
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349 // indirect
 	github.com/filecoin-project/go-amt-ipld/v3 v3.1.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v4 v4.3.0 // indirect

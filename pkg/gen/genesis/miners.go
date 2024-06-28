@@ -549,7 +549,7 @@ func SetupStorageMiners(ctx context.Context,
 					paramBytes = mustEnc(confirmParams)
 				}
 
-				_, err = doExecValue(ctx, genesisVM, minerInfos[i].maddr, power.Address, big.Zero(), builtintypes.MethodsMiner.ConfirmSectorProofsValid, paramBytes)
+				_, err = doExecValue(ctx, genesisVM, minerInfos[i].maddr, power.Address, big.Zero(), builtintypes.MethodsMiner.InternalSectorSetupForPreseal, paramBytes)
 				if err != nil {
 					return cid.Undef, fmt.Errorf("failed to confirm presealed sectors: %w", err)
 				}

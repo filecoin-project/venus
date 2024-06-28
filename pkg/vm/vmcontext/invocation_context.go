@@ -520,11 +520,11 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 
 	newActor := &types.Actor{
 		// make this the right 'type' of actor
-		Code:    codeID,
-		Balance: abi.NewTokenAmount(0),
-		Head:    EmptyObjectCid,
-		Nonce:   0,
-		Address: &addr,
+		Code:             codeID,
+		Balance:          abi.NewTokenAmount(0),
+		Head:             EmptyObjectCid,
+		Nonce:            0,
+		DelegatedAddress: &addr,
 	}
 	if err := ctx.vm.State.SetActor(ctx.vm.context, addr, newActor); err != nil {
 		panic(err)

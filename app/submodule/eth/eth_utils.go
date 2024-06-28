@@ -442,9 +442,9 @@ func lookupEthAddress(ctx context.Context, addr address.Address, state tree.Tree
 	} else if err != nil {
 		// Any other error -> fail.
 		return types.EthAddress{}, err
-	} else if actor.Address == nil {
+	} else if actor.DelegatedAddress == nil {
 		// No delegated address -> use masked ID address.
-	} else if ethAddr, err := types.EthAddressFromFilecoinAddress(*actor.Address); err == nil && !ethAddr.IsMaskedID() {
+	} else if ethAddr, err := types.EthAddressFromFilecoinAddress(*actor.DelegatedAddress); err == nil && !ethAddr.IsMaskedID() {
 		// Conversable into an eth address, use it.
 		return ethAddr, nil
 	}
