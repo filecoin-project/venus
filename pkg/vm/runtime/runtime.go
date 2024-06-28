@@ -101,7 +101,7 @@ func Abort(code exitcode.ExitCode) {
 	panic(ExecutionPanic{code: code})
 }
 
-// Abortf will stop the LegacyVM execution and return an the error to the caller.
+// Abortf will stop the LegacyVM execution and return an error to the caller.
 func Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
 	panic(ExecutionPanic{code: code, msg: fmt.Sprintf(msg, args...)})
 }

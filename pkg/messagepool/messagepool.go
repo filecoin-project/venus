@@ -1636,7 +1636,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan types.MpoolUpdate, e
 
 func (mp *MessagePool) loadLocal(ctx context.Context) error {
 	if val := os.Getenv("VENUS_DISABLE_LOCAL_MESSAGE"); val != "" {
-		log.Warnf("receive environment to disable local local message")
+		log.Warnf("receive environment to disable local message")
 		return nil
 	}
 
