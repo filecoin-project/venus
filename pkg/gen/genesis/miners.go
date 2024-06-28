@@ -338,9 +338,6 @@ func SetupStorageMiners(ctx context.Context,
 		if err != nil {
 			return cid.Undef, fmt.Errorf("flushing vm: %w", err)
 		}
-		if err != nil {
-			return cid.Undef, fmt.Errorf("flushing vm: %w", err)
-		}
 
 		nst, err := tree.LoadState(ctx, cst, nh)
 		if err != nil {
