@@ -599,7 +599,8 @@ var preSealCmd = &cmds.Command{
 			nv = network.Version(ver)
 		}
 
-		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, nv, false)
+		var variant = miner.SealProofVariant_Standard // there's little reason to have this for a seed.
+		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, nv, variant)
 		if err != nil {
 			return err
 		}
