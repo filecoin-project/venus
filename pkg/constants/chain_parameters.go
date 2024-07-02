@@ -1,9 +1,10 @@
 package constants
 
 import (
+	"math"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	"math"
 )
 
 const (
@@ -37,3 +38,6 @@ const (
 	NoTimeout = math.MaxInt64
 	NoHeight  = abi.ChainEpoch(-1)
 )
+
+const F3Enabled = false
+const F3BootstrapEpoch abi.ChainEpoch = -1
