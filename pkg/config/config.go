@@ -305,7 +305,9 @@ type NetworkParamsConfig struct {
 	// As per https://github.com/ethereum-lists/chains
 	Eip155ChainID int `json:"-"`
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
-	ActorDebugging bool `json:"-"`
+	ActorDebugging   bool           `json:"-"`
+	F3Enabled        bool           `json:"f3Enabled"`
+	F3BootstrapEpoch abi.ChainEpoch `json:"f3BootstrapEpoch"`
 }
 
 // ForkUpgradeConfig record upgrade parameters
