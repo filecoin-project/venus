@@ -38,6 +38,3 @@ const (
 	NoTimeout = math.MaxInt64
 	NoHeight  = abi.ChainEpoch(-1)
 )
-
-const F3Enabled = false
-const F3BootstrapEpoch abi.ChainEpoch = -1
