@@ -9,7 +9,6 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
-	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-f3"
@@ -30,8 +29,6 @@ type F3 struct {
 }
 
 type F3Params struct {
-	fx.In
-
 	NetworkName  string
 	PubSub       *pubsub.PubSub
 	Host         host.Host
@@ -43,7 +40,7 @@ type F3Params struct {
 
 var log = logging.Logger("f3")
 
-func New(mctx context.Context, lc fx.Lifecycle, params F3Params) (*F3, error) {
+func New(mctx context.Context, params F3Params) (*F3, error) {
 	manifest := f3.LocalnetManifest()
 	manifest.NetworkName = gpbft.NetworkName(params.NetworkName)
 	manifest.ECDelay = 2 * time.Duration(constants.MainNetBlockDelaySecs) * time.Second
@@ -71,16 +68,12 @@ func New(mctx context.Context, lc fx.Lifecycle, params F3Params) (*F3, error) {
 		signer: &signer{params.Wallet},
 	}
 
-	lCtx, cancel := context.WithCancel(mctx)
-	lc.Append(fx.StartStopHook(
-		func() {
-			go func() {
-				err := fff.inner.Run(lCtx)
-				if err != nil {
-					log.Errorf("running f3: %+v", err)
-				}
-			}()
-		}, cancel))
+	go func() {
+		err := fff.inner.Run(mctx)
+		if err != nil {
+			log.Errorf("running f3: %+v", err)
+		}
+	}()
 
 	return fff, nil
 }
