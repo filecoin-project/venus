@@ -33,11 +33,19 @@ func (a *MessagePoolAPI) MpoolPublishByAddr(ctx context.Context, addr address.Ad
 }
 
 func (a *MessagePoolAPI) MpoolPublishMessage(ctx context.Context, smsg *types.SignedMessage) error {
+	if err := sanityCheckOutgoingMessage(&smsg.Message); err != nil {
+		return fmt.Errorf("message %s from %s with nonce %d failed sanity check: %w", smsg.Cid(),
+			smsg.Message.From, smsg.Message.Nonce, err)
+	}
 	return a.mp.MPool.PublishMsg(ctx, smsg)
 }
 
 // MpoolPush pushes a signed message to mempool.
 func (a *MessagePoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
+	if err := sanityCheckOutgoingMessage(&smsg.Message); err != nil {
+		return cid.Undef, fmt.Errorf("message %s from %s with nonce %d failed sanity check: %w", smsg.Cid(),
+			smsg.Message.From, smsg.Message.Nonce, err)
+	}
 	return a.mp.MPool.Push(ctx, smsg)
 }
 
@@ -170,6 +178,10 @@ func (a *MessagePoolAPI) MpoolClear(ctx context.Context, local bool) error {
 
 // MpoolPushUntrusted pushes a signed message to mempool from untrusted sources.
 func (a *MessagePoolAPI) MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
+	if err := sanityCheckOutgoingMessage(&smsg.Message); err != nil {
+		return cid.Undef, fmt.Errorf("message %s from %s with nonce %d failed sanity check: %w", smsg.Cid(),
+			smsg.Message.From, smsg.Message.Nonce, err)
+	}
 	return a.mp.MPool.PushUntrusted(ctx, smsg)
 }
 
@@ -180,6 +192,11 @@ func (a *MessagePoolAPI) MpoolPushUntrusted(ctx context.Context, smsg *types.Sig
 // When maxFee is set to 0, MpoolPushMessage will guess appropriate fee
 // based on current chain conditions
 func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
+	if err := sanityCheckOutgoingMessage(msg); err != nil {
+		return nil, fmt.Errorf("message %s from %s with nonce %d failed sanity check: %w", msg.Cid(),
+			msg.From, msg.Nonce, err)
+	}
+
 	cp := *msg
 	msg = &cp
 	inMsg := *msg
@@ -245,6 +262,10 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Messag
 func (a *MessagePoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
 	var messageCids []cid.Cid
 	for _, smsg := range smsgs {
+		if err := sanityCheckOutgoingMessage(&smsg.Message); err != nil {
+			return nil, fmt.Errorf("message %s from %s with nonce %d failed sanity check: %w", smsg.Cid(),
+				smsg.Message.From, smsg.Message.Nonce, err)
+		}
 		smsgCid, err := a.mp.MPool.Push(ctx, smsg)
 		if err != nil {
 			return messageCids, err
@@ -258,6 +279,10 @@ func (a *MessagePoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.Sign
 func (a *MessagePoolAPI) MpoolBatchPushUntrusted(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
 	var messageCids []cid.Cid
 	for _, smsg := range smsgs {
+		if err := sanityCheckOutgoingMessage(&smsg.Message); err != nil {
+			return nil, fmt.Errorf("message %s from %s with nonce %d failed sanity check: %w", smsg.Cid(),
+				smsg.Message.From, smsg.Message.Nonce, err)
+		}
 		smsgCid, err := a.mp.MPool.PushUntrusted(ctx, smsg)
 		if err != nil {
 			return messageCids, err
@@ -271,6 +296,10 @@ func (a *MessagePoolAPI) MpoolBatchPushUntrusted(ctx context.Context, smsgs []*t
 func (a *MessagePoolAPI) MpoolBatchPushMessage(ctx context.Context, msgs []*types.Message, spec *types.MessageSendSpec) ([]*types.SignedMessage, error) {
 	var smsgs []*types.SignedMessage
 	for _, msg := range msgs {
+		if err := sanityCheckOutgoingMessage(msg); err != nil {
+			return nil, fmt.Errorf("message %s from %s with nonce %d failed sanity check: %w", msg.Cid(),
+				msg.From, msg.Nonce, err)
+		}
 		smsg, err := a.MpoolPushMessage(ctx, msg, spec)
 		if err != nil {
 			return smsgs, err
@@ -324,4 +353,20 @@ func (a *MessagePoolAPI) MpoolCheckPendingMessages(ctx context.Context, addr add
 
 func (a *MessagePoolAPI) MpoolCheckReplaceMessages(ctx context.Context, msg []*types.Message) ([][]types.MessageCheckStatus, error) {
 	return a.mp.MPool.CheckReplaceMessages(ctx, msg)
+}
+
+func sanityCheckOutgoingMessage(msg *types.Message) error {
+	// Check that the message's TO address is a _valid_ Eth address if it's a delegated address.
+	//
+	// It's legal (from a consensus perspective) to send funds to any 0xf410f address as long as
+	// the payload is at most 54 bytes, but the vast majority of this address space is
+	// essentially a black-hole. Unfortunately, the conversion from 0x addresses to Filecoin
+	// native addresses has a few pitfalls (especially with respect to masked ID addresses), so
+	// we've added this check to the API to avoid accidentally (and avoidably) sending messages
+	// to these black-hole addresses.
+	if msg.To.Protocol() == address.Delegated && !types.IsEthAddress(msg.To) {
+		return fmt.Errorf("message recipient %s is a delegated address but not a valid Eth Address", msg.To)
+	}
+
+	return nil
 }
