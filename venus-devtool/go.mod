@@ -16,7 +16,7 @@ require (
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/go-graphsync v0.16.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
-	github.com/libp2p/go-libp2p v0.34.1
+	github.com/libp2p/go-libp2p v0.35.0
 	github.com/libp2p/go-libp2p-pubsub v0.11.0
 	github.com/multiformats/go-multiaddr v0.12.4
 	github.com/urfave/cli/v2 v2.25.5
@@ -42,7 +42,7 @@ require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/daaku/go.zipexe v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dchest/blake2b v1.0.0 // indirect
@@ -52,7 +52,7 @@ require (
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/drand/drand v1.5.11 // indirect
-	github.com/drand/kyber v1.3.0 // indirect
+	github.com/drand/kyber v1.3.1 // indirect
 	github.com/drand/kyber-bls12381 v0.3.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/filecoin-project/filecoin-ffi v1.28.0-rc2 // indirect
@@ -64,6 +64,7 @@ require (
 	github.com/filecoin-project/go-commp-utils/nonffi v0.0.0-20220905160352-62059082a837 // indirect
 	github.com/filecoin-project/go-crypto v0.0.1 // indirect
 	github.com/filecoin-project/go-ds-versioning v0.1.2 // indirect
+	github.com/filecoin-project/go-f3 v0.0.2 // indirect
 	github.com/filecoin-project/go-fil-commcid v0.1.0 // indirect
 	github.com/filecoin-project/go-hamt-ipld v0.1.5 // indirect
 	github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 // indirect
@@ -190,7 +191,7 @@ require (
 	github.com/whyrusleeping/go-logging v0.0.1 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
+	github.com/xrash/smetrics v0.0.0-20240312152122-5f08fbb34913 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/otel v1.26.0 // indirect
 	go.opentelemetry.io/otel/bridge/opencensus v0.39.0 // indirect
