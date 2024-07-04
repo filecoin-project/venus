@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
 	"github.com/filecoin-project/venus/app/submodule/eth"
+	"github.com/filecoin-project/venus/app/submodule/f3"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/ipfs-force-community/sophon-auth/core"
 	"github.com/ipfs-force-community/sophon-auth/jwtclient"
@@ -136,6 +137,11 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.wallet")
 	}
 
+	nd.f3, err = f3.NewF3Submodule(ctx, nd.repo, nd.chain, nd.network, nd.wallet.API())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build node.f3")
+	}
+
 	nd.mpool, err = mpool.NewMpoolSubmodule(ctx, (*builder)(b), nd.network, nd.chain, nd.wallet)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.mpool")
@@ -191,6 +197,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.common,
 		nd.eth,
 		nd.actorEvent,
+		nd.f3,
 	)
 
 	if err != nil {
