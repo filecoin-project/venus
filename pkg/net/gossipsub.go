@@ -49,6 +49,7 @@ func NewGossipSub(ctx context.Context,
 	drandSchedule map[abi.ChainEpoch]config.DrandEnum,
 	bootNodes []peer.AddrInfo,
 	bs bool,
+	f3enabled bool,
 ) (*pubsub.PubSub, error) {
 	bootstrappers := make(map[peer.ID]struct{})
 	for _, info := range bootNodes {
@@ -311,7 +312,7 @@ func NewGossipSub(ctx context.Context,
 		indexerIngestTopic,
 	}
 	allowTopics = append(allowTopics, drandTopics...)
-	if false /* f3enabled */ {
+	if f3enabled {
 		allowTopics = append(allowTopics, gpbft.NetworkName(networkName).PubSubTopic())
 	}
 	options = append(options,

@@ -178,7 +178,7 @@ func NewNetworkSubmodule(ctx context.Context,
 	}
 
 	sk := net.NewScoreKeeper()
-	gsub, err := net.NewGossipSub(ctx, peerHost, sk, networkName, cfg.NetworkParams.DrandSchedule, bootNodes, cfg.PubsubConfig.Bootstrapper)
+	gsub, err := net.NewGossipSub(ctx, peerHost, sk, networkName, cfg.NetworkParams.DrandSchedule, bootNodes, cfg.PubsubConfig.Bootstrapper, config.Repo().Config().NetworkParams.F3Enabled)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up network")
 	}
