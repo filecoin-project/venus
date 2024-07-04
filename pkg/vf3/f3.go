@@ -16,9 +16,10 @@ import (
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/statemanger"
-	"github.com/filecoin-project/venus/venus-shared/api/wallet"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	logging "github.com/ipfs/go-log"
 )
 
@@ -29,13 +30,14 @@ type F3 struct {
 }
 
 type F3Params struct {
-	NetworkName  string
-	PubSub       *pubsub.PubSub
-	Host         host.Host
-	ChainStore   *chain.Store
-	StateManager *statemanger.Stmgr
-	Datastore    datastore.Batching
-	Wallet       wallet.IWallet
+	NetworkName   string
+	NetworkParams *config.NetworkParamsConfig
+	PubSub        *pubsub.PubSub
+	Host          host.Host
+	ChainStore    *chain.Store
+	StateManager  *statemanger.Stmgr
+	Datastore     datastore.Batching
+	Wallet        v1api.IWallet
 }
 
 var log = logging.Logger("f3")
@@ -43,9 +45,9 @@ var log = logging.Logger("f3")
 func New(mctx context.Context, params F3Params) (*F3, error) {
 	manifest := f3.LocalnetManifest()
 	manifest.NetworkName = gpbft.NetworkName(params.NetworkName)
-	manifest.ECDelay = 2 * time.Duration(constants.MainNetBlockDelaySecs) * time.Second
+	manifest.ECDelay = 2 * time.Duration(params.NetworkParams.BlockDelay) * time.Second
 	manifest.ECPeriod = manifest.ECDelay
-	manifest.BootstrapEpoch = int64(constants.F3BootstrapEpoch)
+	manifest.BootstrapEpoch = int64(params.NetworkParams.F3BootstrapEpoch)
 	manifest.ECFinality = int64(constants.Finality)
 
 	ds := namespace.Wrap(params.Datastore, datastore.NewKey("/f3"))

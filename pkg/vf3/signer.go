@@ -5,13 +5,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3/gpbft"
-	"github.com/filecoin-project/venus/venus-shared/api/wallet"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"golang.org/x/xerrors"
 )
 
 type signer struct {
-	wallet wallet.IWallet
+	wallet v1api.IWallet
 }
 
 // Sign signs a message with the private key corresponding to a public key.
