@@ -130,9 +130,12 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 	if err != nil {
 		return nil, xerrors.Errorf("loading the state tree: %w", err)
 	}
-	powerAct, _, err := state.GetActor(ctx, power.Address)
+	powerAct, found, err := state.GetActor(ctx, power.Address)
 	if err != nil {
 		return nil, xerrors.Errorf("getting the power actor: %w", err)
+	}
+	if !found {
+		return nil, xerrors.Errorf("not found the power actor by address: %s", power.Address)
 	}
 
 	powerState, err := power.Load(ec.ChainStore.Store(ctx), powerAct)
@@ -165,9 +168,12 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 			Power: claim.QualityAdjPower.Int,
 		}
 
-		act, _, err := state.GetActor(ctx, minerAddr)
+		act, found, err := state.GetActor(ctx, minerAddr)
 		if err != nil {
 			return xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
+		}
+		if !found {
+			return xerrors.Errorf("(get sset) failed to find miner actor by addres: %s", minerAddr)
 		}
 		mstate, err := miner.Load(ec.ChainStore.Store(ctx), act)
 		if err != nil {
