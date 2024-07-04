@@ -71,8 +71,8 @@ func ForceNet() *NetworkConf {
 			AllowableClockDriftSecs: 1,
 			Eip155ChainID:           31415926,
 			ActorDebugging:          true,
-			F3Enabled:               false,
-			F3BootstrapEpoch:        -1,
+			F3Enabled:               true,
+			F3BootstrapEpoch:        100,
 		},
 	}
 	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
