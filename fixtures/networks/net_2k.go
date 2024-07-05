@@ -67,6 +67,7 @@ func Net2k() *NetworkConf {
 			ActorDebugging:          true,
 			F3Enabled:               true,
 			F3BootstrapEpoch:        100,
+			ManifestServerID:        "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG",
 		},
 	}
 

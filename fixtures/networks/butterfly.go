@@ -71,6 +71,7 @@ func ButterflySnapNet() *NetworkConf {
 			ActorDebugging:          false,
 			F3Enabled:               true,
 			F3BootstrapEpoch:        200,
+			ManifestServerID:        "12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6",
 		},
 	}
 

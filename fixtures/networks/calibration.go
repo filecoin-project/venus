@@ -75,13 +75,14 @@ func Calibration() *NetworkConf {
 			AllowableClockDriftSecs: 1,
 			Eip155ChainID:           314159,
 			ActorDebugging:          false,
-			F3Enabled:               false,
-			F3BootstrapEpoch:        -1,
+			F3Enabled:               true,
 		},
 	}
 
 	nc.Network.ForkUpgradeParam.UpgradePhoenixHeight = nc.Network.ForkUpgradeParam.UpgradeDragonHeight + 120
 	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
+
+	nc.Network.F3BootstrapEpoch = nc.Network.ForkUpgradeParam.UpgradeWaffleHeight + 100
 
 	return nc
 }
