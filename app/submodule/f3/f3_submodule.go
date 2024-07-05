@@ -18,7 +18,7 @@ type F3Submodule struct {
 	F3 *vf3.F3
 }
 
-func NewF3Submodule(ctx context.Context, repo repo.Repo, chain *chain.ChainSubmodule, network *network.NetworkSubmodule, walletApi v1api.IWallet) (*F3Submodule, error) {
+func NewF3Submodule(ctx context.Context, repo repo.Repo, chain *chain.ChainSubmodule, network *network.NetworkSubmodule, walletAPI v1api.IWallet) (*F3Submodule, error) {
 	netconf := repo.Config().NetworkParams
 	if !netconf.F3Enabled {
 		return &F3Submodule{
@@ -33,7 +33,7 @@ func NewF3Submodule(ctx context.Context, repo repo.Repo, chain *chain.ChainSubmo
 		ChainStore:    chain.ChainReader,
 		StateManager:  chain.Stmgr,
 		Datastore:     repo.ChainDatastore(),
-		Wallet:        walletApi,
+		Wallet:        walletAPI,
 	})
 	if err != nil {
 		return nil, err

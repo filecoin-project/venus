@@ -109,11 +109,11 @@ func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 f3.TipSet) (f3.TipSet, 
 			return nil, xerrors.Errorf("getting tipset by key for get parent: %w", err)
 		}
 	}
-	parentTs, err := ec.ChainStore.GetTipSet(ctx, ts.Parents())
+	parentTS, err := ec.ChainStore.GetTipSet(ctx, ts.Parents())
 	if err != nil {
 		return nil, xerrors.Errorf("getting parent tipset: %w", err)
 	}
-	return wrapTS(parentTs), nil
+	return wrapTS(parentTS), nil
 }
 
 func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (gpbft.PowerEntries, error) {
@@ -173,7 +173,7 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 			return xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
 		}
 		if !found {
-			return xerrors.Errorf("(get sset) failed to find miner actor by addres: %s", minerAddr)
+			return xerrors.Errorf("(get sset) failed to find miner actor by address: %s", minerAddr)
 		}
 		mstate, err := miner.Load(ec.ChainStore.Store(ctx), act)
 		if err != nil {
