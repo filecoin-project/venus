@@ -63,7 +63,7 @@ func InteropNet() *NetworkConf {
 				UpgradePhoenixHeight:              -26,
 				UpgradeWaffleHeight:               50,
 			},
-			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
 			PropagationDelaySecs:    6,
 			AllowableClockDriftSecs: 1,
@@ -71,10 +71,9 @@ func InteropNet() *NetworkConf {
 			ActorDebugging:          false,
 			F3Enabled:               true,
 			F3BootstrapEpoch:        1000,
+			ManifestServerID:        "12D3KooWQJ2rdVnG4okDUB6yHQhAjNutGNemcM7XzqC9Eo4z9Jce",
 		},
 	}
-
-	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
 
 	return nc
 }

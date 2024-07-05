@@ -2,6 +2,7 @@ package net
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	blake2b "github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -40,6 +42,12 @@ const (
 	GraylistScoreThreshold           = -2500
 	AcceptPXScoreThreshold           = 1000
 	OpportunisticGraftScoreThreshold = 3.5
+
+	// Determines the max. number of configuration changes
+	// that are allowed for the dynamic manifest.
+	// If the manifest changes more than this number, the F3
+	// message topic will be filtered
+	MaxDynamicManifestChangesAllowed = 1000
 )
 
 func NewGossipSub(ctx context.Context,
@@ -313,7 +321,28 @@ func NewGossipSub(ctx context.Context,
 	}
 	allowTopics = append(allowTopics, drandTopics...)
 	if f3enabled {
-		allowTopics = append(allowTopics, gpbft.NetworkName(networkName).PubSubTopic())
+		f3TopicName := manifest.PubSubTopicFromNetworkName(gpbft.NetworkName(networkName))
+		allowTopics = append(allowTopics, f3TopicName)
+
+		// allow dynamic manifest topic and the new topic names after a reconfiguration.
+		// Note: This is pretty ugly, but I tried to use a regex subscription filter
+		// as the commented code below, but unfortunately it overwrites previous filters. A simple fix would
+		// be to allow combining several topic filters, but for now this works.
+		//
+		// 	pattern := fmt.Sprintf(`^\/f3\/%s\/0\.0\.1\/?[0-9]*$`, in.Nn)
+		// 	rx, err := regexp.Compile(pattern)
+		// 	if err != nil {
+		// 		return nil, xerrors.Errorf("failed to compile manifest topic regex: %w", err)
+		// 	}
+		// 	options = append(options,
+		// 		pubsub.WithSubscriptionFilter(
+		// 			pubsub.WrapLimitSubscriptionFilter(
+		// 				pubsub.NewRegexpSubscriptionFilter(rx),
+		// 				100)))
+		allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
+		for i := 0; i < MaxDynamicManifestChangesAllowed; i++ {
+			allowTopics = append(allowTopics, f3TopicName+"/"+fmt.Sprintf("%d", i))
+		}
 	}
 	options = append(options,
 		pubsub.WithSubscriptionFilter(

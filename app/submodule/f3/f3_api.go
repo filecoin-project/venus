@@ -19,7 +19,6 @@ type f3API struct {
 var ErrF3Disabled = errors.New("f3 is disabled")
 
 func (f3api *f3API) F3Participate(ctx context.Context, miner address.Address) (<-chan string, error) {
-
 	if f3api.f3module.F3 == nil {
 		log.Infof("F3Participate called for %v, F3 is disabled", miner)
 		return nil, ErrF3Disabled

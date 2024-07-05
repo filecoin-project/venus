@@ -3,21 +3,20 @@ package vf3
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-f3"
 	"github.com/filecoin-project/go-f3/blssig"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	logging "github.com/ipfs/go-log"
@@ -30,40 +29,38 @@ type F3 struct {
 }
 
 type F3Params struct {
-	NetworkName   string
-	NetworkParams *config.NetworkParamsConfig
-	PubSub        *pubsub.PubSub
-	Host          host.Host
-	ChainStore    *chain.Store
-	StateManager  *statemanger.Stmgr
-	Datastore     datastore.Batching
-	Wallet        v1api.IWallet
+	ManifestServerID string
+	ManifestProvider manifest.ManifestProvider
+	PubSub           *pubsub.PubSub
+	Host             host.Host
+	ChainStore       *chain.Store
+	StateManager     *statemanger.Stmgr
+	Datastore        datastore.Batching
+	Wallet           v1api.IWallet
 }
 
 var log = logging.Logger("f3")
 
 func New(mctx context.Context, params F3Params) (*F3, error) {
-	manifest := f3.LocalnetManifest()
-	manifest.NetworkName = gpbft.NetworkName(params.NetworkName)
-	manifest.ECDelay = 2 * time.Duration(params.NetworkParams.BlockDelay) * time.Second
-	manifest.ECPeriod = manifest.ECDelay
-	manifest.BootstrapEpoch = int64(params.NetworkParams.F3BootstrapEpoch)
-	manifest.ECFinality = int64(constants.Finality)
-
 	ds := namespace.Wrap(params.Datastore, datastore.NewKey("/f3"))
 	ec := &ecWrapper{
 		ChainStore:   params.ChainStore,
 		StateManager: params.StateManager,
-		Manifest:     manifest,
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
-	module, err := f3.New(mctx, manifest, ds,
-		params.Host, params.PubSub, verif, ec, log, nil)
+	senderID, err := peer.Decode(params.ManifestServerID)
+	if err != nil {
+		return nil, xerrors.Errorf("decoding F3 manifest server identity: %w", err)
+	}
+
+	module, err := f3.New(mctx, params.ManifestProvider, ds,
+		params.Host, senderID, params.PubSub, verif, ec, log, nil)
 
 	if err != nil {
 		return nil, xerrors.Errorf("creating F3: %w", err)
 	}
+	params.ManifestProvider.SetManifestChangeCallback(f3.ManifestChangeCallback(module))
 
 	fff := &F3{
 		inner:  module,

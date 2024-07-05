@@ -308,6 +308,7 @@ type NetworkParamsConfig struct {
 	ActorDebugging   bool           `json:"-"`
 	F3Enabled        bool           `json:"f3Enabled"`
 	F3BootstrapEpoch abi.ChainEpoch `json:"f3BootstrapEpoch"`
+	ManifestServerID string         `json:"manifestServerID"`
 }
 
 // ForkUpgradeConfig record upgrade parameters

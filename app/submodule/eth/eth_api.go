@@ -714,6 +714,7 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.
 	)
 
 	for blocksIncluded < int(params.BlkCount) && ts.Height() > 0 {
+		basefee = ts.Blocks()[0].ParentBaseFee
 		msgs, rcpts, err := messagesAndReceipts(ctx, ts, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
 		if err != nil {
 			return types.EthFeeHistory{}, fmt.Errorf("failed to retrieve messages and receipts for height %d: %w", ts.Height(), err)

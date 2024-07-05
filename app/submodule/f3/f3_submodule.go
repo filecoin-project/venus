@@ -18,22 +18,27 @@ type F3Submodule struct {
 	F3 *vf3.F3
 }
 
-func NewF3Submodule(ctx context.Context, repo repo.Repo, chain *chain.ChainSubmodule, network *network.NetworkSubmodule, walletAPI v1api.IWallet) (*F3Submodule, error) {
-	netconf := repo.Config().NetworkParams
-	if !netconf.F3Enabled {
+func NewF3Submodule(ctx context.Context,
+	repo repo.Repo,
+	chain *chain.ChainSubmodule,
+	network *network.NetworkSubmodule,
+	walletAPI v1api.IWallet,
+) (*F3Submodule, error) {
+	netConf := repo.Config().NetworkParams
+	if !netConf.F3Enabled {
 		return &F3Submodule{
-			F3: &vf3.F3{},
+			F3: nil,
 		}, nil
 	}
 	m, err := vf3.New(ctx, vf3.F3Params{
-		NetworkName:   network.NetworkName,
-		NetworkParams: netconf,
-		PubSub:        network.Pubsub,
-		Host:          network.Host,
-		ChainStore:    chain.ChainReader,
-		StateManager:  chain.Stmgr,
-		Datastore:     repo.ChainDatastore(),
-		Wallet:        walletAPI,
+		ManifestServerID: netConf.ManifestServerID,
+		PubSub:           network.Pubsub,
+		Host:             network.Host,
+		ChainStore:       chain.ChainReader,
+		StateManager:     chain.Stmgr,
+		Datastore:        repo.ChainDatastore(),
+		Wallet:           walletAPI,
+		ManifestProvider: vf3.NewManifestProvider(network.NetworkName, chain.ChainReader, chain.Stmgr, network.Pubsub, netConf),
 	})
 	if err != nil {
 		return nil, err
