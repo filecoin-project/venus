@@ -74,6 +74,8 @@ func Mainnet() *NetworkConf {
 			AllowableClockDriftSecs: 1,
 			Eip155ChainID:           314,
 			ActorDebugging:          false,
+			F3Enabled:               false,
+			F3BootstrapEpoch:        -1,
 		},
 	}
 

@@ -15,7 +15,7 @@ require (
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/docker/go-units v0.5.0
 	github.com/drand/drand v1.5.11
-	github.com/drand/kyber v1.3.0
+	github.com/drand/kyber v1.3.1
 	github.com/dustin/go-humanize v1.0.1
 	github.com/etherlabsio/healthcheck/v2 v2.0.0
 	github.com/fatih/color v1.15.0
@@ -27,6 +27,7 @@ require (
 	github.com/filecoin-project/go-commp-utils v0.1.3
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc6
+	github.com/filecoin-project/go-f3 v0.0.2
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.28.2
 	github.com/filecoin-project/go-jsonrpc v0.1.5
@@ -75,7 +76,7 @@ require (
 	github.com/ipld/go-car v0.6.2
 	github.com/ipld/go-car/v2 v2.13.1
 	github.com/jbenet/goprocess v0.1.4
-	github.com/libp2p/go-libp2p v0.34.1
+	github.com/libp2p/go-libp2p v0.35.0
 	github.com/libp2p/go-libp2p-kad-dht v0.25.2
 	github.com/libp2p/go-libp2p-pubsub v0.11.0
 	github.com/libp2p/go-msgio v0.3.0
@@ -114,6 +115,7 @@ require (
 )
 
 require (
+	github.com/Kubuxu/go-broadcast v0.0.0-20240621161059-1a8c90734cd6 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/ipfs/go-blockservice v0.5.2 // indirect
 	github.com/ipfs/go-ipfs-blockstore v1.3.1 // indirect
@@ -160,7 +162,7 @@ require (
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20231225121904-e25f5bc08668 // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -315,7 +317,7 @@ require (
 	github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
+	github.com/xrash/smetrics v0.0.0-20240312152122-5f08fbb34913 // indirect
 	go.opentelemetry.io/otel v1.26.0
 	go.opentelemetry.io/otel/metric v1.26.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v0.39.0 // indirect

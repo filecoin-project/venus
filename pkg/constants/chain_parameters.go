@@ -1,9 +1,10 @@
 package constants
 
 import (
+	"math"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	"math"
 )
 
 const (

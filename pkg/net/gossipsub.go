@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	blake2b "github.com/minio/blake2b-simd"
 
+	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -48,6 +49,7 @@ func NewGossipSub(ctx context.Context,
 	drandSchedule map[abi.ChainEpoch]config.DrandEnum,
 	bootNodes []peer.AddrInfo,
 	bs bool,
+	f3enabled bool,
 ) (*pubsub.PubSub, error) {
 	bootstrappers := make(map[peer.ID]struct{})
 	for _, info := range bootNodes {
@@ -310,6 +312,9 @@ func NewGossipSub(ctx context.Context,
 		indexerIngestTopic,
 	}
 	allowTopics = append(allowTopics, drandTopics...)
+	if f3enabled {
+		allowTopics = append(allowTopics, gpbft.NetworkName(networkName).PubSubTopic())
+	}
 	options = append(options,
 		pubsub.WithSubscriptionFilter(
 			pubsub.WrapLimitSubscriptionFilter(

@@ -65,6 +65,8 @@ func Net2k() *NetworkConf {
 			AllowableClockDriftSecs: 1,
 			Eip155ChainID:           31415926,
 			ActorDebugging:          true,
+			F3Enabled:               true,
+			F3BootstrapEpoch:        100,
 		},
 	}
 
