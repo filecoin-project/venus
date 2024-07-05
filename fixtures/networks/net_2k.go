@@ -59,7 +59,7 @@ func Net2k() *NetworkConf {
 				UpgradePhoenixHeight:              -26,
 				UpgradeWaffleHeight:               200,
 			},
-			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
 			PropagationDelaySecs:    1,
 			AllowableClockDriftSecs: 1,
@@ -69,8 +69,6 @@ func Net2k() *NetworkConf {
 			F3BootstrapEpoch:        100,
 		},
 	}
-
-	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
 
 	return nc
 }

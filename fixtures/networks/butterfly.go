@@ -63,7 +63,7 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradePhoenixHeight:              -26,
 				UpgradeWaffleHeight:               100,
 			},
-			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
 			PropagationDelaySecs:    6,
 			AllowableClockDriftSecs: 1,
@@ -73,8 +73,6 @@ func ButterflySnapNet() *NetworkConf {
 			F3BootstrapEpoch:        200,
 		},
 	}
-
-	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
 
 	return nc
 }
