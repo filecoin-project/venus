@@ -25,11 +25,18 @@ import (
 
 var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
 
+// Research into Filecoin chain behaviour suggests that probabilistic finality
+// generally approaches the intended stability guarantee at, or near, 30 epochs.
+// Although a strictly "finalized" safe recommendation remains 900 epochs.
+// See https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0089.md
+const SafeEpochDelay = abi.ChainEpoch(30)
+
 // mainnet
 var Eip155ChainID = 314
 
 func SetEip155ChainID(val int) {
 	Eip155ChainID = val
+	initEthLegacy155TxSignature()
 }
 
 type EthUint64 uint64
@@ -203,7 +210,7 @@ func init() {
 	}
 }
 
-func NewEthBlock(hasTransactions bool) EthBlock {
+func NewEthBlock(hasTransactions bool, tipsetLen int) EthBlock {
 	b := EthBlock{
 		Sha3Uncles:       EmptyUncleHash, // Sha3Uncles set to a hardcoded value which is used by some clients to determine if has no uncles.,
 		StateRoot:        EmptyEthHash,
@@ -214,7 +221,7 @@ func NewEthBlock(hasTransactions bool) EthBlock {
 		Extradata:        []byte{},
 		MixHash:          EmptyEthHash,
 		Nonce:            EmptyEthNonce,
-		GasLimit:         EthUint64(constants.BlockGasLimit), // TODO we map Ethereum blocks to Filecoin tipsets; this is inconsistent.
+		GasLimit:         EthUint64(constants.BlockGasLimit * uint64(tipsetLen)),
 		Uncles:           []EthHash{},
 		Transactions:     []interface{}{},
 	}
@@ -1038,12 +1045,6 @@ type EthTrace struct {
 	TraceAddress []int  `json:"traceAddress"`
 	Action       any    `json:"action"`
 	Result       any    `json:"result"`
-
-	Parent *EthTrace `json:"-"`
-
-	// if a subtrace makes a call to GetBytecode, we store a pointer to that subtrace here
-	// which we then lookup when checking for delegatecall (InvokeContractDelegate)
-	LastByteCode *EthTrace `json:"-"`
 }
 
 type EthTraceBlock struct {
@@ -1060,6 +1061,14 @@ type EthTraceReplayBlockTransaction struct {
 	Trace           []*EthTrace `json:"trace"`
 	TransactionHash EthHash     `json:"transactionHash"`
 	VMTrace         *string     `json:"vmTrace"`
+}
+
+type EthTraceTransaction struct {
+	*EthTrace
+	BlockHash           EthHash `json:"blockHash"`
+	BlockNumber         int64   `json:"blockNumber"`
+	TransactionHash     EthHash `json:"transactionHash"`
+	TransactionPosition int     `json:"transactionPosition"`
 }
 
 type EthCallTraceAction struct {

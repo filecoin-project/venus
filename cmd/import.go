@@ -11,11 +11,11 @@ import (
 	"github.com/filecoin-project/venus/pkg/consensus/chainselector"
 	"github.com/filecoin-project/venus/pkg/httpreader"
 
-	"github.com/DataDog/zstd"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/klauspost/compress/zstd"
 	"github.com/mitchellh/go-homedir"
 	"gopkg.in/cheggaaa/pb.v1"
 )
@@ -62,7 +62,7 @@ func importChain(ctx context.Context, r repo.Repo, fname string) error {
 
 	bs := r.Datastore()
 	// setup a ipldCbor on top of the local store
-	chainStore := chain.NewStore(r.ChainDatastore(), bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight)
+	chainStore := chain.NewStore(r.ChainDatastore(), bs, cid.Undef, chainselector.Weight)
 
 	bufr := bufio.NewReaderSize(rd, 1<<20)
 
@@ -80,12 +80,11 @@ func importChain(ctx context.Context, r repo.Repo, fname string) error {
 
 	var ir io.Reader = br
 	if string(header[1:]) == "\xB5\x2F\xFD" { // zstd
-		zr := zstd.NewReader(br)
-		defer func() {
-			if err := zr.Close(); err != nil {
-				log.Errorw("closing zstd reader", "error", err)
-			}
-		}()
+		zr, err := zstd.NewReader(br)
+		if err != nil {
+			return err
+		}
+		defer zr.Close()
 		ir = zr
 	}
 

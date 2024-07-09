@@ -80,7 +80,7 @@ func (msa *minerStateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr ad
 // NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 // expiration epoch
 // return nil if sector not found
-func (msa *minerStateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*types.SectorOnChainInfo, error) {
+func (msa *minerStateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorOnChainInfo, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("loading tipset %s: %v", tsk, err)
@@ -141,8 +141,21 @@ func (msa *minerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Addr
 		ConsensusFaultElapsed:      minfo.ConsensusFaultElapsed,
 		PendingOwnerAddress:        minfo.PendingOwnerAddress,
 		Beneficiary:                minfo.Beneficiary,
-		BeneficiaryTerm:            &minfo.BeneficiaryTerm,
-		PendingBeneficiaryTerm:     minfo.PendingBeneficiaryTerm,
+		BeneficiaryTerm: &types.BeneficiaryTerm{
+			Quota:      minfo.BeneficiaryTerm.Quota,
+			UsedQuota:  minfo.BeneficiaryTerm.UsedQuota,
+			Expiration: minfo.BeneficiaryTerm.Expiration,
+		},
+	}
+
+	if minfo.PendingBeneficiaryTerm != nil {
+		ret.PendingBeneficiaryTerm = &types.PendingBeneficiaryChange{
+			NewBeneficiary:        minfo.PendingBeneficiaryTerm.NewBeneficiary,
+			NewQuota:              minfo.PendingBeneficiaryTerm.NewQuota,
+			NewExpiration:         minfo.PendingBeneficiaryTerm.NewExpiration,
+			ApprovedByBeneficiary: minfo.PendingBeneficiaryTerm.ApprovedByBeneficiary,
+			ApprovedByNominee:     minfo.PendingBeneficiaryTerm.ApprovedByNominee,
+		}
 	}
 
 	if minfo.PendingWorkerKey != nil {
@@ -320,7 +333,7 @@ func (msa *minerStateAPI) StateMinerDeadlines(ctx context.Context, maddr address
 }
 
 // StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
-func (msa *minerStateAPI) StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*types.SectorOnChainInfo, error) {
+func (msa *minerStateAPI) StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*lminer.SectorOnChainInfo, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
@@ -856,7 +869,7 @@ func (msa *minerStateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, 
 		return types.CirculatingSupply{}, err
 	}
 
-	return msa.ChainReader.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
+	return msa.CirculatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
 }
 
 // StateCirculatingSupply returns the exact circulating supply of Filecoin at the given tipset.
@@ -869,7 +882,22 @@ func (msa *minerStateAPI) StateCirculatingSupply(ctx context.Context, tsk types.
 			tsk.String(), err)
 	}
 
-	return msa.ChainReader.StateCirculatingSupply(ctx, parent.Key())
+	ts, err := msa.ChainReader.GetTipSet(ctx, parent.Key())
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
+
+	root, err := msa.ChainReader.GetTipSetStateRoot(ctx, ts)
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
+
+	sTree, err := tree.LoadState(ctx, msa.ChainReader.StateStore(), root)
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
+
+	return msa.CirculatingSupplyCalculator.GetCirculatingSupply(ctx, ts.Height(), sTree)
 }
 
 // StateMarketDeals returns information about every deal in the Storage Market
@@ -882,7 +910,7 @@ func (msa *minerStateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSet
 }
 
 // StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-func (msa *minerStateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*types.SectorOnChainInfo, error) { // TODO: only used in cli
+func (msa *minerStateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*lminer.SectorOnChainInfo, error) { // TODO: only used in cli
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)

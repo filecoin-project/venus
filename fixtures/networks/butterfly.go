@@ -12,15 +12,15 @@ func ButterflySnapNet() *NetworkConf {
 	nc := &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWNwAkUtWuLtKCyyFP2vBzmpTHSrQao7KQx7Xfa8YvSg1N",
-				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWPn8BDeNcctAcAGuxxiic8uMw2pAi3G5vgdFtfgRs5zBu",
+				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWE9GZUna2UpMMtcCcpmSwiEB7jcKse8gixzwVomgbQysC",
+				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWJGtqGX2XBssujaMn3FsybJu1xJhFZzhVjNnWvC6a26iG",
 			},
 			Period: "30s",
 		},
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.NetworkButterfly,
-			GenesisNetworkVersion: network.Version21,
+			GenesisNetworkVersion: network.Version22,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -58,20 +58,22 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeWatermelonHeight:           -24,
 				UpgradeWatermelonFixHeight:        -100, // This fix upgrade only ran on calibrationnet
 				UpgradeWatermelonFix2Height:       -101, // This fix upgrade only ran on calibrationnet
-				UpgradeDragonHeight:               5760,
+				UpgradeDragonHeight:               -25,
 				UpgradeCalibrationDragonFixHeight: -102, // This fix upgrade only ran on calibrationnet
+				UpgradePhoenixHeight:              -26,
+				UpgradeWaffleHeight:               100,
 			},
-			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
 			PropagationDelaySecs:    6,
 			AllowableClockDriftSecs: 1,
 			Eip155ChainID:           3141592,
 			ActorDebugging:          false,
+			F3Enabled:               true,
+			F3BootstrapEpoch:        200,
+			ManifestServerID:        "12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6",
 		},
 	}
-
-	nc.Network.ForkUpgradeParam.UpgradePhoenixHeight = nc.Network.ForkUpgradeParam.UpgradeDragonHeight + 120
-	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
 
 	return nc
 }

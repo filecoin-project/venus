@@ -747,6 +747,18 @@ func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network
 	return nil
 }
 
+func IsValidEthTxForSending(nv network.Version, smsg *types.SignedMessage) bool {
+	ethTx, err := types.EthTransactionFromSignedFilecoinMessage(smsg)
+	if err != nil {
+		return false
+	}
+
+	if nv < network.Version23 && ethTx.Type() != types.EIP1559TxType {
+		return false
+	}
+	return true
+}
+
 func IsValidForSending(nv network.Version, act *types.Actor) bool {
 	// Before nv18 (Hygge), we only supported built-in account actors as senders.
 	//
@@ -771,12 +783,12 @@ func IsValidForSending(nv network.Version, act *types.Actor) bool {
 
 	// Allow placeholder actors with a delegated address and nonce 0 to send a message.
 	// These will be converted to an EthAccount actor on first send.
-	if !builtin.IsPlaceholderActor(act.Code) || act.Nonce != 0 || act.Address == nil || act.Address.Protocol() != address.Delegated {
+	if !builtin.IsPlaceholderActor(act.Code) || act.Nonce != 0 || act.DelegatedAddress == nil || act.DelegatedAddress.Protocol() != address.Delegated {
 		return false
 	}
 
 	// Only allow such actors to send if their delegated address is in the EAM's namespace.
-	id, _, err := varint.FromUvarint(act.Address.Payload())
+	id, _, err := varint.FromUvarint(act.DelegatedAddress.Payload())
 	return err == nil && id == builtintypes.EthereumAddressManagerActorID
 }
 
@@ -891,6 +903,10 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context,
 		}
 		if err := checkMsg(m); err != nil {
 			return fmt.Errorf("block had invalid secpk message at index %d: %v", i, err)
+		}
+
+		if m.Signature.Type == crypto.SigTypeDelegated && !IsValidEthTxForSending(nv, m) {
+			return fmt.Errorf("network version should be atleast NV23 for sending legacy ETH transactions; but current network version is %d", nv)
 		}
 
 		secpMsgs[i] = m

@@ -305,7 +305,10 @@ type NetworkParamsConfig struct {
 	// As per https://github.com/ethereum-lists/chains
 	Eip155ChainID int `json:"-"`
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
-	ActorDebugging bool `json:"-"`
+	ActorDebugging   bool           `json:"-"`
+	F3Enabled        bool           `json:"f3Enabled"`
+	F3BootstrapEpoch abi.ChainEpoch `json:"f3BootstrapEpoch"`
+	ManifestServerID string         `json:"manifestServerID"`
 }
 
 // ForkUpgradeConfig record upgrade parameters
@@ -341,6 +344,7 @@ type ForkUpgradeConfig struct {
 	UpgradeDragonHeight               abi.ChainEpoch `json:"upgradeDragonHeight"`
 	UpgradePhoenixHeight              abi.ChainEpoch `json:"upgradePhoenixHeight"`
 	UpgradeCalibrationDragonFixHeight abi.ChainEpoch `json:"upgradeCalibrationDragonFixHeight"`
+	UpgradeWaffleHeight               abi.ChainEpoch `json:"upgradeWaffleHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -381,6 +385,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradePhoenixHeight:        3855360 + 120,
 	// This fix upgrade only ran on calibrationnet
 	UpgradeCalibrationDragonFixHeight: -3,
+	UpgradeWaffleHeight:               999999999999,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {

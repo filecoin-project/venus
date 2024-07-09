@@ -27,7 +27,8 @@ var pragmas = []string{
 	"PRAGMA auto_vacuum = NONE",
 	"PRAGMA automatic_index = OFF",
 	"PRAGMA journal_mode = WAL",
-	"PRAGMA read_uncommitted = ON",
+	"PRAGMA wal_autocheckpoint = 256", // checkpoint @ 256 pages
+	"PRAGMA journal_size_limit = 0",   // always reset journal and wal files
 }
 
 var ddls = []string{
@@ -283,6 +284,9 @@ func NewEventIndex(ctx context.Context, path string, chainStore *chain.Store) (*
 	eventIndex := EventIndex{db: db}
 
 	q, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='_meta';")
+	if q != nil {
+		defer func() { _ = q.Close() }()
+	}
 	if err == sql.ErrNoRows || !q.Next() {
 		// empty database, create the schema
 		for _, ddl := range ddls {
@@ -347,7 +351,7 @@ func (ei *EventIndex) Close() error {
 }
 
 func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool, resolver func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)) error {
-	tx, err := ei.db.Begin()
+	tx, err := ei.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
@@ -562,6 +566,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 	if err != nil {
 		return fmt.Errorf("prepare prefill query: %w", err)
 	}
+	defer func() { _ = stmt.Close() }()
 
 	q, err := stmt.QueryContext(ctx, values...)
 	if err != nil {
@@ -570,6 +575,7 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 		}
 		return fmt.Errorf("exec prefill query: %w", err)
 	}
+	defer func() { _ = q.Close() }()
 
 	var ces []*CollectedEvent
 	var currentID int64 = -1

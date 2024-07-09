@@ -90,7 +90,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		cborStore,
 		config.Verifier(),
 		&stateViewer,
-		chn.ChainReader,
+		chain.ChainReaderWrapper(chn.ChainReader, chn.CirculatingSupplyCalculator),
 		chn.Fork,
 		config.Repo().Config().NetworkParams,
 		gasPriceSchedule)
@@ -116,7 +116,7 @@ func NewSyncerSubmodule(ctx context.Context,
 	)
 
 	stmgr, err := statemanger.NewStateManager(chn.ChainReader, chn.MessageStore, nodeConsensus, chn.Drand,
-		chn.Fork, gasPriceSchedule, chn.SystemCall, config.Repo().Config().NetworkParams.ActorDebugging)
+		chn.Fork, gasPriceSchedule, chn.SystemCall, config.Repo().Config().NetworkParams.ActorDebugging, chn.CirculatingSupplyCalculator)
 	if err != nil {
 		return nil, err
 	}

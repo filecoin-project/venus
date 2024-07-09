@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"github.com/filecoin-project/venus/venus-devtool/util"
+	"github.com/filecoin-project/venus/venus-shared/api/f3"
 	gatewayv0 "github.com/filecoin-project/venus/venus-shared/api/gateway/v0"
 	gatewayv1 "github.com/filecoin-project/venus/venus-shared/api/gateway/v1"
 	gatewayv2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
@@ -110,6 +111,17 @@ func init() {
 			RPCMeta: util.RPCMeta{
 				Version:         0,
 				MethodNamespace: "VENUS_MARKET_CLIENT",
+			},
+		},
+		util.APIMeta{
+			Type: reflect.TypeOf((*f3.F3)(nil)).Elem(),
+			ParseOpt: util.InterfaceParseOption{
+				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/f3",
+				IncludeAll: true,
+			},
+			RPCMeta: util.RPCMeta{
+				Version:         0,
+				MethodNamespace: "F3",
 			},
 		},
 	)

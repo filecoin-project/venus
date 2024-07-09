@@ -266,7 +266,7 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0",
-  "Address": "f01234"
+  "DelegatedAddress": "f01234"
 }
 ```
 
@@ -1003,7 +1003,7 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0",
-  "Address": "f01234"
+  "DelegatedAddress": "f01234"
 }
 ```
 
@@ -1168,7 +1168,7 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0",
-  "Address": "f01234"
+  "DelegatedAddress": "f01234"
 }
 ```
 
@@ -1221,7 +1221,7 @@ Perms: read
 Inputs:
 ```json
 [
-  22
+  23
 ]
 ```
 
@@ -1236,7 +1236,7 @@ Perms: read
 Inputs:
 ```json
 [
-  22
+  23
 ]
 ```
 
@@ -1349,7 +1349,7 @@ Response:
         },
         "Nonce": 42,
         "Balance": "0",
-        "Address": "f01234"
+        "DelegatedAddress": "f01234"
       }
     },
     "GasCharges": [
@@ -1389,7 +1389,7 @@ Response:
             },
             "Nonce": 42,
             "Balance": "0",
-            "Address": "f01234"
+            "DelegatedAddress": "f01234"
           }
         },
         "GasCharges": [
@@ -1552,7 +1552,7 @@ Response:
             },
             "Nonce": 42,
             "Balance": "0",
-            "Address": "f01234"
+            "DelegatedAddress": "f01234"
           }
         },
         "GasCharges": [
@@ -1592,7 +1592,7 @@ Response:
                 },
                 "Nonce": 42,
                 "Balance": "0",
-                "Address": "f01234"
+                "DelegatedAddress": "f01234"
               }
             },
             "GasCharges": [
@@ -1660,7 +1660,8 @@ Response:
     "UpgradeThunderHeight": 10101,
     "UpgradeWatermelonHeight": 10101,
     "UpgradeDragonHeight": 10101,
-    "UpgradePhoenixHeight": 10101
+    "UpgradePhoenixHeight": 10101,
+    "UpgradeWaffleHeight": 10101
   },
   "Eip155ChainID": 123
 }
@@ -1778,7 +1779,7 @@ Inputs:
 ]
 ```
 
-Response: `22`
+Response: `23`
 
 ### StateReplay
 
@@ -1870,7 +1871,7 @@ Response:
         },
         "Nonce": 42,
         "Balance": "0",
-        "Address": "f01234"
+        "DelegatedAddress": "f01234"
       }
     },
     "GasCharges": [
@@ -1910,7 +1911,7 @@ Response:
             },
             "Nonce": 42,
             "Balance": "0",
-            "Address": "f01234"
+            "DelegatedAddress": "f01234"
           }
         },
         "GasCharges": [
@@ -3136,7 +3137,7 @@ Response:
     },
     "Nonce": 42,
     "Balance": "0",
-    "Address": "f01234"
+    "DelegatedAddress": "f01234"
   }
 }
 ```
@@ -3549,6 +3550,7 @@ Response:
       "ClientCollateral": "0"
     },
     "State": {
+      "SectorNumber": 9,
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
       "SlashEpoch": 10101
@@ -3596,6 +3598,7 @@ Response:
     "ClientCollateral": "0"
   },
   "State": {
+    "SectorNumber": 9,
     "SectorStartEpoch": 10101,
     "LastUpdatedEpoch": 10101,
     "SlashEpoch": 10101
@@ -3642,12 +3645,12 @@ Response:
     "InitialPledge": "0",
     "ExpectedDayReward": "0",
     "ExpectedStoragePledge": "0",
-    "ReplacedSectorAge": 10101,
+    "PowerBaseEpoch": 10101,
     "ReplacedDayReward": "0",
     "SectorKeyCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "SimpleQAPower": true
+    "Flags": 0
   }
 ]
 ```
@@ -4131,12 +4134,12 @@ Response:
     "InitialPledge": "0",
     "ExpectedDayReward": "0",
     "ExpectedStoragePledge": "0",
-    "ReplacedSectorAge": 10101,
+    "PowerBaseEpoch": 10101,
     "ReplacedDayReward": "0",
     "SectorKeyCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "SimpleQAPower": true
+    "Flags": 0
   }
 ]
 ```
@@ -4263,12 +4266,12 @@ Response:
   "InitialPledge": "0",
   "ExpectedDayReward": "0",
   "ExpectedStoragePledge": "0",
-  "ReplacedSectorAge": 10101,
+  "PowerBaseEpoch": 10101,
   "ReplacedDayReward": "0",
   "SectorKeyCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "SimpleQAPower": true
+  "Flags": 0
 }
 ```
 

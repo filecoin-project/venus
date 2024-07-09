@@ -18,10 +18,10 @@ func Calibration() *NetworkConf {
 	nc := &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/calibration.node.glif.io/tcp/1237/p2p/12D3KooWQPYouEAsUQKzvFUA9sQ8tz4rfpqtTzh2eL6USd9bwg7x",
-				"/dns4/bootstrap-calibnet-0.chainsafe-fil.io/tcp/34000/p2p/12D3KooWABQ5gTDHPWyvhJM7jPhtNwNJruzTEo32Lo4gcS5ABAMm",
-				"/dns4/bootstrap-calibnet-1.chainsafe-fil.io/tcp/34000/p2p/12D3KooWS3ZRhMYL67b4bD5XQ6fcpTyVQXnDe8H89LvwrDqaSbiT",
-				"/dns4/bootstrap-calibnet-2.chainsafe-fil.io/tcp/34000/p2p/12D3KooWEiBN8jBX8EBoM3M47pVRLRWV812gDRUJhMxgyVkUoR48",
+				"/dns/calibration.node.glif.io/tcp/1237/p2p/12D3KooWQPYouEAsUQKzvFUA9sQ8tz4rfpqtTzh2eL6USd9bwg7x",
+				"/dns/bootstrap-calibnet-0.chainsafe-fil.io/tcp/34000/p2p/12D3KooWABQ5gTDHPWyvhJM7jPhtNwNJruzTEo32Lo4gcS5ABAMm",
+				"/dns/bootstrap-calibnet-1.chainsafe-fil.io/tcp/34000/p2p/12D3KooWS3ZRhMYL67b4bD5XQ6fcpTyVQXnDe8H89LvwrDqaSbiT",
+				"/dns/bootstrap-calibnet-2.chainsafe-fil.io/tcp/34000/p2p/12D3KooWEiBN8jBX8EBoM3M47pVRLRWV812gDRUJhMxgyVkUoR48",
 			},
 			Period: "30s",
 		},
@@ -67,6 +67,7 @@ func Calibration() *NetworkConf {
 				UpgradeWatermelonFix2Height:       1108174,       // 2023-11-21T13:00:00Z
 				UpgradeDragonHeight:               1427974,       // 2024-03-11T14:00:00Z
 				UpgradeCalibrationDragonFixHeight: 1493854,       // 2024-04-03T11:00:00Z
+				UpgradeWaffleHeight:               1779094,       // 2024-07-11T12:00:00Z
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,
@@ -74,11 +75,14 @@ func Calibration() *NetworkConf {
 			AllowableClockDriftSecs: 1,
 			Eip155ChainID:           314159,
 			ActorDebugging:          false,
+			F3Enabled:               true,
 		},
 	}
 
 	nc.Network.ForkUpgradeParam.UpgradePhoenixHeight = nc.Network.ForkUpgradeParam.UpgradeDragonHeight + 120
 	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
+
+	nc.Network.F3BootstrapEpoch = nc.Network.ForkUpgradeParam.UpgradeWaffleHeight + 100
 
 	return nc
 }

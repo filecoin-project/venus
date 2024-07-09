@@ -6,17 +6,30 @@ import (
 )
 
 const (
-	Eip1559TxType = types.Eip1559TxType
-)
-
-type (
-	EthTx     = types.EthTx
-	EthTxArgs = types.EthTxArgs
+	EIP1559TxType                       = types.EIP1559TxType
+	EthEIP1559TxSignatureLen            = types.EthEIP1559TxSignatureLen
+	EthLegacy155TxSignaturePrefix       = types.EthLegacy155TxSignaturePrefix
+	EthLegacyHomesteadTxChainID         = types.EthLegacyHomesteadTxChainID
+	EthLegacyHomesteadTxSignatureLen    = types.EthLegacyHomesteadTxSignatureLen
+	EthLegacyHomesteadTxSignaturePrefix = types.EthLegacyHomesteadTxSignaturePrefix
+	EthLegacyTxType                     = types.EthLegacyTxType
 )
 
 var (
-	EthTxArgsFromUnsignedEthMessage = types.EthTxArgsFromUnsignedEthMessage
-	EthTxFromSignedEthMessage       = types.EthTxFromSignedEthMessage
-	ParseEthTxArgs                  = types.ParseEthTxArgs
-	RecoverSignature                = types.RecoverSignature
+	EthLegacy155TxSignatureLen0 = types.EthLegacy155TxSignatureLen0
+	EthLegacy155TxSignatureLen1 = types.EthLegacy155TxSignatureLen1
+)
+
+type (
+	EthTransaction = types.EthTransaction
+	RlpPackable    = types.RlpPackable
+)
+type (
+	EthTx = types.EthTx
+)
+
+var (
+	EthTransactionFromSignedFilecoinMessage = types.EthTransactionFromSignedFilecoinMessage
+	ParseEthTransaction                     = types.ParseEthTransaction
+	ToSignedFilecoinMessage                 = types.ToSignedFilecoinMessage
 )

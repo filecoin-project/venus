@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
 	"github.com/filecoin-project/venus/app/submodule/eth"
+	"github.com/filecoin-project/venus/app/submodule/f3"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/ipfs-force-community/sophon-auth/core"
 	"github.com/ipfs-force-community/sophon-auth/jwtclient"
@@ -103,9 +104,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		chainClock:  b.chainClock,
 	}
 
-	// modules
-	nd.circulatiingSupplyCalculator = chain2.NewCirculatingSupplyCalculator(b.repo.Datastore(), b.genBlk.ParentStateRoot, b.repo.Config().NetworkParams.ForkUpgradeParam)
-
 	// services
 	nd.configModule = config2.NewConfigModule(b.repo)
 
@@ -114,7 +112,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.blockstore")
 	}
 
-	nd.chain, err = chain.NewChainSubmodule(ctx, (*builder)(b), nd.circulatiingSupplyCalculator)
+	nd.chain, err = chain.NewChainSubmodule(ctx, (*builder)(b))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
@@ -129,7 +127,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.dagservice")
 	}
 
-	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.blockstore, nd.network, nd.chain, nd.circulatiingSupplyCalculator)
+	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.blockstore, nd.network, nd.chain, nd.chain.CirculatingSupplyCalculator)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
@@ -137,6 +135,11 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.wallet, err = wallet.NewWalletSubmodule(ctx, b.repo, nd.configModule, nd.chain, b.walletPassword)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.wallet")
+	}
+
+	nd.f3, err = f3.NewF3Submodule(ctx, nd.repo, nd.chain, nd.network, nd.wallet.API())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build node.f3")
 	}
 
 	nd.mpool, err = mpool.NewMpoolSubmodule(ctx, (*builder)(b), nd.network, nd.chain, nd.wallet)
@@ -194,6 +197,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.common,
 		nd.eth,
 		nd.actorEvent,
+		nd.f3,
 	)
 
 	if err != nil {

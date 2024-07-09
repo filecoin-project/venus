@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/types/gateway"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 	auuid "github.com/google/uuid"
@@ -34,6 +35,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/api/chain"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -221,6 +223,7 @@ func init() {
 	addExample(types.CheckStatusCode(0))
 	addExample(map[string]interface{}{"abc": 123})
 	addExample(types.HCApply)
+	addExample(lminer.SectorOnChainInfoFlags(0))
 
 	// messager
 	i64 := int64(10000)
@@ -325,6 +328,7 @@ func init() {
 
 	addExample(retrievalmarket.CborGenCompatibleNode{})
 	addExample(gateway.HostNode)
+	addExample(&certs.FinalityCertificate{})
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

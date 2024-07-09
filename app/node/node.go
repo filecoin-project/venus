@@ -18,6 +18,7 @@ import (
 	configModule "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
 	"github.com/filecoin-project/venus/app/submodule/eth"
+	"github.com/filecoin-project/venus/app/submodule/f3"
 	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
@@ -26,7 +27,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	syncer2 "github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"       // enable bls signatures
@@ -71,8 +71,6 @@ type Node struct {
 	// It contains all persistent artifacts of the filecoin node.
 	repo repo.Repo
 
-	// moduls
-	circulatiingSupplyCalculator chain.ICirculatingSupplyCalcualtor
 	//
 	// Core services
 	//
@@ -94,6 +92,7 @@ type Node struct {
 	wallet            *wallet.WalletSubmodule
 	mpool             *mpool.MessagePoolSubmodule
 	storageNetworking *storagenetworking.StorageNetworkingSubmodule
+	f3                *f3.F3Submodule
 
 	// paychannel and market
 	market  *market.MarketSubmodule
@@ -381,6 +380,7 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		MarketAPI:            node.market.API(),
 		CommonAPI:            node.common,
 		EthAPI:               node.eth.API(),
+		F3API:                node.f3.API(),
 	}
 
 	return &env

@@ -68,11 +68,6 @@ func TestView(t *testing.T) {
 		_, err = view.SectorPreCommitInfo(ctx, m, 0)
 		assert.NoError(t, err)
 
-		// stm: @STATE_VIEW_MINER_GET_PRECOMMITED_SECTOR
-		_, find, err = view.MinerGetPrecommittedSector(ctx, m, abi.SectorNumber(0))
-		assert.NoError(t, err)
-		assert.True(t, find)
-
 		// stm: @STATE_VIEW_STATE_SECTOR_PARTITION_001
 		_, err = view.StateSectorPartition(ctx, m, 0)
 		assert.NoError(t, err)

@@ -13,13 +13,14 @@ import (
 	bitfield "github.com/filecoin-project/go-bitfield"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
+	miner "github.com/filecoin-project/go-state-types/builtin/v13/miner"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	miner "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	miner0 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifreg "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	dline "github.com/filecoin-project/go-state-types/dline"
 	network "github.com/filecoin-project/go-state-types/network"
-	miner0 "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	miner1 "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	types "github.com/filecoin-project/venus/venus-shared/actors/types"
 	types0 "github.com/filecoin-project/venus/venus-shared/types"
 	gomock "github.com/golang/mock/gomock"
@@ -2029,7 +2030,7 @@ func (mr *MockFullNodeMockRecorder) StateMinerInfo(arg0, arg1, arg2 interface{})
 }
 
 // StateMinerInitialPledgeCollateral mocks base method.
-func (m *MockFullNode) StateMinerInitialPledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner.SectorPreCommitInfo, arg3 types0.TipSetKey) (big.Int, error) {
+func (m *MockFullNode) StateMinerInitialPledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner0.SectorPreCommitInfo, arg3 types0.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerInitialPledgeCollateral", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(big.Int)
@@ -2074,7 +2075,7 @@ func (mr *MockFullNodeMockRecorder) StateMinerPower(arg0, arg1, arg2 interface{}
 }
 
 // StateMinerPreCommitDepositForPower mocks base method.
-func (m *MockFullNode) StateMinerPreCommitDepositForPower(arg0 context.Context, arg1 address.Address, arg2 miner.SectorPreCommitInfo, arg3 types0.TipSetKey) (big.Int, error) {
+func (m *MockFullNode) StateMinerPreCommitDepositForPower(arg0 context.Context, arg1 address.Address, arg2 miner0.SectorPreCommitInfo, arg3 types0.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerPreCommitDepositForPower", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(big.Int)
@@ -2284,10 +2285,10 @@ func (mr *MockFullNodeMockRecorder) StateSearchMsgLimited(arg0, arg1, arg2 inter
 }
 
 // StateSectorExpiration mocks base method.
-func (m *MockFullNode) StateSectorExpiration(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types0.TipSetKey) (*miner0.SectorExpiration, error) {
+func (m *MockFullNode) StateSectorExpiration(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types0.TipSetKey) (*miner1.SectorExpiration, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSectorExpiration", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*miner0.SectorExpiration)
+	ret0, _ := ret[0].(*miner1.SectorExpiration)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2314,10 +2315,10 @@ func (mr *MockFullNodeMockRecorder) StateSectorGetInfo(arg0, arg1, arg2, arg3 in
 }
 
 // StateSectorPartition mocks base method.
-func (m *MockFullNode) StateSectorPartition(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types0.TipSetKey) (*miner0.SectorLocation, error) {
+func (m *MockFullNode) StateSectorPartition(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types0.TipSetKey) (*miner1.SectorLocation, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSectorPartition", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*miner0.SectorLocation)
+	ret0, _ := ret[0].(*miner1.SectorLocation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2329,10 +2330,10 @@ func (mr *MockFullNodeMockRecorder) StateSectorPartition(arg0, arg1, arg2, arg3 
 }
 
 // StateSectorPreCommitInfo mocks base method.
-func (m *MockFullNode) StateSectorPreCommitInfo(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types0.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+func (m *MockFullNode) StateSectorPreCommitInfo(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types0.TipSetKey) (miner0.SectorPreCommitOnChainInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSectorPreCommitInfo", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(miner.SectorPreCommitOnChainInfo)
+	ret0, _ := ret[0].(miner0.SectorPreCommitOnChainInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

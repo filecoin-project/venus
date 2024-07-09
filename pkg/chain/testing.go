@@ -50,18 +50,19 @@ const defaultMinerCount = 15
 // The builder is deterministic: two builders receiving the same sequence of calls will produce
 // exactly the same chain.
 type Builder struct {
-	t            *testing.T
-	genesis      *types.TipSet
-	store        *Store
-	minerAddress []address.Address
-	stateBuilder StateBuilder
-	stamper      TimeStamper
-	repo         repo.Repo
-	bs           blockstoreutil.Blockstore
-	cstore       cbor.IpldStore
-	mstore       *MessageStore
-	seq          uint64 // For unique tickets
-	eval         *FakeStateEvaluator
+	t                           *testing.T
+	genesis                     *types.TipSet
+	store                       *Store
+	minerAddress                []address.Address
+	stateBuilder                StateBuilder
+	stamper                     TimeStamper
+	repo                        repo.Repo
+	bs                          blockstoreutil.Blockstore
+	cstore                      cbor.IpldStore
+	mstore                      *MessageStore
+	seq                         uint64 // For unique tickets
+	eval                        *FakeStateEvaluator
+	circulatingSupplyCalculator ICirculatingSupplyCalcualtor
 
 	// Cache of the state root CID computed for each tipset key.
 	tipStateCids map[string]cid.Cid
@@ -176,6 +177,10 @@ func (f *Builder) MessageStore() *MessageStore {
 	return f.mstore
 }
 
+func (f *Builder) CirculatingSupplyCalcualtor() ICirculatingSupplyCalcualtor {
+	return f.circulatingSupplyCalculator
+}
+
 func (f *Builder) RemovePeer(peer peer.ID) {}
 
 func (f *Builder) GenMiners(str string) []address.Address {
@@ -229,13 +234,14 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, stamper TimeStamper
 	cst := cbor.NewCborStore(bs)
 
 	b := &Builder{
-		t:            t,
-		stamper:      stamper,
-		repo:         repo,
-		bs:           bs,
-		cstore:       cst,
-		mstore:       NewMessageStore(bs, config.DefaultForkUpgradeParam),
-		tipStateCids: make(map[string]cid.Cid),
+		t:                           t,
+		stamper:                     stamper,
+		repo:                        repo,
+		bs:                          bs,
+		cstore:                      cst,
+		mstore:                      NewMessageStore(bs, config.DefaultForkUpgradeParam),
+		tipStateCids:                make(map[string]cid.Cid),
+		circulatingSupplyCalculator: NewMockCirculatingSupplyCalculator(),
 	}
 
 	if !miner.Empty() {
@@ -255,7 +261,7 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, stamper TimeStamper
 
 	// create a fixed genesis
 	b.genesis = b.GeneratorGenesis()
-	b.store = NewStore(ds, bs, b.genesis.At(0).Cid(), NewMockCirculatingSupplyCalculator(), chainselector.Weight)
+	b.store = NewStore(ds, bs, b.genesis.At(0).Cid(), chainselector.Weight)
 	b.stateBuilder = &FakeStateBuilder{b.store}
 
 	for _, block := range b.genesis.Blocks() {

@@ -28,10 +28,13 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	miner14 "github.com/filecoin-project/go-state-types/builtin/v14/miner"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/system"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
@@ -158,7 +161,11 @@ func SetupStorageMiners(ctx context.Context,
 		i := i
 		m := m
 
-		spt, err := miner.SealProofTypeFromSectorSize(m.SectorSize, nv, synthetic)
+		variant := miner.SealProofVariant_Standard
+		if synthetic {
+			variant = miner.SealProofVariant_Synthetic
+		}
+		spt, err := miner.SealProofTypeFromSectorSize(m.SectorSize, nv, variant)
 		if err != nil {
 			return cid.Undef, err
 		}
@@ -328,9 +335,6 @@ func SetupStorageMiners(ctx context.Context,
 
 	{
 		nh, err := genesisVM.Flush(ctx)
-		if err != nil {
-			return cid.Undef, fmt.Errorf("flushing vm: %w", err)
-		}
 		if err != nil {
 			return cid.Undef, fmt.Errorf("flushing vm: %w", err)
 		}
@@ -511,9 +515,10 @@ func SetupStorageMiners(ctx context.Context,
 					return cid.Undef, fmt.Errorf("getting current total power: %w", err)
 				}
 
-				pcd := types.PreCommitDepositForPower(smoothing9.FilterEstimate(rewardSmoothed), smoothing9.FilterEstimate(*tpow.QualityAdjPowerSmoothed), types.QAPowerMax(m.SectorSize))
+				pcd := miner9.PreCommitDepositForPower(smoothing9.FilterEstimate(rewardSmoothed),
+					smoothing9.FilterEstimate(*tpow.QualityAdjPowerSmoothed), types.QAPowerMax(m.SectorSize))
 
-				pledge := types.InitialPledgeForPower(
+				pledge := miner9.InitialPledgeForPower(
 					sectorWeight,
 					baselinePower,
 					smoothing9.FilterEstimate(rewardSmoothed),
@@ -531,8 +536,12 @@ func SetupStorageMiners(ctx context.Context,
 
 				// Commit one-by-one, otherwise pledge math tends to explode
 				var paramBytes []byte
-
-				if av >= actorstypes.Version6 {
+				if av >= actorstypes.Version14 {
+					confirmParams := &miner14.InternalSectorSetupForPresealParams{
+						Sectors: []abi.SectorNumber{preseal.SectorID},
+					}
+					paramBytes = mustEnc(confirmParams)
+				} else if av >= actorstypes.Version6 {
 					// TODO: fixup
 					confirmParams := &builtin6.ConfirmSectorProofsParams{
 						Sectors: []abi.SectorNumber{preseal.SectorID},
@@ -547,9 +556,17 @@ func SetupStorageMiners(ctx context.Context,
 					paramBytes = mustEnc(confirmParams)
 				}
 
-				_, err = doExecValue(ctx, genesisVM, minerInfos[i].maddr, power.Address, big.Zero(), builtintypes.MethodsMiner.ConfirmSectorProofsValid, paramBytes)
-				if err != nil {
-					return cid.Undef, fmt.Errorf("failed to confirm presealed sectors: %w", err)
+				var csErr error
+				if nv >= network.Version23 {
+					_, csErr = doExecValue(ctx, genesisVM, minerInfos[i].maddr, system.Address, big.Zero(), builtintypes.MethodsMiner.InternalSectorSetupForPreseal,
+						paramBytes)
+				} else {
+					_, csErr = doExecValue(ctx, genesisVM, minerInfos[i].maddr, power.Address, big.Zero(), builtintypes.MethodsMiner.InternalSectorSetupForPreseal,
+						paramBytes)
+				}
+
+				if csErr != nil {
+					return cid.Undef, fmt.Errorf("failed to confirm presealed sectors: %w", csErr)
 				}
 
 				if av > actorstypes.Version2 {

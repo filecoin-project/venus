@@ -20,7 +20,7 @@ func InteropNet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.NetworkInterop,
-			GenesisNetworkVersion: network.Version16,
+			GenesisNetworkVersion: network.Version22,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg2KiBV1,
 				abi.RegisteredSealProof_StackedDrg8MiBV1,
@@ -58,20 +58,22 @@ func InteropNet() *NetworkConf {
 				UpgradeWatermelonHeight:           -24,
 				UpgradeWatermelonFixHeight:        -100, // This fix upgrade only ran on calibrationnet
 				UpgradeWatermelonFix2Height:       -101, // This fix upgrade only ran on calibrationnet
-				UpgradeDragonHeight:               50,
+				UpgradeDragonHeight:               -25,
 				UpgradeCalibrationDragonFixHeight: -102, // This fix upgrade only ran on calibrationnet
+				UpgradePhoenixHeight:              -26,
+				UpgradeWaffleHeight:               50,
 			},
-			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
 			PropagationDelaySecs:    6,
 			AllowableClockDriftSecs: 1,
 			Eip155ChainID:           3141592,
 			ActorDebugging:          false,
+			F3Enabled:               true,
+			F3BootstrapEpoch:        1000,
+			ManifestServerID:        "12D3KooWQJ2rdVnG4okDUB6yHQhAjNutGNemcM7XzqC9Eo4z9Jce",
 		},
 	}
-
-	nc.Network.ForkUpgradeParam.UpgradePhoenixHeight = nc.Network.ForkUpgradeParam.UpgradeDragonHeight + 100
-	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
 
 	return nc
 }

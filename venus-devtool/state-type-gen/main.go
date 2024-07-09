@@ -111,6 +111,14 @@ var stateTypesOpt = option{
 			{pkgName: "multisig", newName: "MultisigConstructorParams"},
 			{pkgName: "paych", newName: "PaychConstructorParams"},
 		},
+		"BatchReturn": {
+			{pkgName: "miner", newName: "MinerBatchReturn"},
+			{pkgName: "verifreg", newName: "VerifregBatchReturn"},
+		},
+		"FailCode": {
+			{pkgName: "miner", newName: "MinerFailCode"},
+			{pkgName: "verifreg", newName: "VerifregFailCode"},
+		},
 	},
 }
 

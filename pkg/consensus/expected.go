@@ -94,8 +94,6 @@ type chainReader interface {
 	Weight(context.Context, *types.TipSet) (big.Int, error)
 }
 
-var _ chainReader = (*chain.Store)(nil)
-
 // Expected implements expected consensus.
 type Expected struct {
 	// cstore is used for loading state trees during message running.
@@ -153,7 +151,7 @@ func NewExpected(cs cbor.IpldStore,
 		syscallsImpl:     syscalls,
 		cstore:           cs,
 		bstore:           bs,
-		chainState:       chainState,
+		chainState:       chain.ChainReaderWrapper(chainState, circulatingSupplyCalculator),
 		messageStore:     messageStore,
 		beacon:           beacon,
 		fork:             fork,

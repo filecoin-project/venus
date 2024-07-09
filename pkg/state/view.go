@@ -127,7 +127,7 @@ func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Ver
 }
 
 // Loads sector info from miner state.
-func (v *View) MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*types.SectorOnChainInfo, error) {
+func (v *View) MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*lminer.SectorOnChainInfo, error) {
 	minerState, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, err
@@ -281,21 +281,6 @@ func (v *View) MinerExists(ctx context.Context, maddr addr.Address) (bool, error
 		return false, nil
 	}
 	return false, err
-}
-
-// MinerGetPrecommittedSector Looks up info for a miners precommitted sector.
-// NOTE: exposes on-chain structures directly for storage FSM API.
-func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*types.SectorPreCommitOnChainInfo, bool, error) {
-	minerState, err := v.LoadMinerState(ctx, maddr)
-	if err != nil {
-		return nil, false, err
-	}
-
-	info, err := minerState.GetPrecommittedSector(sectorNum)
-	if err != nil {
-		return nil, false, err
-	}
-	return info, true, nil
 }
 
 // MarketEscrowBalance looks up a token amount in the escrow table for the given address
@@ -657,7 +642,7 @@ func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[s
 }
 
 // StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-func (v *View) StateMinerActiveSectors(ctx context.Context, maddr addr.Address, tsk types.TipSetKey) ([]*types.SectorOnChainInfo, error) {
+func (v *View) StateMinerActiveSectors(ctx context.Context, maddr addr.Address, tsk types.TipSetKey) ([]*lminer.SectorOnChainInfo, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
@@ -715,9 +700,9 @@ func (v *View) ResolveToDeterministicAddress(ctx context.Context, address addr.A
 	}
 
 	if tree.Version() >= vmstate.StateTreeVersion5 {
-		if act.Address != nil {
+		if act.DelegatedAddress != nil {
 			// If there _is_ an f4 address, return it as "key" address
-			return *act.Address, nil
+			return *act.DelegatedAddress, nil
 		}
 	}
 

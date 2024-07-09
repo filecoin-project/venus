@@ -181,7 +181,7 @@ func (a *ethAPI) EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, f
 	if err != nil {
 		return types.EthBlock{}, fmt.Errorf("error loading tipset %s: %w", ts, err)
 	}
-	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.chain)
+	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
 }
 
 func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool) (tipset *types.TipSet, err error) {
@@ -227,7 +227,7 @@ func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkParam string, fullT
 	if err != nil {
 		return types.EthBlock{}, err
 	}
-	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.chain)
+	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
 }
 
 func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error) {
@@ -253,7 +253,7 @@ func (a *ethAPI) EthGetTransactionByHashLimited(ctx context.Context, txHash *typ
 	// first, try to get the cid from mined transactions
 	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
 	if err == nil && msgLookup != nil {
-		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.chain)
+		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.em.chainModule.ChainReader)
 		if err == nil {
 			return &tx, nil
 		}
@@ -269,10 +269,23 @@ func (a *ethAPI) EthGetTransactionByHashLimited(ctx context.Context, txHash *typ
 
 	for _, p := range pending {
 		if p.Cid() == c {
-			tx, err := newEthTxFromSignedMessage(ctx, p, a.chain)
+			// We only return pending eth-account messages because we can't guarantee
+			// that the from/to addresses of other messages are conversable to 0x-style
+			// addresses. So we just ignore them.
+			//
+			// This should be "fine" as anyone using an "Ethereum-centric" block
+			// explorer shouldn't care about seeing pending messages from native
+			// accounts.
+			ethtx, err := types.EthTransactionFromSignedFilecoinMessage(p)
 			if err != nil {
-				return nil, fmt.Errorf("could not convert Filecoin message into tx: %v", err)
+				return nil, fmt.Errorf("could not convert Filecoin message into tx: %w", err)
 			}
+
+			tx, err := ethtx.ToEthTx(p)
+			if err != nil {
+				return nil, fmt.Errorf("could not convert Eth transaction to EthTx: %w", err)
+			}
+
 			return &tx, nil
 		}
 	}
@@ -318,7 +331,7 @@ func (a *ethAPI) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *
 }
 
 func (a *ethAPI) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*types.EthHash, error) {
-	hash, err := ethTxHashFromMessageCid(ctx, cid, a.em.chainModule.MessageStore, a.chain)
+	hash, err := ethTxHashFromMessageCid(ctx, cid, a.em.chainModule.MessageStore)
 	if hash == types.EmptyEthHash {
 		// not found
 		return nil, nil
@@ -384,7 +397,7 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 		return nil, nil
 	}
 
-	tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.chain)
+	tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.em.chainModule.ChainReader)
 	if err != nil {
 		return nil, nil
 	}
@@ -397,7 +410,7 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 		}
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, events, a.chain)
+	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, events, a.chain, a.em.chainModule.ChainReader)
 	if err != nil {
 		return nil, nil
 	}
@@ -701,6 +714,7 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.
 	)
 
 	for blocksIncluded < int(params.BlkCount) && ts.Height() > 0 {
+		basefee = ts.Blocks()[0].ParentBaseFee
 		msgs, rcpts, err := messagesAndReceipts(ctx, ts, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
 		if err != nil {
 			return types.EthFeeHistory{}, fmt.Errorf("failed to retrieve messages and receipts for height %d: %w", ts.Height(), err)
@@ -800,12 +814,12 @@ func (a *ethAPI) EthGasPrice(ctx context.Context) (types.EthBigInt, error) {
 }
 
 func (a *ethAPI) EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error) {
-	txArgs, err := types.ParseEthTxArgs(rawTx)
+	txArgs, err := types.ParseEthTransaction(rawTx)
 	if err != nil {
 		return types.EmptyEthHash, err
 	}
 
-	smsg, err := txArgs.ToSignedMessage()
+	smsg, err := types.ToSignedFilecoinMessage(txArgs)
 	if err != nil {
 		return types.EmptyEthHash, err
 	}
@@ -823,34 +837,30 @@ func (a *ethAPI) applyMessage(ctx context.Context, msg *types.Message, tsk types
 		return nil, fmt.Errorf("failed to got tipset %v", err)
 	}
 
-	applyTSMessages := true
-	if os.Getenv("VENUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
-		applyTSMessages = false
+	if ts.Height() > 0 {
+		pts, err := a.chain.ChainGetTipSet(ctx, ts.Parents())
+		if err != nil {
+			return nil, fmt.Errorf("failed to find a non-forking epoch: %w", err)
+		}
+		// Check for expensive forks from the parents to the tipset, including nil tipsets
+		if a.em.chainModule.Fork.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
+			return nil, fork.ErrExpensiveFork
+		}
 	}
 
-	// Try calling until we find a height with no migration.
-	var res *types.InvocResult
-	for {
-		res, err = a.em.chainModule.Stmgr.CallWithGas(ctx, msg, []types.ChainMsg{}, ts, applyTSMessages)
-		if err != fork.ErrExpensiveFork {
-			break
-		}
-		ts, err = a.chain.ChainGetTipSet(ctx, ts.Parents())
-		if err != nil {
-			return nil, fmt.Errorf("getting parent tipset: %w", err)
-		}
-	}
+	st, err := a.em.chainModule.ChainReader.GetTipSetStateRoot(ctx, ts)
 	if err != nil {
-		return nil, fmt.Errorf("CallWithGas failed: %w", err)
+		return nil, fmt.Errorf("cannot get tipset state: %w", err)
 	}
-	if res.MsgRct == nil {
-		return nil, fmt.Errorf("no message receipt")
+	res, err := a.em.chainModule.Stmgr.ApplyOnStateWithGas(ctx, st, msg, ts)
+	if err != nil {
+		return nil, fmt.Errorf("ApplyWithGasOnState failed: %w", err)
 	}
+
 	if res.MsgRct.ExitCode.IsError() {
 		reason := parseEthRevert(res.MsgRct.Return)
 		return nil, fmt.Errorf("message execution failed: exit %s, revert reason: %s, vm error: %s", res.MsgRct.ExitCode, reason, res.Error)
 	}
-
 	return res, nil
 }
 
@@ -1065,18 +1075,9 @@ func (a *ethAPI) EthTraceBlock(ctx context.Context, blkNum string) ([]*types.Eth
 		return nil, fmt.Errorf("failed when calling ExecutionTrace: %w", err)
 	}
 
-	head, err := a.chain.ChainHead(ctx)
+	state, err := a.em.chainModule.ChainReader.GetTipSetState(ctx, ts)
 	if err != nil {
-		return nil, err
-	}
-	tsParent, err := a.chain.ChainGetTipSetByHeight(ctx, ts.Height()+1, head.Key())
-	if err != nil {
-		return nil, fmt.Errorf("cannot get tipset at height: %v", ts.Height()+1)
-	}
-
-	msgs, err := a.chain.ChainGetParentMessages(ctx, tsParent.Blocks()[0].Cid())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get parent messages: %w", err)
+		return nil, fmt.Errorf("failed to get state view: %w", err)
 	}
 
 	cid, err := ts.Key().Cid()
@@ -1097,11 +1098,6 @@ func (a *ethAPI) EthTraceBlock(ctx context.Context, blkNum string) ([]*types.Eth
 			continue
 		}
 
-		// as we include TransactionPosition in the results, lets do sanity checking that the
-		// traces are indeed in the message execution order
-		if ir.Msg.Cid() != msgs[msgIdx].Message.Cid() {
-			return nil, fmt.Errorf("traces are not in message execution order")
-		}
 		msgIdx++
 
 		txHash, err := a.EthGetTransactionHashByCid(ctx, ir.MsgCid)
@@ -1112,7 +1108,7 @@ func (a *ethAPI) EthTraceBlock(ctx context.Context, blkNum string) ([]*types.Eth
 			return nil, fmt.Errorf("cannot find transaction hash for cid %s", ir.MsgCid)
 		}
 
-		env, err := baseEnvironment(ctx, ir.Msg.From, a.chain)
+		env, err := baseEnvironment(ctx, ir.Msg.From, state)
 		if err != nil {
 			return nil, fmt.Errorf("when processing message %s: %w", ir.MsgCid, err)
 		}
@@ -1151,6 +1147,11 @@ func (a *ethAPI) EthTraceReplayBlockTransactions(ctx context.Context, blkNum str
 		return nil, fmt.Errorf("failed when calling ExecutionTrace: %w", err)
 	}
 
+	state, err := a.em.chainModule.ChainReader.GetTipSetState(ctx, ts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get state view: %w", err)
+	}
+
 	allTraces := make([]*types.EthTraceReplayBlockTransaction, 0, len(trace))
 	for _, ir := range trace {
 		// ignore messages from system actor
@@ -1166,7 +1167,7 @@ func (a *ethAPI) EthTraceReplayBlockTransactions(ctx context.Context, blkNum str
 			return nil, fmt.Errorf("cannot find transaction hash for cid %s", ir.MsgCid)
 		}
 
-		env, err := baseEnvironment(ctx, ir.Msg.From, a.chain)
+		env, err := baseEnvironment(ctx, ir.Msg.From, state)
 		if err != nil {
 			return nil, fmt.Errorf("when processing message %s: %w", ir.MsgCid, err)
 		}
@@ -1196,6 +1197,51 @@ func (a *ethAPI) EthTraceReplayBlockTransactions(ctx context.Context, blkNum str
 	}
 
 	return allTraces, nil
+}
+
+func (a *ethAPI) EthTraceTransaction(ctx context.Context, txHash string) ([]*types.EthTraceTransaction, error) {
+
+	// convert from string to internal type
+	ethTxHash, err := types.ParseEthHash(txHash)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse eth hash: %w", err)
+	}
+
+	tx, err := a.EthGetTransactionByHash(ctx, &ethTxHash)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get transaction by hash: %w", err)
+	}
+
+	if tx == nil {
+		return nil, fmt.Errorf("transaction not found")
+	}
+
+	// tx.BlockNumber is nil when the transaction is still in the mpool/pending
+	if tx.BlockNumber == nil {
+		return nil, fmt.Errorf("no trace for pending transactions")
+	}
+
+	blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(*tx.BlockNumber), 10))
+	if err != nil {
+		return nil, fmt.Errorf("cannot get trace for block: %w", err)
+	}
+
+	txTraces := make([]*types.EthTraceTransaction, 0, len(blockTraces))
+	for _, blockTrace := range blockTraces {
+		if blockTrace.TransactionHash == ethTxHash {
+			// Create a new EthTraceTransaction from the block trace
+			txTrace := types.EthTraceTransaction{
+				EthTrace:            blockTrace.EthTrace,
+				BlockHash:           blockTrace.BlockHash,
+				BlockNumber:         blockTrace.BlockNumber,
+				TransactionHash:     blockTrace.TransactionHash,
+				TransactionPosition: blockTrace.TransactionPosition,
+			}
+			txTraces = append(txTraces, &txTrace)
+		}
+	}
+
+	return txTraces, nil
 }
 
 func calculateRewardsAndGasUsed(rewardPercentiles []float64, txGasRewards gasRewardSorter) ([]types.EthBigInt, int64) {

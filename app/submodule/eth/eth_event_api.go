@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/events/filter"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/venus-shared/api"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -29,7 +30,6 @@ var _ v1.IETHEvent = (*ethEventAPI)(nil)
 
 func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error) {
 	chainAPI := em.chainModule.API()
-	bsstore := em.chainModule.ChainReader.Blockstore()
 	cfg := em.cfg.FevmConfig
 	ee := &ethEventAPI{
 		em:                   em,
@@ -47,6 +47,7 @@ func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error)
 
 	ee.SubManager = &EthSubscriptionManager{
 		ChainAPI:     chainAPI,
+		stmgr:        ee.em.chainModule.Stmgr,
 		messageStore: ee.em.chainModule.MessageStore,
 	}
 	ee.FilterStore = filter.NewMemFilterStore(cfg.Event.MaxFilters)
@@ -70,7 +71,7 @@ func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error)
 
 	ee.EventFilterManager = &filter.EventFilterManager{
 		MessageStore: ee.em.chainModule.MessageStore,
-		ChainStore:   bsstore,
+		ChainStore:   ee.em.chainModule.ChainReader,
 		EventIndex:   eventIndex, // will be nil unless EnableHistoricFilterAPI is true
 		AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
 			// we only want to match using f4 addresses
@@ -80,11 +81,11 @@ func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error)
 			}
 
 			actor, err := em.chainModule.Stmgr.GetActorAt(ctx, idAddr, ts)
-			if err != nil || actor.Address == nil {
+			if err != nil || actor.DelegatedAddress == nil {
 				return idAddr, true
 			}
 
-			return *actor.Address, true
+			return *actor.DelegatedAddress, true
 		},
 
 		MaxFilterResults: cfg.Event.MaxFilterResults,
@@ -160,7 +161,7 @@ func (e *ethEventAPI) EthGetLogs(ctx context.Context, filterSpec *types.EthFilte
 
 	_ = e.uninstallFilter(ctx, f)
 
-	return ethFilterResultFromEvents(ces, e.em.chainModule.MessageStore, e.ChainAPI)
+	return ethFilterResultFromEvents(ces, e.em.chainModule.MessageStore)
 }
 
 func (e *ethEventAPI) EthGetFilterChanges(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error) {
@@ -175,11 +176,11 @@ func (e *ethEventAPI) EthGetFilterChanges(ctx context.Context, id types.EthFilte
 
 	switch fc := f.(type) {
 	case filterEventCollector:
-		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore, e.ChainAPI)
+		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore)
 	case filterTipSetCollector:
 		return ethFilterResultFromTipSets(fc.TakeCollectedTipSets(ctx))
 	case filterMessageCollector:
-		return ethFilterResultFromMessages(fc.TakeCollectedMessages(ctx), e.ChainAPI)
+		return ethFilterResultFromMessages(fc.TakeCollectedMessages(ctx))
 	}
 
 	return nil, fmt.Errorf("unknown filter type")
@@ -197,7 +198,7 @@ func (e *ethEventAPI) EthGetFilterLogs(ctx context.Context, id types.EthFilterID
 
 	switch fc := f.(type) {
 	case filterEventCollector:
-		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore, e.ChainAPI)
+		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore)
 	}
 
 	return nil, fmt.Errorf("wrong filter type")
@@ -626,7 +627,7 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []types.Et
 	return data, topics, true
 }
 
-func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageStore, ca v1.IChain) (*types.EthFilterResult, error) {
+func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageStore) (*types.EthFilterResult, error) {
 	res := &types.EthFilterResult{}
 	for _, ev := range evs {
 		log := types.EthLog{
@@ -650,9 +651,13 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageSt
 			return nil, err
 		}
 
-		log.TransactionHash, err = ethTxHashFromMessageCid(context.TODO(), ev.MsgCid, ms, ca)
+		log.TransactionHash, err = ethTxHashFromMessageCid(context.TODO(), ev.MsgCid, ms)
 		if err != nil {
 			return nil, err
+		}
+		if log.TransactionHash == types.EmptyEthHash {
+			// We've garbage collected the message, ignore the events and continue.
+			continue
 		}
 
 		c, err := ev.TipSetKey.Cid()
@@ -689,11 +694,11 @@ func ethFilterResultFromTipSets(tsks []types.TipSetKey) (*types.EthFilterResult,
 	return res, nil
 }
 
-func ethFilterResultFromMessages(cs []*types.SignedMessage, ca v1.IChain) (*types.EthFilterResult, error) {
+func ethFilterResultFromMessages(cs []*types.SignedMessage) (*types.EthFilterResult, error) {
 	res := &types.EthFilterResult{}
 
 	for _, c := range cs {
-		hash, err := ethTxHashFromSignedMessage(context.TODO(), c, ca)
+		hash, err := ethTxHashFromSignedMessage(c)
 		if err != nil {
 			return nil, err
 		}
@@ -707,6 +712,7 @@ func ethFilterResultFromMessages(cs []*types.SignedMessage, ca v1.IChain) (*type
 type EthSubscriptionManager struct { // nolint
 	ChainAPI     v1.IChain
 	messageStore *chain.MessageStore
+	stmgr        *statemanger.Stmgr
 	mu           sync.Mutex
 	subs         map[types.EthSubscriptionID]*ethSubscription
 }
@@ -723,6 +729,7 @@ func (e *EthSubscriptionManager) StartSubscription(ctx context.Context, out ethS
 
 	sub := &ethSubscription{
 		chainAPI:        e.ChainAPI,
+		stmgr:           e.stmgr,
 		messageStore:    e.messageStore,
 		uninstallFilter: dropFilter,
 		id:              id,
@@ -767,6 +774,7 @@ const maxSendQueue = 20000
 
 type ethSubscription struct {
 	chainAPI        v1.IChain
+	stmgr           *statemanger.Stmgr
 	messageStore    *chain.MessageStore
 	uninstallFilter func(context.Context, filter.Filter) error
 	id              types.EthSubscriptionID
@@ -781,6 +789,8 @@ type ethSubscription struct {
 	sendQueueLen int
 	toSend       *queue.Queue[[]byte]
 	sendCond     chan struct{}
+
+	lastSentTipset *types.TipSetKey
 }
 
 func (e *ethSubscription) addFilter(_ context.Context, f filter.Filter) {
@@ -852,39 +862,56 @@ func (e *ethSubscription) send(_ context.Context, v interface{}) {
 }
 
 func (e *ethSubscription) start(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case v := <-e.in:
-			switch vt := v.(type) {
-			case *filter.CollectedEvent:
-				evs, err := ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.messageStore, e.chainAPI)
-				if err != nil {
-					continue
-				}
+	if ctx.Err() == nil {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case v := <-e.in:
+				switch vt := v.(type) {
+				case *filter.CollectedEvent:
+					evs, err := ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.messageStore)
+					if err != nil {
+						continue
+					}
 
-				for _, r := range evs.Results {
-					e.send(ctx, r)
-				}
-			case *types.TipSet:
-				ev, err := newEthBlockFromFilecoinTipSet(ctx, vt, true, e.messageStore, e.chainAPI)
-				if err != nil {
-					break
-				}
+					for _, r := range evs.Results {
+						e.send(ctx, r)
+					}
+				case *types.TipSet:
+					// Skip processing for tipset at epoch 0 as it has no parent
+					if vt.Height() == 0 {
+						continue
+					}
+					// Check if the parent has already been processed
+					parentTipSetKey := vt.Parents()
+					if e.lastSentTipset != nil && (*e.lastSentTipset) == parentTipSetKey {
+						continue
+					}
+					parentTipSet, loadErr := e.chainAPI.ChainGetTipSet(ctx, parentTipSetKey)
+					if loadErr != nil {
+						log.Warnw("failed to load parent tipset", "tipset", parentTipSetKey, "error", loadErr)
+						continue
+					}
+					ethBlock, ethBlockErr := newEthBlockFromFilecoinTipSet(ctx, parentTipSet, true, e.messageStore, e.stmgr)
+					if ethBlockErr != nil {
+						continue
+					}
 
-				e.send(ctx, ev)
-			case *types.SignedMessage: // mpool txid
-				evs, err := ethFilterResultFromMessages([]*types.SignedMessage{vt}, e.chainAPI)
-				if err != nil {
-					continue
-				}
+					e.send(ctx, ethBlock)
+					e.lastSentTipset = &parentTipSetKey
+				case *types.SignedMessage: // mpool txid
+					evs, err := ethFilterResultFromMessages([]*types.SignedMessage{vt})
+					if err != nil {
+						continue
+					}
 
-				for _, r := range evs.Results {
-					e.send(ctx, r)
+					for _, r := range evs.Results {
+						e.send(ctx, r)
+					}
+				default:
+					log.Warnf("unexpected subscription value type: %T", vt)
 				}
-			default:
-				log.Warnf("unexpected subscription value type: %T", vt)
 			}
 		}
 	}

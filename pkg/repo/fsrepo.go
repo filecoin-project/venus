@@ -24,7 +24,7 @@ import (
 )
 
 // Version is the version of repo schema that this code understands.
-const LatestVersion uint = 12
+const LatestVersion uint = 13
 
 const (
 	// apiFile is the filename containing the filecoin node's api address.
@@ -203,7 +203,7 @@ func (r *FSRepo) loadFromDisk() error {
 	}
 
 	if localVersion > r.version {
-		return fmt.Errorf("binary needs update to handle repo version, got %d expected %d. Update binary to latest release", localVersion, LatestVersion)
+		return fmt.Errorf("binary needs update to handle repo version, got %d expected %d. Update binary to latest release", localVersion, r.version)
 	}
 
 	if err := r.loadConfig(); err != nil {

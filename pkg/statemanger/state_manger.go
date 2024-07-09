@@ -57,10 +57,11 @@ var _ IStateManager = &Stmgr{}
 var log = logging.Logger("statemanager")
 
 type Stmgr struct {
-	cs     *chain.Store
-	ms     *chain.MessageStore
-	cp     consensus.StateTransformer
-	beacon beacon.Schedule
+	cs                          *chain.Store
+	ms                          *chain.MessageStore
+	cp                          consensus.StateTransformer
+	beacon                      beacon.Schedule
+	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor
 
 	fork         fork.IFork
 	gasSchedule  *gas.PricesSchedule
@@ -92,6 +93,7 @@ func NewStateManager(cs *chain.Store,
 	gasSchedule *gas.PricesSchedule,
 	syscallsImpl vm.SyscallsImpl,
 	actorDebugging bool,
+	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
 ) (*Stmgr, error) {
 	log.Debugf("execTraceCache size: %d", execTraceCacheSize)
 	var execTraceCache *arc.ARCCache[types.TipSetKey, tipSetCacheEntry]
@@ -104,17 +106,18 @@ func NewStateManager(cs *chain.Store,
 	}
 
 	return &Stmgr{
-		cs:             cs,
-		ms:             ms,
-		fork:           fork,
-		cp:             cp,
-		beacon:         beacon,
-		gasSchedule:    gasSchedule,
-		syscallsImpl:   syscallsImpl,
-		stCache:        make(map[types.TipSetKey]stateComputeResult),
-		chsWorkingOn:   make(map[types.TipSetKey]chan struct{}, 1),
-		actorDebugging: actorDebugging,
-		execTraceCache: execTraceCache,
+		cs:                          cs,
+		ms:                          ms,
+		fork:                        fork,
+		cp:                          cp,
+		beacon:                      beacon,
+		circulatingSupplyCalculator: circulatingSupplyCalculator,
+		gasSchedule:                 gasSchedule,
+		syscallsImpl:                syscallsImpl,
+		stCache:                     make(map[types.TipSetKey]stateComputeResult),
+		chsWorkingOn:                make(map[types.TipSetKey]chan struct{}, 1),
+		actorDebugging:              actorDebugging,
+		execTraceCache:              execTraceCache,
 	}, nil
 }
 
@@ -589,7 +592,7 @@ func ComputeState(ctx context.Context, s *Stmgr, height abi.ChainEpoch, msgs []*
 	buffStore := blockstoreutil.NewTieredBstore(s.cs.Blockstore(), blockstoreutil.NewTemporarySync())
 	vmopt := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
-			cs, err := s.cs.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			cs, err := s.circulatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, epoch, tree)
 			if err != nil {
 				return abi.TokenAmount{}, err
 			}

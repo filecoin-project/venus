@@ -153,6 +153,10 @@ func (e *ethAPIDummy) EthTraceReplayBlockTransactions(ctx context.Context, blkNu
 	return nil, ErrModuleDisabled
 }
 
+func (e *ethAPIDummy) EthTraceTransaction(ctx context.Context, txHash string) ([]*types.EthTraceTransaction, error) {
+	return nil, ErrModuleDisabled
+}
+
 func (e *ethAPIDummy) start(_ context.Context) error {
 	return nil
 }

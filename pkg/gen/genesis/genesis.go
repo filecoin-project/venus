@@ -400,10 +400,10 @@ func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actorstypes.Ve
 	}
 
 	act := &types.Actor{
-		Code:    actcid,
-		Head:    statecid,
-		Balance: bal,
-		Address: &addr,
+		Code:             actcid,
+		Head:             statecid,
+		Balance:          bal,
+		DelegatedAddress: &addr,
 	}
 
 	return act, nil
@@ -592,7 +592,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 	}
 
 	// temp chainstore
-	cs := chain.NewStore(rep.ChainDatastore(), bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator(), chainselector.Weight)
+	cs := chain.NewStore(rep.ChainDatastore(), bs, cid.Undef, chainselector.Weight)
 
 	// Verify PreSealed Data
 	stateroot, err = VerifyPreSealedData(ctx, cs, stateroot, template, keyIDs, template.NetworkVersion, para)

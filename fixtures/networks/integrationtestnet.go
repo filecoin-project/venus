@@ -53,8 +53,9 @@ func IntegrationNet() *NetworkConf {
 				UpgradeWatermelonHeight:           3431940,
 				UpgradeWatermelonFixHeight:        -100, // This fix upgrade only ran on calibrationnet
 				UpgradeWatermelonFix2Height:       -101, // This fix upgrade only ran on calibrationnet
-				UpgradeDragonHeight:               9999999999999,
+				UpgradeDragonHeight:               3855360,
 				UpgradeCalibrationDragonFixHeight: -102, // This fix upgrade only ran on calibrationnet
+				UpgradeWaffleHeight:               9999999999999,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:          address.Testnet,
@@ -62,6 +63,9 @@ func IntegrationNet() *NetworkConf {
 			AllowableClockDriftSecs: 1,
 			Eip155ChainID:           314,
 			ActorDebugging:          false,
+			F3Enabled:               false,
+			F3BootstrapEpoch:        -1,
+			ManifestServerID:        "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7",
 		},
 	}
 

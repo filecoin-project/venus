@@ -149,6 +149,7 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 		// can't process a hello received in error, but leave this connection
 		// open because we connections are innocent until proven guilty
 		// (with bad genesis)
+		_ = s.Conn().Close()
 		return
 	}
 	latencyMsg := &LatencyMessage{TArrival: time.Now().UnixNano()}
@@ -186,17 +187,22 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 
 	fullTipSet, err := h.loadLocalFullTipset(ctx, types.NewTipSetKey(hello.HeaviestTipSetCids...))
 	if err != nil {
+		// We're trying to fetch the tipset from the peer that just said hello to us. No point in
+		// triggering any dials.
+		ctx := net.WithNoDial(ctx, "fetching filecoin hello tipset")
 		fullTipSet, err = h.exchange.GetFullTipSet(ctx, []peer.ID{from}, types.NewTipSetKey(hello.HeaviestTipSetCids...)) //nolint
-		h.host.ConnManager().TagPeer(from, "new-block", 40)
+		if err != nil {
+			log.Warnf("failed to get tipset message from peer %s", from)
+			return
+		}
 	}
-	if err != nil {
-		log.Warnf("failed to get tipset message from peer %s", from)
-		return
-	}
+
 	if fullTipSet == nil {
 		log.Warnf("handleNewStream get null full tipset, it's scarce!")
 		return
 	}
+
+	h.host.ConnManager().TagPeer(from, "new-block", 40)
 
 	// notify the local node of the new `block.ChainInfo`
 	ci := types.NewChainInfo(from, from, fullTipSet)
@@ -230,13 +236,13 @@ func (h *HelloProtocolHandler) loadLocalFullTipset(ctx context.Context, tsk type
 // ErrBadGenesis is the error returned when a mismatch in genesis blocks happens.
 var ErrBadGenesis = fmt.Errorf("bad genesis block")
 
-func (h *HelloProtocolHandler) receiveHello(ctx context.Context, s net.Stream) (*HelloMessage, error) {
+func (h *HelloProtocolHandler) receiveHello(_ context.Context, s net.Stream) (*HelloMessage, error) {
 	var hello HelloMessage
 	err := hello.UnmarshalCBOR(s)
 	return &hello, err
 }
 
-func (h *HelloProtocolHandler) receiveLatency(ctx context.Context, s net.Stream) (*LatencyMessage, error) {
+func (h *HelloProtocolHandler) receiveLatency(_ context.Context, s net.Stream) (*LatencyMessage, error) {
 	var latency LatencyMessage
 	err := latency.UnmarshalCBOR(s)
 	if err != nil {

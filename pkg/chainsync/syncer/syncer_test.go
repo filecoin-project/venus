@@ -319,7 +319,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
 	// in the bsstore and linked to genesis.
 	eval := builder.FakeStateEvaluator()
-	stmgr, err := statemanger.NewStateManager(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false)
+	stmgr, err := statemanger.NewStateManager(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false, builder.CirculatingSupplyCalcualtor())
 	assert.NoError(t, err)
 
 	newSyncer, err := syncer.NewSyncer(stmgr,
@@ -501,7 +501,7 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 	eval := newPoisonValidator(t, 98, 99)
 	builder := chain.NewBuilder(t, address.Undef)
 
-	stmgr, err := statemanger.NewStateManager(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false)
+	stmgr, err := statemanger.NewStateManager(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false, builder.CirculatingSupplyCalcualtor())
 	require.NoError(t, err)
 
 	builder, syncer := setupWithValidator(ctx, t, builder, stmgr, eval)
@@ -582,7 +582,7 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *syncer.Syncer) {
 	builder := chain.NewBuilder(t, address.Undef)
 	eval := builder.FakeStateEvaluator()
 
-	stmgr, err := statemanger.NewStateManager(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false)
+	stmgr, err := statemanger.NewStateManager(builder.Store(), builder.MessageStore(), eval, nil, nil, nil, nil, false, builder.CirculatingSupplyCalcualtor())
 	require.NoError(t, err)
 
 	return setupWithValidator(ctx, t, builder, stmgr, eval)
