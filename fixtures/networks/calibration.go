@@ -83,6 +83,8 @@ func Calibration() *NetworkConf {
 	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
 
 	nc.Network.F3BootstrapEpoch = nc.Network.ForkUpgradeParam.UpgradeWaffleHeight + 100
+	nc.Network.F3Enabled = true
+	nc.Network.ManifestServerID = "12D3KooWS9vD9uwm8u2uPyJV32QBAhKAmPYwmziAgr3Xzk2FU1Mr"
 
 	return nc
 }
