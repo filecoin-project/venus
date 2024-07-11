@@ -198,5 +198,7 @@ type IMarket interface {
 	ListDirectDeals(ctx context.Context, queryParams market.DirectDealQueryParams) ([]*market.DirectDeal, error) //perm:read
 	UpdateDirectDealState(ctx context.Context, id uuid.UUID, state market.DirectDealState) error                 //perm:write
 
+	UpdateStorageDealPayloadSize(ctx context.Context, dealProposal cid.Cid, payloadSize uint64) error //perm:write
+
 	api.Version
 }
