@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multihash"
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
@@ -199,6 +200,13 @@ type IMarket interface {
 	UpdateDirectDealState(ctx context.Context, id uuid.UUID, state market.DirectDealState) error                 //perm:write
 
 	UpdateStorageDealPayloadSize(ctx context.Context, dealProposal cid.Cid, payloadSize uint64) error //perm:write
+
+	IndexerAnnounceAllDeals(ctx context.Context, minerAddr address.Address) error                //perm:admin
+	IndexerListMultihashes(ctx context.Context, contextID []byte) ([]multihash.Multihash, error) //perm:read
+	IndexerAnnounceLatest(ctx context.Context) (cid.Cid, error)                                  //perm:admin
+	IndexerAnnounceLatestHttp(ctx context.Context, urls []string) (cid.Cid, error)               //perm:admin
+	IndexerAnnounceDealRemoved(ctx context.Context, propCid cid.Cid) (cid.Cid, error)            //perm:admin
+	IndexerAnnounceDeal(ctx context.Context, contextID []byte) (cid.Cid, error)                  //perm:admin
 
 	api.Version
 }

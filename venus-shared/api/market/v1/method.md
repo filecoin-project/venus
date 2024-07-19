@@ -56,6 +56,12 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [GetUnPackedDeals](#getunpackeddeals)
   * [ID](#id)
   * [ImportDirectDeal](#importdirectdeal)
+  * [IndexerAnnounceAllDeals](#indexerannouncealldeals)
+  * [IndexerAnnounceDeal](#indexerannouncedeal)
+  * [IndexerAnnounceDealRemoved](#indexerannouncedealremoved)
+  * [IndexerAnnounceLatest](#indexerannouncelatest)
+  * [IndexerAnnounceLatestHttp](#indexerannouncelatesthttp)
+  * [IndexerListMultihashes](#indexerlistmultihashes)
   * [ListDirectDeals](#listdirectdeals)
   * [ListPieceStorageInfos](#listpiecestorageinfos)
   * [ListenMarketEvent](#listenmarketevent)
@@ -1233,6 +1239,114 @@ Inputs:
 ```
 
 Response: `{}`
+
+### IndexerAnnounceAllDeals
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `{}`
+
+### IndexerAnnounceDeal
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "Ynl0ZSBhcnJheQ=="
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### IndexerAnnounceDealRemoved
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### IndexerAnnounceLatest
+
+
+Perms: admin
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### IndexerAnnounceLatestHttp
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    "string value"
+  ]
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### IndexerListMultihashes
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "Ynl0ZSBhcnJheQ=="
+]
+```
+
+Response:
+```json
+[
+  "Bw=="
+]
+```
 
 ### ListDirectDeals
 
