@@ -75,6 +75,7 @@ require (
 	github.com/ipfs/go-unixfs v0.4.5
 	github.com/ipld/go-car v0.6.2
 	github.com/ipld/go-car/v2 v2.13.1
+	github.com/ipni/go-libipni v0.0.7
 	github.com/jbenet/goprocess v0.1.4
 	github.com/libp2p/go-libp2p v0.35.0
 	github.com/libp2p/go-libp2p-kad-dht v0.25.2
@@ -145,6 +146,7 @@ require (
 	github.com/whyrusleeping/go-logging v0.0.1 // indirect
 	go.uber.org/mock v0.4.0 // indirect
 	gonum.org/v1/gonum v0.15.0 // indirect
+	google.golang.org/genproto v0.0.0-20230629202037-9506855d4529 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240515191416-fc5f0ca64291 // indirect
 )
 
