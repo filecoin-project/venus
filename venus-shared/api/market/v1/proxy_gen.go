@@ -75,7 +75,7 @@ type IMarketStruct struct {
 		ImportDirectDeal                        func(ctx context.Context, deal *market.DirectDealParams) error                                                                                                                                      `perm:"write"`
 		IndexerAnnounceAllDeals                 func(ctx context.Context, minerAddr address.Address) error                                                                                                                                          `perm:"admin"`
 		IndexerAnnounceDeal                     func(ctx context.Context, contextID []byte) (cid.Cid, error)                                                                                                                                        `perm:"admin"`
-		IndexerAnnounceDealRemoved              func(ctx context.Context, propCid cid.Cid) (cid.Cid, error)                                                                                                                                         `perm:"admin"`
+		IndexerAnnounceDealRemoved              func(ctx context.Context, contextID []byte) (cid.Cid, error)                                                                                                                                        `perm:"admin"`
 		IndexerAnnounceLatest                   func(ctx context.Context) (cid.Cid, error)                                                                                                                                                          `perm:"admin"`
 		IndexerAnnounceLatestHttp               func(ctx context.Context, urls []string) (cid.Cid, error)                                                                                                                                           `perm:"admin"`
 		IndexerListMultihashes                  func(ctx context.Context, contextID []byte) ([]multihash.Multihash, error)                                                                                                                          `perm:"read"`
@@ -289,7 +289,7 @@ func (s *IMarketStruct) IndexerAnnounceAllDeals(p0 context.Context, p1 address.A
 func (s *IMarketStruct) IndexerAnnounceDeal(p0 context.Context, p1 []byte) (cid.Cid, error) {
 	return s.Internal.IndexerAnnounceDeal(p0, p1)
 }
-func (s *IMarketStruct) IndexerAnnounceDealRemoved(p0 context.Context, p1 cid.Cid) (cid.Cid, error) {
+func (s *IMarketStruct) IndexerAnnounceDealRemoved(p0 context.Context, p1 []byte) (cid.Cid, error) {
 	return s.Internal.IndexerAnnounceDealRemoved(p0, p1)
 }
 func (s *IMarketStruct) IndexerAnnounceLatest(p0 context.Context) (cid.Cid, error) {

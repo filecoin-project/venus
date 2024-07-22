@@ -796,7 +796,7 @@ func (mr *MockIMarketMockRecorder) IndexerAnnounceDeal(arg0, arg1 interface{}) *
 }
 
 // IndexerAnnounceDealRemoved mocks base method.
-func (m *MockIMarket) IndexerAnnounceDealRemoved(arg0 context.Context, arg1 cid.Cid) (cid.Cid, error) {
+func (m *MockIMarket) IndexerAnnounceDealRemoved(arg0 context.Context, arg1 []byte) (cid.Cid, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IndexerAnnounceDealRemoved", arg0, arg1)
 	ret0, _ := ret[0].(cid.Cid)

@@ -205,7 +205,7 @@ type IMarket interface {
 	IndexerListMultihashes(ctx context.Context, contextID []byte) ([]multihash.Multihash, error) //perm:read
 	IndexerAnnounceLatest(ctx context.Context) (cid.Cid, error)                                  //perm:admin
 	IndexerAnnounceLatestHttp(ctx context.Context, urls []string) (cid.Cid, error)               //perm:admin
-	IndexerAnnounceDealRemoved(ctx context.Context, propCid cid.Cid) (cid.Cid, error)            //perm:admin
+	IndexerAnnounceDealRemoved(ctx context.Context, contextID []byte) (cid.Cid, error)           //perm:admin
 	IndexerAnnounceDeal(ctx context.Context, contextID []byte) (cid.Cid, error)                  //perm:admin
 
 	api.Version
