@@ -106,7 +106,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/icza/backscanner v0.0.0-20210726202459-ac2ffc679f94 // indirect
 	github.com/invopop/jsonschema v0.12.0 // indirect
-	github.com/ipfs-force-community/metrics v1.0.1-0.20231207081445-30178e706d09 // indirect
+	github.com/ipfs-force-community/metrics v1.0.1-0.20240725062356-39b286636574 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/boxo v0.20.0 // indirect
 	github.com/ipfs/go-blockservice v0.5.2 // indirect
