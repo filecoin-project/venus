@@ -4,11 +4,13 @@ import (
 	"testing"
 	"time"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/raulk/clock"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLeaseManager_Upsert(t *testing.T) {
+	tf.UnitTest(t)
 	lm := &leaseManager{
 		clock: clock.NewMock(),
 	}
@@ -27,6 +29,7 @@ func TestLeaseManager_Upsert(t *testing.T) {
 }
 
 func TestLeaseManager_Active(t *testing.T) {
+	tf.UnitTest(t)
 	mockClock := clock.NewMock()
 	lm := &leaseManager{
 		clock: mockClock,
@@ -56,6 +59,7 @@ func TestLeaseManager_Active(t *testing.T) {
 }
 
 func TestLeaseManager_UpsertDefensive(t *testing.T) {
+	tf.UnitTest(t)
 	mockClock := clock.NewMock()
 	lm := &leaseManager{
 		clock: mockClock,
