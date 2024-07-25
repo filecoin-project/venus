@@ -3,7 +3,6 @@ package mining
 import (
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -23,7 +22,6 @@ type MiningModule struct { //nolint
 	Config        miningConfig
 	ChainModule   *chain2.ChainSubmodule
 	BlockStore    *blockstore.BlockstoreSubmodule
-	NetworkModule *network.NetworkSubmodule
 	SyncModule    *syncer.SyncerSubmodule
 	Wallet        wallet.WalletSubmodule
 	proofVerifier ffiwrapper.Verifier
@@ -45,7 +43,6 @@ func NewMiningModule(
 	conf miningConfig,
 	chainModule *chain2.ChainSubmodule,
 	blockStore *blockstore.BlockstoreSubmodule,
-	networkModule *network.NetworkSubmodule,
 	syncModule *syncer.SyncerSubmodule,
 	wallet wallet.WalletSubmodule,
 ) *MiningModule {
@@ -54,7 +51,6 @@ func NewMiningModule(
 		Config:        conf,
 		ChainModule:   chainModule,
 		BlockStore:    blockStore,
-		NetworkModule: networkModule,
 		SyncModule:    syncModule,
 		Wallet:        wallet,
 		proofVerifier: conf.Verifier(),

@@ -151,7 +151,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.storageNetworking")
 	}
-	nd.mining = mining.NewMiningModule(nd.syncer.Stmgr, (*builder)(b), nd.chain, nd.blockstore, nd.network, nd.syncer, *nd.wallet)
+	nd.mining = mining.NewMiningModule(nd.syncer.Stmgr, (*builder)(b), nd.chain, nd.blockstore, nd.syncer, *nd.wallet)
 
 	mgrps := &paychmgr.ManagerParams{
 		MPoolAPI:     nd.mpool.API(),

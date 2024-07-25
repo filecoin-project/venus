@@ -25,6 +25,7 @@ import (
 	uuid "github.com/google/uuid"
 	cid "github.com/ipfs/go-cid"
 	peer "github.com/libp2p/go-libp2p/core/peer"
+	multihash "github.com/multiformats/go-multihash"
 )
 
 // MockIMarket is a mock of IMarket interface.
@@ -763,6 +764,95 @@ func (m *MockIMarket) ImportDirectDeal(arg0 context.Context, arg1 *market.Direct
 func (mr *MockIMarketMockRecorder) ImportDirectDeal(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImportDirectDeal", reflect.TypeOf((*MockIMarket)(nil).ImportDirectDeal), arg0, arg1)
+}
+
+// IndexerAnnounceAllDeals mocks base method.
+func (m *MockIMarket) IndexerAnnounceAllDeals(arg0 context.Context, arg1 address.Address) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IndexerAnnounceAllDeals", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// IndexerAnnounceAllDeals indicates an expected call of IndexerAnnounceAllDeals.
+func (mr *MockIMarketMockRecorder) IndexerAnnounceAllDeals(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IndexerAnnounceAllDeals", reflect.TypeOf((*MockIMarket)(nil).IndexerAnnounceAllDeals), arg0, arg1)
+}
+
+// IndexerAnnounceDeal mocks base method.
+func (m *MockIMarket) IndexerAnnounceDeal(arg0 context.Context, arg1 []byte) (cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IndexerAnnounceDeal", arg0, arg1)
+	ret0, _ := ret[0].(cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IndexerAnnounceDeal indicates an expected call of IndexerAnnounceDeal.
+func (mr *MockIMarketMockRecorder) IndexerAnnounceDeal(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IndexerAnnounceDeal", reflect.TypeOf((*MockIMarket)(nil).IndexerAnnounceDeal), arg0, arg1)
+}
+
+// IndexerAnnounceDealRemoved mocks base method.
+func (m *MockIMarket) IndexerAnnounceDealRemoved(arg0 context.Context, arg1 []byte) (cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IndexerAnnounceDealRemoved", arg0, arg1)
+	ret0, _ := ret[0].(cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IndexerAnnounceDealRemoved indicates an expected call of IndexerAnnounceDealRemoved.
+func (mr *MockIMarketMockRecorder) IndexerAnnounceDealRemoved(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IndexerAnnounceDealRemoved", reflect.TypeOf((*MockIMarket)(nil).IndexerAnnounceDealRemoved), arg0, arg1)
+}
+
+// IndexerAnnounceLatest mocks base method.
+func (m *MockIMarket) IndexerAnnounceLatest(arg0 context.Context) (cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IndexerAnnounceLatest", arg0)
+	ret0, _ := ret[0].(cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IndexerAnnounceLatest indicates an expected call of IndexerAnnounceLatest.
+func (mr *MockIMarketMockRecorder) IndexerAnnounceLatest(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IndexerAnnounceLatest", reflect.TypeOf((*MockIMarket)(nil).IndexerAnnounceLatest), arg0)
+}
+
+// IndexerAnnounceLatestHttp mocks base method.
+func (m *MockIMarket) IndexerAnnounceLatestHttp(arg0 context.Context, arg1 []string) (cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IndexerAnnounceLatestHttp", arg0, arg1)
+	ret0, _ := ret[0].(cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IndexerAnnounceLatestHttp indicates an expected call of IndexerAnnounceLatestHttp.
+func (mr *MockIMarketMockRecorder) IndexerAnnounceLatestHttp(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IndexerAnnounceLatestHttp", reflect.TypeOf((*MockIMarket)(nil).IndexerAnnounceLatestHttp), arg0, arg1)
+}
+
+// IndexerListMultihashes mocks base method.
+func (m *MockIMarket) IndexerListMultihashes(arg0 context.Context, arg1 []byte) ([]multihash.Multihash, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IndexerListMultihashes", arg0, arg1)
+	ret0, _ := ret[0].([]multihash.Multihash)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IndexerListMultihashes indicates an expected call of IndexerListMultihashes.
+func (mr *MockIMarketMockRecorder) IndexerListMultihashes(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IndexerListMultihashes", reflect.TypeOf((*MockIMarket)(nil).IndexerListMultihashes), arg0, arg1)
 }
 
 // ListDirectDeals mocks base method.

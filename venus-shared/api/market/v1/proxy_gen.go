@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	cid "github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
+	multihash "github.com/multiformats/go-multihash"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/gateway"
@@ -72,6 +73,12 @@ type IMarketStruct struct {
 		GetUnPackedDeals                        func(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                                   `perm:"read"`
 		ID                                      func(context.Context) (peer.ID, error)                                                                                                                                                              `perm:"read"`
 		ImportDirectDeal                        func(ctx context.Context, deal *market.DirectDealParams) error                                                                                                                                      `perm:"write"`
+		IndexerAnnounceAllDeals                 func(ctx context.Context, minerAddr address.Address) error                                                                                                                                          `perm:"admin"`
+		IndexerAnnounceDeal                     func(ctx context.Context, contextID []byte) (cid.Cid, error)                                                                                                                                        `perm:"admin"`
+		IndexerAnnounceDealRemoved              func(ctx context.Context, contextID []byte) (cid.Cid, error)                                                                                                                                        `perm:"admin"`
+		IndexerAnnounceLatest                   func(ctx context.Context) (cid.Cid, error)                                                                                                                                                          `perm:"admin"`
+		IndexerAnnounceLatestHttp               func(ctx context.Context, urls []string) (cid.Cid, error)                                                                                                                                           `perm:"admin"`
+		IndexerListMultihashes                  func(ctx context.Context, contextID []byte) ([]multihash.Multihash, error)                                                                                                                          `perm:"read"`
 		ListDirectDeals                         func(ctx context.Context, queryParams market.DirectDealQueryParams) ([]*market.DirectDeal, error)                                                                                                   `perm:"read"`
 		ListPieceStorageInfos                   func(ctx context.Context) market.PieceStorageInfos                                                                                                                                                  `perm:"read"`
 		ListenMarketEvent                       func(ctx context.Context, policy *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error)                                                                                               `perm:"read"`
@@ -275,6 +282,24 @@ func (s *IMarketStruct) GetUnPackedDeals(p0 context.Context, p1 address.Address,
 func (s *IMarketStruct) ID(p0 context.Context) (peer.ID, error) { return s.Internal.ID(p0) }
 func (s *IMarketStruct) ImportDirectDeal(p0 context.Context, p1 *market.DirectDealParams) error {
 	return s.Internal.ImportDirectDeal(p0, p1)
+}
+func (s *IMarketStruct) IndexerAnnounceAllDeals(p0 context.Context, p1 address.Address) error {
+	return s.Internal.IndexerAnnounceAllDeals(p0, p1)
+}
+func (s *IMarketStruct) IndexerAnnounceDeal(p0 context.Context, p1 []byte) (cid.Cid, error) {
+	return s.Internal.IndexerAnnounceDeal(p0, p1)
+}
+func (s *IMarketStruct) IndexerAnnounceDealRemoved(p0 context.Context, p1 []byte) (cid.Cid, error) {
+	return s.Internal.IndexerAnnounceDealRemoved(p0, p1)
+}
+func (s *IMarketStruct) IndexerAnnounceLatest(p0 context.Context) (cid.Cid, error) {
+	return s.Internal.IndexerAnnounceLatest(p0)
+}
+func (s *IMarketStruct) IndexerAnnounceLatestHttp(p0 context.Context, p1 []string) (cid.Cid, error) {
+	return s.Internal.IndexerAnnounceLatestHttp(p0, p1)
+}
+func (s *IMarketStruct) IndexerListMultihashes(p0 context.Context, p1 []byte) ([]multihash.Multihash, error) {
+	return s.Internal.IndexerListMultihashes(p0, p1)
 }
 func (s *IMarketStruct) ListDirectDeals(p0 context.Context, p1 market.DirectDealQueryParams) ([]*market.DirectDeal, error) {
 	return s.Internal.ListDirectDeals(p0, p1)
