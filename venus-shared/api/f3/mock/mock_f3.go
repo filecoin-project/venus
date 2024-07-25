@@ -7,9 +7,12 @@ package mock
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	address "github.com/filecoin-project/go-address"
 	certs "github.com/filecoin-project/go-f3/certs"
+	gpbft "github.com/filecoin-project/go-f3/gpbft"
+	types "github.com/filecoin-project/venus/venus-shared/types"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -51,6 +54,36 @@ func (mr *MockF3MockRecorder) F3GetCertificate(arg0, arg1 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetCertificate", reflect.TypeOf((*MockF3)(nil).F3GetCertificate), arg0, arg1)
 }
 
+// F3GetECPowerTable mocks base method.
+func (m *MockF3) F3GetECPowerTable(arg0 context.Context, arg1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetECPowerTable", arg0, arg1)
+	ret0, _ := ret[0].(gpbft.PowerEntries)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetECPowerTable indicates an expected call of F3GetECPowerTable.
+func (mr *MockF3MockRecorder) F3GetECPowerTable(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetECPowerTable", reflect.TypeOf((*MockF3)(nil).F3GetECPowerTable), arg0, arg1)
+}
+
+// F3GetF3PowerTable mocks base method.
+func (m *MockF3) F3GetF3PowerTable(arg0 context.Context, arg1 types.TipSetKey) (gpbft.PowerEntries, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetF3PowerTable", arg0, arg1)
+	ret0, _ := ret[0].(gpbft.PowerEntries)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetF3PowerTable indicates an expected call of F3GetF3PowerTable.
+func (mr *MockF3MockRecorder) F3GetF3PowerTable(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetF3PowerTable", reflect.TypeOf((*MockF3)(nil).F3GetF3PowerTable), arg0, arg1)
+}
+
 // F3GetLatestCertificate mocks base method.
 func (m *MockF3) F3GetLatestCertificate(arg0 context.Context) (*certs.FinalityCertificate, error) {
 	m.ctrl.T.Helper()
@@ -67,16 +100,16 @@ func (mr *MockF3MockRecorder) F3GetLatestCertificate(arg0 interface{}) *gomock.C
 }
 
 // F3Participate mocks base method.
-func (m *MockF3) F3Participate(arg0 context.Context, arg1 address.Address) (<-chan string, error) {
+func (m *MockF3) F3Participate(arg0 context.Context, arg1 address.Address, arg2, arg3 time.Time) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "F3Participate", arg0, arg1)
-	ret0, _ := ret[0].(<-chan string)
+	ret := m.ctrl.Call(m, "F3Participate", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // F3Participate indicates an expected call of F3Participate.
-func (mr *MockF3MockRecorder) F3Participate(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockF3MockRecorder) F3Participate(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3Participate", reflect.TypeOf((*MockF3)(nil).F3Participate), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3Participate", reflect.TypeOf((*MockF3)(nil).F3Participate), arg0, arg1, arg2, arg3)
 }

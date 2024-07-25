@@ -8,6 +8,8 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
 
 * [F3](#f3)
   * [F3GetCertificate](#f3getcertificate)
+  * [F3GetECPowerTable](#f3getecpowertable)
+  * [F3GetF3PowerTable](#f3getf3powertable)
   * [F3GetLatestCertificate](#f3getlatestcertificate)
   * [F3Participate](#f3participate)
 
@@ -76,6 +78,68 @@ Response:
 }
 ```
 
+### F3GetECPowerTable
+F3GetECPowerTable returns a F3 specific power table for use in standalone F3 nodes.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": 1000,
+    "Power": 0,
+    "PubKey": "Bw=="
+  }
+]
+```
+
+### F3GetF3PowerTable
+F3GetF3PowerTable returns a F3 specific power table.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": 1000,
+    "Power": 0,
+    "PubKey": "Bw=="
+  }
+]
+```
+
 ### F3GetLatestCertificate
 F3GetLatestCertificate returns the latest finality certificate
 
@@ -135,22 +199,19 @@ Response:
 ```
 
 ### F3Participate
-F3Participate should be called by a miner node to participate in signing F3 consensus.
-The address should be of type ID
-The returned channel will never be closed by the F3
-If it is closed without the context being cancelled, the caller should retry.
-The values returned on the channel will inform the caller about participation
-Empty strings will be sent if participation succeeded, non-empty strings explain possible errors.
+*********************************** ALL F3 APIs below are not stable & subject to change ***********************************
 
 
-Perms: admin
+Perms: sign
 
 Inputs:
 ```json
 [
-  "f01234"
+  "f01234",
+  "0001-01-01T00:00:00Z",
+  "0001-01-01T00:00:00Z"
 ]
 ```
 
-Response: `"string value"`
+Response: `true`
 

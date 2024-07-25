@@ -36,9 +36,9 @@ func NewF3Submodule(ctx context.Context,
 		Host:             network.Host,
 		ChainStore:       chain.ChainReader,
 		StateManager:     chain.Stmgr,
-		Datastore:        repo.ChainDatastore(),
+		Datastore:        repo.MetaDatastore(),
 		Wallet:           walletAPI,
-		ManifestProvider: vf3.NewManifestProvider(network.NetworkName, chain.ChainReader, chain.Stmgr, network.Pubsub, netConf),
+		ManifestProvider: vf3.NewManifestProvider(network.NetworkName, repo.MetaDatastore(), network.Pubsub, netConf),
 	})
 	if err != nil {
 		return nil, err

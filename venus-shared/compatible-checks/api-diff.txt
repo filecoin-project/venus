@@ -106,6 +106,8 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- Discover
 	> EthTraceReplayBlockTransactions {[func(context.Context, string, []string) ([]*types.EthTraceReplayBlockTransaction, error) <> func(context.Context, string, []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)] base=func out type: #0 input; nested={[[]*types.EthTraceReplayBlockTransaction <> []*ethtypes.EthTraceReplayBlockTransaction] base=slice element; nested={[*types.EthTraceReplayBlockTransaction <> *ethtypes.EthTraceReplayBlockTransaction] base=pointed type; nested={[types.EthTraceReplayBlockTransaction <> ethtypes.EthTraceReplayBlockTransaction] base=struct field; nested={[types.EthTraceReplayBlockTransaction <> ethtypes.EthTraceReplayBlockTransaction] base=exported field name: #4 field, VMTrace != VmTrace; nested=nil}}}}}
 	- F3GetCertificate
+	- F3GetECPowerTable
+	- F3GetF3PowerTable
 	- F3GetLatestCertificate
 	- F3Participate
 	+ GasBatchEstimateMessageGas
