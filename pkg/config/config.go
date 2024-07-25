@@ -385,7 +385,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradePhoenixHeight:        3855360 + 120,
 	// This fix upgrade only ran on calibrationnet
 	UpgradeCalibrationDragonFixHeight: -3,
-	UpgradeWaffleHeight:               999999999999,
+	UpgradeWaffleHeight:               4154640,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
