@@ -9,11 +9,11 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
-	"github.com/filecoin-project/venus/venus-shared/api/f3"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var _ f3.F3 = &f3API{}
+var _ v1.IF3 = &f3API{}
 
 type f3API struct {
 	f3module *F3Submodule

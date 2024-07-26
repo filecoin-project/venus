@@ -1,4 +1,4 @@
-package f3
+package v1
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-type F3 interface {
+type IF3 interface {
 	//*********************************** ALL F3 APIs below are not stable & subject to change ***********************************
 
 	// F3Participate should be called by a storage provider to participate in signing F3 consensus.

@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus/app/submodule/actorevent"
 	"github.com/filecoin-project/venus/app/submodule/eth"
+	"github.com/filecoin-project/venus/app/submodule/f3"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
@@ -40,8 +41,11 @@ func (builder *RPCBuilder) AddServices(services ...RPCService) error {
 	return nil
 }
 
-var ethSubModuleTyp = reflect.TypeOf(&eth.EthSubModule{}).Elem()
-var actorEventSubModuleTyp = reflect.TypeOf(&actorevent.ActorEventSubModule{}).Elem()
+var skipList = []reflect.Type{
+	reflect.TypeOf(&eth.EthSubModule{}).Elem(),
+	reflect.TypeOf(&actorevent.ActorEventSubModule{}).Elem(),
+	reflect.TypeOf(&f3.F3Submodule{}).Elem(),
+}
 
 func skipV0API(in interface{}) bool {
 	inT := reflect.TypeOf(in)
@@ -49,7 +53,13 @@ func skipV0API(in interface{}) bool {
 		inT = inT.Elem()
 	}
 
-	return inT.AssignableTo(ethSubModuleTyp) || inT.AssignableTo(actorEventSubModuleTyp)
+	for _, t := range skipList {
+		if inT.AssignableTo(t) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (builder *RPCBuilder) AddV0API(service RPCService) error {

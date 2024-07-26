@@ -13,4 +13,5 @@ type FullNode interface {
 	ICommon
 	FullETH
 	IActorEvent
+	IF3
 }
