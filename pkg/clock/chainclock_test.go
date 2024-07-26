@@ -68,7 +68,7 @@ func TestChainEpochClock(t *testing.T) {
 		cec.WaitForEpoch(ctx, waitEpoch)
 	}()
 
-	t.Logf("waitting for next epoch.")
+	t.Logf("waiting for next epoch.")
 	wg.Wait()
 
 	assert.Equal(t, waitEpoch, expectedNextEpoch)

@@ -168,7 +168,7 @@ func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.Ch
 // the message, block and receipt, when it is found. Reads until the channel is
 // closed or the context done. Returns the found message/block (or nil if the
 // channel closed without finding it), whether it was found, or an error.
-// notice matching mesage by message from and nonce. the return message may not be
+// notice matching message by message from and nonce. the return message may not be
 // expected, because there maybe another message have the same from and nonce value
 func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*types.HeadChange, msg types.ChainMsg, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.ChainMessage, bool, error) {
 	current, ok := <-ch
