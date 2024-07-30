@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 func TestWsBuilder(t *testing.T) {

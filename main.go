@@ -31,6 +31,8 @@ func main() {
 		_ = logging.SetLogLevel("pubsub", "error")
 		_ = logging.SetLogLevel("relay", "error")
 		_ = logging.SetLogLevel("dht/RtRefreshManager", "error")
+		_ = logging.SetLogLevel("pubsub-index-message", "error")
+		_ = logging.SetLogLevel("connmgr", "warn")
 	} else {
 		level, err := logging.LevelFromString(lvl)
 		if err != nil {

@@ -79,6 +79,9 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 		return pubsub.ValidationReject
 	}
 
+	addrs, _ := idxrMsg.GetAddrs()
+	log.Debugf("indexer message from miner %s, addrs %v, peer %s, cid %s", minerAddr, addrs, originPeer, idxrMsg.Cid)
+
 	msgCid := idxrMsg.Cid
 
 	msgInfo, cached := v.peerCache.Get(minerAddr)

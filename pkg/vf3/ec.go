@@ -2,6 +2,7 @@ package vf3
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"golang.org/x/xerrors"
 )
 
 type ecWrapper struct {
@@ -23,10 +23,16 @@ type ecWrapper struct {
 	StateManager *statemanger.Stmgr
 }
 
+var _ ec.TipSet = (*f3TipSet)(nil)
+
 type f3TipSet types.TipSet
 
 func (ts *f3TipSet) cast() *types.TipSet {
 	return (*types.TipSet)(ts)
+}
+
+func (ts *f3TipSet) String() string {
+	return ts.cast().String()
 }
 
 func (ts *f3TipSet) Key() gpbft.TipSetKey {
@@ -36,12 +42,11 @@ func (ts *f3TipSet) Key() gpbft.TipSetKey {
 func (ts *f3TipSet) Beacon() []byte {
 	entries := ts.cast().Blocks()[0].BeaconEntries
 	if len(entries) == 0 {
-		// Set beacon to a non-nil slice to force the message builder to generate a
+		// This should never happen in practice, but set beacon to a non-nil
+		// 32byte slice to force the message builder to generate a
 		// ticket. Otherwise, messages that require ticket, i.e. CONVERGE will fail
 		// validation due to the absence of ticket. This is a convoluted way of doing it.
-		// TODO: Rework the F3 message builder APIs to include ticket when needed instead
-		//       of relying on the nil check of beacon.
-		return []byte{}
+		return make([]byte, 32)
 	}
 	return entries[len(entries)-1].Data
 }
@@ -66,7 +71,7 @@ func wrapTS(ts *types.TipSet) ec.TipSet {
 func (ec *ecWrapper) GetTipsetByEpoch(ctx context.Context, epoch int64) (ec.TipSet, error) {
 	ts, err := ec.ChainStore.GetTipSetByHeight(ctx, nil, abi.ChainEpoch(epoch), true)
 	if err != nil {
-		return nil, xerrors.Errorf("getting tipset by height: %w", err)
+		return nil, fmt.Errorf("getting tipset by height: %w", err)
 	}
 	return wrapTS(ts), nil
 }
@@ -74,12 +79,12 @@ func (ec *ecWrapper) GetTipsetByEpoch(ctx context.Context, epoch int64) (ec.TipS
 func (ec *ecWrapper) GetTipset(ctx context.Context, tsk gpbft.TipSetKey) (ec.TipSet, error) {
 	tskLotus, err := types.TipSetKeyFromBytes(tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("decoding tsk: %w", err)
+		return nil, fmt.Errorf("decoding tsk: %w", err)
 	}
 
 	ts, err := ec.ChainStore.GetTipSet(ctx, tskLotus)
 	if err != nil {
-		return nil, xerrors.Errorf("getting tipset by key: %w", err)
+		return nil, fmt.Errorf("getting tipset by key: %w", err)
 	}
 
 	return wrapTS(ts), nil
@@ -101,45 +106,49 @@ func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 ec.TipSet) (ec.TipSet, 
 		//       is over and fake EC backend goes away.
 		tskLotus, err := types.TipSetKeyFromBytes(tsF3.Key())
 		if err != nil {
-			return nil, xerrors.Errorf("decoding tsk: %w", err)
+			return nil, fmt.Errorf("decoding tsk: %w", err)
 		}
 		ts, err = ec.ChainStore.GetTipSet(ctx, tskLotus)
 		if err != nil {
-			return nil, xerrors.Errorf("getting tipset by key for get parent: %w", err)
+			return nil, fmt.Errorf("getting tipset by key for get parent: %w", err)
 		}
 	}
 	parentTS, err := ec.ChainStore.GetTipSet(ctx, ts.Parents())
 	if err != nil {
-		return nil, xerrors.Errorf("getting parent tipset: %w", err)
+		return nil, fmt.Errorf("getting parent tipset: %w", err)
 	}
 	return wrapTS(parentTS), nil
 }
 
 func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (gpbft.PowerEntries, error) {
-	tskLotus, err := types.TipSetKeyFromBytes(tskF3)
+	tsk, err := types.TipSetKeyFromBytes(tskF3)
 	if err != nil {
-		return nil, xerrors.Errorf("decoding tsk: %w", err)
+		return nil, fmt.Errorf("decoding tsk: %w", err)
 	}
-	ts, err := ec.ChainStore.GetTipSet(ctx, tskLotus)
+	return ec.getPowerTableLotusTSK(ctx, tsk)
+}
+
+func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
+	ts, err := ec.ChainStore.GetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("getting tipset by key for get parent: %w", err)
+		return nil, fmt.Errorf("getting tipset by key for get parent: %w", err)
 	}
 
 	_, state, err := ec.StateManager.ParentState(ctx, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("loading the state tree: %w", err)
+		return nil, fmt.Errorf("loading the state tree: %w", err)
 	}
 	powerAct, found, err := state.GetActor(ctx, power.Address)
 	if err != nil {
-		return nil, xerrors.Errorf("getting the power actor: %w", err)
+		return nil, fmt.Errorf("getting the power actor: %w", err)
 	}
 	if !found {
-		return nil, xerrors.Errorf("not found the power actor by address: %s", power.Address)
+		return nil, fmt.Errorf("not found the power actor by address: %s", power.Address)
 	}
 
 	powerState, err := power.Load(ec.ChainStore.Store(ctx), powerAct)
 	if err != nil {
-		return nil, xerrors.Errorf("loading power actor state: %w", err)
+		return nil, fmt.Errorf("loading power actor state: %w", err)
 	}
 
 	var powerEntries gpbft.PowerEntries
@@ -151,7 +160,7 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 		// TODO: optimize
 		ok, err := powerState.MinerNominalPowerMeetsConsensusMinimum(minerAddr)
 		if err != nil {
-			return xerrors.Errorf("checking consensus minimums: %w", err)
+			return fmt.Errorf("checking consensus minimums: %w", err)
 		}
 		if !ok {
 			return nil
@@ -159,29 +168,29 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 
 		id, err := address.IDFromAddress(minerAddr)
 		if err != nil {
-			return xerrors.Errorf("transforming address to ID: %w", err)
+			return fmt.Errorf("transforming address to ID: %w", err)
 		}
 
 		pe := gpbft.PowerEntry{
 			ID:    gpbft.ActorID(id),
-			Power: claim.QualityAdjPower.Int,
+			Power: claim.QualityAdjPower,
 		}
 
 		act, found, err := state.GetActor(ctx, minerAddr)
 		if err != nil {
-			return xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
+			return fmt.Errorf("(get sset) failed to load miner actor: %w", err)
 		}
 		if !found {
-			return xerrors.Errorf("(get sset) failed to find miner actor by address: %s", minerAddr)
+			return fmt.Errorf("(get sset) failed to find miner actor by address: %s", minerAddr)
 		}
 		mstate, err := miner.Load(ec.ChainStore.Store(ctx), act)
 		if err != nil {
-			return xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+			return fmt.Errorf("(get sset) failed to load miner actor state: %w", err)
 		}
 
 		info, err := mstate.Info()
 		if err != nil {
-			return xerrors.Errorf("failed to load actor info: %w", err)
+			return fmt.Errorf("failed to load actor info: %w", err)
 		}
 		// check fee debt
 		if debt, err := mstate.FeeDebt(); err != nil {
@@ -197,18 +206,18 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 
 		waddr, err := vm.ResolveToDeterministicAddress(ctx, state, info.Worker, ec.ChainStore.Store(ctx))
 		if err != nil {
-			return xerrors.Errorf("resolve miner worker address: %w", err)
+			return fmt.Errorf("resolve miner worker address: %w", err)
 		}
 
 		if waddr.Protocol() != address.BLS {
-			return xerrors.Errorf("wrong type of worker address")
+			return fmt.Errorf("wrong type of worker address")
 		}
 		pe.PubKey = gpbft.PubKey(waddr.Payload())
 		powerEntries = append(powerEntries, pe)
 		return nil
 	})
 	if err != nil {
-		return nil, xerrors.Errorf("collecting the power table: %w", err)
+		return nil, fmt.Errorf("collecting the power table: %w", err)
 	}
 
 	sort.Sort(powerEntries)

@@ -12,8 +12,8 @@ func ButterflySnapNet() *NetworkConf {
 	nc := &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWE9GZUna2UpMMtcCcpmSwiEB7jcKse8gixzwVomgbQysC",
-				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWJGtqGX2XBssujaMn3FsybJu1xJhFZzhVjNnWvC6a26iG",
+				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWGW6xMTpjEBqndYkqytbu8PWfJmpK4wKLLLNSkXL2QZtD",
+				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWFGz9HegR3Rjrtm8b9WXTM6E3kN1sdd6X1JztuCgQaZSB",
 			},
 			Period: "30s",
 		},
@@ -70,7 +70,7 @@ func ButterflySnapNet() *NetworkConf {
 			Eip155ChainID:           3141592,
 			ActorDebugging:          false,
 			F3Enabled:               true,
-			F3BootstrapEpoch:        200,
+			F3BootstrapEpoch:        1000,
 			ManifestServerID:        "12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6",
 		},
 	}

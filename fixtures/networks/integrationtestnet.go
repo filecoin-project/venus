@@ -55,7 +55,7 @@ func IntegrationNet() *NetworkConf {
 				UpgradeWatermelonFix2Height:       -101, // This fix upgrade only ran on calibrationnet
 				UpgradeDragonHeight:               3855360,
 				UpgradeCalibrationDragonFixHeight: -102, // This fix upgrade only ran on calibrationnet
-				UpgradeWaffleHeight:               9999999999999,
+				UpgradeWaffleHeight:               4154640,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:          address.Testnet,

@@ -275,7 +275,7 @@ func (h *HelloProtocolHandler) sayHello(ctx context.Context, peerID peer.ID) err
 	s, err := h.host.NewStream(ctx, peerID, helloProtocolID)
 	if err != nil {
 		// If peer does not do hello keep connection open
-		return err
+		return fmt.Errorf("error opening stream: %w", err)
 	}
 	defer func() { _ = s.Close() }()
 
@@ -289,7 +289,7 @@ func (h *HelloProtocolHandler) sayHello(ctx context.Context, peerID peer.ID) err
 	// now receive latency message
 	lmsg, err := h.receiveLatency(ctx, s)
 	if err != nil {
-		return fmt.Errorf("failed to receive hello latency msg: %s", err)
+		log.Debugw("reading latency message", "error", err)
 	}
 
 	t3 := time.Now()
@@ -309,7 +309,7 @@ func (h *HelloProtocolHandler) sayHello(ctx context.Context, peerID peer.ID) err
 		}
 	}
 
-	return err
+	return nil
 }
 
 // sendHello send a hello message on stream `s`.

@@ -357,7 +357,7 @@ func (node *Node) runRestfulAPI(ctx context.Context, handler *http.ServeMux, roo
 	return nil
 }
 
-func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) error { // nolint
+func (node *Node) runJsonrpcAPI(_ context.Context, handler *http.ServeMux) error { // nolint
 	handler.Handle("/rpc/v0", node.jsonRPCService)
 	handler.Handle("/rpc/v1", node.jsonRPCServiceV1)
 	return nil

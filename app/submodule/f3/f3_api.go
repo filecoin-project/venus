@@ -3,14 +3,17 @@ package f3
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3/certs"
-	"github.com/filecoin-project/venus/venus-shared/api/f3"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/go-f3/gpbft"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var _ f3.F3 = &f3API{}
+var _ v1.IF3 = &f3API{}
 
 type f3API struct {
 	f3module *F3Submodule
@@ -18,24 +21,28 @@ type f3API struct {
 
 var ErrF3Disabled = errors.New("f3 is disabled")
 
-func (f3api *f3API) F3Participate(ctx context.Context, miner address.Address) (<-chan string, error) {
+func (f3api *f3API) F3Participate(ctx context.Context,
+	minerAddr address.Address,
+	newLeaseExpiration time.Time,
+	oldLeaseExpiration time.Time,
+) (bool, error) {
 	if f3api.f3module.F3 == nil {
-		log.Infof("F3Participate called for %v, F3 is disabled", miner)
-		return nil, ErrF3Disabled
+		log.Infof("F3Participate called for %v, F3 is disabled", minerAddr)
+		return false, ErrF3Disabled
 	}
 
-	// Make channel with some buffer to avoid blocking under higher load.
-	errCh := make(chan string, 4)
-	log.Infof("starting F3 participation for %v", miner)
+	if leaseDuration := time.Until(newLeaseExpiration); leaseDuration > 5*time.Minute {
+		return false, fmt.Errorf("F3 participation lease too long: %v > 5 min", leaseDuration)
+	} else if leaseDuration < 0 {
+		return false, fmt.Errorf("F3 participation lease is in the past: %d < 0", leaseDuration)
+	}
 
-	actorID, err := address.IDFromAddress(miner)
+	minerID, err := address.IDFromAddress(minerAddr)
 	if err != nil {
-		return nil, xerrors.Errorf("miner address in F3Participate not of ID type: %w", err)
+		return false, fmt.Errorf("miner address is not of ID type: %v: %w", minerID, err)
 	}
 
-	// Participate takes control of closing the channel
-	go f3api.f3module.F3.Participate(ctx, actorID, errCh)
-	return errCh, nil
+	return f3api.f3module.F3.Participate(ctx, minerID, newLeaseExpiration, oldLeaseExpiration), nil
 }
 
 func (f3api *f3API) F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) {
@@ -50,4 +57,18 @@ func (f3api *f3API) F3GetLatestCertificate(ctx context.Context) (*certs.Finality
 		return nil, ErrF3Disabled
 	}
 	return f3api.f3module.F3.GetLatestCert(ctx)
+}
+
+func (f3api *f3API) F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
+	if f3api.f3module.F3 == nil {
+		return nil, ErrF3Disabled
+	}
+	return f3api.f3module.F3.GetPowerTable(ctx, tsk)
+}
+
+func (f3api *f3API) F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
+	if f3api.f3module.F3 == nil {
+		return nil, ErrF3Disabled
+	}
+	return f3api.f3module.F3.GetF3PowerTable(ctx, tsk)
 }

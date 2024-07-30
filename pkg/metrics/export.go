@@ -10,8 +10,6 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 	prom "github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/stats/view"
-	octrace "go.opencensus.io/trace"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/bridge/opencensus"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -92,9 +90,7 @@ func SetupJaegerTracing(serviceName string, cfg *config.TraceConfig) (*tracesdk.
 		)),
 		tracesdk.WithSampler(tracesdk.TraceIDRatioBased(cfg.ProbabilitySampler)),
 	)
-	otel.SetTracerProvider(tp)
-	tracer := tp.Tracer(serviceName)
-	octrace.DefaultTracer = opencensus.NewTracer(tracer)
+	opencensus.InstallTraceBridge(opencensus.WithTracerProvider(tp))
 	return tp, nil
 }
 

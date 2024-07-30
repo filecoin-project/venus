@@ -21,6 +21,8 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/logging"
 )
 
+const streamOpenTimeout = 1 * time.Minute
+
 var log = logging.New("exchange.client")
 
 // client implements exchange.Client, using the libp2p ChainExchange protocol
@@ -407,10 +409,12 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 	}
 
 	connectionStart := time.Now()
+	sctx, cancel := context.WithTimeout(ctx, streamOpenTimeout)
+	defer cancel()
 
 	// Open stream to peer.
 	stream, err := c.host.NewStream(
-		network.WithNoDial(ctx, "should already have connection"),
+		network.WithNoDial(sctx, "should already have connection"),
 		peer,
 		exchange.ChainExchangeProtocolID, exchange.BlockSyncProtocolID)
 	if err != nil {
