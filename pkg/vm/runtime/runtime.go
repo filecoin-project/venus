@@ -31,7 +31,7 @@ type InvocationContext interface {
 	Store() rt5.Store
 	// Message contains information available to the actor about the executing message.
 	Message() rt5.Message
-	// ValidateCaller validates the caller against a patter.
+	// ValidateCaller validates the caller against a pattern.
 	//
 	// All actor methods MUST call this method before returning.
 	ValidateCaller(CallerPattern)

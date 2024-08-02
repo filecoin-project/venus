@@ -151,7 +151,7 @@ func (vm *LegacyVM) ApplyImplicitMessage(ctx context.Context, msg types.ChainMsg
 //
 // This messages do not consume client gas and must not fail.
 func (vm *LegacyVM) applyImplicitMessage(msg *types.Message) (*Ret, error) {
-	// implicit messages gas is tracked separatly and not paid by the miner
+	// implicit messages gas is tracked separately and not paid by the miner
 	gasTank := gas.NewGasTracker(constants.BlockGasLimit * 10000)
 	gasTank.FillMessageTrace(msg)
 
