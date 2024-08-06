@@ -414,7 +414,7 @@ var chainExportCmd = &cmds.Command{
 //
 // It always gets the head from the API so commands use a consistent tipset even if time pases.
 func LoadTipSet(ctx context.Context, req *cmds.Request, chainAPI v1api.IChain) (*types.TipSet, error) {
-	tss := req.Options["tipset"].(string)
+	tss, _ := req.Options["tipset"].(string)
 	if tss == "" {
 		return chainAPI.ChainHead(ctx)
 	}
