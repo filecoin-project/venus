@@ -15,12 +15,12 @@ import (
 
 //go:generate go run ./gen
 
-// Actor is a chaos actor. It implements a variety of illegal behaviours that
-// trigger violations of VM invariants. These behaviours are not found in
+// Actor is a chaos actor. It implements a variety of illegal behaviors that
+// trigger violations of VM invariants. These behaviors are not found in
 // production code, but are important to test that the VM constraints are
 // properly enforced.
 //
-// The chaos actor is being incubated and its behaviour and ABI be standardised
+// The chaos actor is being incubated and its behavior and ABI be standardized
 // shortly. Its CID is ChaosActorCodeCID, and its singleton address is 98 (Address).
 // It cannot be instantiated via the init actor, and its constructor panics.
 //

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/awnumar/memguard"
 	"github.com/filecoin-project/go-address"
@@ -45,12 +46,12 @@ type DSBackend struct {
 
 	cache map[address.Address]struct{}
 
-	PassphraseConf config.PassphraseConfig
+	passphraseConf config.PassphraseConfig
 
 	password *memguard.Enclave
 	unLocked map[address.Address]*key.KeyInfo
 
-	state int
+	state atomic.Int64
 }
 
 var _ Backend = (*DSBackend)(nil)
@@ -81,7 +82,7 @@ func NewDSBackend(ctx context.Context, ds repo.Datastore, passphraseCfg config.P
 	backend := &DSBackend{
 		ds:             ds,
 		cache:          addrCache,
-		PassphraseConf: passphraseCfg,
+		passphraseConf: passphraseCfg,
 		unLocked:       make(map[address.Address]*key.KeyInfo, len(addrCache)),
 	}
 
@@ -104,11 +105,11 @@ func (backend *DSBackend) Addresses(ctx context.Context) []address.Address {
 	backend.lk.RLock()
 	defer backend.lk.RUnlock()
 
-	var cpy []address.Address
+	var addrs []address.Address
 	for addr := range backend.cache {
-		cpy = append(cpy, addr)
+		addrs = append(addrs, addr)
 	}
-	return cpy
+	return addrs
 }
 
 // HasAddress checks if the passed in address is stored in this backend.
@@ -188,12 +189,10 @@ func (backend *DSBackend) putKeyInfo(ctx context.Context, ki *key.KeyInfo) error
 	}
 
 	var keyJSON []byte
-	err = backend.UsePassword(func(password []byte) error {
-		var err error
-		keyJSON, err = encryptKey(key, password, backend.PassphraseConf.ScryptN, backend.PassphraseConf.ScryptP)
+	if err := backend.UsePassword(func(password []byte) error {
+		keyJSON, err = encryptKey(key, password, backend.passphraseConf.ScryptN, backend.passphraseConf.ScryptP)
 		return err
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
@@ -284,7 +283,7 @@ func (backend *DSBackend) getKey(ctx context.Context, addr address.Address, pass
 }
 
 func (backend *DSBackend) LockWallet(ctx context.Context) error {
-	if backend.state == Lock {
+	if backend.state.Load() == Lock {
 		return fmt.Errorf("already locked")
 	}
 
@@ -298,7 +297,7 @@ func (backend *DSBackend) LockWallet(ctx context.Context) error {
 		backend.lk.Unlock()
 	}
 	backend.cleanPassword()
-	backend.state = Lock
+	backend.state.Store(Lock)
 
 	return nil
 }
@@ -310,7 +309,7 @@ func (backend *DSBackend) UnLockWallet(ctx context.Context, password []byte) err
 			password[i] = 0
 		}
 	}()
-	if backend.state == Unlock {
+	if backend.state.Load() == Unlock {
 		return fmt.Errorf("already unlocked")
 	}
 
@@ -328,7 +327,7 @@ func (backend *DSBackend) UnLockWallet(ctx context.Context, password []byte) err
 		backend.unLocked[addr] = ki
 		backend.lk.Unlock()
 	}
-	backend.state = Unlock
+	backend.state.Store(Unlock)
 
 	return nil
 }
@@ -348,10 +347,8 @@ func (backend *DSBackend) SetPassword(ctx context.Context, password []byte) erro
 		backend.unLocked[addr] = ki
 		backend.lk.Unlock()
 	}
-	if backend.state == undetermined {
-		backend.state = Unlock
-	}
 
+	backend.state.CompareAndSwap(undetermined, Unlock)
 	backend.setPassword(password)
 
 	return nil
@@ -364,7 +361,7 @@ func (backend *DSBackend) HasPassword() bool {
 
 // WalletState return wallet state(lock/unlock)
 func (backend *DSBackend) WalletState(ctx context.Context) int {
-	return backend.state
+	return int(backend.state.Load())
 }
 
 func (backend *DSBackend) setPassword(password []byte) {
