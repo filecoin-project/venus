@@ -45,7 +45,7 @@ type DSBackend struct {
 
 	cache map[address.Address]struct{}
 
-	PassphraseConf config.PassphraseConfig
+	passphraseConf config.PassphraseConfig
 
 	password *memguard.Enclave
 	unLocked map[address.Address]*key.KeyInfo
@@ -81,7 +81,7 @@ func NewDSBackend(ctx context.Context, ds repo.Datastore, passphraseCfg config.P
 	backend := &DSBackend{
 		ds:             ds,
 		cache:          addrCache,
-		PassphraseConf: passphraseCfg,
+		passphraseConf: passphraseCfg,
 		unLocked:       make(map[address.Address]*key.KeyInfo, len(addrCache)),
 	}
 
@@ -104,11 +104,11 @@ func (backend *DSBackend) Addresses(ctx context.Context) []address.Address {
 	backend.lk.RLock()
 	defer backend.lk.RUnlock()
 
-	var cpy []address.Address
+	var addrs []address.Address
 	for addr := range backend.cache {
-		cpy = append(cpy, addr)
+		addrs = append(addrs, addr)
 	}
-	return cpy
+	return addrs
 }
 
 // HasAddress checks if the passed in address is stored in this backend.
@@ -188,20 +188,21 @@ func (backend *DSBackend) putKeyInfo(ctx context.Context, ki *key.KeyInfo) error
 	}
 
 	var keyJSON []byte
-	err = backend.UsePassword(func(password []byte) error {
-		var err error
-		keyJSON, err = encryptKey(key, password, backend.PassphraseConf.ScryptN, backend.PassphraseConf.ScryptP)
+	if err := backend.UsePassword(func(password []byte) error {
+		keyJSON, err = encryptKey(key, password, backend.passphraseConf.ScryptN, backend.passphraseConf.ScryptP)
 		return err
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 
 	if err := backend.ds.Put(ctx, ds.NewKey(key.Address.String()), keyJSON); err != nil {
 		return errors.Wrapf(err, "failed to store new address: %s", key.Address.String())
 	}
+
+	backend.lk.Lock()
 	backend.cache[addr] = struct{}{}
 	backend.unLocked[addr] = ki
+	backend.lk.Unlock()
 	return nil
 }
 
@@ -284,6 +285,8 @@ func (backend *DSBackend) getKey(ctx context.Context, addr address.Address, pass
 }
 
 func (backend *DSBackend) LockWallet(ctx context.Context) error {
+	backend.lk.Lock()
+	defer backend.lk.Unlock()
 	if backend.state == Lock {
 		return fmt.Errorf("already locked")
 	}
@@ -293,9 +296,7 @@ func (backend *DSBackend) LockWallet(ctx context.Context) error {
 	}
 
 	for _, addr := range backend.Addresses(ctx) {
-		backend.lk.Lock()
 		delete(backend.unLocked, addr)
-		backend.lk.Unlock()
 	}
 	backend.cleanPassword()
 	backend.state = Lock
@@ -305,7 +306,9 @@ func (backend *DSBackend) LockWallet(ctx context.Context) error {
 
 // UnLockWallet unlock wallet with password, decrypt local key in db and save to protected memory
 func (backend *DSBackend) UnLockWallet(ctx context.Context, password []byte) error {
+	backend.lk.Lock()
 	defer func() {
+		backend.lk.Unlock()
 		for i := range password {
 			password[i] = 0
 		}
@@ -324,9 +327,7 @@ func (backend *DSBackend) UnLockWallet(ctx context.Context, password []byte) err
 			return err
 		}
 
-		backend.lk.Lock()
 		backend.unLocked[addr] = ki
-		backend.lk.Unlock()
 	}
 	backend.state = Unlock
 
@@ -335,6 +336,8 @@ func (backend *DSBackend) UnLockWallet(ctx context.Context, password []byte) err
 
 // SetPassword set password for wallet , and wallet used this password to encrypt private key
 func (backend *DSBackend) SetPassword(ctx context.Context, password []byte) error {
+	backend.lk.Lock()
+	defer backend.lk.Unlock()
 	if backend.password != nil {
 		return ErrRepeatPassword
 	}
@@ -344,9 +347,8 @@ func (backend *DSBackend) SetPassword(ctx context.Context, password []byte) erro
 		if err != nil {
 			return err
 		}
-		backend.lk.Lock()
+
 		backend.unLocked[addr] = ki
-		backend.lk.Unlock()
 	}
 	if backend.state == undetermined {
 		backend.state = Unlock
@@ -364,6 +366,8 @@ func (backend *DSBackend) HasPassword() bool {
 
 // WalletState return wallet state(lock/unlock)
 func (backend *DSBackend) WalletState(ctx context.Context) int {
+	backend.lk.Lock()
+	defer backend.lk.Unlock()
 	return backend.state
 }
 
