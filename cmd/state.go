@@ -792,7 +792,8 @@ var StateComputeStateCmd = &cmds.Command{
 		var ts *types.TipSet
 		var err error
 		chainAPI := getEnv(env).ChainAPI
-		if tss := req.Options["tipset"].(string); tss != "" {
+		tss, _ := req.Options["tipset"].(string)
+		if tss != "" {
 			ts, err = ParseTipSetRef(ctx, chainAPI, tss)
 		} else if height > 0 {
 			ts, err = chainAPI.ChainGetTipSetByHeight(ctx, height, types.EmptyTSK)
