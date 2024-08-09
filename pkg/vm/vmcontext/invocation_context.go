@@ -468,7 +468,7 @@ func (ctx *invocationContext) Balance() abi.TokenAmount {
 // implement runtime.InvocationContext for invocationContext
 var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 
-// NextActorAddress predicts the address of the next actor created by this address.
+// NewActorAddress predicts the address of the next actor created by this address.
 //
 // Code is adapted from vm.Runtime#NewActorAddress()
 func (ctx *invocationContext) NewActorAddress() address.Address {
