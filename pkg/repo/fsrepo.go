@@ -599,7 +599,7 @@ func APIAddrFromRepoPath(repoPath string) (string, error) {
 	return apiAddrFromFile(repoPath)
 }
 
-// APIAddrFromRepoPath returns the token from the filecoin repo
+// APITokenFromRepoPath returns the token from the filecoin repo
 func APITokenFromRepoPath(repoPath string) (string, error) {
 	repoPath, err := homedir.Expand(repoPath)
 	if err != nil {
