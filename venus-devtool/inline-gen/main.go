@@ -20,7 +20,13 @@ const (
 var data = map[string]interface{}{}
 
 func main() {
-	db, err := os.ReadFile(os.Args[2])
+	// Validate and sanitize the file path
+	jsonFilePath, err := sanitizePath(os.Args[2])
+	if err != nil {
+		log.Fatalf("Invalid file path: %v", err)
+	}
+
+	db, err := os.ReadFile(jsonFilePath)
 	if err != nil {
 		log.Fatalf("Error reading file: %v", err)
 	}
@@ -32,6 +38,25 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error walking directory: %v", err)
 	}
+}
+
+func sanitizePath(p string) (string, error) {
+	// Ensure the path is absolute
+	absPath, err := filepath.Abs(p)
+	if err != nil {
+		return "", err
+	}
+
+	// Resolve any symlinks and clean the path
+	cleanPath := filepath.Clean(absPath)
+
+	// Check if the path is within a specific allowed directory
+	allowedDir := "/your/safe/directory"
+	if !strings.HasPrefix(cleanPath, allowedDir) {
+		return "", fmt.Errorf("attempted path traversal outside of allowed directory")
+	}
+
+	return cleanPath, nil
 }
 
 func processFile(path string, info os.FileInfo, err error) error {
