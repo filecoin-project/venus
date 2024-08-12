@@ -51,7 +51,7 @@ func sanitizePath(p string) (string, error) {
 	cleanPath := filepath.Clean(absPath)
 
 	// Check if the path is within a specific allowed directory
-	allowedDir := "/your/safe/directory"
+	allowedDir := "/venus/inline-gen/"
 	if !strings.HasPrefix(cleanPath, allowedDir) {
 		return "", fmt.Errorf("attempted path traversal outside of allowed directory")
 	}
