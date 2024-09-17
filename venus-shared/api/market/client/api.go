@@ -52,7 +52,7 @@ type IMarketClient interface {
 	ClientGetRetrievalUpdates(ctx context.Context) (<-chan client.RetrievalInfo, error) //perm:write
 	// ClientQueryAsk returns a signed StorageAsk from the specified miner.
 	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) //perm:read
-	// ClientCalcCommP calculates the CommP and data size of the specified CID
+	// ClientDealPieceCID calculates the CommP and data size of the specified CID
 	ClientDealPieceCID(ctx context.Context, root cid.Cid) (client.DataCIDSize, error) //perm:read
 	// ClientCalcCommP calculates the CommP for a specified file
 	ClientCalcCommP(ctx context.Context, inpath string) (*client.CommPRet, error) //perm:write
@@ -60,7 +60,7 @@ type IMarketClient interface {
 	ClientGenCar(ctx context.Context, ref client.FileRef, outpath string) error //perm:write
 	// ClientDealSize calculates real deal data size
 	ClientDealSize(ctx context.Context, root cid.Cid) (client.DataSize, error) //perm:read
-	// ClientListTransfers returns the status of all ongoing transfers of data
+	// ClientListDataTransfers returns the status of all ongoing transfers of data
 	ClientListDataTransfers(ctx context.Context) ([]market.DataTransferChannel, error)        //perm:write
 	ClientDataTransferUpdates(ctx context.Context) (<-chan market.DataTransferChannel, error) //perm:write
 	// ClientRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer

@@ -36,7 +36,7 @@ type Repo interface {
 	// MarketDatastore() Datastore
 
 	PaychDatastore() Datastore
-	// SetJsonrpcAPIAddr sets the address of the running jsonrpc API.
+	// SetAPIAddr sets the address of the running jsonrpc API.
 	SetAPIAddr(maddr string) error
 
 	// APIAddr returns the address of the running API.
