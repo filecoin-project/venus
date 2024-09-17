@@ -348,6 +348,8 @@ require (
 	lukechampine.com/blake3 v1.3.0 // indirect
 )
 
+replace github.com/kilic/bls12-381 v0.1.1-0.20220929213557-ca162e8a70f4 => github.com/kilic/bls12-381 v0.1.0 // to fix bls signature validation
+
 replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.9
