@@ -6,12 +6,12 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3/gpbft"
-	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type signer struct {
-	wallet v1api.IWallet
+	sign wallet.WalletSignFunc
 }
 
 // Sign signs a message with the private key corresponding to a public key.
@@ -21,7 +21,7 @@ func (s *signer) Sign(ctx context.Context, sender gpbft.PubKey, msg []byte) ([]b
 	if err != nil {
 		return nil, fmt.Errorf("converting pubkey to address: %w", err)
 	}
-	sig, err := s.wallet.WalletSign(ctx, addr, msg, types.MsgMeta{Type: types.MTUnknown})
+	sig, err := s.sign(ctx, addr, msg, types.MsgMeta{Type: types.MTF3})
 	if err != nil {
 		return nil, fmt.Errorf("error while signing: %w", err)
 	}

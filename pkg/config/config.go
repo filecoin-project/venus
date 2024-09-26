@@ -166,6 +166,7 @@ type WalletConfig struct {
 	PassphraseConfig PassphraseConfig `json:"passphraseConfig,omitempty"`
 	RemoteEnable     bool             `json:"remoteEnable"`
 	RemoteBackend    string           `json:"remoteBackend"`
+	GatewayBacked    string           `json:"gatewayBacked"`
 }
 
 type PassphraseConfig struct {
