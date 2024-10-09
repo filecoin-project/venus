@@ -249,6 +249,8 @@ func (node *Node) Stop(ctx context.Context) {
 			log.Warnf("error shutdown jaeger-tracing: %w", err)
 		}
 	}
+
+	node.Wallet().WalletGateway.Close()
 }
 
 // RunRPCAndWait start rpc server and listen to signal to exit

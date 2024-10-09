@@ -77,12 +77,12 @@ func (ec *ecWrapper) GetTipsetByEpoch(ctx context.Context, epoch int64) (ec.TipS
 }
 
 func (ec *ecWrapper) GetTipset(ctx context.Context, tsk gpbft.TipSetKey) (ec.TipSet, error) {
-	tskLotus, err := types.TipSetKeyFromBytes(tsk)
+	key, err := types.TipSetKeyFromBytes(tsk)
 	if err != nil {
 		return nil, fmt.Errorf("decoding tsk: %w", err)
 	}
 
-	ts, err := ec.ChainStore.GetTipSet(ctx, tskLotus)
+	ts, err := ec.ChainStore.GetTipSet(ctx, key)
 	if err != nil {
 		return nil, fmt.Errorf("getting tipset by key: %w", err)
 	}
@@ -104,11 +104,11 @@ func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 ec.TipSet) (ec.TipSet, 
 		//
 		// TODO: Revisit the type check here and remove as needed once testing
 		//       is over and fake EC backend goes away.
-		tskLotus, err := types.TipSetKeyFromBytes(tsF3.Key())
+		tsk, err := types.TipSetKeyFromBytes(tsF3.Key())
 		if err != nil {
 			return nil, fmt.Errorf("decoding tsk: %w", err)
 		}
-		ts, err = ec.ChainStore.GetTipSet(ctx, tskLotus)
+		ts, err = ec.ChainStore.GetTipSet(ctx, tsk)
 		if err != nil {
 			return nil, fmt.Errorf("getting tipset by key for get parent: %w", err)
 		}
@@ -125,10 +125,10 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 	if err != nil {
 		return nil, fmt.Errorf("decoding tsk: %w", err)
 	}
-	return ec.getPowerTableLotusTSK(ctx, tsk)
+	return ec.getPowerTableTSK(ctx, tsk)
 }
 
-func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
+func (ec *ecWrapper) getPowerTableTSK(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	ts, err := ec.ChainStore.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("getting tipset by key for get parent: %w", err)
