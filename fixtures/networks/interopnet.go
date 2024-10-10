@@ -72,6 +72,7 @@ func InteropNet() *NetworkConf {
 			F3Enabled:               true,
 			F3BootstrapEpoch:        1000,
 			ManifestServerID:        "12D3KooWQJ2rdVnG4okDUB6yHQhAjNutGNemcM7XzqC9Eo4z9Jce",
+			F3Consensus:             true,
 		},
 	}
 

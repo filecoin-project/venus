@@ -68,6 +68,7 @@ func Net2k() *NetworkConf {
 			F3Enabled:               true,
 			F3BootstrapEpoch:        1000,
 			ManifestServerID:        "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG",
+			F3Consensus:             true,
 		},
 	}
 

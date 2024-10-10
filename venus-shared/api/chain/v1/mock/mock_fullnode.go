@@ -3353,6 +3353,20 @@ func (mr *MockFullNodeMockRecorder) SubscribeActorEventsRaw(arg0, arg1 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeActorEventsRaw", reflect.TypeOf((*MockFullNode)(nil).SubscribeActorEventsRaw), arg0, arg1)
 }
 
+// SyncCheckpoint mocks base method.
+func (m *MockFullNode) SyncCheckpoint(arg0 context.Context, arg1 types0.TipSetKey) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SyncCheckpoint", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SyncCheckpoint indicates an expected call of SyncCheckpoint.
+func (mr *MockFullNodeMockRecorder) SyncCheckpoint(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncCheckpoint", reflect.TypeOf((*MockFullNode)(nil).SyncCheckpoint), arg0, arg1)
+}
+
 // SyncIncomingBlocks mocks base method.
 func (m *MockFullNode) SyncIncomingBlocks(arg0 context.Context) (<-chan *types0.BlockHeader, error) {
 	m.ctrl.T.Helper()

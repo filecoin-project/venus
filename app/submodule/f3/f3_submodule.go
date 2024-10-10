@@ -5,8 +5,10 @@ import (
 
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/network"
+	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/vf3"
+	"github.com/filecoin-project/venus/pkg/wallet"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	logging "github.com/ipfs/go-log"
 )
@@ -21,7 +23,8 @@ func NewF3Submodule(ctx context.Context,
 	repo repo.Repo,
 	chain *chain.ChainSubmodule,
 	network *network.NetworkSubmodule,
-	walletAPI v1api.IWallet,
+	walletSign wallet.WalletSignFunc,
+	syncer *syncer.SyncerSubmodule,
 ) (*F3Submodule, error) {
 	netConf := repo.Config().NetworkParams
 	if !netConf.F3Enabled {
@@ -36,8 +39,9 @@ func NewF3Submodule(ctx context.Context,
 		ChainStore:       chain.ChainReader,
 		StateManager:     chain.Stmgr,
 		Datastore:        repo.MetaDatastore(),
-		Wallet:           walletAPI,
+		WalletSign:       walletSign,
 		ManifestProvider: vf3.NewManifestProvider(network.NetworkName, repo.MetaDatastore(), network.Pubsub, netConf),
+		SyncerAPI:        syncer.API(),
 	})
 	if err != nil {
 		return nil, err

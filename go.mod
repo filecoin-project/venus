@@ -1,6 +1,6 @@
 module github.com/filecoin-project/venus
 
-go 1.21
+go 1.22
 
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2
@@ -27,7 +27,7 @@ require (
 	github.com/filecoin-project/go-commp-utils v0.1.3
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc6
-	github.com/filecoin-project/go-f3 v0.2.0
+	github.com/filecoin-project/go-f3 v0.3.0
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.28.2
 	github.com/filecoin-project/go-jsonrpc v0.1.5
@@ -117,7 +117,6 @@ require (
 )
 
 require (
-	github.com/Kubuxu/go-broadcast v0.0.0-20240621161059-1a8c90734cd6 // indirect
 	github.com/filecoin-project/go-clock v0.1.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/ipfs/go-blockservice v0.5.2 // indirect

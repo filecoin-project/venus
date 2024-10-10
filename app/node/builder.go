@@ -137,7 +137,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.wallet")
 	}
 
-	nd.f3, err = f3.NewF3Submodule(ctx, nd.repo, nd.chain, nd.network, nd.wallet.API())
+	nd.f3, err = f3.NewF3Submodule(ctx, nd.repo, nd.chain, nd.network, nd.wallet.GetWalletSign(), nd.syncer)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.f3")
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/statemanger"
+	"github.com/filecoin-project/venus/pkg/wallet"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log"
@@ -56,7 +57,8 @@ type F3Params struct {
 	ChainStore       *chain.Store
 	StateManager     *statemanger.Stmgr
 	Datastore        datastore.Batching
-	Wallet           v1api.IWallet
+	WalletSign       wallet.WalletSignFunc
+	SyncerAPI        v1api.ISyncer
 }
 
 var log = logging.Logger("f3")
@@ -66,6 +68,7 @@ func New(mctx context.Context, params F3Params) (*F3, error) {
 	ec := &ecWrapper{
 		ChainStore:   params.ChainStore,
 		StateManager: params.StateManager,
+		SyncerAPI:    params.SyncerAPI,
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
@@ -79,7 +82,7 @@ func New(mctx context.Context, params F3Params) (*F3, error) {
 	fff := &F3{
 		inner:     module,
 		ec:        ec,
-		signer:    &signer{params.Wallet},
+		signer:    &signer{sign: params.WalletSign},
 		newLeases: make(chan leaseRequest, 4), // some buffer to avoid
 	}
 
@@ -174,7 +177,7 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 }
 
 func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
-	return fff.ec.getPowerTableLotusTSK(ctx, tsk)
+	return fff.ec.getPowerTableTSK(ctx, tsk)
 }
 
 func (fff *F3) GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {

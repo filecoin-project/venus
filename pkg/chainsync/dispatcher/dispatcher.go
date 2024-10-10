@@ -33,6 +33,7 @@ type dispatchSyncer interface {
 	Head() *types2.TipSet
 	HandleNewTipSet(context.Context, *types.Target) error
 	ValidateMsgMeta(ctx context.Context, fblk *types2.FullBlock) error
+	SyncCheckpoint(ctx context.Context, tsk types2.TipSetKey) error
 }
 
 // NewDispatcher creates a new syncing dispatcher with default queue sizes.
@@ -334,4 +335,8 @@ func (d *Dispatcher) processCtrl(ctrlMsg interface{}) {
 		// We don't know this type, log and ignore
 		log.Info("dispatcher control can not handle type %T", typedMsg)
 	}
+}
+
+func (d *Dispatcher) SyncCheckpoint(ctx context.Context, tsk types2.TipSetKey) error {
+	return d.syncer.SyncCheckpoint(ctx, tsk)
 }

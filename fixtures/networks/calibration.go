@@ -75,7 +75,7 @@ func Calibration() *NetworkConf {
 			AllowableClockDriftSecs: 1,
 			Eip155ChainID:           314159,
 			ActorDebugging:          false,
-			F3Enabled:               true,
+			F3Consensus:             true,
 		},
 	}
 
