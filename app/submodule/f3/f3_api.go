@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -21,28 +21,24 @@ type f3API struct {
 
 var ErrF3Disabled = errors.New("f3 is disabled")
 
-func (f3api *f3API) F3Participate(ctx context.Context,
-	minerAddr address.Address,
-	newLeaseExpiration time.Time,
-	oldLeaseExpiration time.Time,
-) (bool, error) {
+func (f3api *f3API) F3GetOrRenewParticipationTicket(ctx context.Context, miner address.Address, previous types.F3ParticipationTicket, instances uint64) (types.F3ParticipationTicket, error) {
 	if f3api.f3module.F3 == nil {
-		log.Infof("F3Participate called for %v, F3 is disabled", minerAddr)
-		return false, ErrF3Disabled
+		log.Infof("F3GetParticipationTicket called for %v, F3 is disabled", miner)
+		return types.F3ParticipationTicket{}, types.ErrF3Disabled
 	}
-
-	if leaseDuration := time.Until(newLeaseExpiration); leaseDuration > 5*time.Minute {
-		return false, fmt.Errorf("F3 participation lease too long: %v > 5 min", leaseDuration)
-	} else if leaseDuration < 0 {
-		return false, fmt.Errorf("F3 participation lease is in the past: %d < 0", leaseDuration)
-	}
-
-	minerID, err := address.IDFromAddress(minerAddr)
+	minerID, err := address.IDFromAddress(miner)
 	if err != nil {
-		return false, fmt.Errorf("miner address is not of ID type: %v: %w", minerID, err)
+		return types.F3ParticipationTicket{}, fmt.Errorf("miner address is not of ID type: %v: %w", miner, err)
 	}
+	return f3api.f3module.F3.GetOrRenewParticipationTicket(ctx, minerID, previous, instances)
+}
 
-	return f3api.f3module.F3.Participate(ctx, minerID, newLeaseExpiration, oldLeaseExpiration), nil
+func (f3api *f3API) F3Participate(ctx context.Context, ticket types.F3ParticipationTicket) (types.F3ParticipationLease, error) {
+	if f3api.f3module.F3 == nil {
+		log.Infof("F3Participate called, F3 is disabled")
+		return types.F3ParticipationLease{}, types.ErrF3Disabled
+	}
+	return f3api.f3module.F3.Participate(ctx, ticket)
 }
 
 func (f3api *f3API) F3GetCertificate(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) {
@@ -71,4 +67,18 @@ func (f3api *f3API) F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) 
 		return nil, ErrF3Disabled
 	}
 	return f3api.f3module.F3.GetF3PowerTable(ctx, tsk)
+}
+
+func (f3api *f3API) F3GetManifest(_ctx context.Context) (*manifest.Manifest, error) {
+	if f3api.f3module.F3 == nil {
+		return nil, ErrF3Disabled
+	}
+	return f3api.f3module.F3.GetManifest(), nil
+}
+
+func (f3api *f3API) F3IsRunning(_ctx context.Context) (bool, error) {
+	if f3api.f3module.F3 == nil {
+		return false, ErrF3Disabled
+	}
+	return f3api.f3module.F3.IsRunning(), nil
 }

@@ -27,7 +27,7 @@ require (
 	github.com/filecoin-project/go-commp-utils v0.1.3
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc6
-	github.com/filecoin-project/go-f3 v0.3.0
+	github.com/filecoin-project/go-f3 v0.7.0
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.28.2
 	github.com/filecoin-project/go-jsonrpc v0.1.5
@@ -117,6 +117,9 @@ require (
 )
 
 require (
+	github.com/bits-and-blooms/bitset v1.13.0 // indirect
+	github.com/consensys/bavard v0.1.13 // indirect
+	github.com/consensys/gnark-crypto v0.12.1 // indirect
 	github.com/filecoin-project/go-clock v0.1.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/ipfs/go-blockservice v0.5.2 // indirect
@@ -126,6 +129,7 @@ require (
 	github.com/ipfs/go-ipfs-exchange-interface v0.2.1 // indirect
 	github.com/ipfs/go-merkledag v0.11.0 // indirect
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.3 // indirect
+	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/petar/GoLLRB v0.0.0-20210522233825-ae3b015fd3e9 // indirect
 	github.com/pion/datachannel v1.5.6 // indirect
@@ -146,10 +150,12 @@ require (
 	github.com/pion/webrtc/v3 v3.2.40 // indirect
 	github.com/whyrusleeping/cbor v0.0.0-20171005072247-63513f603b11 // indirect
 	github.com/whyrusleeping/go-logging v0.0.1 // indirect
+	go.dedis.ch/kyber/v4 v4.0.0-pre2.0.20240924132404-4de33740016e // indirect
 	go.uber.org/mock v0.4.0 // indirect
 	gonum.org/v1/gonum v0.15.0 // indirect
 	google.golang.org/genproto v0.0.0-20230629202037-9506855d4529 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240515191416-fc5f0ca64291 // indirect
+	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
 require (

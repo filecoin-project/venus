@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/types"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -27,3 +28,11 @@ const DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 // A builder for all blockchain CIDs.
 // Note that sector commitments use a different scheme.
 var DefaultCidBuilder = cid.V1Builder{Codec: cid.DagCBOR, MhType: DefaultHashFunction}
+
+func MustParseID(id string) peer.ID {
+	p, err := peer.Decode(id)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}

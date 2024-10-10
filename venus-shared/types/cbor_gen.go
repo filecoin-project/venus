@@ -8,12 +8,14 @@ import (
 	"math"
 	"sort"
 
+	gpbft "github.com/filecoin-project/go-f3/gpbft"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	exitcode "github.com/filecoin-project/go-state-types/exitcode"
 	proof "github.com/filecoin-project/go-state-types/proof"
 	cid "github.com/ipfs/go-cid"
+	peer "github.com/libp2p/go-libp2p/core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 	time "time"
@@ -2461,6 +2463,153 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 		}
+	}
+	return nil
+}
+
+var lengthBufF3ParticipationLease = []byte{133}
+
+func (t *F3ParticipationLease) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufF3ParticipationLease); err != nil {
+		return err
+	}
+
+	// t.Network (gpbft.NetworkName) (string)
+	if len(t.Network) > 8192 {
+		return xerrors.Errorf("Value in field t.Network was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Network))); err != nil {
+		return err
+	}
+	if _, err := cw.WriteString(string(t.Network)); err != nil {
+		return err
+	}
+
+	// t.Issuer (peer.ID) (string)
+	if len(t.Issuer) > 8192 {
+		return xerrors.Errorf("Value in field t.Issuer was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Issuer))); err != nil {
+		return err
+	}
+	if _, err := cw.WriteString(string(t.Issuer)); err != nil {
+		return err
+	}
+
+	// t.MinerID (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.MinerID)); err != nil {
+		return err
+	}
+
+	// t.FromInstance (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.FromInstance)); err != nil {
+		return err
+	}
+
+	// t.ValidityTerm (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.ValidityTerm)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *F3ParticipationLease) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = F3ParticipationLease{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 5 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.Network (gpbft.NetworkName) (string)
+
+	{
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
+		if err != nil {
+			return err
+		}
+
+		t.Network = gpbft.NetworkName(sval)
+	}
+	// t.Issuer (peer.ID) (string)
+
+	{
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
+		if err != nil {
+			return err
+		}
+
+		t.Issuer = peer.ID(sval)
+	}
+	// t.MinerID (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.MinerID = uint64(extra)
+
+	}
+	// t.FromInstance (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.FromInstance = uint64(extra)
+
+	}
+	// t.ValidityTerm (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.ValidityTerm = uint64(extra)
+
 	}
 	return nil
 }

@@ -61,6 +61,7 @@ func main() {
 				types.MessageTrace{},
 				types.ReturnTrace{},
 				types.ExecutionTrace{},
+				types.F3ParticipationLease{},
 			},
 		},
 		{
