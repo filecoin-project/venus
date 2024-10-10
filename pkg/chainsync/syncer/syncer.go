@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/statemanger"
-	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs-force-community/metrics"
 
 	"golang.org/x/sync/errgroup"
@@ -218,24 +217,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 		}
 		err = wg.Wait()
 		if err != nil {
-			var rootNotMatch bool // nolint
-
-			if merr, isok := err.(*multierror.Error); isok {
-				for _, e := range merr.Errors {
-					if isRootNotMatch(e) {
-						rootNotMatch = true
-						break
-					}
-				}
-			} else {
-				rootNotMatch = isRootNotMatch(err) // nolint
-			}
-
-			if rootNotMatch { // nolint
-				// todo: should here rollback, and re-compute?
-				_ = syncer.stmgr.Rollback(ctx, parent, next)
-			}
-
 			return fmt.Errorf("validate mining failed %w", err)
 		}
 	}
@@ -672,6 +653,54 @@ func (syncer *Syncer) processTipSetSegment(ctx context.Context, target *syncType
 // Head get latest head from chain store
 func (syncer *Syncer) Head() *types.TipSet {
 	return syncer.chainStore.GetHead()
+}
+
+func (syncer *Syncer) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {
+	if tsk.IsEmpty() {
+		return fmt.Errorf("called with empty tsk")
+	}
+
+	ts, err := syncer.chainStore.GetTipSet(ctx, tsk)
+	if err != nil {
+		tss, err := syncer.exchangeClient.GetBlocks(ctx, tsk, 1)
+		if err != nil {
+			return fmt.Errorf("failed to fetch tipset: %w", err)
+		} else if len(tss) != 1 {
+			return fmt.Errorf("expected 1 tipset, got %d", len(tss))
+		}
+		ts = tss[0]
+	}
+
+	head := syncer.Head()
+	target := &syncTypes.Target{
+		Head:    ts,
+		Base:    syncer.Head(),
+		Current: syncer.Head(),
+		Start:   time.Now(),
+	}
+	if !head.Equals(ts) {
+		if anc, err := syncer.chainStore.IsAncestorOf(ctx, ts, head); err != nil {
+			return fmt.Errorf("failed to walk the chain when checkpointing: %w", err)
+		} else if !anc {
+			tipsets, err := syncer.fetchChainBlocks(ctx, head, target.Head)
+			if err != nil {
+				return errors.Wrapf(err, "failure fetching or validating headers")
+			}
+			logSyncer.Debugf("fetch header success at %v %s ...", tipsets[0].Height(), tipsets[0].Key())
+
+			err = syncer.syncSegement(ctx, target, tipsets)
+			if err != nil {
+				return fmt.Errorf("failed to sync segment: %w", err)
+			}
+
+		} // else new checkpoint is on the current chain, we definitely have the tipsets.
+	} // else current head, no need to switch.
+
+	if err := syncer.chainStore.SetCheckpoint(ctx, ts); err != nil {
+		return fmt.Errorf("failed to set the chain checkpoint: %w", err)
+	}
+
+	return nil
 }
 
 // TODO: this function effectively accepts unchecked input from the network,

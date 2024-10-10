@@ -310,6 +310,9 @@ type NetworkParamsConfig struct {
 	F3Enabled        bool           `json:"f3Enabled"`
 	F3BootstrapEpoch abi.ChainEpoch `json:"f3BootstrapEpoch"`
 	ManifestServerID string         `json:"manifestServerID"`
+	// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
+	// flag has no effect if F3 is not enabled.
+	F3Consensus bool `json:"f3Consensus"`
 }
 
 // ForkUpgradeConfig record upgrade parameters

@@ -751,6 +751,7 @@ type ISyncerStruct struct {
 		ChainTipSetWeight        func(ctx context.Context, tsk types.TipSetKey) (big.Int, error) `perm:"read"`
 		Concurrent               func(ctx context.Context) int64                                 `perm:"read"`
 		SetConcurrent            func(ctx context.Context, concurrent int64) error               `perm:"admin"`
+		SyncCheckpoint           func(ctx context.Context, tsk types.TipSetKey) error            `perm:"admin"`
 		SyncIncomingBlocks       func(ctx context.Context) (<-chan *types.BlockHeader, error)    `perm:"read"`
 		SyncState                func(ctx context.Context) (*types.SyncState, error)             `perm:"read"`
 		SyncSubmitBlock          func(ctx context.Context, blk *types.BlockMsg) error            `perm:"write"`
@@ -767,6 +768,9 @@ func (s *ISyncerStruct) ChainTipSetWeight(p0 context.Context, p1 types.TipSetKey
 func (s *ISyncerStruct) Concurrent(p0 context.Context) int64 { return s.Internal.Concurrent(p0) }
 func (s *ISyncerStruct) SetConcurrent(p0 context.Context, p1 int64) error {
 	return s.Internal.SetConcurrent(p0, p1)
+}
+func (s *ISyncerStruct) SyncCheckpoint(p0 context.Context, p1 types.TipSetKey) error {
+	return s.Internal.SyncCheckpoint(p0, p1)
 }
 func (s *ISyncerStruct) SyncIncomingBlocks(p0 context.Context) (<-chan *types.BlockHeader, error) {
 	return s.Internal.SyncIncomingBlocks(p0)

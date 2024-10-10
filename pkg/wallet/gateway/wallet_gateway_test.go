@@ -9,11 +9,13 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateAddress(t *testing.T) {
+	tf.UnitTest(t)
 	t.SkipNow()
 	url := ""
 	token := ""
