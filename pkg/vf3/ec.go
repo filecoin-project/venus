@@ -101,11 +101,11 @@ func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 ec.TipSet) (ec.TipSet, 
 	if err != nil {
 		return nil, err
 	}
-	parentTs, err := ec.ChainStore.GetTipSet(ctx, ts.Parents())
+	parentTS, err := ec.ChainStore.GetTipSet(ctx, ts.Parents())
 	if err != nil {
 		return nil, fmt.Errorf("getting parent tipset: %w", err)
 	}
-	return &f3TipSet{TipSet: parentTs}, nil
+	return &f3TipSet{TipSet: parentTS}, nil
 }
 
 func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (gpbft.PowerEntries, error) {

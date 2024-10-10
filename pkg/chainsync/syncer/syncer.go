@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/statemanger"
@@ -240,10 +239,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 	actorVersionGuage.Set(ctx, int64(actorVersion))
 
 	return nil
-}
-
-func isRootNotMatch(err error) bool {
-	return errors.Is(err, consensus.ErrStateRootMismatch) || errors.Is(err, consensus.ErrReceiptRootMismatch)
 }
 
 // HandleNewTipSet validates and syncs the chain rooted at the provided tipset
