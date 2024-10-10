@@ -1096,24 +1096,73 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, *ty
 	return root, &tailBlock, nil
 }
 
-// SetCheckPoint set current checkpoint
-func (store *Store) SetCheckPoint(checkPoint types.TipSetKey) {
-	store.checkPoint = checkPoint
-}
-
-// WriteCheckPoint writes the given cids to disk.
-func (store *Store) WriteCheckPoint(ctx context.Context, cids types.TipSetKey) error {
-	log.Infof("WriteCheckPoint %v", cids)
+// SetCheckpoint will set a checkpoint past which the chainstore will not allow forks. If the new
+// checkpoint is not an ancestor of the current head, head will be set to the new checkpoint.
+//
+// NOTE: Checkpoints cannot be set beyond ForkLengthThreshold epochs in the past, but can be set
+// arbitrarily far into the future.
+// NOTE: The new checkpoint must already be synced.
+func (store *Store) SetCheckpoint(ctx context.Context, ts *types.TipSet) error {
+	log.Infof("SetCheckPoint at %d: %v", ts.Height(), ts.Key())
 	buf := new(bytes.Buffer)
-	err := cids.MarshalCBOR(buf)
+	err := ts.Key().MarshalCBOR(buf)
 	if err != nil {
 		return err
 	}
-	return store.ds.Put(ctx, CheckPoint, buf.Bytes())
+
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+
+	// Otherwise, this operation could get _very_ expensive.
+	if store.head.Height()-ts.Height() > policy.ChainFinality {
+		return fmt.Errorf("cannot set a checkpoint before the fork threshold")
+	}
+
+	if !ts.Equals(store.head) {
+		anc, err := store.IsAncestorOf(ctx, ts, store.head)
+		if err != nil {
+			return fmt.Errorf("cannot determine whether checkpoint tipset is in main-chain: %w", err)
+		}
+
+		if !anc {
+			if err := store.setHead(ctx, ts); err != nil {
+				return fmt.Errorf("failed to switch chains when setting checkpoint: %w", err)
+			}
+		}
+	}
+
+	if err := store.ds.Put(ctx, CheckPoint, buf.Bytes()); err != nil {
+		return err
+	}
+	store.checkPoint = ts.Key()
+
+	return nil
+}
+
+// IsAncestorOf returns true if 'a' is an ancestor of 'b'
+func (store *Store) IsAncestorOf(ctx context.Context, a, b *types.TipSet) (bool, error) {
+	if b.Height() <= a.Height() {
+		return false, nil
+	}
+
+	cur := b
+	for !a.Equals(cur) && cur.Height() > a.Height() {
+		next, err := store.GetTipSet(ctx, cur.Parents())
+		if err != nil {
+			return false, err
+		}
+
+		cur = next
+	}
+
+	return cur.Equals(a), nil
 }
 
 // GetCheckPoint get the check point from store or disk.
 func (store *Store) GetCheckPoint() types.TipSetKey {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+
 	return store.checkPoint
 }
 

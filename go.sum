@@ -74,8 +74,6 @@ github.com/DATA-DOG/go-sqlmock v1.5.0/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q
 github.com/DataDog/zstd v1.4.1/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t7BBo=
 github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee h1:8doiS7ib3zi6/K172oDhSKU0dJ/miJramo9NITOMyZQ=
 github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee/go.mod h1:W0GbEAA4uFNYOGG2cJpmFJ04E6SD1NLELPYZB57/7AY=
-github.com/Kubuxu/go-broadcast v0.0.0-20240621161059-1a8c90734cd6 h1:yh2/1fz3ajTaeKskSWxtSBNScdRZfQ/A5nyd9+64T6M=
-github.com/Kubuxu/go-broadcast v0.0.0-20240621161059-1a8c90734cd6/go.mod h1:5LOj/fF3Oc/cvJqzDiyfx4XwtBPRWUYEz+V+b13sH5U=
 github.com/Kubuxu/go-os-helper v0.0.1 h1:EJiD2VUQyh5A9hWJLmc6iWg6yIcJ7jpBcwC8GMGXfDk=
 github.com/Kubuxu/go-os-helper v0.0.1/go.mod h1:N8B+I7vPCT80IcP58r50u4+gEEcsZETFUpAzWW2ep1Y=
 github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE=
@@ -277,8 +275,8 @@ github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc6 h1:EsbXTWsBKT764qtX4M
 github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc6/go.mod h1:cX1acvFVWC5EXnnmFPWEFXbO7nLUdSZa+nqgi1QpTpw=
 github.com/filecoin-project/go-ds-versioning v0.1.2 h1:to4pTadv3IeV1wvgbCbN6Vqd+fu+7tveXgv/rCEZy6w=
 github.com/filecoin-project/go-ds-versioning v0.1.2/go.mod h1:C9/l9PnB1+mwPa26BBVpCjG/XQCB0yj/q5CK2J8X1I4=
-github.com/filecoin-project/go-f3 v0.2.0 h1:Gis44+hOrDjSUEw3IDmU7CudNILi5e+bb1pgZgp680k=
-github.com/filecoin-project/go-f3 v0.2.0/go.mod h1:43fBLX0iX0+Nnw4Z91wSrdfDYAd6YEDexy7GcLnIJtk=
+github.com/filecoin-project/go-f3 v0.3.0 h1:GUY7+QSyWqX4MEuFtQAYkYLRM1t3GleZ0U2I87oOStM=
+github.com/filecoin-project/go-f3 v0.3.0/go.mod h1:MVf4ynbRdLMnZZWK8GJCex0VH1lQvh9AwFTMEu7jX1Y=
 github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a/go.mod h1:Eaox7Hvus1JgPrL5+M3+h7aSPHc0cVqpSxA+TxIEpZQ=
 github.com/filecoin-project/go-fil-commcid v0.1.0 h1:3R4ds1A9r6cr8mvZBfMYxTS88OqLYEo6roi+GiIeOh8=
 github.com/filecoin-project/go-fil-commcid v0.1.0/go.mod h1:Eaox7Hvus1JgPrL5+M3+h7aSPHc0cVqpSxA+TxIEpZQ=
