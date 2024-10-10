@@ -32,16 +32,27 @@ func NewF3Submodule(ctx context.Context,
 			F3: nil,
 		}, nil
 	}
+	repoPath, err := repo.Path()
+	if err != nil {
+		return nil, err
+	}
+
+	provider, err := vf3.NewManifestProvider(ctx, network.F3Cfg, chain.ChainReader, network.Pubsub, repo.MetaDatastore())
+	if err != nil {
+		return nil, err
+	}
 	m, err := vf3.New(ctx, vf3.F3Params{
-		ManifestServerID: netConf.ManifestServerID,
+		ManifestProvider: provider,
 		PubSub:           network.Pubsub,
 		Host:             network.Host,
 		ChainStore:       chain.ChainReader,
 		StateManager:     chain.Stmgr,
 		Datastore:        repo.MetaDatastore(),
 		WalletSign:       walletSign,
-		ManifestProvider: vf3.NewManifestProvider(network.NetworkName, repo.MetaDatastore(), network.Pubsub, netConf),
 		SyncerAPI:        syncer.API(),
+		Config:           network.F3Cfg,
+		RepoPath:         repoPath,
+		Net:              network.API(),
 	})
 	if err != nil {
 		return nil, err
@@ -54,4 +65,11 @@ func (m *F3Submodule) API() v1api.IF3 {
 	return &f3API{
 		f3module: m,
 	}
+}
+
+func (m *F3Submodule) Stop(ctx context.Context) error {
+	if m.F3 == nil {
+		return nil
+	}
+	return m.F3.Stop(ctx)
 }

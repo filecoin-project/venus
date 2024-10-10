@@ -10,6 +10,7 @@ import (
 	bitfield "github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	jsonrpc "github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -1074,11 +1075,14 @@ func (s *IActorEventStruct) SubscribeActorEventsRaw(p0 context.Context, p1 *type
 
 type IF3Struct struct {
 	Internal struct {
-		F3GetCertificate       func(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error)                                               `perm:"read"`
-		F3GetECPowerTable      func(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error)                                                   `perm:"read"`
-		F3GetF3PowerTable      func(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error)                                                   `perm:"read"`
-		F3GetLatestCertificate func(ctx context.Context) (*certs.FinalityCertificate, error)                                                                `perm:"read"`
-		F3Participate          func(ctx context.Context, minerID address.Address, newLeaseExpiration time.Time, oldLeaseExpiration time.Time) (bool, error) `perm:"sign"`
+		F3GetCertificate                func(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error)                                                                  `perm:"read"`
+		F3GetECPowerTable               func(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error)                                                                      `perm:"read"`
+		F3GetF3PowerTable               func(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error)                                                                      `perm:"read"`
+		F3GetLatestCertificate          func(ctx context.Context) (*certs.FinalityCertificate, error)                                                                                   `perm:"read"`
+		F3GetManifest                   func(ctx context.Context) (*manifest.Manifest, error)                                                                                           `perm:"read"`
+		F3GetOrRenewParticipationTicket func(ctx context.Context, minerID address.Address, previous types.F3ParticipationTicket, instances uint64) (types.F3ParticipationTicket, error) `perm:"sign"`
+		F3IsRunning                     func(ctx context.Context) (bool, error)                                                                                                         `perm:"read"`
+		F3Participate                   func(ctx context.Context, ticket types.F3ParticipationTicket) (types.F3ParticipationLease, error)                                               `perm:"sign"`
 	}
 }
 
@@ -1094,8 +1098,15 @@ func (s *IF3Struct) F3GetF3PowerTable(p0 context.Context, p1 types.TipSetKey) (g
 func (s *IF3Struct) F3GetLatestCertificate(p0 context.Context) (*certs.FinalityCertificate, error) {
 	return s.Internal.F3GetLatestCertificate(p0)
 }
-func (s *IF3Struct) F3Participate(p0 context.Context, p1 address.Address, p2 time.Time, p3 time.Time) (bool, error) {
-	return s.Internal.F3Participate(p0, p1, p2, p3)
+func (s *IF3Struct) F3GetManifest(p0 context.Context) (*manifest.Manifest, error) {
+	return s.Internal.F3GetManifest(p0)
+}
+func (s *IF3Struct) F3GetOrRenewParticipationTicket(p0 context.Context, p1 address.Address, p2 types.F3ParticipationTicket, p3 uint64) (types.F3ParticipationTicket, error) {
+	return s.Internal.F3GetOrRenewParticipationTicket(p0, p1, p2, p3)
+}
+func (s *IF3Struct) F3IsRunning(p0 context.Context) (bool, error) { return s.Internal.F3IsRunning(p0) }
+func (s *IF3Struct) F3Participate(p0 context.Context, p1 types.F3ParticipationTicket) (types.F3ParticipationLease, error) {
+	return s.Internal.F3Participate(p0, p1)
 }
 
 type FullNodeStruct struct {
