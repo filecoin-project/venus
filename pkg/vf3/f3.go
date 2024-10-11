@@ -85,7 +85,7 @@ func New(mctx context.Context, params F3Params) (*F3, error) {
 		return nil, fmt.Errorf("creating F3: %w", err)
 	}
 
-	nodeId, err := params.Net.ID(mctx)
+	nodeID, err := params.Net.ID(mctx)
 	if err != nil {
 		return nil, fmt.Errorf("getting node ID: %w", err)
 	}
@@ -101,7 +101,7 @@ func New(mctx context.Context, params F3Params) (*F3, error) {
 		inner:  module,
 		ec:     ec,
 		signer: &signer{sign: params.WalletSign},
-		leaser: newParticipationLeaser(nodeId, status, maxLeasableInstances),
+		leaser: newParticipationLeaser(nodeID, status, maxLeasableInstances),
 	}
 
 	go func() {

@@ -24,10 +24,10 @@ type leaser struct {
 	maxLeasableInstances uint64
 }
 
-func newParticipationLeaser(nodeId peer.ID, status f3Status, maxLeasedInstances uint64) *leaser {
+func newParticipationLeaser(nodeID peer.ID, status f3Status, maxLeasedInstances uint64) *leaser {
 	return &leaser{
 		leases:               make(map[uint64]types.F3ParticipationLease),
-		issuer:               nodeId,
+		issuer:               nodeID,
 		status:               status,
 		maxLeasableInstances: maxLeasedInstances,
 	}
