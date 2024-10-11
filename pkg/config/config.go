@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -311,11 +310,6 @@ type NetworkParamsConfig struct {
 	F3Enabled        bool           `json:"f3Enabled"`
 	F3BootstrapEpoch abi.ChainEpoch `json:"f3BootstrapEpoch"`
 	ManifestServerID string         `json:"manifestServerID"`
-	// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
-	// flag has no effect if F3 is not enabled.
-	F3Consensus bool `json:"f3Consensus"`
-	// The initial F3 power table CID.
-	F3InitialPowerTableCID cid.Cid `json:"f3InitialPowerTableCID"`
 }
 
 // ForkUpgradeConfig record upgrade parameters
@@ -352,6 +346,7 @@ type ForkUpgradeConfig struct {
 	UpgradePhoenixHeight              abi.ChainEpoch `json:"upgradePhoenixHeight"`
 	UpgradeCalibrationDragonFixHeight abi.ChainEpoch `json:"upgradeCalibrationDragonFixHeight"`
 	UpgradeWaffleHeight               abi.ChainEpoch `json:"upgradeWaffleHeight"`
+	UpgradeTuktukHeight               abi.ChainEpoch `json:"UpgradeTuktukHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -393,6 +388,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	// This fix upgrade only ran on calibrationnet
 	UpgradeCalibrationDragonFixHeight: -3,
 	UpgradeWaffleHeight:               4154640,
+	UpgradeTuktukHeight:               999999999999999,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
@@ -411,7 +407,6 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 		PropagationDelaySecs:    10,
 		AllowableClockDriftSecs: 1,
 		Eip155ChainID:           314,
-		ManifestServerID:        "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7",
 	}
 }
 
