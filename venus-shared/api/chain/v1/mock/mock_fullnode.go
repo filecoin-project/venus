@@ -1149,6 +1149,21 @@ func (mr *MockFullNodeMockRecorder) F3GetOrRenewParticipationTicket(arg0, arg1, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetOrRenewParticipationTicket", reflect.TypeOf((*MockFullNode)(nil).F3GetOrRenewParticipationTicket), arg0, arg1, arg2, arg3)
 }
 
+// F3GetProgress mocks base method.
+func (m *MockFullNode) F3GetProgress(arg0 context.Context) (gpbft.Instant, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetProgress", arg0)
+	ret0, _ := ret[0].(gpbft.Instant)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetProgress indicates an expected call of F3GetProgress.
+func (mr *MockFullNodeMockRecorder) F3GetProgress(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetProgress", reflect.TypeOf((*MockFullNode)(nil).F3GetProgress), arg0)
+}
+
 // F3IsRunning mocks base method.
 func (m *MockFullNode) F3IsRunning(arg0 context.Context) (bool, error) {
 	m.ctrl.T.Helper()

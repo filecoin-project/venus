@@ -61,9 +61,11 @@ type IF3 interface {
 	F3GetECPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
 	// F3GetF3PowerTable returns a F3 specific power table.
 	F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
-	// F3GetGetManifest returns the current manifest being used for F3
+	// F3GetManifest returns the current manifest being used for F3
 	F3GetManifest(ctx context.Context) (*manifest.Manifest, error) //perm:read
 	// F3IsRunning returns true if the F3 instance is running, false if it's not running but
 	// it's enabled, and an error when disabled entirely.
 	F3IsRunning(ctx context.Context) (bool, error) //perm:read
+	// F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
+	F3GetProgress(ctx context.Context) (gpbft.Instant, error) //perm:read
 }
