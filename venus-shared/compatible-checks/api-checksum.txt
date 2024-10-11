@@ -242,7 +242,9 @@ api.FullNode:
 	EthGasPrice:	In=1,	Out=2,	CheckSum=e2f5588dddfc36a9cdef0fad6f4db93e
 	EthGetBalance:	In=3,	Out=2,	CheckSum=80912669b93ebbd53024dbc6b4f39d94
 	EthGetBlockByHash:	In=3,	Out=2,	CheckSum=606bca6c962d8e2d4e0b8bb14e8fa0a9
-	EthGetBlockByNumber:	In=3,	Out=2,	CheckSum=9d82b96bb03c2de85dc7a31e7d4c45d2
+	EthGetBlockByNumber:	In=3,	Out=2,	CheckSum=06d77a6c80b11ea456c9207a10459abe
+	EthGetBlockReceipts:	In=2,	Out=2,	CheckSum=e2817ae4c1a093339a0fd251150de95a
+	EthGetBlockReceiptsLimited:	In=3,	Out=2,	CheckSum=f5992631f35a54511e4a494b84e66b33
 	EthGetBlockTransactionCountByHash:	In=2,	Out=2,	CheckSum=aea75f99eaccb878b97512a29568c204
 	EthGetBlockTransactionCountByNumber:	In=2,	Out=2,	CheckSum=2c3bfb8fef7edce8563d84eab6e9bf4f
 	EthGetCode:	In=3,	Out=2,	CheckSum=a186786e31338dc69207e934b426cc67
@@ -265,9 +267,11 @@ api.FullNode:
 	EthNewPendingTransactionFilter:	In=1,	Out=2,	CheckSum=0b236ca49b91eef3180d6b4082640f0f
 	EthProtocolVersion:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
 	EthSendRawTransaction:	In=2,	Out=2,	CheckSum=f63e0b205164d628bc8022b6d5a496f5
+	EthSendRawTransactionUntrusted:	In=2,	Out=2,	CheckSum=f63e0b205164d628bc8022b6d5a496f5
 	EthSubscribe:	In=2,	Out=2,	CheckSum=f63e0b205164d628bc8022b6d5a496f5
 	EthSyncing:	In=1,	Out=2,	CheckSum=2c17cf64e376c0e9d0d56053d33c0722
 	EthTraceBlock:	In=2,	Out=2,	CheckSum=87ad85d70d0a285fae530a47eee79d13
+	EthTraceFilter:	In=2,	Out=2,	CheckSum=eb8226fb11cf8fd4b9550df816e5ac93
 	EthTraceReplayBlockTransactions:	In=3,	Out=2,	CheckSum=ec2c86340cf2a777bc64bab8d10e3fdb
 	EthTraceTransaction:	In=2,	Out=2,	CheckSum=5baa667f39dbbb1355663613b6e9cf3b
 	EthUninstallFilter:	In=2,	Out=2,	CheckSum=eaa6a477ffaae115413457bbdb11e339
@@ -276,8 +280,12 @@ api.FullNode:
 	F3GetECPowerTable:	In=2,	Out=2,	CheckSum=cbc0e8e30a005d936a4080aaf911c58f
 	F3GetF3PowerTable:	In=2,	Out=2,	CheckSum=cbc0e8e30a005d936a4080aaf911c58f
 	F3GetLatestCertificate:	In=1,	Out=2,	CheckSum=de551a11a224677fff1d64e2014932e6
-	F3Participate:	In=4,	Out=2,	CheckSum=8861bbda56cde25a0dd0cc7ae64ecf60
-	FilecoinAddressToEthAddress:	In=2,	Out=2,	CheckSum=13a0b5ce8f82604e17803a00c4086c4c
+	F3GetManifest:	In=1,	Out=2,	CheckSum=082e48a67a9415757e16938ec8ba34e5
+	F3GetOrRenewParticipationTicket:	In=4,	Out=2,	CheckSum=f025742e52bb59e839db5182af1a829a
+	F3GetProgress:	In=1,	Out=2,	CheckSum=47af12f74b39fcca4877ebed425b6558
+	F3IsRunning:	In=1,	Out=2,	CheckSum=de305c848673f2b095e6cfdecdaf85c3
+	F3Participate:	In=2,	Out=2,	CheckSum=a09f021cb508b413dddcfae6eb535db4
+	FilecoinAddressToEthAddress:	In=2,	Out=2,	CheckSum=59affa319c910c555ee5f1d194049f53
 	GasEstimateFeeCap:	In=4,	Out=2,	CheckSum=0fcac02de1d21c9ac6e10696a6499eba
 	GasEstimateGasLimit:	In=3,	Out=2,	CheckSum=4d1bd57eef0ee90d4c2e89f097d0604d
 	GasEstimateGasPremium:	In=5,	Out=2,	CheckSum=550724ed37e2fdaa64e55147e82214b1
@@ -416,6 +424,7 @@ api.FullNode:
 	StateMinerFaults:	In=3,	Out=2,	CheckSum=9d26d848f93597964f751b43edd3d476
 	StateMinerInfo:	In=3,	Out=2,	CheckSum=4ba684a8519aa97d4df405cee3496e7c
 	StateMinerInitialPledgeCollateral:	In=4,	Out=2,	CheckSum=b456dc2029fe2ac176ade895bda96dd5
+	StateMinerInitialPledgeForSector:	In=5,	Out=2,	CheckSum=b5edd5d06358a203455b9c3036445d21
 	StateMinerPartitions:	In=4,	Out=2,	CheckSum=b3cba1da3bd87c433cb8f9df7f7edc09
 	StateMinerPower:	In=3,	Out=2,	CheckSum=0e70a6360616c25624118181f764d7df
 	StateMinerPreCommitDepositForPower:	In=4,	Out=2,	CheckSum=b456dc2029fe2ac176ade895bda96dd5
