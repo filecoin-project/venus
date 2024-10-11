@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs/go-cid"
 )
 
 func Net2k() *NetworkConf {
@@ -69,6 +70,7 @@ func Net2k() *NetworkConf {
 			F3BootstrapEpoch:        1000,
 			ManifestServerID:        "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG",
 			F3Consensus:             true,
+			F3InitialPowerTableCID:  cid.Undef,
 		},
 	}
 

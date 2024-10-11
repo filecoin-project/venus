@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs/go-cid"
 )
 
 func ButterflySnapNet() *NetworkConf {
@@ -73,6 +74,7 @@ func ButterflySnapNet() *NetworkConf {
 			F3BootstrapEpoch:        1000,
 			ManifestServerID:        "12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6",
 			F3Consensus:             true,
+			F3InitialPowerTableCID:  cid.Undef,
 		},
 	}
 

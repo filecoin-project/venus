@@ -7,6 +7,7 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs/go-cid"
 )
 
 type NetworkConf struct {
@@ -76,6 +77,7 @@ func Calibration() *NetworkConf {
 			Eip155ChainID:           314159,
 			ActorDebugging:          false,
 			F3Consensus:             true,
+			F3InitialPowerTableCID:  cid.Undef,
 		},
 	}
 

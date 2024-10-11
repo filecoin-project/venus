@@ -92,7 +92,7 @@ func NewConfig(nn string, netCfg *config.NetworkParamsConfig) (*Config, error) {
 			policy.ChainFinality,
 			netCfg.F3BootstrapEpoch,
 			time.Duration(netCfg.BlockDelay)*time.Second,
-			cid.Undef,
+			netCfg.F3InitialPowerTableCID,
 		)
 	}
 	return c, nil

@@ -7,6 +7,7 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs/go-cid"
 )
 
 func Mainnet() *NetworkConf {
@@ -78,6 +79,7 @@ func Mainnet() *NetworkConf {
 			F3BootstrapEpoch:        -1,
 			ManifestServerID:        "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7",
 			F3Consensus:             false,
+			F3InitialPowerTableCID:  cid.Undef,
 		},
 	}
 

@@ -174,7 +174,7 @@ func NewNetworkSubmodule(ctx context.Context,
 		return nil, err
 	}
 
-	router, err := makeDHT(ctx, rawHost, config, networkName, bootNodes, cfg.PubsubConfig.Bootstrapper)
+	router, err := makeDHT(ctx, rawHost, config, networkName, cfg.PubsubConfig.Bootstrapper)
 	if err != nil {
 		return nil, err
 	}
@@ -401,7 +401,7 @@ func buildHost(_ context.Context, config networkConfig, libP2pOpts []libp2p.Opti
 	return libp2p.New(opts...)
 }
 
-func makeDHT(ctx context.Context, h types.RawHost, config networkConfig, networkName string, bootNodes []peer.AddrInfo, bootstrapper bool) (routing.Routing, error) {
+func makeDHT(ctx context.Context, h types.RawHost, config networkConfig, networkName string, bootstrapper bool) (routing.Routing, error) {
 	mode := dht.ModeAuto
 	if bootstrapper {
 		mode = dht.ModeServer

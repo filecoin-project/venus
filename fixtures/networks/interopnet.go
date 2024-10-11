@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs/go-cid"
 )
 
 func InteropNet() *NetworkConf {
@@ -73,6 +74,7 @@ func InteropNet() *NetworkConf {
 			F3BootstrapEpoch:        1000,
 			ManifestServerID:        "12D3KooWQJ2rdVnG4okDUB6yHQhAjNutGNemcM7XzqC9Eo4z9Jce",
 			F3Consensus:             true,
+			F3InitialPowerTableCID:  cid.Undef,
 		},
 	}
 
