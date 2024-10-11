@@ -69,6 +69,7 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- EthSubscriber.EthSubscription
 	- IF3.F3GetManifest
 	- IF3.F3GetOrRenewParticipationTicket
+	- IF3.F3GetProgress
 	- IF3.F3IsRunning
 	- IMessagePool.GasBatchEstimateMessageGas
 	- IMessagePool.MpoolDeleteByAdress

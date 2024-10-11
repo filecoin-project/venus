@@ -335,6 +335,7 @@ func init() {
 
 	addExample(&manifest.Manifest{})
 	addExample(gpbft.NetworkName("filecoin"))
+	addExample(gpbft.INITIAL_PHASE)
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

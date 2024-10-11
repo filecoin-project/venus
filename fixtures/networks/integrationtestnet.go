@@ -66,7 +66,7 @@ func IntegrationNet() *NetworkConf {
 			ActorDebugging:          false,
 			F3Enabled:               true,
 			F3BootstrapEpoch:        -1,
-			ManifestServerID:        "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7",
+			ManifestServerID:        "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG",
 			F3Consensus:             true,
 			F3InitialPowerTableCID:  cid.Undef,
 		},

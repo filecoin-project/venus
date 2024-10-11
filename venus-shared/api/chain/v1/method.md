@@ -121,6 +121,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [F3GetLatestCertificate](#f3getlatestcertificate)
   * [F3GetManifest](#f3getmanifest)
   * [F3GetOrRenewParticipationTicket](#f3getorrenewparticipationticket)
+  * [F3GetProgress](#f3getprogress)
   * [F3IsRunning](#f3isrunning)
   * [F3Participate](#f3participate)
 * [Market](#market)
@@ -3554,7 +3555,7 @@ Response:
 ```
 
 ### F3GetManifest
-F3GetGetManifest returns the current manifest being used for F3
+F3GetManifest returns the current manifest being used for F3
 
 
 Perms: read
@@ -3616,6 +3617,23 @@ Inputs:
 ```
 
 Response: `"Bw=="`
+
+### F3GetProgress
+F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "ID": 42,
+  "Round": 42,
+  "Phase": 0
+}
+```
 
 ### F3IsRunning
 F3IsRunning returns true if the F3 instance is running, false if it's not running but
