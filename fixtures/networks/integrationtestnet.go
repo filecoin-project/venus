@@ -64,7 +64,7 @@ func IntegrationNet() *NetworkConf {
 			AllowableClockDriftSecs: 1,
 			Eip155ChainID:           314,
 			ActorDebugging:          false,
-			F3Enabled:               true,
+			F3Enabled:               false,
 			F3BootstrapEpoch:        -1,
 			ManifestServerID:        "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG",
 			F3Consensus:             true,

@@ -523,6 +523,10 @@ type F3ParticipationLease struct {
 	ValidityTerm uint64
 }
 
+func (l *F3ParticipationLease) ToInstance() uint64 {
+	return l.FromInstance + l.ValidityTerm
+}
+
 var (
 	// ErrF3Disabled signals that F3 consensus process is disabled.
 	ErrF3Disabled = errF3Disabled{}
