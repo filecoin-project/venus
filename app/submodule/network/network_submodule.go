@@ -147,9 +147,12 @@ func NewNetworkSubmodule(ctx context.Context,
 		}
 	}
 
-	f3Cfg, err := vf3.NewConfig(networkName, cfg.NetworkParams)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build f3 config")
+	var f3Cfg *vf3.Config
+	if cfg.NetworkParams.F3Enabled {
+		f3Cfg, err = vf3.NewConfig(networkName, cfg.NetworkParams)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to build f3 config")
+		}
 	}
 
 	// peer manager

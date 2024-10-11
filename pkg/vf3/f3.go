@@ -110,7 +110,6 @@ func New(mctx context.Context, params F3Params) (*F3, error) {
 			log.Fatalf("running f3: %+v", err)
 			return
 		}
-		go fff.runSigningLoop(mctx)
 	}()
 
 	// Start signing F3 messages.
