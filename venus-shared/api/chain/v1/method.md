@@ -119,6 +119,9 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [F3GetECPowerTable](#f3getecpowertable)
   * [F3GetF3PowerTable](#f3getf3powertable)
   * [F3GetLatestCertificate](#f3getlatestcertificate)
+  * [F3GetManifest](#f3getmanifest)
+  * [F3GetOrRenewParticipationTicket](#f3getorrenewparticipationticket)
+  * [F3IsRunning](#f3isrunning)
   * [F3Participate](#f3participate)
 * [Market](#market)
   * [StateMarketParticipants](#statemarketparticipants)
@@ -3550,7 +3553,54 @@ Response:
 }
 ```
 
-### F3Participate
+### F3GetManifest
+F3GetGetManifest returns the current manifest being used for F3
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "Pause": false,
+  "ProtocolVersion": 0,
+  "InitialInstance": 0,
+  "BootstrapEpoch": 0,
+  "NetworkName": "",
+  "ExplicitPower": null,
+  "IgnoreECPower": false,
+  "InitialPowerTable": null,
+  "CommitteeLookback": 0,
+  "CatchUpAlignment": 0,
+  "Gpbft": {
+    "Delta": 0,
+    "DeltaBackOffExponent": 0,
+    "MaxLookaheadRounds": 0,
+    "RebroadcastBackoffBase": 0,
+    "RebroadcastBackoffExponent": 0,
+    "RebroadcastBackoffSpread": 0,
+    "RebroadcastBackoffMax": 0
+  },
+  "EC": {
+    "Period": 0,
+    "Finality": 0,
+    "DelayMultiplier": 0,
+    "BaseDecisionBackoffTable": null,
+    "HeadLookback": 0,
+    "Finalize": false
+  },
+  "CertificateExchange": {
+    "ClientRequestTimeout": 0,
+    "ServerRequestTimeout": 0,
+    "MinimumPollInterval": 0,
+    "MaximumPollInterval": 0
+  }
+}
+```
+
+### F3GetOrRenewParticipationTicket
 *********************************** ALL F3 APIs below are not stable & subject to change ***********************************
 
 
@@ -3560,12 +3610,65 @@ Inputs:
 ```json
 [
   "f01234",
-  "0001-01-01T00:00:00Z",
-  "0001-01-01T00:00:00Z"
+  "Bw==",
+  42
 ]
 ```
 
+Response: `"Bw=="`
+
+### F3IsRunning
+F3IsRunning returns true if the F3 instance is running, false if it's not running but
+it's enabled, and an error when disabled entirely.
+
+
+Perms: read
+
+Inputs: `[]`
+
 Response: `true`
+
+### F3Participate
+F3Participate enrolls a storage provider in the F3 consensus process using a
+provided participation ticket. This ticket grants a temporary lease that enables
+the provider to sign transactions as part of the F3 consensus.
+
+The function verifies the ticket's validity and checks if the ticket's issuer
+aligns with the current node. If there is an issuer mismatch
+(ErrF3ParticipationIssuerMismatch), the provider should retry with the same
+ticket, assuming the issue is due to transient network problems or operational
+deployment conditions. If the ticket is invalid
+(ErrF3ParticipationTicketInvalid) or has expired
+(ErrF3ParticipationTicketExpired), the provider must obtain a new ticket by
+calling F3GetOrRenewParticipationTicket.
+
+The start instance associated to the given ticket cannot be less than the
+start instance of any existing lease held by the miner. Otherwise,
+ErrF3ParticipationTicketStartBeforeExisting is returned. In this case, the
+miner should acquire a new ticket before attempting to participate again.
+
+For details on obtaining or renewing a ticket, see F3GetOrRenewParticipationTicket.
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "Bw=="
+]
+```
+
+Response:
+```json
+{
+  "Network": "filecoin",
+  "Issuer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "MinerID": 42,
+  "FromInstance": 42,
+  "ValidityTerm": 42
+}
+```
 
 ## Market
 

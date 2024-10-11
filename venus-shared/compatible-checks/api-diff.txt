@@ -68,7 +68,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- SyncCheckBad
-	- SyncCheckpoint
 	- SyncMarkBad
 	- SyncUnmarkAllBad
 	- SyncUnmarkBad
@@ -105,6 +104,10 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- CreateBackup
 	- Discover
 	> EthTraceReplayBlockTransactions {[func(context.Context, string, []string) ([]*types.EthTraceReplayBlockTransaction, error) <> func(context.Context, string, []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)] base=func out type: #0 input; nested={[[]*types.EthTraceReplayBlockTransaction <> []*ethtypes.EthTraceReplayBlockTransaction] base=slice element; nested={[*types.EthTraceReplayBlockTransaction <> *ethtypes.EthTraceReplayBlockTransaction] base=pointed type; nested={[types.EthTraceReplayBlockTransaction <> ethtypes.EthTraceReplayBlockTransaction] base=struct field; nested={[types.EthTraceReplayBlockTransaction <> ethtypes.EthTraceReplayBlockTransaction] base=exported field name: #4 field, VMTrace != VmTrace; nested=nil}}}}}
+	+ F3GetManifest
+	+ F3GetOrRenewParticipationTicket
+	+ F3IsRunning
+	> F3Participate {[func(context.Context, types.F3ParticipationTicket) (types.F3ParticipationLease, error) <> func(context.Context, address.Address, time.Time, time.Time) (bool, error)] base=func in num: 2 != 4; nested=nil}
 	+ GasBatchEstimateMessageGas
 	> GasEstimateMessageGas {[func(context.Context, *types.Message, *types.MessageSendSpec, types.TipSetKey) (*types.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported field name: #1 field, GasOverEstimation != MsgUuid; nested=nil}}}}
 	+ GetActor
@@ -162,7 +165,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- SyncCheckBad
-	- SyncCheckpoint
 	- SyncMarkBad
 	- SyncUnmarkAllBad
 	- SyncUnmarkBad

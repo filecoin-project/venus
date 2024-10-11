@@ -14,6 +14,7 @@ import (
 	bitfield "github.com/filecoin-project/go-bitfield"
 	certs "github.com/filecoin-project/go-f3/certs"
 	gpbft "github.com/filecoin-project/go-f3/gpbft"
+	manifest "github.com/filecoin-project/go-f3/manifest"
 	jsonrpc "github.com/filecoin-project/go-jsonrpc"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
@@ -1118,19 +1119,64 @@ func (mr *MockFullNodeMockRecorder) F3GetLatestCertificate(arg0 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetLatestCertificate", reflect.TypeOf((*MockFullNode)(nil).F3GetLatestCertificate), arg0)
 }
 
-// F3Participate mocks base method.
-func (m *MockFullNode) F3Participate(arg0 context.Context, arg1 address.Address, arg2, arg3 time.Time) (bool, error) {
+// F3GetManifest mocks base method.
+func (m *MockFullNode) F3GetManifest(arg0 context.Context) (*manifest.Manifest, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "F3Participate", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "F3GetManifest", arg0)
+	ret0, _ := ret[0].(*manifest.Manifest)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetManifest indicates an expected call of F3GetManifest.
+func (mr *MockFullNodeMockRecorder) F3GetManifest(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetManifest", reflect.TypeOf((*MockFullNode)(nil).F3GetManifest), arg0)
+}
+
+// F3GetOrRenewParticipationTicket mocks base method.
+func (m *MockFullNode) F3GetOrRenewParticipationTicket(arg0 context.Context, arg1 address.Address, arg2 types0.F3ParticipationTicket, arg3 uint64) (types0.F3ParticipationTicket, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetOrRenewParticipationTicket", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(types0.F3ParticipationTicket)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetOrRenewParticipationTicket indicates an expected call of F3GetOrRenewParticipationTicket.
+func (mr *MockFullNodeMockRecorder) F3GetOrRenewParticipationTicket(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetOrRenewParticipationTicket", reflect.TypeOf((*MockFullNode)(nil).F3GetOrRenewParticipationTicket), arg0, arg1, arg2, arg3)
+}
+
+// F3IsRunning mocks base method.
+func (m *MockFullNode) F3IsRunning(arg0 context.Context) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3IsRunning", arg0)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// F3Participate indicates an expected call of F3Participate.
-func (mr *MockFullNodeMockRecorder) F3Participate(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+// F3IsRunning indicates an expected call of F3IsRunning.
+func (mr *MockFullNodeMockRecorder) F3IsRunning(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3Participate", reflect.TypeOf((*MockFullNode)(nil).F3Participate), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3IsRunning", reflect.TypeOf((*MockFullNode)(nil).F3IsRunning), arg0)
+}
+
+// F3Participate mocks base method.
+func (m *MockFullNode) F3Participate(arg0 context.Context, arg1 types0.F3ParticipationTicket) (types0.F3ParticipationLease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3Participate", arg0, arg1)
+	ret0, _ := ret[0].(types0.F3ParticipationLease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3Participate indicates an expected call of F3Participate.
+func (mr *MockFullNodeMockRecorder) F3Participate(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3Participate", reflect.TypeOf((*MockFullNode)(nil).F3Participate), arg0, arg1)
 }
 
 // FilecoinAddressToEthAddress mocks base method.

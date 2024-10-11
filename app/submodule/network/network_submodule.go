@@ -50,6 +50,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/net/pubsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	appstate "github.com/filecoin-project/venus/pkg/state"
+	"github.com/filecoin-project/venus/pkg/vf3"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
@@ -90,7 +91,8 @@ type NetworkSubmodule struct { //nolint
 
 	indexMsgRelayCancelFunc libp2pps.RelayCancelFunc
 
-	cfg networkConfig
+	cfg   networkConfig
+	F3Cfg *vf3.Config
 }
 
 // API create a new network implement
@@ -145,6 +147,14 @@ func NewNetworkSubmodule(ctx context.Context,
 		}
 	}
 
+	var f3Cfg *vf3.Config
+	if cfg.NetworkParams.F3Enabled {
+		f3Cfg, err = vf3.NewConfig(networkName, cfg.NetworkParams)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to build f3 config")
+		}
+	}
+
 	// peer manager
 	bootNodes, err := net.ParseAddresses(ctx, cfg.Bootstrap.Addresses)
 	if err != nil {
@@ -181,7 +191,7 @@ func NewNetworkSubmodule(ctx context.Context,
 	}
 
 	sk := net.NewScoreKeeper()
-	gsub, err := net.NewGossipSub(ctx, peerHost, sk, networkName, cfg.NetworkParams.DrandSchedule, bootNodes, cfg.PubsubConfig.Bootstrapper, config.Repo().Config().NetworkParams.F3Enabled)
+	gsub, err := net.NewGossipSub(ctx, peerHost, sk, networkName, cfg.NetworkParams.DrandSchedule, bootNodes, cfg.PubsubConfig.Bootstrapper, f3Cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up network")
 	}
@@ -240,6 +250,7 @@ func NewNetworkSubmodule(ctx context.Context,
 		cfg:                     config,
 		ScoreKeeper:             sk,
 		indexMsgRelayCancelFunc: indexMsgRelayCancelFunc,
+		F3Cfg:                   f3Cfg,
 	}, nil
 }
 
