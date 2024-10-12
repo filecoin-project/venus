@@ -49,9 +49,10 @@ type IChainInfo interface {
 	StateGetRandomnessDigestFromTickets(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
 	// StateGetRandomnessDigestFromBeacon is used to sample the beacon for randomness.
 	StateGetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
-	// StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
-	// the entry has not yet been produced, the call will block until the entry
-	// becomes available
+	// StateGetBeaconEntry returns the beacon entry for the given filecoin epoch
+	// by using the recorded entries on the chain. If the entry for the requested
+	// epoch has not yet been produced, the call will block until the entry
+	// becomes available.
 	StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)                     //perm:read
 	ChainGetBlock(ctx context.Context, id cid.Cid) (*types.BlockHeader, error)                                     //perm:read
 	ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.Message, error)                                    //perm:read
