@@ -31,7 +31,7 @@ func GetGenesis(networkType types.NetworkType) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer file.Close() //nolint
 
 	decoder, err := zstd.NewReader(file)
 	if err != nil {
