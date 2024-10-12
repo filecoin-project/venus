@@ -19,7 +19,7 @@ func ForceNet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.NetworkForce,
-			GenesisNetworkVersion: network.Version22,
+			GenesisNetworkVersion: network.Version23,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg8MiBV1,
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
@@ -41,30 +41,32 @@ func ForceNet() *NetworkConf {
 				// Miners, clients, developers, custodians all need time to prepare.
 				// We still have upgrades and state changes to do, but can happen after signaling timing here.
 
-				UpgradeAssemblyHeight:             -7, // critical: the network can bootstrap from v1 only
-				UpgradeKumquatHeight:              -8,
-				UpgradeCalicoHeight:               -9,
-				UpgradePersianHeight:              -10,
-				UpgradeOrangeHeight:               -11,
-				UpgradeClausHeight:                -12,
-				UpgradeTrustHeight:                -13,
-				UpgradeNorwegianHeight:            -14,
-				UpgradeTurboHeight:                -15,
-				UpgradeHyperdriveHeight:           -16,
-				UpgradeChocolateHeight:            -17,
-				UpgradeOhSnapHeight:               -18,
-				UpgradeSkyrHeight:                 -19,
-				UpgradeSharkHeight:                -20,
-				UpgradeHyggeHeight:                -21,
-				UpgradeLightningHeight:            -22,
-				UpgradeThunderHeight:              -23,
-				UpgradeWatermelonHeight:           -24,
-				UpgradeWatermelonFixHeight:        -100, // This fix upgrade only ran on calibrationnet
-				UpgradeWatermelonFix2Height:       -101, // This fix upgrade only ran on calibrationnet
-				UpgradeDragonHeight:               -25,
-				UpgradeCalibrationDragonFixHeight: -102, // This fix upgrade only ran on calibrationnet
-				UpgradePhoenixHeight:              -26,
-				UpgradeWaffleHeight:               200,
+				UpgradeAssemblyHeight:                -7, // critical: the network can bootstrap from v1 only
+				UpgradeKumquatHeight:                 -8,
+				UpgradeCalicoHeight:                  -9,
+				UpgradePersianHeight:                 -10,
+				UpgradeOrangeHeight:                  -11,
+				UpgradeClausHeight:                   -12,
+				UpgradeTrustHeight:                   -13,
+				UpgradeNorwegianHeight:               -14,
+				UpgradeTurboHeight:                   -15,
+				UpgradeHyperdriveHeight:              -16,
+				UpgradeChocolateHeight:               -17,
+				UpgradeOhSnapHeight:                  -18,
+				UpgradeSkyrHeight:                    -19,
+				UpgradeSharkHeight:                   -20,
+				UpgradeHyggeHeight:                   -21,
+				UpgradeLightningHeight:               -22,
+				UpgradeThunderHeight:                 -23,
+				UpgradeWatermelonHeight:              -24,
+				UpgradeWatermelonFixHeight:           -100, // This fix upgrade only ran on calibrationnet
+				UpgradeWatermelonFix2Height:          -101, // This fix upgrade only ran on calibrationnet
+				UpgradeDragonHeight:                  -25,
+				UpgradeCalibrationDragonFixHeight:    -102, // This fix upgrade only ran on calibrationnet
+				UpgradePhoenixHeight:                 -26,
+				UpgradeWaffleHeight:                  -27,
+				UpgradeTuktukHeight:                  200,
+				UpgradeTuktukPowerRampDurationEpochs: 200,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,

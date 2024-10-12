@@ -445,7 +445,8 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      10,
 			}},
 			Expensive: true,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeTuktukHeight,
 			Network:   network.Version24,
 			Migration: cf.UpgradeActorsV15,
@@ -3547,8 +3548,18 @@ func (c *ChainFork) upgradeActorsV15Common(
 	}
 
 	// Perform the migration
-	newHamtRoot, err := nv24.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
-		migrationLogger{}, cache)
+	newHamtRoot, err := nv24.MigrateStateTree(ctx,
+		adtStore,
+		manifest,
+		stateRoot.Actors,
+		epoch,
+		// two FIP-0081 constants for this migration only
+		int64(c.forkUpgrade.UpgradeTuktukHeight),                   // powerRampStartEpoch
+		uint64(c.forkUpgrade.UpgradeTuktukPowerRampDurationEpochs), // powerRampDurationEpochs
+		config,
+		migrationLogger{},
+		cache,
+	)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("upgrading to actors v15: %w", err)
 	}
