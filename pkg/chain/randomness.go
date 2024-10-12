@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/rand"
+	"os"
 
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/vm"
@@ -53,6 +54,11 @@ func (g *GenesisRandomnessSource) GetChainRandomness(ctx context.Context, randEp
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return *(*[32]byte)(out), nil
+}
+func (r *GenesisRandomnessSource) GetBeaconEntry(_ context.Context, randEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
+	return &types.BeaconEntry{Round: 10, Data: out}, nil
 }
 
 // Computes a random seed from raw ticket bytes.
@@ -154,8 +160,8 @@ func (c *ChainRandomnessSource) GetChainRandomnessV1(ctx context.Context, round 
 }
 
 // network v13 and on
-func (c *ChainRandomnessSource) GetChainRandomnessV2(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
-	ticket, err := c.getChainRandomness(ctx, round, false)
+func (c *ChainRandomnessSource) GetChainRandomnessV2(ctx context.Context, round abi.ChainEpoch, lookback bool) ([32]byte, error) {
+	ticket, err := c.getChainRandomness(ctx, round, lookback)
 	if err != nil {
 		return [32]byte{}, err
 	}
@@ -167,58 +173,46 @@ func (c *ChainRandomnessSource) GetChainRandomness(ctx context.Context, filecoin
 	nv := c.networkVersionGetter(ctx, filecoinEpoch)
 
 	if nv >= network.Version13 {
-		return c.GetChainRandomnessV2(ctx, filecoinEpoch)
+		return c.GetChainRandomnessV2(ctx, filecoinEpoch, false)
 	}
 
-	return c.GetChainRandomnessV2(ctx, filecoinEpoch)
+	return c.GetChainRandomnessV2(ctx, filecoinEpoch, true)
+}
+
+func (c *ChainRandomnessSource) GetBeaconRandomness(ctx context.Context, filecoinEpoch abi.ChainEpoch) ([32]byte, error) {
+	be, err := c.GetBeaconEntry(ctx, filecoinEpoch)
+	if err != nil {
+		return [32]byte{}, err
+	}
+	return blake2b.Sum256(be.Data), nil
 }
 
 // network v0-12
-func (c *ChainRandomnessSource) GetBeaconRandomnessV1(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
+func (c *ChainRandomnessSource) getBeaconEntryV1(ctx context.Context, round abi.ChainEpoch) (*types.BeaconEntry, error) {
 	randTS, err := c.GetBeaconRandomnessTipset(ctx, round, true)
 	if err != nil {
-		return [32]byte{}, err
+		return nil, err
 	}
 
-	be, err := FindLatestDRAND(ctx, randTS, c.reader)
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	return blake2b.Sum256(be.Data), nil
+	return c.getLatestBeaconEntry(ctx, randTS)
 }
 
 // network v13
-func (c *ChainRandomnessSource) GetBeaconRandomnessV2(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
+func (c *ChainRandomnessSource) getBeaconEntryV2(ctx context.Context, round abi.ChainEpoch) (*types.BeaconEntry, error) {
 	randTS, err := c.GetBeaconRandomnessTipset(ctx, round, false)
 	if err != nil {
-		return [32]byte{}, err
+		return nil, err
 	}
 
-	be, err := FindLatestDRAND(ctx, randTS, c.reader)
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	return blake2b.Sum256(be.Data), nil
+	return c.getLatestBeaconEntry(ctx, randTS)
 }
 
 // network v14 and on
-func (c *ChainRandomnessSource) GetBeaconRandomnessV3(ctx context.Context, filecoinEpoch abi.ChainEpoch) ([32]byte, error) {
+func (c *ChainRandomnessSource) getBeaconEntryV3(ctx context.Context, filecoinEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
 	if filecoinEpoch < 0 {
-		return c.GetBeaconRandomnessV2(ctx, filecoinEpoch)
+		return c.getBeaconEntryV2(ctx, filecoinEpoch)
 	}
 
-	be, err := c.extractBeaconEntryForEpoch(ctx, filecoinEpoch)
-	if err != nil {
-		log.Errorf("failed to get beacon entry as expected: %s", err)
-		return [32]byte{}, err
-	}
-
-	return blake2b.Sum256(be.Data), nil
-}
-
-func (c *ChainRandomnessSource) extractBeaconEntryForEpoch(ctx context.Context, filecoinEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
 	randTS, err := c.GetBeaconRandomnessTipset(ctx, filecoinEpoch, false)
 	if err != nil {
 		return nil, err
@@ -228,6 +222,9 @@ func (c *ChainRandomnessSource) extractBeaconEntryForEpoch(ctx context.Context, 
 
 	round := c.beacon.BeaconForEpoch(filecoinEpoch).MaxBeaconRoundForEpoch(nv, filecoinEpoch)
 
+	// Search back for the beacon entry, in normal operation it should be in randTs but for devnets
+	// where the blocktime is faster than the beacon period we may need to search back a bit to find
+	// the beacon entry for the requested round.
 	for i := 0; i < 20; i++ {
 		cbe := randTS.Blocks()[0].BeaconEntries
 		for _, v := range cbe {
@@ -247,15 +244,51 @@ func (c *ChainRandomnessSource) extractBeaconEntryForEpoch(ctx context.Context, 
 	return nil, fmt.Errorf("didn't find beacon for round %d (epoch %d)", round, filecoinEpoch)
 }
 
-func (c *ChainRandomnessSource) GetBeaconRandomness(ctx context.Context, randEpoch abi.ChainEpoch) ([32]byte, error) {
+func (c *ChainRandomnessSource) GetBeaconEntry(ctx context.Context, randEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
 	rnv := c.networkVersionGetter(ctx, randEpoch)
 	if rnv >= network.Version14 {
-		return c.GetBeaconRandomnessV3(ctx, randEpoch)
+		be, err := c.getBeaconEntryV3(ctx, randEpoch)
+		if err != nil {
+			log.Errorf("failed to get beacon entry as expected: %s", err)
+		}
+		return be, err
 	} else if rnv == network.Version13 {
-		return c.GetBeaconRandomnessV2(ctx, randEpoch)
+		return c.getBeaconEntryV2(ctx, randEpoch)
 	}
 
-	return c.GetBeaconRandomnessV1(ctx, randEpoch)
+	return c.getBeaconEntryV1(ctx, randEpoch)
+}
+
+func (c *ChainRandomnessSource) getLatestBeaconEntry(ctx context.Context, ts *types.TipSet) (*types.BeaconEntry, error) {
+	cur := ts
+
+	// Search for a beacon entry, in normal operation one should be in the requested tipset, but for
+	// devnets where the blocktime is faster than the beacon period we may need to search back a bit
+	// to find a tipset with a beacon entry.
+	for i := 0; i < 20; i++ {
+		cbe := cur.Blocks()[0].BeaconEntries
+		if len(cbe) > 0 {
+			return &cbe[len(cbe)-1], nil
+		}
+
+		if cur.Height() == 0 {
+			return nil, fmt.Errorf("made it back to genesis block without finding beacon entry")
+		}
+
+		next, err := c.reader.GetTipSet(ctx, cur.Parents())
+		if err != nil {
+			return nil, fmt.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
+		}
+		cur = next
+	}
+
+	if os.Getenv("VENUS_IGNORE_DRAND") == "_yes_" {
+		return &types.BeaconEntry{
+			Data: []byte{9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
+		}, nil
+	}
+
+	return nil, fmt.Errorf("found NO beacon entries in the 20 latest tipsets")
 }
 
 // BlendEntropy get randomness with chain value. sha256(buf(tag, seed, epoch, entropy))

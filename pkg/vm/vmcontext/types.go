@@ -99,6 +99,7 @@ func TipSetGetterForTipset(tsGet func(context.Context, *types.TipSet, abi.ChainE
 // ChainRandomness define randomness method in filecoin
 type HeadChainRandomness interface {
 	GetChainRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error)
+	GetBeaconEntry(ctx context.Context, round abi.ChainEpoch) (*types.BeaconEntry, error)
 	GetBeaconRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error)
 }
 
