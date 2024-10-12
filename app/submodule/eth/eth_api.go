@@ -34,6 +34,7 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 )
 
 const maxEthFeeHistoryRewardPercentiles = 100
@@ -343,20 +344,35 @@ func (a *ethAPI) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*
 func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthUint64, error) {
 	addr, err := sender.ToFilecoinAddress()
 	if err != nil {
-		return types.EthUint64(0), err
+		return types.EthUint64(0), xerrors.Errorf("invalid address: %w", err)
+
 	}
+	// Handle "pending" block parameter separately
+	if blkParam.PredefinedBlock != nil && *blkParam.PredefinedBlock == "pending" {
+		nonce, err := a.mpool.MpoolGetNonce(ctx, addr)
+		if err != nil {
+			return types.EthUint64(0), xerrors.Errorf("failed to get nonce from mpool: %w", err)
+		}
+		return types.EthUint64(nonce), nil
+	}
+
+	// For all other cases, get the tipset based on the block parameter
 	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.em.chainModule.ChainReader, blkParam)
 	if err != nil {
 		return types.EthUint64(0), fmt.Errorf("failed to process block param: %v, %w", blkParam, err)
 	}
 
-	// First, handle the case where the "sender" is an EVM actor.
-	if actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, addr, ts); err != nil {
+	// Get the actor state at the specified tipset
+	actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, addr, ts)
+	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return 0, nil
 		}
-		return 0, fmt.Errorf("failed to lookup contract %s: %w", sender, err)
-	} else if builtinactors.IsEvmActor(actor.Code) {
+		return 0, xerrors.Errorf("failed to lookup actor %s: %w", sender, err)
+	}
+
+	// Handle EVM actor case
+	if builtinactors.IsEvmActor(actor.Code) {
 		evmState, err := builtinevm.Load(a.em.chainModule.ChainReader.Store(ctx), actor)
 		if err != nil {
 			return 0, fmt.Errorf("failed to load evm state: %w", err)
@@ -370,11 +386,7 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 		return types.EthUint64(nonce), err
 	}
 
-	nonce, err := a.em.mpoolModule.MPool.GetNonce(ctx, addr, ts.Key())
-	if err != nil {
-		return types.EthUint64(0), err
-	}
-	return types.EthUint64(nonce), nil
+	return types.EthUint64(actor.Nonce), nil
 }
 
 func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error) {
