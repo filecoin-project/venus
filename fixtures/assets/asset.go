@@ -2,9 +2,11 @@ package assets
 
 import (
 	"embed"
+	"io"
 	"path/filepath"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/klauspost/compress/zstd"
 )
 
 //go:embed genesis-car
@@ -14,7 +16,7 @@ func GetGenesis(networkType types.NetworkType) ([]byte, error) {
 	fileName := ""
 	switch networkType {
 	case types.NetworkForce:
-		fileName = "forcenet.car"
+		fileName = "forcenet.car.zst"
 	case types.NetworkInterop:
 		fileName = "interopnet.car.zst"
 	case types.NetworkButterfly:
@@ -25,7 +27,24 @@ func GetGenesis(networkType types.NetworkType) ([]byte, error) {
 		fileName = "mainnet.car.zst"
 	}
 
-	return carFS.ReadFile(filepath.Join("genesis-car", fileName))
+	file, err := carFS.Open(filepath.Join("genesis-car", fileName))
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	decoder, err := zstd.NewReader(file)
+	if err != nil {
+		return nil, err
+	}
+	defer decoder.Close() //nolint
+
+	decompressedBytes, err := io.ReadAll(decoder)
+	if err != nil {
+		return nil, err
+	}
+
+	return decompressedBytes, nil
 }
 
 //go:embed proof-params
