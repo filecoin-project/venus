@@ -21,7 +21,7 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v1.1.0
-	github.com/filecoin-project/go-amt-ipld/v4 v4.2.0
+	github.com/filecoin-project/go-amt-ipld/v4 v4.4.0
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils v0.1.3
@@ -32,7 +32,7 @@ require (
 	github.com/filecoin-project/go-fil-markets v1.28.2
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.14.0
+	github.com/filecoin-project/go-state-types v0.15.0-dev
 	github.com/filecoin-project/pubsub v1.0.0
 	github.com/filecoin-project/specs-actors v0.9.15
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
@@ -95,7 +95,7 @@ require (
 	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
 	github.com/stretchr/testify v1.9.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
-	github.com/whyrusleeping/cbor-gen v0.1.1
+	github.com/whyrusleeping/cbor-gen v0.1.2
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	github.com/zyedidia/generic v1.2.1
 	go.opencensus.io v0.24.0
@@ -104,12 +104,12 @@ require (
 	go.opentelemetry.io/otel/exporters/prometheus v0.50.0
 	go.opentelemetry.io/otel/sdk v1.28.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.24.0
+	golang.org/x/crypto v0.25.0
 	golang.org/x/net v0.26.0
 	golang.org/x/oauth2 v0.21.0
-	golang.org/x/sync v0.7.0
-	golang.org/x/sys v0.21.0
-	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
+	golang.org/x/sync v0.8.0
+	golang.org/x/sys v0.23.0
+	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 	gorm.io/driver/mysql v1.1.1
 	gorm.io/gorm v1.21.12
@@ -121,6 +121,8 @@ require (
 	github.com/consensys/bavard v0.1.13 // indirect
 	github.com/consensys/gnark-crypto v0.12.1 // indirect
 	github.com/filecoin-project/go-clock v0.1.0 // indirect
+	github.com/filecoin-project/go-commp-utils/v2 v2.1.0 // indirect
+	github.com/filecoin-project/go-fil-commp-hashhash v0.2.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/ipfs/go-blockservice v0.5.2 // indirect
 	github.com/ipfs/go-ipfs-blockstore v1.3.1 // indirect
@@ -186,11 +188,10 @@ require (
 	github.com/elastic/gosigar v0.14.2 // indirect
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349 // indirect
 	github.com/filecoin-project/go-amt-ipld/v3 v3.1.0 // indirect
-	github.com/filecoin-project/go-commp-utils/nonffi v0.0.0-20220905160352-62059082a837 // indirect
 	github.com/filecoin-project/go-ds-versioning v0.1.2 // indirect
 	github.com/filecoin-project/go-hamt-ipld v0.1.5 // indirect
 	github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 // indirect
-	github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0 // indirect
+	github.com/filecoin-project/go-hamt-ipld/v3 v3.4.0 // indirect
 	github.com/filecoin-project/go-padreader v0.0.1 // indirect
 	github.com/filecoin-project/go-statemachine v1.0.3 // indirect
 	github.com/filecoin-project/go-statestore v0.2.0 // indirect
@@ -256,7 +257,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kilic/bls12-381 v0.1.1-0.20220929213557-ca162e8a70f4 // indirect
 	github.com/klauspost/compress v1.17.9
-	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/koron/go-ssdp v0.0.4 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
@@ -340,7 +341,7 @@ require (
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
 	golang.org/x/mod v0.17.0 // indirect
-	golang.org/x/term v0.21.0 // indirect
+	golang.org/x/term v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect

@@ -16,13 +16,13 @@ func GetGenesis(networkType types.NetworkType) ([]byte, error) {
 	case types.NetworkForce:
 		fileName = "forcenet.car"
 	case types.NetworkInterop:
-		fileName = "interopnet.car"
+		fileName = "interopnet.car.zst"
 	case types.NetworkButterfly:
-		fileName = "butterflynet.car"
+		fileName = "butterflynet.car.zst"
 	case types.NetworkCalibnet:
-		fileName = "calibnet.car"
+		fileName = "calibnet.car.zst"
 	default:
-		fileName = "mainnet.car"
+		fileName = "mainnet.car.zst"
 	}
 
 	return carFS.ReadFile(filepath.Join("genesis-car", fileName))

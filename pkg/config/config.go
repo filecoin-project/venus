@@ -352,6 +352,7 @@ type ForkUpgradeConfig struct {
 	UpgradePhoenixHeight              abi.ChainEpoch `json:"upgradePhoenixHeight"`
 	UpgradeCalibrationDragonFixHeight abi.ChainEpoch `json:"upgradeCalibrationDragonFixHeight"`
 	UpgradeWaffleHeight               abi.ChainEpoch `json:"upgradeWaffleHeight"`
+	UpgradeTuktukHeight               abi.ChainEpoch `json:"UpgradeTuktukHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -393,6 +394,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	// This fix upgrade only ran on calibrationnet
 	UpgradeCalibrationDragonFixHeight: -3,
 	UpgradeWaffleHeight:               4154640,
+	UpgradeTuktukHeight:               999999999999999,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
@@ -411,7 +413,6 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 		PropagationDelaySecs:    10,
 		AllowableClockDriftSecs: 1,
 		Eip155ChainID:           314,
-		ManifestServerID:        "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7",
 	}
 }
 

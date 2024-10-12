@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-f3/gpbft"
+	gpbft "github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -479,6 +479,7 @@ type ForkUpgradeParams struct {
 	UpgradeDragonHeight      abi.ChainEpoch
 	UpgradePhoenixHeight     abi.ChainEpoch
 	UpgradeWaffleHeight      abi.ChainEpoch
+	UpgradeTuktukHeight      abi.ChainEpoch
 }
 
 type NodeStatus struct {

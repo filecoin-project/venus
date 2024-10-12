@@ -13,8 +13,8 @@ func ButterflySnapNet() *NetworkConf {
 	nc := &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWGW6xMTpjEBqndYkqytbu8PWfJmpK4wKLLLNSkXL2QZtD",
-				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWFGz9HegR3Rjrtm8b9WXTM6E3kN1sdd6X1JztuCgQaZSB",
+				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWF76a8Avv74CV55noqKd5rHsM8uwFYhaW4PhMhuE4PQsP",
+				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWCN1G8gK5HXQNDFKxAVmF6bpg436uVyNYFgiX94ZHCPjj",
 			},
 			Period: "30s",
 		},
