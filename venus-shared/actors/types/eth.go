@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multihash"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/multiformats/go-varint"
 	"golang.org/x/crypto/sha3"
@@ -515,7 +514,7 @@ func (h EthHash) String() string {
 // Should ONLY be used for blocks and Filecoin messages. Eth transactions expect a different hashing scheme.
 func (h EthHash) ToCid() cid.Cid {
 	// err is always nil
-	mh, _ := multihash.EncodeName(h[:], "blake2b-256")
+	mh, _ := mh.EncodeName(h[:], "blake2b-256")
 
 	return cid.NewCidV1(cid.DagCBOR, mh)
 }
@@ -558,7 +557,6 @@ func handleHexStringPrefix(s string) string {
 }
 
 func EthHashFromCid(c cid.Cid) (EthHash, error) {
-	return ParseEthHash(c.Hash().HexString()[8:])
 	hash, found := bytes.CutPrefix(c.Bytes(), expectedHashPrefix)
 	if !found {
 		return EthHash{}, fmt.Errorf("CID does not have the expected prefix")
