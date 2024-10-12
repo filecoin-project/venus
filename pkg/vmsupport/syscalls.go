@@ -10,7 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/minio/blake2b-simd"
+	"golang.org/x/crypto/blake2b"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"

@@ -15,8 +15,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/blake2b"
 )
 
 type RandomSeed []byte

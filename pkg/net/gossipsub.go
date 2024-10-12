@@ -12,7 +12,7 @@ import (
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	blake2b "github.com/minio/blake2b-simd"
+	blake2b "golang.org/x/crypto/blake2b"
 
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/venus/pkg/config"
