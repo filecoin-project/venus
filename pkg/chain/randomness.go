@@ -15,8 +15,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/blake2b"
 )
 
 type RandomSeed []byte
@@ -55,7 +55,7 @@ func (g *GenesisRandomnessSource) GetChainRandomness(ctx context.Context, randEp
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return *(*[32]byte)(out), nil
 }
-func (r *GenesisRandomnessSource) GetBeaconEntry(_ context.Context, randEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+func (g *GenesisRandomnessSource) GetBeaconEntry(_ context.Context, randEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return &types.BeaconEntry{Round: 10, Data: out}, nil
