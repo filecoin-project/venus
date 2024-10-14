@@ -19,4 +19,6 @@ type ISyncer interface {
 	// SyncIncomingBlocks returns a channel streaming incoming, potentially not
 	// yet synced block headers.
 	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) //perm:read
+	// SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
+	SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error //perm:admin
 }

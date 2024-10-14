@@ -26,6 +26,7 @@ type BlockProposer interface {
 	SendOwnBlock(ci *types2.ChainInfo) error
 	SendGossipBlock(ci *types2.ChainInfo) error
 	IncomingBlocks(ctx context.Context) (<-chan *types2.BlockHeader, error)
+	SyncCheckpoint(ctx context.Context, tsk types2.TipSetKey) error
 }
 
 var _ = (BlockProposer)((*dispatcher.Dispatcher)(nil))

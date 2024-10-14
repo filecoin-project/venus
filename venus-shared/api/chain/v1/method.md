@@ -119,6 +119,10 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [F3GetECPowerTable](#f3getecpowertable)
   * [F3GetF3PowerTable](#f3getf3powertable)
   * [F3GetLatestCertificate](#f3getlatestcertificate)
+  * [F3GetManifest](#f3getmanifest)
+  * [F3GetOrRenewParticipationTicket](#f3getorrenewparticipationticket)
+  * [F3GetProgress](#f3getprogress)
+  * [F3IsRunning](#f3isrunning)
   * [F3Participate](#f3participate)
 * [Market](#market)
   * [StateMarketParticipants](#statemarketparticipants)
@@ -179,6 +183,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [StateMinerFaults](#stateminerfaults)
   * [StateMinerInfo](#stateminerinfo)
   * [StateMinerInitialPledgeCollateral](#stateminerinitialpledgecollateral)
+  * [StateMinerInitialPledgeForSector](#stateminerinitialpledgeforsector)
   * [StateMinerPartitions](#stateminerpartitions)
   * [StateMinerPower](#stateminerpower)
   * [StateMinerPreCommitDepositForPower](#stateminerprecommitdepositforpower)
@@ -243,6 +248,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [ChainTipSetWeight](#chaintipsetweight)
   * [Concurrent](#concurrent)
   * [SetConcurrent](#setconcurrent)
+  * [SyncCheckpoint](#synccheckpoint)
   * [SyncIncomingBlocks](#syncincomingblocks)
   * [SyncState](#syncstate)
   * [SyncSubmitBlock](#syncsubmitblock)
@@ -1404,7 +1410,7 @@ Perms: read
 Inputs:
 ```json
 [
-  23
+  24
 ]
 ```
 
@@ -1419,7 +1425,7 @@ Perms: read
 Inputs:
 ```json
 [
-  23
+  24
 ]
 ```
 
@@ -1799,9 +1805,10 @@ Response:
 ```
 
 ### StateGetBeaconEntry
-StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
-the entry has not yet been produced, the call will block until the entry
-becomes available
+StateGetBeaconEntry returns the beacon entry for the given filecoin epoch
+by using the recorded entries on the chain. If the entry for the requested
+epoch has not yet been produced, the call will block until the entry
+becomes available.
 
 
 Perms: read
@@ -1867,7 +1874,8 @@ Response:
     "UpgradeWatermelonHeight": 10101,
     "UpgradeDragonHeight": 10101,
     "UpgradePhoenixHeight": 10101,
-    "UpgradeWaffleHeight": 10101
+    "UpgradeWaffleHeight": 10101,
+    "UpgradeTuktukHeight": 10101
   },
   "Eip155ChainID": 123
 }
@@ -1995,7 +2003,7 @@ Inputs:
 ]
 ```
 
-Response: `23`
+Response: `24`
 
 ### StateReplay
 
@@ -3549,7 +3557,54 @@ Response:
 }
 ```
 
-### F3Participate
+### F3GetManifest
+F3GetManifest returns the current manifest being used for F3
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "Pause": false,
+  "ProtocolVersion": 0,
+  "InitialInstance": 0,
+  "BootstrapEpoch": 0,
+  "NetworkName": "",
+  "ExplicitPower": null,
+  "IgnoreECPower": false,
+  "InitialPowerTable": null,
+  "CommitteeLookback": 0,
+  "CatchUpAlignment": 0,
+  "Gpbft": {
+    "Delta": 0,
+    "DeltaBackOffExponent": 0,
+    "MaxLookaheadRounds": 0,
+    "RebroadcastBackoffBase": 0,
+    "RebroadcastBackoffExponent": 0,
+    "RebroadcastBackoffSpread": 0,
+    "RebroadcastBackoffMax": 0
+  },
+  "EC": {
+    "Period": 0,
+    "Finality": 0,
+    "DelayMultiplier": 0,
+    "BaseDecisionBackoffTable": null,
+    "HeadLookback": 0,
+    "Finalize": false
+  },
+  "CertificateExchange": {
+    "ClientRequestTimeout": 0,
+    "ServerRequestTimeout": 0,
+    "MinimumPollInterval": 0,
+    "MaximumPollInterval": 0
+  }
+}
+```
+
+### F3GetOrRenewParticipationTicket
 *********************************** ALL F3 APIs below are not stable & subject to change ***********************************
 
 
@@ -3559,12 +3614,82 @@ Inputs:
 ```json
 [
   "f01234",
-  "0001-01-01T00:00:00Z",
-  "0001-01-01T00:00:00Z"
+  "Bw==",
+  42
 ]
 ```
 
+Response: `"Bw=="`
+
+### F3GetProgress
+F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "ID": 42,
+  "Round": 42,
+  "Phase": 0
+}
+```
+
+### F3IsRunning
+F3IsRunning returns true if the F3 instance is running, false if it's not running but
+it's enabled, and an error when disabled entirely.
+
+
+Perms: read
+
+Inputs: `[]`
+
 Response: `true`
+
+### F3Participate
+F3Participate enrolls a storage provider in the F3 consensus process using a
+provided participation ticket. This ticket grants a temporary lease that enables
+the provider to sign transactions as part of the F3 consensus.
+
+The function verifies the ticket's validity and checks if the ticket's issuer
+aligns with the current node. If there is an issuer mismatch
+(ErrF3ParticipationIssuerMismatch), the provider should retry with the same
+ticket, assuming the issue is due to transient network problems or operational
+deployment conditions. If the ticket is invalid
+(ErrF3ParticipationTicketInvalid) or has expired
+(ErrF3ParticipationTicketExpired), the provider must obtain a new ticket by
+calling F3GetOrRenewParticipationTicket.
+
+The start instance associated to the given ticket cannot be less than the
+start instance of any existing lease held by the miner. Otherwise,
+ErrF3ParticipationTicketStartBeforeExisting is returned. In this case, the
+miner should acquire a new ticket before attempting to participate again.
+
+For details on obtaining or renewing a ticket, see F3GetOrRenewParticipationTicket.
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "Bw=="
+]
+```
+
+Response:
+```json
+{
+  "Network": "filecoin",
+  "Issuer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "MinerID": 42,
+  "FromInstance": 42,
+  "ValidityTerm": 42
+}
+```
 
 ## Market
 
@@ -5464,6 +5589,14 @@ Response:
 ```
 
 ### StateMinerInitialPledgeCollateral
+StateMinerInitialPledgeCollateral attempts to calculate the initial pledge collateral based on a SectorPreCommitInfo.
+This method uses the DealIDs field in SectorPreCommitInfo to determine the amount of verified
+deal space in the sector in order to perform a QAP calculation. Since network version 22 and
+the introduction of DDO, the DealIDs field can no longer be used to reliably determine verified
+deal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead
+and pass in the verified deal space directly.
+
+Deprecated: Use StateMinerInitialPledgeForSector instead.
 
 
 Perms: read
@@ -5487,6 +5620,34 @@ Inputs:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
   },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"0"`
+
+### StateMinerInitialPledgeForSector
+StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector
+duration, size, and combined size of any verified pieces within the sector. This calculation
+depends on current network conditions (total power, total pledge and current rewards) at the
+given tipset.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101,
+  34359738368,
+  42,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -7391,6 +7552,28 @@ Inputs:
 ```json
 [
   9
+]
+```
+
+Response: `{}`
+
+### SyncCheckpoint
+SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
 ]
 ```
 

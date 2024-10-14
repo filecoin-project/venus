@@ -37,6 +37,7 @@ import (
 
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/api/chain"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -331,6 +332,10 @@ func init() {
 	addExample(gateway.HostNode)
 	addExample(&certs.FinalityCertificate{})
 	addExample(gpbft.ActorID(1000))
+
+	addExample(&manifest.Manifest{})
+	addExample(gpbft.NetworkName("filecoin"))
+	addExample(gpbft.INITIAL_PHASE)
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

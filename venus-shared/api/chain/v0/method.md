@@ -115,6 +115,7 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [StateMinerFaults](#stateminerfaults)
   * [StateMinerInfo](#stateminerinfo)
   * [StateMinerInitialPledgeCollateral](#stateminerinitialpledgecollateral)
+  * [StateMinerInitialPledgeForSector](#stateminerinitialpledgeforsector)
   * [StateMinerPartitions](#stateminerpartitions)
   * [StateMinerPower](#stateminerpower)
   * [StateMinerPreCommitDepositForPower](#stateminerprecommitdepositforpower)
@@ -178,6 +179,7 @@ curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "
   * [ChainTipSetWeight](#chaintipsetweight)
   * [Concurrent](#concurrent)
   * [SetConcurrent](#setconcurrent)
+  * [SyncCheckpoint](#synccheckpoint)
   * [SyncIncomingBlocks](#syncincomingblocks)
   * [SyncState](#syncstate)
   * [SyncSubmitBlock](#syncsubmitblock)
@@ -1221,7 +1223,7 @@ Perms: read
 Inputs:
 ```json
 [
-  23
+  24
 ]
 ```
 
@@ -1236,7 +1238,7 @@ Perms: read
 Inputs:
 ```json
 [
-  23
+  24
 ]
 ```
 
@@ -1661,7 +1663,8 @@ Response:
     "UpgradeWatermelonHeight": 10101,
     "UpgradeDragonHeight": 10101,
     "UpgradePhoenixHeight": 10101,
-    "UpgradeWaffleHeight": 10101
+    "UpgradeWaffleHeight": 10101,
+    "UpgradeTuktukHeight": 10101
   },
   "Eip155ChainID": 123
 }
@@ -1779,7 +1782,7 @@ Inputs:
 ]
 ```
 
-Response: `23`
+Response: `24`
 
 ### StateReplay
 
@@ -3794,6 +3797,14 @@ Response:
 ```
 
 ### StateMinerInitialPledgeCollateral
+StateMinerInitialPledgeCollateral attempts to calculate the initial pledge collateral based on a SectorPreCommitInfo.
+This method uses the DealIDs field in SectorPreCommitInfo to determine the amount of verified
+deal space in the sector in order to perform a QAP calculation. Since network version 22 and
+the introduction of DDO, the DealIDs field can no longer be used to reliably determine verified
+deal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead
+and pass in the verified deal space directly.
+
+Deprecated: Use StateMinerInitialPledgeForSector instead.
 
 
 Perms: read
@@ -3817,6 +3828,34 @@ Inputs:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
   },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"0"`
+
+### StateMinerInitialPledgeForSector
+StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector
+duration, size, and combined size of any verified pieces within the sector. This calculation
+depends on current network conditions (total power, total pledge and current rewards) at the
+given tipset.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101,
+  34359738368,
+  42,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -5684,6 +5723,28 @@ Inputs:
 ```json
 [
   9
+]
+```
+
+Response: `{}`
+
+### SyncCheckpoint
+SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
 ]
 ```
 

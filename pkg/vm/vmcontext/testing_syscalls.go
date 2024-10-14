@@ -10,7 +10,7 @@ import (
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
-	"github.com/minio/blake2b-simd"
+	"golang.org/x/crypto/blake2b"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 )

@@ -15,55 +15,58 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+)
+
+var (
+	_ ec.Backend = (*ecWrapper)(nil)
+	_ ec.TipSet  = (*f3TipSet)(nil)
 )
 
 type ecWrapper struct {
 	ChainStore   *chain.Store
 	StateManager *statemanger.Stmgr
+	SyncerAPI    v1api.ISyncer
 }
 
-var _ ec.TipSet = (*f3TipSet)(nil)
-
-type f3TipSet types.TipSet
-
-func (ts *f3TipSet) cast() *types.TipSet {
-	return (*types.TipSet)(ts)
+type f3TipSet struct {
+	*types.TipSet
 }
 
-func (ts *f3TipSet) String() string {
-	return ts.cast().String()
-}
+func (ts *f3TipSet) String() string       { return ts.TipSet.String() }
+func (ts *f3TipSet) Key() gpbft.TipSetKey { return ts.TipSet.Key().Bytes() }
+func (ts *f3TipSet) Epoch() int64         { return int64(ts.TipSet.Height()) }
 
-func (ts *f3TipSet) Key() gpbft.TipSetKey {
-	return ts.cast().Key().Bytes()
+func (ts *f3TipSet) FirstBlockHeader() *types.BlockHeader {
+	if ts.TipSet == nil || len(ts.TipSet.Blocks()) == 0 {
+		return nil
+	}
+	return ts.TipSet.Blocks()[0]
 }
 
 func (ts *f3TipSet) Beacon() []byte {
-	entries := ts.cast().Blocks()[0].BeaconEntries
-	if len(entries) == 0 {
-		// This should never happen in practice, but set beacon to a non-nil
-		// 32byte slice to force the message builder to generate a
-		// ticket. Otherwise, messages that require ticket, i.e. CONVERGE will fail
-		// validation due to the absence of ticket. This is a convoluted way of doing it.
-		return make([]byte, 32)
-	}
-	return entries[len(entries)-1].Data
-}
+	switch header := ts.FirstBlockHeader(); {
+	case header == nil, len(header.BeaconEntries) == 0:
+		// This should never happen in practice, but set beacon to a non-nil 32byte slice
+		// to force the message builder to generate a ticket. Otherwise, messages that
+		// require ticket, i.e. CONVERGE will fail validation due to the absence of
+		// ticket. This is a convoluted way of doing it.
 
-func (ts *f3TipSet) Epoch() int64 {
-	return int64(ts.cast().Height())
+		// TODO: investigate if this is still necessary, or how message builder can be
+		//       adapted to behave correctly regardless of beacon value, e.g. fail fast
+		//       instead of building CONVERGE with empty beacon.
+		return make([]byte, 32)
+	default:
+		return header.BeaconEntries[len(header.BeaconEntries)-1].Data
+	}
 }
 
 func (ts *f3TipSet) Timestamp() time.Time {
-	return time.Unix(int64(ts.cast().Blocks()[0].Timestamp), 0)
-}
-
-func wrapTS(ts *types.TipSet) ec.TipSet {
-	if ts == nil {
-		return nil
+	if header := ts.FirstBlockHeader(); header != nil {
+		return time.Unix(int64(header.Timestamp), 0)
 	}
-	return (*f3TipSet)(ts)
+	return time.Time{}
 }
 
 // GetTipsetByEpoch should return a tipset before the one requested if the requested
@@ -73,62 +76,47 @@ func (ec *ecWrapper) GetTipsetByEpoch(ctx context.Context, epoch int64) (ec.TipS
 	if err != nil {
 		return nil, fmt.Errorf("getting tipset by height: %w", err)
 	}
-	return wrapTS(ts), nil
+	return &f3TipSet{TipSet: ts}, nil
 }
 
 func (ec *ecWrapper) GetTipset(ctx context.Context, tsk gpbft.TipSetKey) (ec.TipSet, error) {
-	tskLotus, err := types.TipSetKeyFromBytes(tsk)
-	if err != nil {
-		return nil, fmt.Errorf("decoding tsk: %w", err)
-	}
-
-	ts, err := ec.ChainStore.GetTipSet(ctx, tskLotus)
+	ts, err := ec.getTipSetFromF3TSK(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("getting tipset by key: %w", err)
 	}
 
-	return wrapTS(ts), nil
+	return &f3TipSet{TipSet: ts}, nil
 }
 
-func (ec *ecWrapper) GetHead(_ context.Context) (ec.TipSet, error) {
-	return wrapTS(ec.ChainStore.GetHead()), nil
+func (ec *ecWrapper) GetHead(context.Context) (ec.TipSet, error) {
+	head := ec.ChainStore.GetHead()
+	if head == nil {
+		return nil, fmt.Errorf("no heaviest tipset")
+	}
+	return &f3TipSet{TipSet: head}, nil
 }
 
 func (ec *ecWrapper) GetParent(ctx context.Context, tsF3 ec.TipSet) (ec.TipSet, error) {
-	var ts *types.TipSet
-	if tsW, ok := tsF3.(*f3TipSet); ok {
-		ts = tsW.cast()
-	} else {
-		// There are only two implementations of ec.TipSet: f3TipSet, and one in fake EC
-		// backend.
-		//
-		// TODO: Revisit the type check here and remove as needed once testing
-		//       is over and fake EC backend goes away.
-		tskLotus, err := types.TipSetKeyFromBytes(tsF3.Key())
-		if err != nil {
-			return nil, fmt.Errorf("decoding tsk: %w", err)
-		}
-		ts, err = ec.ChainStore.GetTipSet(ctx, tskLotus)
-		if err != nil {
-			return nil, fmt.Errorf("getting tipset by key for get parent: %w", err)
-		}
+	ts, err := ec.toLotusTipSet(ctx, tsF3)
+	if err != nil {
+		return nil, err
 	}
 	parentTS, err := ec.ChainStore.GetTipSet(ctx, ts.Parents())
 	if err != nil {
 		return nil, fmt.Errorf("getting parent tipset: %w", err)
 	}
-	return wrapTS(parentTS), nil
+	return &f3TipSet{TipSet: parentTS}, nil
 }
 
 func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (gpbft.PowerEntries, error) {
-	tsk, err := types.TipSetKeyFromBytes(tskF3)
+	tsk, err := toLotusTipSetKey(tskF3)
 	if err != nil {
-		return nil, fmt.Errorf("decoding tsk: %w", err)
+		return nil, err
 	}
-	return ec.getPowerTableLotusTSK(ctx, tsk)
+	return ec.getPowerTableTSK(ctx, tsk)
 }
 
-func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
+func (ec *ecWrapper) getPowerTableTSK(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	ts, err := ec.ChainStore.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("getting tipset by key for get parent: %w", err)
@@ -212,7 +200,7 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 		if waddr.Protocol() != address.BLS {
 			return fmt.Errorf("wrong type of worker address")
 		}
-		pe.PubKey = gpbft.PubKey(waddr.Payload())
+		pe.PubKey = waddr.Payload()
 		powerEntries = append(powerEntries, pe)
 		return nil
 	})
@@ -222,4 +210,41 @@ func (ec *ecWrapper) getPowerTableLotusTSK(ctx context.Context, tsk types.TipSet
 
 	sort.Sort(powerEntries)
 	return powerEntries, nil
+}
+
+func (ec *ecWrapper) Finalize(ctx context.Context, key gpbft.TipSetKey) error {
+	tsk, err := toLotusTipSetKey(key)
+	if err != nil {
+		return err
+	}
+	if err = ec.SyncerAPI.SyncCheckpoint(ctx, tsk); err != nil {
+		return fmt.Errorf("checkpointing finalized tipset: %w", err)
+	}
+	return nil
+}
+
+func (ec *ecWrapper) toLotusTipSet(ctx context.Context, ts ec.TipSet) (*types.TipSet, error) {
+	switch tst := ts.(type) {
+	case *f3TipSet:
+		return tst.TipSet, nil
+	default:
+		// Fall back on getting the tipset by key. This path is executed only in testing.
+		return ec.getTipSetFromF3TSK(ctx, ts.Key())
+	}
+}
+
+func (ec *ecWrapper) getTipSetFromF3TSK(ctx context.Context, key gpbft.TipSetKey) (*types.TipSet, error) {
+	tsk, err := toLotusTipSetKey(key)
+	if err != nil {
+		return nil, err
+	}
+	ts, err := ec.ChainStore.GetTipSet(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("getting tipset from key: %w", err)
+	}
+	return ts, nil
+}
+
+func toLotusTipSetKey(key gpbft.TipSetKey) (types.TipSetKey, error) {
+	return types.TipSetKeyFromBytes(key)
 }

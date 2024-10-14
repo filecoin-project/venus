@@ -58,6 +58,7 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(Network, "when set, populates config with network specific parameters, eg. mainnet,2k,calibrationnet,interopnet,butterflynet").WithDefault("mainnet"),
 		cmds.StringOption(Password, "set wallet password"),
 		cmds.StringOption(Profile, "specify type of node, eg. bootstrapper"),
+		cmds.StringOption(WalletGateway, "set sophon gateway url and token, eg. token:url"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if limit, _ := req.Options[ULimit].(bool); limit {
@@ -168,6 +169,9 @@ func initRun(req *cmds.Request, repoDir string) error {
 			return fmt.Errorf("must also pass token with venus auth service to `--%s`", AuthServiceToken)
 		}
 	}
+	if walletGateway, ok := req.Options[WalletGateway].(string); ok && len(walletGateway) > 0 {
+		cfg.Wallet.GatewayBacked = walletGateway
+	}
 
 	if err := rep.ReplaceConfig(cfg); err != nil {
 		log.Errorf("Error replacing config %s", err)
@@ -239,6 +243,9 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 	if len(config.API.VenusAuthURL)+len(config.API.VenusAuthToken) > 0 && len(config.API.VenusAuthToken)*len(config.API.VenusAuthURL) == 0 {
 		return fmt.Errorf("must set both venus auth service url and token at the same time")
+	}
+	if walletGateway, ok := req.Options[WalletGateway].(string); ok && len(walletGateway) > 0 {
+		config.Wallet.GatewayBacked = walletGateway
 	}
 
 	if bootPeers, ok := req.Options[BootstrapPeers].([]string); ok && len(bootPeers) > 0 {

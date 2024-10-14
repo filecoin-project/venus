@@ -683,6 +683,11 @@ func SetupStorageMiners(ctx context.Context,
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
 
+func (fr *fakeRand) GetBeaconEntry(ctx context.Context, randEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	r, _ := fr.GetChainRandomness(ctx, randEpoch)
+	return &types.BeaconEntry{Round: 10, Data: r[:]}, nil
+}
+
 func (fr *fakeRand) GetBeaconRandomness(ctx context.Context, randEpoch abi.ChainEpoch) ([32]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint

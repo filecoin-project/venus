@@ -34,12 +34,12 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	builtin14 "github.com/filecoin-project/go-state-types/builtin"
+	builtin15 "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var (
-	Address = builtin14.StoragePowerActorAddr
-	Methods = builtin14.MethodsPower
+	Address = builtin15.StoragePowerActorAddr
+	Methods = builtin15.MethodsPower
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -70,6 +70,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version14:
 			return load14(store, act.Head)
+
+		case actorstypes.Version15:
+			return load15(store, act.Head)
 
 		}
 	}
@@ -147,6 +150,9 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 	case actorstypes.Version14:
 		return make14(store)
 
+	case actorstypes.Version15:
+		return make15(store)
+
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)
 }
@@ -167,6 +173,18 @@ type State interface {
 	// MinerCounts returns the number of miners. Participating is the number
 	// with power above the minimum miner threshold.
 	MinerCounts() (participating, total uint64, err error)
+	// RampStartEpoch returns the epoch at which the FIP0081 pledge calculation
+	// change begins. At and before RampStartEpoch, we use the old calculation. At
+	// RampStartEpoch + RampDurationEpochs, we use 70% old rules + 30% new
+	// calculation.
+	//
+	// This method always returns 0 prior to actors version 15.
+	RampStartEpoch() int64
+	// RampDurationEpochs returns the number of epochs over which the new FIP0081
+	// pledge calculation is ramped up.
+	//
+	// This method always returns 0 prior to actors version 15.
+	RampDurationEpochs() uint64
 	MinerPower(address.Address) (Claim, bool, error)
 	MinerNominalPowerMeetsConsensusMinimum(address.Address) (bool, error)
 	ListAllMiners() ([]address.Address, error)
@@ -215,5 +233,6 @@ func AllCodes() []cid.Cid {
 		(&state12{}).Code(),
 		(&state13{}).Code(),
 		(&state14{}).Code(),
+		(&state15{}).Code(),
 	}
 }

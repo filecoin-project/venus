@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs/go-cid"
 )
 
 func IntegrationNet() *NetworkConf {
@@ -56,6 +57,7 @@ func IntegrationNet() *NetworkConf {
 				UpgradeDragonHeight:               3855360,
 				UpgradeCalibrationDragonFixHeight: -102, // This fix upgrade only ran on calibrationnet
 				UpgradeWaffleHeight:               4154640,
+				UpgradeTuktukHeight:               999999999,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:          address.Testnet,
@@ -63,9 +65,11 @@ func IntegrationNet() *NetworkConf {
 			AllowableClockDriftSecs: 1,
 			Eip155ChainID:           314,
 			ActorDebugging:          false,
-			F3Enabled:               true,
+			F3Enabled:               false,
 			F3BootstrapEpoch:        -1,
-			ManifestServerID:        "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7",
+			ManifestServerID:        "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG",
+			F3Consensus:             true,
+			F3InitialPowerTableCID:  cid.Undef,
 		},
 	}
 

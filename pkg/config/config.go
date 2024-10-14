@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -166,6 +167,7 @@ type WalletConfig struct {
 	PassphraseConfig PassphraseConfig `json:"passphraseConfig,omitempty"`
 	RemoteEnable     bool             `json:"remoteEnable"`
 	RemoteBackend    string           `json:"remoteBackend"`
+	GatewayBacked    string           `json:"gatewayBacked"`
 }
 
 type PassphraseConfig struct {
@@ -309,42 +311,49 @@ type NetworkParamsConfig struct {
 	F3Enabled        bool           `json:"f3Enabled"`
 	F3BootstrapEpoch abi.ChainEpoch `json:"f3BootstrapEpoch"`
 	ManifestServerID string         `json:"manifestServerID"`
+	// F3Consensus set whether F3 should checkpoint tipsets finalized by F3. This
+	// flag has no effect if F3 is not enabled.
+	F3Consensus bool `json:"f3Consensus"`
+	// The initial F3 power table CID.
+	F3InitialPowerTableCID cid.Cid `json:"f3InitialPowerTableCID"`
 }
 
 // ForkUpgradeConfig record upgrade parameters
 type ForkUpgradeConfig struct {
-	UpgradeSmokeHeight                abi.ChainEpoch `json:"upgradeSmokeHeight"`
-	UpgradeBreezeHeight               abi.ChainEpoch `json:"upgradeBreezeHeight"`
-	UpgradeIgnitionHeight             abi.ChainEpoch `json:"upgradeIgnitionHeight"`
-	UpgradeLiftoffHeight              abi.ChainEpoch `json:"upgradeLiftoffHeight"`
-	UpgradeAssemblyHeight             abi.ChainEpoch `json:"upgradeActorsV2Height"`
-	UpgradeRefuelHeight               abi.ChainEpoch `json:"upgradeRefuelHeight"`
-	UpgradeTapeHeight                 abi.ChainEpoch `json:"upgradeTapeHeight"`
-	UpgradeKumquatHeight              abi.ChainEpoch `json:"upgradeKumquatHeight"`
-	UpgradePriceListOopsHeight        abi.ChainEpoch `json:"upgradePriceListOopsHeight"`
-	BreezeGasTampingDuration          abi.ChainEpoch `json:"breezeGasTampingDuration"`
-	UpgradeCalicoHeight               abi.ChainEpoch `json:"upgradeCalicoHeight"`
-	UpgradePersianHeight              abi.ChainEpoch `json:"upgradePersianHeight"`
-	UpgradeOrangeHeight               abi.ChainEpoch `json:"upgradeOrangeHeight"`
-	UpgradeClausHeight                abi.ChainEpoch `json:"upgradeClausHeight"`
-	UpgradeTrustHeight                abi.ChainEpoch `json:"upgradeActorsV3Height"`
-	UpgradeNorwegianHeight            abi.ChainEpoch `json:"upgradeNorwegianHeight"`
-	UpgradeTurboHeight                abi.ChainEpoch `json:"upgradeActorsV4Height"`
-	UpgradeHyperdriveHeight           abi.ChainEpoch `json:"upgradeHyperdriveHeight"`
-	UpgradeChocolateHeight            abi.ChainEpoch `json:"upgradeChocolateHeight"`
-	UpgradeOhSnapHeight               abi.ChainEpoch `json:"upgradeOhSnapHeight"`
-	UpgradeSkyrHeight                 abi.ChainEpoch `json:"upgradeSkyrHeight"`
-	UpgradeSharkHeight                abi.ChainEpoch `json:"upgradeSharkHeight"`
-	UpgradeHyggeHeight                abi.ChainEpoch `json:"upgradeHyggeHeight"`
-	UpgradeLightningHeight            abi.ChainEpoch `json:"upgradeLightningHeight"`
-	UpgradeThunderHeight              abi.ChainEpoch `json:"upgradeThunderHeight"`
-	UpgradeWatermelonHeight           abi.ChainEpoch `json:"upgradeWatermelonHeight"`
-	UpgradeWatermelonFixHeight        abi.ChainEpoch `json:"upgradeWatermelonFixHeight"`
-	UpgradeWatermelonFix2Height       abi.ChainEpoch `json:"upgradeWatermelonFix2Height"`
-	UpgradeDragonHeight               abi.ChainEpoch `json:"upgradeDragonHeight"`
-	UpgradePhoenixHeight              abi.ChainEpoch `json:"upgradePhoenixHeight"`
-	UpgradeCalibrationDragonFixHeight abi.ChainEpoch `json:"upgradeCalibrationDragonFixHeight"`
-	UpgradeWaffleHeight               abi.ChainEpoch `json:"upgradeWaffleHeight"`
+	UpgradeSmokeHeight                   abi.ChainEpoch `json:"upgradeSmokeHeight"`
+	UpgradeBreezeHeight                  abi.ChainEpoch `json:"upgradeBreezeHeight"`
+	UpgradeIgnitionHeight                abi.ChainEpoch `json:"upgradeIgnitionHeight"`
+	UpgradeLiftoffHeight                 abi.ChainEpoch `json:"upgradeLiftoffHeight"`
+	UpgradeAssemblyHeight                abi.ChainEpoch `json:"upgradeActorsV2Height"`
+	UpgradeRefuelHeight                  abi.ChainEpoch `json:"upgradeRefuelHeight"`
+	UpgradeTapeHeight                    abi.ChainEpoch `json:"upgradeTapeHeight"`
+	UpgradeKumquatHeight                 abi.ChainEpoch `json:"upgradeKumquatHeight"`
+	UpgradePriceListOopsHeight           abi.ChainEpoch `json:"upgradePriceListOopsHeight"`
+	BreezeGasTampingDuration             abi.ChainEpoch `json:"breezeGasTampingDuration"`
+	UpgradeCalicoHeight                  abi.ChainEpoch `json:"upgradeCalicoHeight"`
+	UpgradePersianHeight                 abi.ChainEpoch `json:"upgradePersianHeight"`
+	UpgradeOrangeHeight                  abi.ChainEpoch `json:"upgradeOrangeHeight"`
+	UpgradeClausHeight                   abi.ChainEpoch `json:"upgradeClausHeight"`
+	UpgradeTrustHeight                   abi.ChainEpoch `json:"upgradeActorsV3Height"`
+	UpgradeNorwegianHeight               abi.ChainEpoch `json:"upgradeNorwegianHeight"`
+	UpgradeTurboHeight                   abi.ChainEpoch `json:"upgradeActorsV4Height"`
+	UpgradeHyperdriveHeight              abi.ChainEpoch `json:"upgradeHyperdriveHeight"`
+	UpgradeChocolateHeight               abi.ChainEpoch `json:"upgradeChocolateHeight"`
+	UpgradeOhSnapHeight                  abi.ChainEpoch `json:"upgradeOhSnapHeight"`
+	UpgradeSkyrHeight                    abi.ChainEpoch `json:"upgradeSkyrHeight"`
+	UpgradeSharkHeight                   abi.ChainEpoch `json:"upgradeSharkHeight"`
+	UpgradeHyggeHeight                   abi.ChainEpoch `json:"upgradeHyggeHeight"`
+	UpgradeLightningHeight               abi.ChainEpoch `json:"upgradeLightningHeight"`
+	UpgradeThunderHeight                 abi.ChainEpoch `json:"upgradeThunderHeight"`
+	UpgradeWatermelonHeight              abi.ChainEpoch `json:"upgradeWatermelonHeight"`
+	UpgradeWatermelonFixHeight           abi.ChainEpoch `json:"upgradeWatermelonFixHeight"`
+	UpgradeWatermelonFix2Height          abi.ChainEpoch `json:"upgradeWatermelonFix2Height"`
+	UpgradeDragonHeight                  abi.ChainEpoch `json:"upgradeDragonHeight"`
+	UpgradePhoenixHeight                 abi.ChainEpoch `json:"upgradePhoenixHeight"`
+	UpgradeCalibrationDragonFixHeight    abi.ChainEpoch `json:"upgradeCalibrationDragonFixHeight"`
+	UpgradeWaffleHeight                  abi.ChainEpoch `json:"upgradeWaffleHeight"`
+	UpgradeTuktukHeight                  abi.ChainEpoch `json:"upgradeTuktukHeight"`
+	UpgradeTuktukPowerRampDurationEpochs abi.ChainEpoch `json:"upgradeTuktukPowerRampDurationEpochs"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -384,8 +393,10 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeDragonHeight:         3855360,
 	UpgradePhoenixHeight:        3855360 + 120,
 	// This fix upgrade only ran on calibrationnet
-	UpgradeCalibrationDragonFixHeight: -3,
-	UpgradeWaffleHeight:               4154640,
+	UpgradeCalibrationDragonFixHeight:    -3,
+	UpgradeWaffleHeight:                  4154640,
+	UpgradeTuktukHeight:                  99999999999,
+	UpgradeTuktukPowerRampDurationEpochs: 200,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {

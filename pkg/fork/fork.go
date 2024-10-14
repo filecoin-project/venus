@@ -40,6 +40,7 @@ import (
 	nv21 "github.com/filecoin-project/go-state-types/builtin/v12/migration"
 	nv22 "github.com/filecoin-project/go-state-types/builtin/v13/migration"
 	nv23 "github.com/filecoin-project/go-state-types/builtin/v14/migration"
+	nv24 "github.com/filecoin-project/go-state-types/builtin/v15/migration"
 	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/go-state-types/migration"
 	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
@@ -439,6 +440,18 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			Migration: cf.UpgradeActorsV14,
 			PreMigrations: []PreMigration{{
 				PreMigration:    cf.PreUpgradeActorsV14,
+				StartWithin:     120,
+				DontStartWithin: 15,
+				StopWithin:      10,
+			}},
+			Expensive: true,
+		},
+		{
+			Height:    upgradeHeight.UpgradeTuktukHeight,
+			Network:   network.Version24,
+			Migration: cf.UpgradeActorsV15,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV15,
 				StartWithin:     120,
 				DontStartWithin: 15,
 				StopWithin:      10,
@@ -3429,6 +3442,126 @@ func (c *ChainFork) upgradeActorsV14Common(
 		migrationLogger{}, cache)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("upgrading to actors v14: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := adtStore.Put(ctx, &vmstate.StateRoot{
+		Version: vmstate.StateTreeVersion5,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, fmt.Errorf("writeStore flush failed: %w", err)
+	}
+
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, fmt.Errorf("writeStore shutdown failed: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) PreUpgradeActorsV15(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := MigrationMaxWorkerCount
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	nv := c.GetNetworkVersion(ctx, epoch)
+	_, lbRoot, err := c.cr.GetLookbackTipSetForRound(ctx, ts, epoch, nv)
+	if err != nil {
+		return fmt.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5,
+	}
+
+	_, err = c.upgradeActorsV15Common(ctx, cache, lbRoot, epoch, config)
+	return err
+}
+
+func (c *ChainFork) UpgradeActorsV15(ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+) (cid.Cid, error) {
+	// Use all the CPUs except 2.
+	workerCount := MigrationMaxWorkerCount - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+	newRoot, err := c.upgradeActorsV15Common(ctx, cache, root, epoch, config)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("migrating actors v15 state: %w", err)
+	}
+	return newRoot, nil
+}
+
+func (c *ChainFork) upgradeActorsV15Common(
+	ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	config migration.Config,
+) (cid.Cid, error) {
+	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB/4)
+	adtStore := adt.WrapStore(ctx, cbor.NewCborStore(writeStore))
+
+	// ensure that the manifest is loaded in the blockstore
+	if err := actors.LoadBundles(ctx, writeStore, actorstypes.Version15); err != nil {
+		return cid.Undef, fmt.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot vmstate.StateRoot
+	if err := adtStore.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, fmt.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != vmstate.StateTreeVersion5 {
+		return cid.Undef, fmt.Errorf(
+			"expected state root version 5 for actors v15 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version15)
+	if !ok {
+		return cid.Undef, fmt.Errorf("no manifest CID for v15 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv24.MigrateStateTree(ctx,
+		adtStore,
+		manifest,
+		stateRoot.Actors,
+		epoch,
+		// two FIP-0081 constants for this migration only
+		int64(c.forkUpgrade.UpgradeTuktukHeight),                   // powerRampStartEpoch
+		uint64(c.forkUpgrade.UpgradeTuktukPowerRampDurationEpochs), // powerRampDurationEpochs
+		config,
+		migrationLogger{},
+		cache,
+	)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("upgrading to actors v15: %w", err)
 	}
 
 	// Persist the result.

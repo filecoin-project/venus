@@ -5,15 +5,16 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs/go-cid"
 )
 
 func ButterflySnapNet() *NetworkConf {
 	nc := &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWGW6xMTpjEBqndYkqytbu8PWfJmpK4wKLLLNSkXL2QZtD",
-				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWFGz9HegR3Rjrtm8b9WXTM6E3kN1sdd6X1JztuCgQaZSB",
+				"/dnsaddr/bootstrap.butterfly.fildev.network",
 			},
 			Period: "30s",
 		},
@@ -31,37 +32,39 @@ func ButterflySnapNet() *NetworkConf {
 			MinVerifiedDealSize:     1 << 20,
 			PreCommitChallengeDelay: abi.ChainEpoch(150),
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
-				BreezeGasTampingDuration:          120,
-				UpgradeBreezeHeight:               -1,
-				UpgradeSmokeHeight:                -2,
-				UpgradeIgnitionHeight:             -3,
-				UpgradeRefuelHeight:               -4,
-				UpgradeAssemblyHeight:             -5,
-				UpgradeTapeHeight:                 -6,
-				UpgradeLiftoffHeight:              -7,
-				UpgradeKumquatHeight:              -8,
-				UpgradeCalicoHeight:               -9,
-				UpgradePersianHeight:              -10,
-				UpgradeOrangeHeight:               -11,
-				UpgradeClausHeight:                -12,
-				UpgradeTrustHeight:                -13,
-				UpgradeNorwegianHeight:            -14,
-				UpgradeTurboHeight:                -15,
-				UpgradeHyperdriveHeight:           -16,
-				UpgradeChocolateHeight:            -17,
-				UpgradeOhSnapHeight:               -18,
-				UpgradeSkyrHeight:                 -19,
-				UpgradeSharkHeight:                -20,
-				UpgradeHyggeHeight:                -21,
-				UpgradeLightningHeight:            -22,
-				UpgradeThunderHeight:              -23,
-				UpgradeWatermelonHeight:           -24,
-				UpgradeWatermelonFixHeight:        -100, // This fix upgrade only ran on calibrationnet
-				UpgradeWatermelonFix2Height:       -101, // This fix upgrade only ran on calibrationnet
-				UpgradeDragonHeight:               -25,
-				UpgradeCalibrationDragonFixHeight: -102, // This fix upgrade only ran on calibrationnet
-				UpgradePhoenixHeight:              -26,
-				UpgradeWaffleHeight:               100,
+				BreezeGasTampingDuration:             120,
+				UpgradeBreezeHeight:                  -1,
+				UpgradeSmokeHeight:                   -2,
+				UpgradeIgnitionHeight:                -3,
+				UpgradeRefuelHeight:                  -4,
+				UpgradeAssemblyHeight:                -5,
+				UpgradeTapeHeight:                    -6,
+				UpgradeLiftoffHeight:                 -7,
+				UpgradeKumquatHeight:                 -8,
+				UpgradeCalicoHeight:                  -9,
+				UpgradePersianHeight:                 -10,
+				UpgradeOrangeHeight:                  -11,
+				UpgradeClausHeight:                   -12,
+				UpgradeTrustHeight:                   -13,
+				UpgradeNorwegianHeight:               -14,
+				UpgradeTurboHeight:                   -15,
+				UpgradeHyperdriveHeight:              -16,
+				UpgradeChocolateHeight:               -17,
+				UpgradeOhSnapHeight:                  -18,
+				UpgradeSkyrHeight:                    -19,
+				UpgradeSharkHeight:                   -20,
+				UpgradeHyggeHeight:                   -21,
+				UpgradeLightningHeight:               -22,
+				UpgradeThunderHeight:                 -23,
+				UpgradeWatermelonHeight:              -24,
+				UpgradeWatermelonFixHeight:           -100, // This fix upgrade only ran on calibrationnet
+				UpgradeWatermelonFix2Height:          -101, // This fix upgrade only ran on calibrationnet
+				UpgradeDragonHeight:                  -25,
+				UpgradeCalibrationDragonFixHeight:    -102, // This fix upgrade only ran on calibrationnet
+				UpgradePhoenixHeight:                 -26,
+				UpgradeWaffleHeight:                  -27,
+				UpgradeTuktukHeight:                  9999999,
+				UpgradeTuktukPowerRampDurationEpochs: builtin.EpochsInYear,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
@@ -72,6 +75,8 @@ func ButterflySnapNet() *NetworkConf {
 			F3Enabled:               true,
 			F3BootstrapEpoch:        1000,
 			ManifestServerID:        "12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6",
+			F3Consensus:             true,
+			F3InitialPowerTableCID:  cid.Undef,
 		},
 	}
 

@@ -65,10 +65,10 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- Shutdown
 	- StateGetAllAllocations
 	- StateGetAllClaims
+	+ StateMinerInitialPledgeForSector
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- SyncCheckBad
-	- SyncCheckpoint
 	- SyncMarkBad
 	- SyncUnmarkAllBad
 	- SyncUnmarkBad
@@ -104,7 +104,13 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ Concurrent
 	- CreateBackup
 	- Discover
+	> EthGetBlockByNumber {[func(context.Context, string, bool) (types.EthBlock, error) <> func(context.Context, string, bool) (*ethtypes.EthBlock, error)] base=func out type: #0 input; nested={[types.EthBlock <> *ethtypes.EthBlock] base=type kinds: struct != ptr; nested=nil}}
+	- EthGetBlockReceipts
+	- EthGetBlockReceiptsLimited
+	- EthSendRawTransactionUntrusted
+	- EthTraceFilter
 	> EthTraceReplayBlockTransactions {[func(context.Context, string, []string) ([]*types.EthTraceReplayBlockTransaction, error) <> func(context.Context, string, []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)] base=func out type: #0 input; nested={[[]*types.EthTraceReplayBlockTransaction <> []*ethtypes.EthTraceReplayBlockTransaction] base=slice element; nested={[*types.EthTraceReplayBlockTransaction <> *ethtypes.EthTraceReplayBlockTransaction] base=pointed type; nested={[types.EthTraceReplayBlockTransaction <> ethtypes.EthTraceReplayBlockTransaction] base=struct field; nested={[types.EthTraceReplayBlockTransaction <> ethtypes.EthTraceReplayBlockTransaction] base=exported field name: #4 field, VMTrace != VmTrace; nested=nil}}}}}
+	> FilecoinAddressToEthAddress {[func(context.Context, address.Address) (types.EthAddress, error) <> func(context.Context, jsonrpc.RawParams) (ethtypes.EthAddress, error)] base=func in type: #1 input; nested={[address.Address <> jsonrpc.RawParams] base=type kinds: struct != slice; nested=nil}}
 	+ GasBatchEstimateMessageGas
 	> GasEstimateMessageGas {[func(context.Context, *types.Message, *types.MessageSendSpec, types.TipSetKey) (*types.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported field name: #1 field, GasOverEstimation != MsgUuid; nested=nil}}}}
 	+ GetActor
@@ -162,7 +168,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- SyncCheckBad
-	- SyncCheckpoint
 	- SyncMarkBad
 	- SyncUnmarkAllBad
 	- SyncUnmarkBad

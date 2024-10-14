@@ -12,11 +12,11 @@ import (
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	blake2b "github.com/minio/blake2b-simd"
+	blake2b "golang.org/x/crypto/blake2b"
 
-	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/vf3"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -42,12 +42,6 @@ const (
 	GraylistScoreThreshold           = -2500
 	AcceptPXScoreThreshold           = 1000
 	OpportunisticGraftScoreThreshold = 3.5
-
-	// Determines the max. number of configuration changes
-	// that are allowed for the dynamic manifest.
-	// If the manifest changes more than this number, the F3
-	// message topic will be filtered
-	MaxDynamicManifestChangesAllowed = 1000
 )
 
 func NewGossipSub(ctx context.Context,
@@ -57,7 +51,7 @@ func NewGossipSub(ctx context.Context,
 	drandSchedule map[abi.ChainEpoch]config.DrandEnum,
 	bootNodes []peer.AddrInfo,
 	bs bool,
-	f3enabled bool,
+	f3Config *vf3.Config,
 ) (*pubsub.PubSub, error) {
 	bootstrappers := make(map[peer.ID]struct{})
 	for _, info := range bootNodes {
@@ -320,30 +314,21 @@ func NewGossipSub(ctx context.Context,
 		indexerIngestTopic,
 	}
 	allowTopics = append(allowTopics, drandTopics...)
-	if f3enabled {
-		f3TopicName := manifest.PubSubTopicFromNetworkName(gpbft.NetworkName(networkName))
-		allowTopics = append(allowTopics, f3TopicName)
 
-		// allow dynamic manifest topic and the new topic names after a reconfiguration.
-		// Note: This is pretty ugly, but I tried to use a regex subscription filter
-		// as the commented code below, but unfortunately it overwrites previous filters. A simple fix would
-		// be to allow combining several topic filters, but for now this works.
-		//
-		// 	pattern := fmt.Sprintf(`^\/f3\/%s\/0\.0\.1\/?[0-9]*$`, in.Nn)
-		// 	rx, err := regexp.Compile(pattern)
-		// 	if err != nil {
-		// 		return nil, xerrors.Errorf("failed to compile manifest topic regex: %w", err)
-		// 	}
-		// 	options = append(options,
-		// 		pubsub.WithSubscriptionFilter(
-		// 			pubsub.WrapLimitSubscriptionFilter(
-		// 				pubsub.NewRegexpSubscriptionFilter(rx),
-		// 				100)))
-		allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
-		for i := 0; i < MaxDynamicManifestChangesAllowed; i++ {
-			allowTopics = append(allowTopics, f3TopicName+"/"+fmt.Sprintf("%d", i))
+	if f3Config != nil {
+		if f3Config.StaticManifest != nil {
+			f3TopicName := manifest.PubSubTopicFromNetworkName(f3Config.StaticManifest.NetworkName)
+			allowTopics = append(allowTopics, f3TopicName)
+		}
+		if f3Config.DynamicManifestProvider != "" {
+			f3BaseTopicName := manifest.PubSubTopicFromNetworkName(f3Config.BaseNetworkName)
+			allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
+			for i := 0; i < vf3.MaxDynamicManifestChangesAllowed; i++ {
+				allowTopics = append(allowTopics, fmt.Sprintf("%s/%d", f3BaseTopicName, i))
+			}
 		}
 	}
+
 	options = append(options,
 		pubsub.WithSubscriptionFilter(
 			pubsub.WrapLimitSubscriptionFilter(

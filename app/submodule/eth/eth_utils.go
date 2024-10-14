@@ -712,7 +712,7 @@ func newEthTxReceipt(ctx context.Context,
 		TransactionIndex: transactionIndex,
 		BlockHash:        blockHash,
 		BlockNumber:      blockNumber,
-		Type:             types.EthUint64(2),
+		Type:             tx.Type,
 		Logs:             []types.EthLog{}, // empty log array is compulsory when no logs, or libraries like ethers.js break
 		LogsBloom:        types.EmptyEthBloom[:],
 	}

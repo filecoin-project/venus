@@ -249,6 +249,12 @@ func (node *Node) Stop(ctx context.Context) {
 			log.Warnf("error shutdown jaeger-tracing: %w", err)
 		}
 	}
+
+	node.Wallet().WalletGateway.Close()
+
+	if err := node.f3.Stop(ctx); err != nil {
+		log.Warnf("error closing f3: %w", err)
+	}
 }
 
 // RunRPCAndWait start rpc server and listen to signal to exit

@@ -349,6 +349,21 @@ func (cia *chainInfoAPI) VerifyEntry(parent, child *types.BeaconEntry, height ab
 // the entry has not yet been produced, the call will block until the entry
 // becomes available
 func (cia *chainInfoAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	ts := cia.chain.ChainReader.GetHead()
+	if epoch <= ts.Height() {
+		if epoch < 0 {
+			epoch = 0
+		}
+		// get the beacon entry off the chain
+		ts, err := cia.chain.ChainReader.GetTipSet(ctx, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+		r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand, cia.chain.Fork.GetNetworkVersion)
+		return r.GetBeaconEntry(ctx, epoch)
+	}
+
+	// else we're asking for the future, get it from drand and block until it arrives
 	b := cia.chain.Drand.BeaconForEpoch(epoch)
 	nv := cia.chain.Fork.GetNetworkVersion(ctx, epoch)
 	rr := b.MaxBeaconRoundForEpoch(nv, epoch)
@@ -745,6 +760,7 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 			UpgradeDragonHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeDragonHeight,
 			UpgradePhoenixHeight:     cfg.NetworkParams.ForkUpgradeParam.UpgradePhoenixHeight,
 			UpgradeWaffleHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeWaffleHeight,
+			UpgradeTuktukHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeTuktukHeight,
 		},
 		Eip155ChainID: cfg.NetworkParams.Eip155ChainID,
 	}

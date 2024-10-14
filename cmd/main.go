@@ -79,6 +79,8 @@ const (
 	AuthServiceURL   = "auth-url"
 	AuthServiceToken = "auth-token"
 
+	WalletGateway = "wallet-gateway"
+
 	BootstrapPeers = "bootstrap-peers"
 
 	Profile = "profile"

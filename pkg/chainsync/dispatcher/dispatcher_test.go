@@ -42,6 +42,10 @@ func (fs *mockSyncer) ValidateMsgMeta(ctx context.Context, fblk *types.FullBlock
 	return nil
 }
 
+func (fs *mockSyncer) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {
+	return nil
+}
+
 func TestDispatchStartHappy(t *testing.T) {
 	tf.UnitTest(t)
 	s := &mockSyncer{
