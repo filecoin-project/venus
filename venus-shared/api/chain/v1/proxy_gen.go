@@ -884,7 +884,7 @@ type IETHStruct struct {
 		EthGasPrice                            func(ctx context.Context) (types.EthBigInt, error)                                                                                        `perm:"read"`
 		EthGetBalance                          func(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBigInt, error)                         `perm:"read"`
 		EthGetBlockByHash                      func(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error)                                                 `perm:"read"`
-		EthGetBlockByNumber                    func(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error)                                                         `perm:"read"`
+		EthGetBlockByNumber                    func(ctx context.Context, blkNum string, fullTxInfo bool) (*types.EthBlock, error)                                                        `perm:"read"`
 		EthGetBlockTransactionCountByHash      func(ctx context.Context, blkHash types.EthHash) (types.EthUint64, error)                                                                 `perm:"read"`
 		EthGetBlockTransactionCountByNumber    func(ctx context.Context, blkNum types.EthUint64) (types.EthUint64, error)                                                                `perm:"read"`
 		EthGetCode                             func(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error)                          `perm:"read"`
@@ -942,7 +942,7 @@ func (s *IETHStruct) EthGetBalance(p0 context.Context, p1 types.EthAddress, p2 t
 func (s *IETHStruct) EthGetBlockByHash(p0 context.Context, p1 types.EthHash, p2 bool) (types.EthBlock, error) {
 	return s.Internal.EthGetBlockByHash(p0, p1, p2)
 }
-func (s *IETHStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (types.EthBlock, error) {
+func (s *IETHStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (*types.EthBlock, error) {
 	return s.Internal.EthGetBlockByNumber(p0, p1, p2)
 }
 func (s *IETHStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 types.EthHash) (types.EthUint64, error) {
