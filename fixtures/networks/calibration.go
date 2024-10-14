@@ -71,7 +71,7 @@ func Calibration() *NetworkConf {
 				UpgradeDragonHeight:                  1427974,       // 2024-03-11T14:00:00Z
 				UpgradeCalibrationDragonFixHeight:    1493854,       // 2024-04-03T11:00:00Z
 				UpgradeWaffleHeight:                  1779094,       // 2024-07-11T12:00:00Z
-				UpgradeTuktukHeight:                  99999999,
+				UpgradeTuktukHeight:                  2078794,       // 2024-10-23T13:30:00Z
 				UpgradeTuktukPowerRampDurationEpochs: builtin.EpochsInDay * 3,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
@@ -88,7 +88,7 @@ func Calibration() *NetworkConf {
 	nc.Network.ForkUpgradeParam.UpgradePhoenixHeight = nc.Network.ForkUpgradeParam.UpgradeDragonHeight + 120
 	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
 
-	nc.Network.F3BootstrapEpoch = nc.Network.ForkUpgradeParam.UpgradeWaffleHeight + 100
+	nc.Network.F3BootstrapEpoch = nc.Network.ForkUpgradeParam.UpgradeTuktukHeight + 2880
 	nc.Network.F3Enabled = true
 	nc.Network.ManifestServerID = "12D3KooWS9vD9uwm8u2uPyJV32QBAhKAmPYwmziAgr3Xzk2FU1Mr"
 
