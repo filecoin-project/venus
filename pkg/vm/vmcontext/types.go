@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	// "github.com/dchest/blake2b"
+	"github.com/dchest/blake2b"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -15,10 +15,8 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	must "github.com/filecoin-project/venus/venus-shared/utils"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/blake2b"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -106,7 +104,7 @@ type HeadChainRandomness interface {
 }
 
 func DrawRandomnessFromDigest(digest [32]byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	h := must.One(blake2b.New256(nil))
+	h := blake2b.New256()
 	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
 		return nil, fmt.Errorf("deriving randomness: %w", err)
 	}

@@ -55,7 +55,7 @@ func (g *GenesisRandomnessSource) GetChainRandomness(ctx context.Context, randEp
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return *(*[32]byte)(out), nil
 }
-func (r *GenesisRandomnessSource) GetBeaconEntry(_ context.Context, randEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+func (g *GenesisRandomnessSource) GetBeaconEntry(_ context.Context, randEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return &types.BeaconEntry{Round: 10, Data: out}, nil
