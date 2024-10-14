@@ -5,9 +5,13 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/utils"
+	logging "github.com/ipfs/go-log/v2"
 )
+
+var log = logging.Logger("network-params")
 
 func GetNetworkFromName(name string) (types.NetworkType, error) {
 	if name == "2k" || strings.HasPrefix(name, "localnet-") {
@@ -43,6 +47,11 @@ func SetConfigFromNetworkType(cfg *config.Config, networkType types.NetworkType)
 	cfg.NetworkParams = &netcfg.Network
 	// not change, expect to adjust the value through the configuration file
 	cfg.NetworkParams.AllowableClockDriftSecs = oldAllowableClockDriftSecs
+
+	if constants.DisableF3 {
+		cfg.NetworkParams.F3Enabled = false
+		log.Warnf("F3 is disabled")
+	}
 	return nil
 }
 

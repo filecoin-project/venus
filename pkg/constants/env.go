@@ -13,3 +13,6 @@ var NoSlashFilter = os.Getenv("VENUS_NO_SLASHFILTER") == "_yes_i_know_and_i_acce
 
 // NoMigrationResultCache will not use cached migration results
 var NoMigrationResultCache = os.Getenv("VENUS_NO_MIGRATION_RESULT_CACHE") == "1"
+
+// DisableF3 disable f3
+var DisableF3 = os.Getenv("VENUS_DISABLE_F3") == "1"
