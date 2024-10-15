@@ -31,6 +31,7 @@ import (
 	types2 "github.com/filecoin-project/venus/venus-shared/actors/types"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -76,6 +77,20 @@ func newEthAPI(em *EthSubModule) (*ethAPI, error) {
 		}
 	}
 
+	cfg := em.cfg.FevmConfig
+	if cfg.EthBlkCacheSize > 0 {
+		var err error
+		a.EthBlkCache, err = arc.NewARC[cid.Cid, *types.EthBlock](cfg.EthBlkCacheSize)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create block cache: %w", err)
+		}
+
+		a.EthBlkTxCache, err = arc.NewARC[cid.Cid, *types.EthBlock](cfg.EthBlkCacheSize)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create block transaction cache: %w", err)
+		}
+	}
+
 	return a, nil
 }
 
@@ -84,6 +99,9 @@ type ethAPI struct {
 	chain            v1.IChain
 	mpool            v1.IMessagePool
 	ethTxHashManager *ethTxHashManager
+
+	EthBlkCache   *arc.ARCCache[cid.Cid, *types.EthBlock] // caches blocks by their CID but blocks only have the transaction hashes
+	EthBlkTxCache *arc.ARCCache[cid.Cid, *types.EthBlock] // caches blocks along with full transaction payload by their CID
 }
 
 func (a *ethAPI) start(ctx context.Context) error {
@@ -178,11 +196,41 @@ func (a *ethAPI) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash 
 }
 
 func (a *ethAPI) EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error) {
-	ts, err := a.em.chainModule.ChainReader.GetTipSetByCid(ctx, blkHash.ToCid())
-	if err != nil {
-		return types.EthBlock{}, fmt.Errorf("error loading tipset %s: %w", ts, err)
+	cache := a.EthBlkCache
+	if fullTxInfo {
+		cache = a.EthBlkTxCache
 	}
-	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
+
+	// Attempt to retrieve the Ethereum block from cache
+	cid := blkHash.ToCid()
+	if cache != nil {
+		if ethBlock, found := cache.Get(cid); found {
+			if ethBlock != nil {
+				return *ethBlock, nil
+			}
+			// Log and remove the nil entry from cache
+			log.Errorw("nil value in eth block cache", "hash", blkHash.String())
+			cache.Remove(cid)
+		}
+	}
+
+	// Fetch the tipset using the block hash
+	ts, err := a.em.chainModule.ChainReader.GetTipSetByCid(ctx, cid)
+	if err != nil {
+		return types.EthBlock{}, fmt.Errorf("failed to load tipset by CID %s: %w", cid, err)
+	}
+
+	// Generate an Ethereum block from the Filecoin tipset
+	blk, err := newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
+	if err != nil {
+		return types.EthBlock{}, fmt.Errorf("failed to create Ethereum block from Filecoin tipset: %w", err)
+	}
+
+	// Add the newly created block to the cache and return
+	if cache != nil {
+		cache.Add(cid, &blk)
+	}
+	return blk, nil
 }
 
 func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool) (tipset *types.TipSet, err error) {

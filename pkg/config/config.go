@@ -487,6 +487,13 @@ type FevmConfig struct {
 	// Set to 0 to keep all mappings
 	EthTxHashMappingLifetimeDays int `json:"ethTxHashMappingLifetimeDays"`
 
+	// EthBlkCacheSize specifies the size of the cache used for caching Ethereum blocks.
+	// This cache enhances the performance of the eth_getBlockByHash RPC call by minimizing the need to access chain state for
+	// recently requested blocks that are already cached.
+	// The default size of the cache is 500 blocks.
+	// Note: Setting this value to 0 disables the cache.
+	EthBlkCacheSize int
+
 	Event EventConfig `json:"event"`
 }
 
@@ -502,6 +509,7 @@ func newFevmConfig() *FevmConfig {
 	return &FevmConfig{
 		EnableEthRPC:                 false,
 		EthTxHashMappingLifetimeDays: 0,
+		EthBlkCacheSize:              500,
 		Event: EventConfig{
 			DisableRealTimeFilterAPI: false,
 			DisableHistoricFilterAPI: false,
