@@ -104,7 +104,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ Concurrent
 	- CreateBackup
 	- Discover
-	> EthGetBlockByNumber {[func(context.Context, string, bool) (types.EthBlock, error) <> func(context.Context, string, bool) (*ethtypes.EthBlock, error)] base=func out type: #0 input; nested={[types.EthBlock <> *ethtypes.EthBlock] base=type kinds: struct != ptr; nested=nil}}
 	- EthGetBlockReceipts
 	- EthGetBlockReceiptsLimited
 	- EthSendRawTransactionUntrusted

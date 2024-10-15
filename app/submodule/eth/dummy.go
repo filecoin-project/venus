@@ -53,8 +53,8 @@ func (e *ethAPIDummy) EthGetBlockByHash(ctx context.Context, blkHash types.EthHa
 	return types.EthBlock{}, ErrModuleDisabled
 }
 
-func (e *ethAPIDummy) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error) {
-	return types.EthBlock{}, ErrModuleDisabled
+func (e *ethAPIDummy) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*types.EthBlock, error) {
+	return nil, ErrModuleDisabled
 }
 
 func (e *ethAPIDummy) EthGetTransactionByHash(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error) {
