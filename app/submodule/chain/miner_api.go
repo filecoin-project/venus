@@ -792,9 +792,17 @@ func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context
 		return types.EmptyInt, fmt.Errorf("loading reward actor state: %w", err)
 	}
 
-	sectorWeight, err := msa.calculateSectorWeight(ctx, maddr, pci, ts.Height(), sTree)
-	if err != nil {
-		return types.EmptyInt, err
+	var sectorWeight abi.StoragePower
+	if msa.ChainSubmodule.Fork.GetNetworkVersion(ctx, ts.Height()) <= network.Version16 {
+		if sectorWeight, err = msa.calculateSectorWeight(ctx, maddr, pci, ts.Height(), sTree); err != nil {
+			return types.EmptyInt, err
+		}
+	} else {
+		ssize, err := pci.SealProof.SectorSize()
+		if err != nil {
+			return types.EmptyInt, fmt.Errorf("failed to resolve sector size for seal proof: %w", err)
+		}
+		sectorWeight = miner.QAPowerMax(ssize)
 	}
 
 	_, powerSmoothed, err := msa.pledgeCalculationInputs(ctx, sTree)
