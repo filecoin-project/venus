@@ -97,9 +97,25 @@ var msgSendCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := req.Context
 
+		is0xRecipient := false
 		toAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
-			return err
+			// could be an ETH address
+			ea, err := types.ParseEthAddress(req.Arguments[0])
+			if err != nil {
+				return err
+			}
+			is0xRecipient = true
+			// this will be either "f410f..." or "f0..."
+			toAddr, err = ea.ToFilecoinAddress()
+			if err != nil {
+				return err
+			}
+			// ideally, this should never happen
+			if !(toAddr.Protocol() == address.ID || toAddr.Protocol() == address.Delegated) {
+				return err
+			}
+
 		}
 		v := req.Arguments[1]
 		val, err := types.ParseFIL(v)
@@ -131,7 +147,7 @@ var msgSendCmd = &cmds.Command{
 
 		methodID := builtin.MethodSend
 		method := req.Options["method"]
-		if types.IsEthAddress(fromAddr) {
+		if types.IsEthAddress(fromAddr) || is0xRecipient {
 			// Method numbers don't make sense from eth accounts.
 			if method != nil {
 				return fmt.Errorf("messages from f410f addresses may not specify a method number")
