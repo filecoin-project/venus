@@ -5,13 +5,15 @@ import (
 	pseudo "math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -47,7 +49,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	}
 
 	events14000 := buildTipSetEvents(t, rng, 14000, em)
-	cid14000, err := events14000.msgTS.Key().Cid()
+	cid14000, err := events14000.msgTs.Key().Cid()
 	require.NoError(t, err, "tipset cid")
 
 	noCollectedEvents := []*CollectedEvent{}
@@ -58,7 +60,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 			EventIdx:    0,
 			Reverted:    false,
 			Height:      14000,
-			TipSetKey:   events14000.msgTS.Key(),
+			TipSetKey:   events14000.msgTs.Key(),
 			MsgIdx:      0,
 			MsgCid:      em.msg.Cid(),
 		},
@@ -76,9 +78,49 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 
 	ei, err := NewEventIndex(context.Background(), dbPath, nil)
 	require.NoError(t, err, "create event index")
+
+	subCh, unSubscribe := ei.SubscribeUpdates()
+	defer unSubscribe()
+
+	out := make(chan EventIndexUpdated, 1)
+	go func() {
+		tu := <-subCh
+		out <- tu
+	}()
+
 	if err := ei.CollectEvents(context.Background(), events14000, false, addrMap.ResolveAddress); err != nil {
 		require.NoError(t, err, "collect events")
 	}
+
+	mh, err := ei.GetMaxHeightInIndex(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, uint64(14000), mh)
+
+	b, err := ei.IsHeightPast(context.Background(), 14000)
+	require.NoError(t, err)
+	require.True(t, b)
+
+	b, err = ei.IsHeightPast(context.Background(), 14001)
+	require.NoError(t, err)
+	require.False(t, b)
+
+	b, err = ei.IsHeightPast(context.Background(), 13000)
+	require.NoError(t, err)
+	require.True(t, b)
+
+	tsKey := events14000.msgTs.Key()
+	tsKeyCid, err := tsKey.Cid()
+	require.NoError(t, err, "tipset key cid")
+
+	seen, err := ei.IsTipsetProcessed(context.Background(), tsKeyCid.Bytes())
+	require.NoError(t, err)
+	require.True(t, seen, "tipset key should be seen")
+
+	seen, err = ei.IsTipsetProcessed(context.Background(), []byte{1})
+	require.NoError(t, err)
+	require.False(t, seen, "tipset key should not be seen")
+
+	_ = <-out
 
 	testCases := []struct {
 		name   string
@@ -332,9 +374,9 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 
 	events14000 := buildTipSetEvents(t, rng, 14000, em)
 	revertedEvents14000 := buildTipSetEvents(t, rng, 14000, revertedEm)
-	cid14000, err := events14000.msgTS.Key().Cid()
+	cid14000, err := events14000.msgTs.Key().Cid()
 	require.NoError(t, err, "tipset cid")
-	reveredCID14000, err := revertedEvents14000.msgTS.Key().Cid()
+	reveredCID14000, err := revertedEvents14000.msgTs.Key().Cid()
 	require.NoError(t, err, "tipset cid")
 
 	noCollectedEvents := []*CollectedEvent{}
@@ -345,7 +387,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			EventIdx:    0,
 			Reverted:    false,
 			Height:      14000,
-			TipSetKey:   events14000.msgTS.Key(),
+			TipSetKey:   events14000.msgTs.Key(),
 			MsgIdx:      0,
 			MsgCid:      em.msg.Cid(),
 		},
@@ -357,7 +399,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			EventIdx:    0,
 			Reverted:    false,
 			Height:      14000,
-			TipSetKey:   events14000.msgTS.Key(),
+			TipSetKey:   events14000.msgTs.Key(),
 			MsgIdx:      0,
 			MsgCid:      em.msg.Cid(),
 		},
@@ -367,7 +409,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			EventIdx:    0,
 			Reverted:    true,
 			Height:      14000,
-			TipSetKey:   revertedEvents14000.msgTS.Key(),
+			TipSetKey:   revertedEvents14000.msgTs.Key(),
 			MsgIdx:      0,
 			MsgCid:      revertedEm.msg.Cid(),
 		},
@@ -379,7 +421,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			EventIdx:    0,
 			Reverted:    true,
 			Height:      14000,
-			TipSetKey:   revertedEvents14000.msgTS.Key(),
+			TipSetKey:   revertedEvents14000.msgTs.Key(),
 			MsgIdx:      0,
 			MsgCid:      revertedEm.msg.Cid(),
 		},
@@ -397,6 +439,22 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 
 	ei, err := NewEventIndex(context.Background(), dbPath, nil)
 	require.NoError(t, err, "create event index")
+
+	tCh := make(chan EventIndexUpdated, 3)
+	subCh, unSubscribe := ei.SubscribeUpdates()
+	defer unSubscribe()
+	go func() {
+		cnt := 0
+		for tu := range subCh {
+			tCh <- tu
+			cnt++
+			if cnt == 3 {
+				close(tCh)
+				return
+			}
+		}
+	}()
+
 	if err := ei.CollectEvents(context.Background(), revertedEvents14000, false, addrMap.ResolveAddress); err != nil {
 		require.NoError(t, err, "collect reverted events")
 	}
@@ -406,6 +464,10 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 	if err := ei.CollectEvents(context.Background(), events14000, false, addrMap.ResolveAddress); err != nil {
 		require.NoError(t, err, "collect events")
 	}
+
+	_ = <-tCh
+	_ = <-tCh
+	_ = <-tCh
 
 	inclusiveTestCases := []struct {
 		name   string
@@ -431,15 +493,15 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			te:   events14000,
 			want: noCollectedEvents,
 		},
-		// {
-		// 	name: "match tipset min height",
-		// 	filter: &eventFilter{
-		// 		minHeight: 14000,
-		// 		maxHeight: -1,
-		// 	},
-		// 	te:   events14000,
-		// 	want: twoCollectedEvent,
-		// },
+		{
+			name: "match tipset min height",
+			filter: &eventFilter{
+				minHeight: 14000,
+				maxHeight: -1,
+			},
+			te:   events14000,
+			want: twoCollectedEvent,
+		},
 		{
 			name: "match tipset cid",
 			filter: &eventFilter{
@@ -671,15 +733,15 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			te:   events14000,
 			want: noCollectedEvents,
 		},
-		// {
-		// 	name: "match tipset min height",
-		// 	filter: &eventFilter{
-		// 		minHeight: 14000,
-		// 		maxHeight: -1,
-		// 	},
-		// 	te:   events14000,
-		// 	want: oneCollectedEvent,
-		// },
+		{
+			name: "match tipset min height",
+			filter: &eventFilter{
+				minHeight: 14000,
+				maxHeight: -1,
+			},
+			te:   events14000,
+			want: oneCollectedEvent,
+		},
 		{
 			name: "match tipset cid",
 			filter: &eventFilter{
@@ -690,16 +752,16 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			te:   events14000,
 			want: oneCollectedEvent,
 		},
-		// {
-		// 	name: "match tipset cid but reverted",
-		// 	filter: &eventFilter{
-		// 		minHeight: -1,
-		// 		maxHeight: -1,
-		// 		tipsetCid: reveredCID14000,
-		// 	},
-		// 	te:   revertedEvents14000,
-		// 	want: noCollectedEvents,
-		// },
+		{
+			name: "match tipset cid but reverted",
+			filter: &eventFilter{
+				minHeight: -1,
+				maxHeight: -1,
+				tipsetCid: reveredCID14000,
+			},
+			te:   revertedEvents14000,
+			want: noCollectedEvents,
+		},
 		{
 			name: "nomatch address",
 			filter: &eventFilter{
@@ -710,16 +772,16 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			te:   events14000,
 			want: noCollectedEvents,
 		},
-		// {
-		// 	name: "nomatch address 2 but reverted",
-		// 	filter: &eventFilter{
-		// 		minHeight: -1,
-		// 		maxHeight: -1,
-		// 		addresses: []address.Address{a2},
-		// 	},
-		// 	te:   revertedEvents14000,
-		// 	want: noCollectedEvents,
-		// },
+		{
+			name: "nomatch address 2 but reverted",
+			filter: &eventFilter{
+				minHeight: -1,
+				maxHeight: -1,
+				addresses: []address.Address{a2},
+			},
+			te:   revertedEvents14000,
+			want: noCollectedEvents,
+		},
 		{
 			name: "match address",
 			filter: &eventFilter{
@@ -730,36 +792,36 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			te:   events14000,
 			want: oneCollectedEvent,
 		},
-		// {
-		// 	name: "match one entry",
-		// 	filter: &eventFilter{
-		// 		minHeight: -1,
-		// 		maxHeight: -1,
-		// 		keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
-		// 			"type": {
-		// 				[]byte("approval"),
-		// 			},
-		// 		}),
-		// 	},
-		// 	te:   events14000,
-		// 	want: oneCollectedEvent,
-		// },
-		// {
-		// 	name: "match one entry with alternate values",
-		// 	filter: &eventFilter{
-		// 		minHeight: -1,
-		// 		maxHeight: -1,
-		// 		keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
-		// 			"type": {
-		// 				[]byte("cancel"),
-		// 				[]byte("propose"),
-		// 				[]byte("approval"),
-		// 			},
-		// 		}),
-		// 	},
-		// 	te:   events14000,
-		// 	want: oneCollectedEvent,
-		// },
+		{
+			name: "match one entry",
+			filter: &eventFilter{
+				minHeight: -1,
+				maxHeight: -1,
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
+					"type": {
+						[]byte("approval"),
+					},
+				}),
+			},
+			te:   events14000,
+			want: oneCollectedEvent,
+		},
+		{
+			name: "match one entry with alternate values",
+			filter: &eventFilter{
+				minHeight: -1,
+				maxHeight: -1,
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
+					"type": {
+						[]byte("cancel"),
+						[]byte("propose"),
+						[]byte("approval"),
+					},
+				}),
+			},
+			te:   events14000,
+			want: oneCollectedEvent,
+		},
 		{
 			name: "nomatch one entry by missing value",
 			filter: &eventFilter{
@@ -823,23 +885,23 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			te:   events14000,
 			want: noCollectedEvents,
 		},
-		// {
-		// 	name: "nomatch one entry with matching reverted value",
-		// 	filter: &eventFilter{
-		// 		minHeight: -1,
-		// 		maxHeight: -1,
-		// 		keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
-		// 			"type": {
-		// 				[]byte("approval"),
-		// 			},
-		// 			"signer": {
-		// 				[]byte("addr2"),
-		// 			},
-		// 		}),
-		// 	},
-		// 	te:   events14000,
-		// 	want: noCollectedEvents,
-		// },
+		{
+			name: "nomatch one entry with matching reverted value",
+			filter: &eventFilter{
+				minHeight: -1,
+				maxHeight: -1,
+				keysWithCodec: keysToKeysWithCodec(map[string][][]byte{
+					"type": {
+						[]byte("approval"),
+					},
+					"signer": {
+						[]byte("addr2"),
+					},
+				}),
+			},
+			te:   events14000,
+			want: noCollectedEvents,
+		},
 		{
 			name: "nomatch one entry with one mismatching value",
 			filter: &eventFilter{
@@ -895,5 +957,89 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			coll := tc.filter.TakeCollectedEvents(context.Background())
 			require.ElementsMatch(t, coll, tc.want, tc.name)
 		})
+	}
+}
+
+// TestQueryPlan is to ensure that future modifications to the db schema, or future upgrades to
+// sqlite, do not change the query plan of the prepared statements used by the event index such that
+// queries hit undesirable indexes which are likely to slow down the query.
+// Changes that break this test need to be sure that the query plan is still efficient for the
+// expected query patterns.
+func TestQueryPlan(t *testing.T) {
+	ei, err := NewEventIndex(context.Background(), filepath.Join(t.TempDir(), "actorevents.db"), nil)
+	require.NoError(t, err, "create event index")
+
+	verifyQueryPlan := func(stmt string) {
+		rows, err := ei.db.Query("EXPLAIN QUERY PLAN " + strings.Replace(stmt, "?", "1", -1))
+		require.NoError(t, err, "explain query plan for query: "+stmt)
+		defer func() {
+			require.NoError(t, rows.Close())
+		}()
+		// First response to EXPLAIN QUERY PLAN should show us the use of an index that we want to
+		// encounter first to narrow down the search space - either a height or tipset_key_cid index
+		// - sqlite_autoindex_events_seen_1 is for the UNIQUE constraint on events_seen
+		// - events_seen_height and events_seen_tipset_key_cid are explicit indexes on events_seen
+		// - event_height and event_tipset_key_cid are explicit indexes on event
+		rows.Next()
+		var id, parent, notused, detail string
+		require.NoError(t, rows.Scan(&id, &parent, &notused, &detail), "scan explain query plan for query: "+stmt)
+		detail = strings.TrimSpace(detail)
+		var expectedIndexes = []string{
+			"sqlite_autoindex_events_seen_1",
+			"events_seen_height",
+			"events_seen_tipset_key_cid",
+			"event_height",
+			"event_tipset_key_cid",
+		}
+		indexUsed := false
+		for _, index := range expectedIndexes {
+			if strings.Contains(detail, " INDEX "+index) {
+				indexUsed = true
+				break
+			}
+		}
+		require.True(t, indexUsed, "index used for query: "+stmt+" detail: "+detail)
+
+		stmt = regexp.MustCompile(`(?m)^\s+`).ReplaceAllString(stmt, " ") // remove all leading whitespace from the statement
+		stmt = strings.Replace(stmt, "\n", "", -1)                        // remove all newlines from the statement
+		t.Logf("[%s] has plan start: %s", stmt, detail)
+	}
+
+	// Test the hard-coded select and update queries
+	stmtMap := preparedStatementMapping(&preparedStatements{})
+	for _, stmt := range stmtMap {
+		if strings.HasPrefix(strings.TrimSpace(strings.ToLower(stmt)), "insert") {
+			continue
+		}
+		verifyQueryPlan(stmt)
+	}
+
+	// Test the dynamic prefillFilter queries
+	prefillCases := []*eventFilter{
+		{},
+		{minHeight: 14000, maxHeight: 14000},
+		{minHeight: 14000, maxHeight: 15000},
+		{tipsetCid: cid.MustParse("bafkqaaa")},
+		{minHeight: 14000, maxHeight: 14000, addresses: []address.Address{address.TestAddress}},
+		{minHeight: 14000, maxHeight: 15000, addresses: []address.Address{address.TestAddress}},
+		{tipsetCid: cid.MustParse("bafkqaaa"), addresses: []address.Address{address.TestAddress}},
+		{minHeight: 14000, maxHeight: 14000, addresses: []address.Address{address.TestAddress, address.TestAddress}},
+		{minHeight: 14000, maxHeight: 15000, addresses: []address.Address{address.TestAddress, address.TestAddress}},
+		{tipsetCid: cid.MustParse("bafkqaaa"), addresses: []address.Address{address.TestAddress, address.TestAddress}},
+		{minHeight: 14000, maxHeight: 14000, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}})},
+		{minHeight: 14000, maxHeight: 15000, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}})},
+		{tipsetCid: cid.MustParse("bafkqaaa"), keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}})},
+		{minHeight: 14000, maxHeight: 14000, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}, "signer": {[]byte("addr1")}})},
+		{minHeight: 14000, maxHeight: 15000, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}, "signer": {[]byte("addr1")}})},
+		{tipsetCid: cid.MustParse("bafkqaaa"), keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}, "signer": {[]byte("addr1")}})},
+		{minHeight: 14000, maxHeight: 14000, addresses: []address.Address{address.TestAddress, address.TestAddress}, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}, "signer": {[]byte("addr1")}})},
+		{minHeight: 14000, maxHeight: 15000, addresses: []address.Address{address.TestAddress, address.TestAddress}, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}, "signer": {[]byte("addr1")}})},
+		{tipsetCid: cid.MustParse("bafkqaaa"), addresses: []address.Address{address.TestAddress, address.TestAddress}, keysWithCodec: keysToKeysWithCodec(map[string][][]byte{"type": {[]byte("approval")}, "signer": {[]byte("addr1")}})},
+	}
+	for _, filter := range prefillCases {
+		_, query := makePrefillFilterQuery(filter, true)
+		verifyQueryPlan(query)
+		_, query = makePrefillFilterQuery(filter, false)
+		verifyQueryPlan(query)
 	}
 }

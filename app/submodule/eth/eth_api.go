@@ -35,7 +35,6 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 )
 
 const maxEthFeeHistoryRewardPercentiles = 100
@@ -47,9 +46,10 @@ var ErrUnsupported = errors.New("unsupported method")
 
 func newEthAPI(em *EthSubModule) (*ethAPI, error) {
 	a := &ethAPI{
-		em:    em,
-		chain: em.chainModule.API(),
-		mpool: em.mpoolModule.API(),
+		em:              em,
+		chain:           em.chainModule.API(),
+		mpool:           em.mpoolModule.API(),
+		EthEventHandler: em.ethEventAPI,
 	}
 
 	dbPath := filepath.Join(a.em.sqlitePath, "txhash.db")
@@ -95,10 +95,12 @@ func newEthAPI(em *EthSubModule) (*ethAPI, error) {
 }
 
 type ethAPI struct {
-	em               *EthSubModule
-	chain            v1.IChain
-	mpool            v1.IMessagePool
-	ethTxHashManager *ethTxHashManager
+	em                   *EthSubModule
+	chain                v1.IChain
+	mpool                v1.IMessagePool
+	ethTxHashManager     *ethTxHashManager
+	EthEventHandler      *ethEventAPI
+	MaxFilterHeightRange abi.ChainEpoch
 
 	EthBlkCache   *arc.ARCCache[cid.Cid, *types.EthBlock] // caches blocks by their CID but blocks only have the transaction hashes
 	EthBlkTxCache *arc.ARCCache[cid.Cid, *types.EthBlock] // caches blocks along with full transaction payload by their CID
@@ -279,12 +281,12 @@ func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkParam string, fullT
 			// Return nil for null rounds
 			return nil, nil
 		}
-		return nil, xerrors.Errorf("failed to get tipset: %w", err)
+		return nil, fmt.Errorf("failed to get tipset: %w", err)
 	}
 	// Create an Ethereum block from the Filecoin tipset
 	block, err := newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to create Ethereum block: %w", err)
+		return nil, fmt.Errorf("failed to create Ethereum block: %w", err)
 	}
 
 	return &block, nil
@@ -403,14 +405,14 @@ func (a *ethAPI) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*
 func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthUint64, error) {
 	addr, err := sender.ToFilecoinAddress()
 	if err != nil {
-		return types.EthUint64(0), xerrors.Errorf("invalid address: %w", err)
+		return types.EthUint64(0), fmt.Errorf("invalid address: %w", err)
 
 	}
 	// Handle "pending" block parameter separately
 	if blkParam.PredefinedBlock != nil && *blkParam.PredefinedBlock == "pending" {
 		nonce, err := a.mpool.MpoolGetNonce(ctx, addr)
 		if err != nil {
-			return types.EthUint64(0), xerrors.Errorf("failed to get nonce from mpool: %w", err)
+			return types.EthUint64(0), fmt.Errorf("failed to get nonce from mpool: %w", err)
 		}
 		return types.EthUint64(nonce), nil
 	}
@@ -427,7 +429,7 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 		if errors.Is(err, types.ErrActorNotFound) {
 			return 0, nil
 		}
-		return 0, xerrors.Errorf("failed to lookup actor %s: %w", sender, err)
+		return 0, fmt.Errorf("failed to lookup actor %s: %w", sender, err)
 	}
 
 	// Handle EVM actor case
@@ -464,7 +466,12 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 	}
 
 	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
-	if err != nil || msgLookup == nil {
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
+	}
+	if msgLookup == nil {
+		// This is the best we can do. In theory, we could have just not indexed this
+		// transaction, but there's no way to check that here.
 		return nil, nil
 	}
 
@@ -473,15 +480,20 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 		return nil, nil
 	}
 
-	var events []types.Event
-	if rct := msgLookup.Receipt; rct.EventsRoot != nil {
-		events, err = a.chain.ChainGetEvents(ctx, *rct.EventsRoot)
-		if err != nil {
-			return nil, nil
-		}
+	ts, err := a.em.chainModule.ChainReader.GetTipSet(ctx, msgLookup.TipSet)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", msgLookup.TipSet, err)
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, events, a.chain, a.em.chainModule.ChainReader)
+	// The tx is located in the parent tipset
+	parentTs, err := a.em.chainModule.ChainReader.GetTipSet(ctx, ts.Parents())
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", ts.Parents(), err)
+	}
+
+	baseFee := parentTs.Blocks()[0].ParentBaseFee
+
+	receipt, err := newEthTxReceipt(ctx, tx, baseFee, msgLookup.Receipt, a.EthEventHandler)
 	if err != nil {
 		return nil, nil
 	}
@@ -491,6 +503,63 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 
 func (a *ethAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error) {
 	return types.EthTx{}, ErrUnsupported
+}
+
+func (a *ethAPI) EthGetBlockReceipts(ctx context.Context, blockParam types.EthBlockNumberOrHash) ([]*types.EthTxReceipt, error) {
+	return a.EthGetBlockReceiptsLimited(ctx, blockParam, constants.LookbackNoLimit)
+}
+
+func (a *ethAPI) EthGetBlockReceiptsLimited(ctx context.Context, blockParam types.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*types.EthTxReceipt, error) {
+	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.em.chainModule.ChainReader, blockParam)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tipset: %w", err)
+	}
+
+	tsCid, err := ts.Key().Cid()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tipset key cid: %w", err)
+	}
+
+	blkHash, err := types.EthHashFromCid(tsCid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse eth hash from cid: %w", err)
+	}
+
+	// Execute the tipset to get the receipts, messages, and events
+	_, msgs, receipts, err := executeTipset(ctx, ts, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute tipset: %w", err)
+	}
+
+	// Load the state tree
+	state, err := a.em.chainModule.ChainReader.GetTipSetState(ctx, ts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get state view: %w", err)
+	}
+
+	baseFee := ts.Blocks()[0].ParentBaseFee
+
+	ethReceipts := make([]*types.EthTxReceipt, 0, len(msgs))
+	for i, msg := range msgs {
+		msg := msg
+
+		tx, err := newEthTx(ctx, state, ts.Height(), tsCid, msg.Cid(), i, a.ethTxHashManager.messageStore)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create EthTx: %w", err)
+		}
+
+		receipt, err := newEthTxReceipt(ctx, tx, baseFee, receipts[i], a.EthEventHandler)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Eth receipt: %w", err)
+		}
+
+		// Set the correct Ethereum block hash
+		receipt.BlockHash = blkHash
+
+		ethReceipts = append(ethReceipts, &receipt)
+	}
+
+	return ethReceipts, nil
 }
 
 func (a *ethAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error) {

@@ -10,13 +10,12 @@ import (
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/filecoin-project/venus/pkg/chain"
+	cstore "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -59,7 +58,7 @@ var _ Filter = (*eventFilter)(nil)
 type CollectedEvent struct {
 	Entries     []types.EventEntry
 	EmitterAddr address.Address // address of emitter
-	EventIdx    int             // index of the event within the list of emitted events
+	EventIdx    int             // index of the event within the list of emitted events in a given tipset
 	Reverted    bool
 	Height      abi.ChainEpoch
 	TipSetKey   types.TipSetKey // tipset that contained the message
@@ -96,13 +95,16 @@ func (f *eventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	if err != nil {
 		return fmt.Errorf("load executed messages: %w", err)
 	}
+
+	eventCount := 0
+
 	for msgIdx, em := range ems {
-		for evIdx, ev := range em.Events() {
+		for _, ev := range em.Events() {
 			// lookup address corresponding to the actor id
 			addr, found := addressLookups[ev.Emitter]
 			if !found {
 				var ok bool
-				addr, ok = resolver(ctx, ev.Emitter, te.rctTS)
+				addr, ok = resolver(ctx, ev.Emitter, te.rctTs)
 				if !ok {
 					// not an address we will be able to match against
 					continue
@@ -121,10 +123,10 @@ func (f *eventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			cev := &CollectedEvent{
 				Entries:     ev.Entries,
 				EmitterAddr: addr,
-				EventIdx:    evIdx,
+				EventIdx:    eventCount,
 				Reverted:    revert,
-				Height:      te.msgTS.Height(),
-				TipSetKey:   te.msgTS.Key(),
+				Height:      te.msgTs.Height(),
+				TipSetKey:   te.msgTs.Key(),
 				MsgCid:      em.Message().Cid(),
 				MsgIdx:      msgIdx,
 			}
@@ -143,6 +145,7 @@ func (f *eventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			}
 			f.collected = append(f.collected, cev)
 			f.mu.Unlock()
+			eventCount++
 		}
 	}
 
@@ -244,14 +247,15 @@ func (f *eventFilter) matchKeys(ees []types.EventEntry) bool {
 			// all keys have been matched
 			return true
 		}
+
 	}
 
 	return false
 }
 
 type TipSetEvents struct {
-	rctTS *types.TipSet // rctTs is the tipset containing the receipts of executed messages
-	msgTS *types.TipSet // msgTs is the tipset containing the messages that have been executed
+	rctTs *types.TipSet // rctTs is the tipset containing the receipts of executed messages
+	msgTs *types.TipSet // msgTs is the tipset containing the messages that have been executed
 
 	load func(ctx context.Context, msgTs, rctTs *types.TipSet) ([]executedMessage, error)
 
@@ -261,17 +265,17 @@ type TipSetEvents struct {
 }
 
 func (te *TipSetEvents) Height() abi.ChainEpoch {
-	return te.msgTS.Height()
+	return te.msgTs.Height()
 }
 
 func (te *TipSetEvents) Cid() (cid.Cid, error) {
-	return te.msgTS.Key().Cid()
+	return te.msgTs.Key().Cid()
 }
 
 func (te *TipSetEvents) messages(ctx context.Context) ([]executedMessage, error) {
 	te.once.Do(func() {
 		// populate executed message list
-		ems, err := te.load(ctx, te.msgTS, te.rctTS)
+		ems, err := te.load(ctx, te.msgTs, te.rctTs)
 		if err != nil {
 			te.err = err
 			return
@@ -301,8 +305,8 @@ func (e *executedMessage) Events() []*types.Event {
 }
 
 type EventFilterManager struct {
-	MessageStore     *chain.MessageStore
-	ChainStore       *chain.Store
+	ChainStore       *cstore.Store
+	MessageStore     *cstore.MessageStore
 	AddressResolver  func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
 	MaxFilterResults int
 	EventIndex       *EventIndex
@@ -322,8 +326,8 @@ func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) 
 	}
 
 	tse := &TipSetEvents{
-		msgTS: from,
-		rctTS: to,
+		msgTs: from,
+		rctTs: to,
 		load:  m.loadExecutedMessages,
 	}
 
@@ -353,8 +357,8 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 	}
 
 	tse := &TipSetEvents{
-		msgTS: to,
-		rctTS: from,
+		msgTs: to,
+		rctTs: from,
 		load:  m.loadExecutedMessages,
 	}
 
@@ -385,12 +389,12 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 	m.mu.Unlock()
 
 	if m.EventIndex == nil && minHeight != -1 && minHeight < currentHeight {
-		return nil, xerrors.Errorf("historic event index disabled")
+		return nil, fmt.Errorf("historic event index disabled")
 	}
 
 	id, err := newFilterID()
 	if err != nil {
-		return nil, xerrors.Errorf("new filter id: %w", err)
+		return nil, fmt.Errorf("new filter id: %w", err)
 	}
 
 	f := &eventFilter{
@@ -430,21 +434,21 @@ func (m *EventFilterManager) Remove(ctx context.Context, id types.FilterID) erro
 	return nil
 }
 
-func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTS, rctTS *types.TipSet) ([]executedMessage, error) {
-	msgs, err := m.MessageStore.MessagesForTipset(msgTS)
+func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+	msgs, err := m.MessageStore.MessagesForTipset(msgTs)
 	if err != nil {
-		return nil, xerrors.Errorf("read messages: %w", err)
+		return nil, fmt.Errorf("read messages: %w", err)
 	}
 
 	st := adt.WrapStore(ctx, cbor.NewCborStore(m.ChainStore.Blockstore()))
 
-	arr, err := blockadt.AsArray(st, rctTS.Blocks()[0].ParentMessageReceipts)
+	arr, err := blockadt.AsArray(st, rctTs.Blocks()[0].ParentMessageReceipts)
 	if err != nil {
-		return nil, xerrors.Errorf("load receipts amt: %w", err)
+		return nil, fmt.Errorf("load receipts amt: %w", err)
 	}
 
 	if uint64(len(msgs)) != arr.Length() {
-		return nil, xerrors.Errorf("mismatching message and receipt counts (%d msgs, %d rcts)", len(msgs), arr.Length())
+		return nil, fmt.Errorf("mismatching message and receipt counts (%d msgs, %d rcts)", len(msgs), arr.Length())
 	}
 
 	ems := make([]executedMessage, len(msgs))
@@ -455,10 +459,10 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTS, rc
 		var rct types.MessageReceipt
 		found, err := arr.Get(uint64(i), &rct)
 		if err != nil {
-			return nil, xerrors.Errorf("load receipt: %w", err)
+			return nil, fmt.Errorf("load receipt: %w", err)
 		}
 		if !found {
-			return nil, xerrors.Errorf("receipt %d not found", i)
+			return nil, fmt.Errorf("receipt %d not found", i)
 		}
 		ems[i].rct = &rct
 
@@ -468,14 +472,14 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTS, rc
 
 		evtArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 		if err != nil {
-			return nil, xerrors.Errorf("load events amt: %w", err)
+			return nil, fmt.Errorf("load events amt: %w", err)
 		}
 
 		ems[i].evs = make([]*types.Event, evtArr.Len())
 		var evt types.Event
 		err = evtArr.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
 			if u > math.MaxInt {
-				return xerrors.Errorf("too many events")
+				return fmt.Errorf("too many events")
 			}
 			if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
 				return err
@@ -487,7 +491,7 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTS, rc
 		})
 
 		if err != nil {
-			return nil, xerrors.Errorf("read events: %w", err)
+			return nil, fmt.Errorf("read events: %w", err)
 		}
 
 	}

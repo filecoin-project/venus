@@ -31,17 +31,19 @@ type IETH interface {
 	// EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
 	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash types.EthHash) (types.EthUint64, error) //perm:read
 
-	EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error)                             //perm:read
-	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*types.EthBlock, error)                                  //perm:read
-	EthGetTransactionByHash(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error)                                          //perm:read
-	EthGetTransactionByHashLimited(ctx context.Context, txHash *types.EthHash, limit abi.ChainEpoch) (*types.EthTx, error)             //perm:read
-	EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*types.EthHash, error)                                               //perm:read
-	EthGetMessageCidByTransactionHash(ctx context.Context, txHash *types.EthHash) (*cid.Cid, error)                                    //perm:read
-	EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthUint64, error) //perm:read
-	EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error)                                   //perm:read
-	EthGetTransactionReceiptLimited(ctx context.Context, txHash types.EthHash, limit abi.ChainEpoch) (*types.EthTxReceipt, error)      //perm:read
-	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error)     //perm:read
-	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error)  //perm:read
+	EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error)                                    //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (*types.EthBlock, error)                                         //perm:read
+	EthGetTransactionByHash(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error)                                                 //perm:read
+	EthGetTransactionByHashLimited(ctx context.Context, txHash *types.EthHash, limit abi.ChainEpoch) (*types.EthTx, error)                    //perm:read
+	EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*types.EthHash, error)                                                      //perm:read
+	EthGetMessageCidByTransactionHash(ctx context.Context, txHash *types.EthHash) (*cid.Cid, error)                                           //perm:read
+	EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthUint64, error)        //perm:read
+	EthGetBlockReceipts(ctx context.Context, blkParam types.EthBlockNumberOrHash) ([]*types.EthTxReceipt, error)                              //perm:read
+	EthGetBlockReceiptsLimited(ctx context.Context, blkParam types.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*types.EthTxReceipt, error) //perm:read
+	EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error)                                          //perm:read
+	EthGetTransactionReceiptLimited(ctx context.Context, txHash types.EthHash, limit abi.ChainEpoch) (*types.EthTxReceipt, error)             //perm:read
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error)            //perm:read
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error)         //perm:read
 
 	EthGetCode(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error)                               //perm:read
 	EthGetStorageAt(ctx context.Context, address types.EthAddress, position types.EthBytes, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error) //perm:read
