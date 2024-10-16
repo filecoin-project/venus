@@ -659,7 +659,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *types.MsgLookup, 
 func newEthTx(ctx context.Context,
 	state tree.Tree,
 	blockHeight abi.ChainEpoch,
-	msgTsCid cid.Cid,
+	msgTSCid cid.Cid,
 	msgCid cid.Cid,
 	txIdx int,
 	ms *chain.MessageStore,
@@ -679,7 +679,7 @@ func newEthTx(ctx context.Context,
 		ti = types.EthUint64(txIdx)
 	)
 
-	blkHash, err := types.EthHashFromCid(msgTsCid)
+	blkHash, err := types.EthHashFromCid(msgTSCid)
 	if err != nil {
 		return types.EthTx{}, err
 	}

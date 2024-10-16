@@ -486,12 +486,12 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 	}
 
 	// The tx is located in the parent tipset
-	parentTs, err := a.em.chainModule.ChainReader.GetTipSet(ctx, ts.Parents())
+	parentTS, err := a.em.chainModule.ChainReader.GetTipSet(ctx, ts.Parents())
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", ts.Parents(), err)
 	}
 
-	baseFee := parentTs.Blocks()[0].ParentBaseFee
+	baseFee := parentTS.Blocks()[0].ParentBaseFee
 
 	receipt, err := newEthTxReceipt(ctx, tx, baseFee, msgLookup.Receipt, a.EthEventHandler)
 	if err != nil {

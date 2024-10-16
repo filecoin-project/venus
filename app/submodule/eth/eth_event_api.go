@@ -817,7 +817,7 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []types.Et
 }
 
 // func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageStore) (*types.EthFilterResult, error) {
-func ethFilterLogsFromEvents(ctx context.Context, evs []*filter.CollectedEvent, ms *chain.MessageStore) ([]types.EthLog, error) {
+func ethFilterLogsFromEvents(_ context.Context, evs []*filter.CollectedEvent, ms *chain.MessageStore) ([]types.EthLog, error) {
 	var logs []types.EthLog
 	for _, ev := range evs {
 		log := types.EthLog{

@@ -49,7 +49,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	}
 
 	events14000 := buildTipSetEvents(t, rng, 14000, em)
-	cid14000, err := events14000.msgTs.Key().Cid()
+	cid14000, err := events14000.msgTS.Key().Cid()
 	require.NoError(t, err, "tipset cid")
 
 	noCollectedEvents := []*CollectedEvent{}
@@ -60,7 +60,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 			EventIdx:    0,
 			Reverted:    false,
 			Height:      14000,
-			TipSetKey:   events14000.msgTs.Key(),
+			TipSetKey:   events14000.msgTS.Key(),
 			MsgIdx:      0,
 			MsgCid:      em.msg.Cid(),
 		},
@@ -108,7 +108,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, b)
 
-	tsKey := events14000.msgTs.Key()
+	tsKey := events14000.msgTS.Key()
 	tsKeyCid, err := tsKey.Cid()
 	require.NoError(t, err, "tipset key cid")
 
@@ -120,7 +120,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, seen, "tipset key should not be seen")
 
-	_ = <-out
+	<-out
 
 	testCases := []struct {
 		name   string
@@ -374,9 +374,9 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 
 	events14000 := buildTipSetEvents(t, rng, 14000, em)
 	revertedEvents14000 := buildTipSetEvents(t, rng, 14000, revertedEm)
-	cid14000, err := events14000.msgTs.Key().Cid()
+	cid14000, err := events14000.msgTS.Key().Cid()
 	require.NoError(t, err, "tipset cid")
-	reveredCID14000, err := revertedEvents14000.msgTs.Key().Cid()
+	reveredCID14000, err := revertedEvents14000.msgTS.Key().Cid()
 	require.NoError(t, err, "tipset cid")
 
 	noCollectedEvents := []*CollectedEvent{}
@@ -387,7 +387,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			EventIdx:    0,
 			Reverted:    false,
 			Height:      14000,
-			TipSetKey:   events14000.msgTs.Key(),
+			TipSetKey:   events14000.msgTS.Key(),
 			MsgIdx:      0,
 			MsgCid:      em.msg.Cid(),
 		},
@@ -399,7 +399,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			EventIdx:    0,
 			Reverted:    false,
 			Height:      14000,
-			TipSetKey:   events14000.msgTs.Key(),
+			TipSetKey:   events14000.msgTS.Key(),
 			MsgIdx:      0,
 			MsgCid:      em.msg.Cid(),
 		},
@@ -409,7 +409,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			EventIdx:    0,
 			Reverted:    true,
 			Height:      14000,
-			TipSetKey:   revertedEvents14000.msgTs.Key(),
+			TipSetKey:   revertedEvents14000.msgTS.Key(),
 			MsgIdx:      0,
 			MsgCid:      revertedEm.msg.Cid(),
 		},
@@ -421,7 +421,7 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 			EventIdx:    0,
 			Reverted:    true,
 			Height:      14000,
-			TipSetKey:   revertedEvents14000.msgTs.Key(),
+			TipSetKey:   revertedEvents14000.msgTS.Key(),
 			MsgIdx:      0,
 			MsgCid:      revertedEm.msg.Cid(),
 		},
@@ -465,9 +465,9 @@ func TestEventIndexPrefillFilterExcludeReverted(t *testing.T) {
 		require.NoError(t, err, "collect events")
 	}
 
-	_ = <-tCh
-	_ = <-tCh
-	_ = <-tCh
+	<-tCh
+	<-tCh
+	<-tCh
 
 	inclusiveTestCases := []struct {
 		name   string

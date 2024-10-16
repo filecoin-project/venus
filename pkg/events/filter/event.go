@@ -104,7 +104,7 @@ func (f *eventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			addr, found := addressLookups[ev.Emitter]
 			if !found {
 				var ok bool
-				addr, ok = resolver(ctx, ev.Emitter, te.rctTs)
+				addr, ok = resolver(ctx, ev.Emitter, te.rctTS)
 				if !ok {
 					// not an address we will be able to match against
 					continue
@@ -125,8 +125,8 @@ func (f *eventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				EmitterAddr: addr,
 				EventIdx:    eventCount,
 				Reverted:    revert,
-				Height:      te.msgTs.Height(),
-				TipSetKey:   te.msgTs.Key(),
+				Height:      te.msgTS.Height(),
+				TipSetKey:   te.msgTS.Key(),
 				MsgCid:      em.Message().Cid(),
 				MsgIdx:      msgIdx,
 			}
@@ -254,10 +254,10 @@ func (f *eventFilter) matchKeys(ees []types.EventEntry) bool {
 }
 
 type TipSetEvents struct {
-	rctTs *types.TipSet // rctTs is the tipset containing the receipts of executed messages
-	msgTs *types.TipSet // msgTs is the tipset containing the messages that have been executed
+	rctTS *types.TipSet // rctTS is the tipset containing the receipts of executed messages
+	msgTS *types.TipSet // msgTS is the tipset containing the messages that have been executed
 
-	load func(ctx context.Context, msgTs, rctTs *types.TipSet) ([]executedMessage, error)
+	load func(ctx context.Context, msgTS, rctTS *types.TipSet) ([]executedMessage, error)
 
 	once sync.Once // for lazy population of ems
 	ems  []executedMessage
@@ -265,17 +265,17 @@ type TipSetEvents struct {
 }
 
 func (te *TipSetEvents) Height() abi.ChainEpoch {
-	return te.msgTs.Height()
+	return te.msgTS.Height()
 }
 
 func (te *TipSetEvents) Cid() (cid.Cid, error) {
-	return te.msgTs.Key().Cid()
+	return te.msgTS.Key().Cid()
 }
 
 func (te *TipSetEvents) messages(ctx context.Context) ([]executedMessage, error) {
 	te.once.Do(func() {
 		// populate executed message list
-		ems, err := te.load(ctx, te.msgTs, te.rctTs)
+		ems, err := te.load(ctx, te.msgTS, te.rctTS)
 		if err != nil {
 			te.err = err
 			return
@@ -326,8 +326,8 @@ func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) 
 	}
 
 	tse := &TipSetEvents{
-		msgTs: from,
-		rctTs: to,
+		msgTS: from,
+		rctTS: to,
 		load:  m.loadExecutedMessages,
 	}
 
@@ -357,8 +357,8 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 	}
 
 	tse := &TipSetEvents{
-		msgTs: to,
-		rctTs: from,
+		msgTS: to,
+		rctTS: from,
 		load:  m.loadExecutedMessages,
 	}
 

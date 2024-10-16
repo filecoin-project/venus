@@ -66,7 +66,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 	}
 
 	events14000 := buildTipSetEvents(t, rng, 14000, em)
-	cid14000, err := events14000.msgTs.Key().Cid()
+	cid14000, err := events14000.msgTS.Key().Cid()
 	require.NoError(t, err, "tipset cid")
 
 	noCollectedEvents := []*CollectedEvent{}
@@ -77,7 +77,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 			EventIdx:    0,
 			Reverted:    false,
 			Height:      14000,
-			TipSetKey:   events14000.msgTs.Key(),
+			TipSetKey:   events14000.msgTS.Key(),
 			MsgIdx:      0,
 			MsgCid:      em.msg.Cid(),
 		},
@@ -421,13 +421,13 @@ func newStore() adt.Store {
 func buildTipSetEvents(tb testing.TB, rng *pseudo.Rand, h abi.ChainEpoch, em executedMessage) *TipSetEvents {
 	tb.Helper()
 
-	msgTs := fakeTipSet(tb, rng, h, []cid.Cid{})
-	rctTs := fakeTipSet(tb, rng, h+1, msgTs.Cids())
+	msgTS := fakeTipSet(tb, rng, h, []cid.Cid{})
+	rctTS := fakeTipSet(tb, rng, h+1, msgTS.Cids())
 
 	return &TipSetEvents{
-		msgTs: msgTs,
-		rctTs: rctTs,
-		load: func(ctx context.Context, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		msgTS: msgTS,
+		rctTS: rctTS,
+		load: func(ctx context.Context, msgTS, rctTS *types.TipSet) ([]executedMessage, error) {
 			return []executedMessage{em}, nil
 		},
 	}

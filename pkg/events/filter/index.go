@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-const DefaultDbFilename = "events.db"
+const DefaultDBFilename = "events.db"
 
 // Any changes to this schema should be matched for the `lotus-shed indexes backfill-events` command
 
@@ -51,7 +51,7 @@ var ddls = []string{
 
 	createTableEventsSeen,
 
-	createIndexEventEntryEventId,
+	createIndexEventEntryEventID,
 	createIndexEventsSeenHeight,
 	createIndexEventsSeenTipsetKeyCid,
 }
@@ -101,7 +101,7 @@ const (
 	createIndexEventTipsetKeyCid = `CREATE INDEX IF NOT EXISTS event_tipset_key_cid ON event (tipset_key_cid);`
 	createIndexEventHeight       = `CREATE INDEX IF NOT EXISTS event_height ON event (height);`
 
-	createIndexEventEntryEventId = `CREATE INDEX IF NOT EXISTS event_entry_event_id ON event_entry(event_id);`
+	createIndexEventEntryEventID = `CREATE INDEX IF NOT EXISTS event_entry_event_id ON event_entry(event_id);`
 
 	createIndexEventsSeenHeight       = `CREATE INDEX IF NOT EXISTS events_seen_height ON events_seen (height);`
 	createIndexEventsSeenTipsetKeyCid = `CREATE INDEX IF NOT EXISTS events_seen_tipset_key_cid ON events_seen (tipset_key_cid);`
@@ -148,7 +148,7 @@ type EventIndex struct {
 	stmt *preparedStatements
 
 	mu           sync.Mutex
-	subIdCounter uint64
+	subIDCounter uint64
 	updateSubs   map[uint64]*updateSub
 }
 
@@ -225,8 +225,8 @@ func (ei *EventIndex) SubscribeUpdates() (chan EventIndexUpdated, func()) {
 	}
 
 	ei.mu.Lock()
-	subId := ei.subIdCounter
-	ei.subIdCounter++
+	subId := ei.subIDCounter
+	ei.subIDCounter++
 	ei.updateSubs[subId] = tSub
 	ei.mu.Unlock()
 
@@ -277,19 +277,19 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	// rollback the transaction (a no-op if the transaction was already committed)
 	defer func() { _ = tx.Rollback() }()
 
-	tsKeyCid, err := te.msgTs.Key().Cid()
+	tsKeyCid, err := te.msgTS.Key().Cid()
 	if err != nil {
 		return fmt.Errorf("tipset key cid: %w", err)
 	}
 
 	// lets handle the revert case first, since its simpler and we can simply mark all events in this tipset as reverted and return
 	if revert {
-		_, err = tx.Stmt(ei.stmt.revertEventsInTipset).Exec(te.msgTs.Height(), te.msgTs.Key().Bytes())
+		_, err = tx.Stmt(ei.stmt.revertEventsInTipset).Exec(te.msgTS.Height(), te.msgTS.Key().Bytes())
 		if err != nil {
 			return fmt.Errorf("revert event: %w", err)
 		}
 
-		_, err = tx.Stmt(ei.stmt.revertEventSeen).Exec(te.msgTs.Height(), tsKeyCid.Bytes())
+		_, err = tx.Stmt(ei.stmt.revertEventSeen).Exec(te.msgTS.Height(), tsKeyCid.Bytes())
 		if err != nil {
 			return fmt.Errorf("revert event seen: %w", err)
 		}
@@ -336,7 +336,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			addr, found := addressLookups[ev.Emitter]
 			if !found {
 				var ok bool
-				addr, ok = resolver(ctx, ev.Emitter, te.rctTs)
+				addr, ok = resolver(ctx, ev.Emitter, te.rctTS)
 				if !ok {
 					// not an address we will be able to match against
 					continue
@@ -347,8 +347,8 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			// check if this event already exists in the database
 			var entryID sql.NullInt64
 			err = tx.Stmt(ei.stmt.eventExists).QueryRow(
-				te.msgTs.Height(),          // height
-				te.msgTs.Key().Bytes(),     // tipset_key
+				te.msgTS.Height(),          // height
+				te.msgTS.Key().Bytes(),     // tipset_key
 				tsKeyCid.Bytes(),           // tipset_key_cid
 				addr.Bytes(),               // emitter_addr
 				eventCount,                 // event_index
@@ -362,8 +362,8 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			if !entryID.Valid {
 				// event does not exist, lets insert it
 				res, err := tx.Stmt(ei.stmt.insertEvent).Exec(
-					te.msgTs.Height(),          // height
-					te.msgTs.Key().Bytes(),     // tipset_key
+					te.msgTS.Height(),          // height
+					te.msgTS.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
 					addr.Bytes(),               // emitter_addr
 					eventCount,                 // event_index
@@ -397,8 +397,8 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			} else {
 				// event already exists, lets mark it as not reverted
 				res, err := tx.Stmt(ei.stmt.restoreEvent).Exec(
-					te.msgTs.Height(),          // height
-					te.msgTs.Key().Bytes(),     // tipset_key
+					te.msgTS.Height(),          // height
+					te.msgTS.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
 					addr.Bytes(),               // emitter_addr
 					eventCount,                 // event_index
@@ -426,7 +426,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	// this statement will mark the tipset as processed and will insert a new row if it doesn't exist
 	// or update the reverted field to false if it does
 	_, err = tx.Stmt(ei.stmt.upsertEventsSeen).Exec(
-		te.msgTs.Height(),
+		te.msgTS.Height(),
 		tsKeyCid.Bytes(),
 	)
 	if err != nil {
