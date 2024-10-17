@@ -336,6 +336,20 @@ func init() {
 	addExample(&manifest.Manifest{})
 	addExample(gpbft.NetworkName("filecoin"))
 	addExample(gpbft.INITIAL_PHASE)
+
+	after := types.EthUint64(0)
+	count := types.EthUint64(100)
+
+	ethTraceFilterCriteria := types.EthTraceFilterCriteria{
+		FromBlock:   pstring("latest"),
+		ToBlock:     pstring("latest"),
+		FromAddress: types.EthAddressList{ethaddr},
+		ToAddress:   types.EthAddressList{ethaddr},
+		After:       &after,
+		Count:       &count,
+	}
+	addExample(&ethTraceFilterCriteria)
+	addExample(ethTraceFilterCriteria)
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

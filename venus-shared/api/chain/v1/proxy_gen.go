@@ -905,6 +905,7 @@ type IETHStruct struct {
 		EthSendRawTransaction                  func(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error)                                                                    `perm:"read"`
 		EthSyncing                             func(ctx context.Context) (types.EthSyncingResult, error)                                                                                 `perm:"read"`
 		EthTraceBlock                          func(ctx context.Context, blkNum string) ([]*types.EthTraceBlock, error)                                                                  `perm:"read"`
+		EthTraceFilter                         func(ctx context.Context, filter types.EthTraceFilterCriteria) ([]*types.EthTraceFilterResult, error)                                     `perm:"read"`
 		EthTraceReplayBlockTransactions        func(ctx context.Context, blkNum string, traceTypes []string) ([]*types.EthTraceReplayBlockTransaction, error)                            `perm:"read"`
 		EthTraceTransaction                    func(ctx context.Context, txHash string) ([]*types.EthTraceTransaction, error)                                                            `perm:"read"`
 		FilecoinAddressToEthAddress            func(ctx context.Context, filecoinAddress address.Address) (types.EthAddress, error)                                                      `perm:"read"`
@@ -1006,6 +1007,9 @@ func (s *IETHStruct) EthSyncing(p0 context.Context) (types.EthSyncingResult, err
 }
 func (s *IETHStruct) EthTraceBlock(p0 context.Context, p1 string) ([]*types.EthTraceBlock, error) {
 	return s.Internal.EthTraceBlock(p0, p1)
+}
+func (s *IETHStruct) EthTraceFilter(p0 context.Context, p1 types.EthTraceFilterCriteria) ([]*types.EthTraceFilterResult, error) {
+	return s.Internal.EthTraceFilter(p0, p1)
 }
 func (s *IETHStruct) EthTraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) ([]*types.EthTraceReplayBlockTransaction, error) {
 	return s.Internal.EthTraceReplayBlockTransactions(p0, p1, p2)
