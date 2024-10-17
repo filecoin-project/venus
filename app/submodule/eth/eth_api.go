@@ -1464,14 +1464,13 @@ func (a *ethAPI) EthTraceFilter(ctx context.Context, filter types.EthTraceFilter
 				continue
 			}
 
-			txTrace := types.EthTraceFilterResult{
+			results = append(results, &types.EthTraceFilterResult{
 				EthTrace:            blockTrace.EthTrace,
 				BlockHash:           blockTrace.BlockHash,
 				BlockNumber:         blockTrace.BlockNumber,
 				TransactionHash:     blockTrace.TransactionHash,
 				TransactionPosition: blockTrace.TransactionPosition,
-			}
-			results = append(results, &txTrace)
+			})
 
 			// If Count is specified, limit the results
 			if filter.Count != nil && types.EthUint64(len(results)) >= *filter.Count {
