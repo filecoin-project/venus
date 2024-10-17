@@ -293,9 +293,9 @@ func init() {
 	addExample(filterid)
 	addExample(&filterid)
 
-	subid := types.EthSubscriptionID(ethhash)
-	addExample(subid)
-	addExample(&subid)
+	subID := types.EthSubscriptionID(ethhash)
+	addExample(subID)
+	addExample(&subID)
 
 	pstring := func(s string) *string { return &s }
 	addExample(&types.EthFilterSpec{

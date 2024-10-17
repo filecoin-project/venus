@@ -225,19 +225,19 @@ func (ei *EventIndex) SubscribeUpdates() (chan EventIndexUpdated, func()) {
 	}
 
 	ei.mu.Lock()
-	subId := ei.subIDCounter
+	subID := ei.subIDCounter
 	ei.subIDCounter++
-	ei.updateSubs[subId] = tSub
+	ei.updateSubs[subID] = tSub
 	ei.mu.Unlock()
 
 	unSubscribeF := func() {
 		ei.mu.Lock()
-		tSub, ok := ei.updateSubs[subId]
+		tSub, ok := ei.updateSubs[subID]
 		if !ok {
 			ei.mu.Unlock()
 			return
 		}
-		delete(ei.updateSubs, subId)
+		delete(ei.updateSubs, subID)
 		ei.mu.Unlock()
 
 		// cancel the subscription

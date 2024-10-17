@@ -434,15 +434,15 @@ func (m *EventFilterManager) Remove(ctx context.Context, id types.FilterID) erro
 	return nil
 }
 
-func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
-	msgs, err := m.MessageStore.MessagesForTipset(msgTs)
+func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTS, rctTS *types.TipSet) ([]executedMessage, error) {
+	msgs, err := m.MessageStore.MessagesForTipset(msgTS)
 	if err != nil {
 		return nil, fmt.Errorf("read messages: %w", err)
 	}
 
 	st := adt.WrapStore(ctx, cbor.NewCborStore(m.ChainStore.Blockstore()))
 
-	arr, err := blockadt.AsArray(st, rctTs.Blocks()[0].ParentMessageReceipts)
+	arr, err := blockadt.AsArray(st, rctTS.Blocks()[0].ParentMessageReceipts)
 	if err != nil {
 		return nil, fmt.Errorf("load receipts amt: %w", err)
 	}
