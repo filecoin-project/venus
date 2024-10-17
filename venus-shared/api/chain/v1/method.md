@@ -100,6 +100,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [EthSendRawTransaction](#ethsendrawtransaction)
   * [EthSyncing](#ethsyncing)
   * [EthTraceBlock](#ethtraceblock)
+  * [EthTraceFilter](#ethtracefilter)
   * [EthTraceReplayBlockTransactions](#ethtracereplayblocktransactions)
   * [EthTraceTransaction](#ethtracetransaction)
   * [FilecoinAddressToEthAddress](#filecoinaddresstoethaddress)
@@ -3180,6 +3181,50 @@ Inputs:
 ```json
 [
   "string value"
+]
+```
+
+Response:
+```json
+[
+  {
+    "type": "string value",
+    "error": "string value",
+    "subtraces": 123,
+    "traceAddress": [
+      123
+    ],
+    "action": {},
+    "result": {},
+    "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "blockNumber": 9,
+    "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "transactionPosition": 123
+  }
+]
+```
+
+### EthTraceFilter
+Implements OpenEthereum-compatible API method trace_filter
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "fromBlock": "latest",
+    "toBlock": "latest",
+    "fromAddress": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ],
+    "toAddress": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ],
+    "after": "0x0",
+    "count": "0x64"
+  }
 ]
 ```
 

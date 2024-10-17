@@ -89,6 +89,8 @@ type IETH interface {
 	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*types.EthTraceReplayBlockTransaction, error) //perm:read
 	// Implmements OpenEthereum-compatible API method trace_transaction
 	EthTraceTransaction(ctx context.Context, txHash string) ([]*types.EthTraceTransaction, error) //perm:read
+	// Implements OpenEthereum-compatible API method trace_filter
+	EthTraceFilter(ctx context.Context, filter types.EthTraceFilterCriteria) ([]*types.EthTraceFilterResult, error) //perm:read
 }
 
 type IETHEvent interface {

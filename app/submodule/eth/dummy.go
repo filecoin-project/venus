@@ -165,6 +165,10 @@ func (e *ethAPIDummy) EthTraceTransaction(ctx context.Context, txHash string) ([
 	return nil, ErrModuleDisabled
 }
 
+func (e *ethAPIDummy) EthTraceFilter(ctx context.Context, filter types.EthTraceFilterCriteria) ([]*types.EthTraceFilterResult, error) {
+	return nil, ErrModuleDisabled
+}
+
 func (e *ethAPIDummy) start(_ context.Context) error {
 	return nil
 }

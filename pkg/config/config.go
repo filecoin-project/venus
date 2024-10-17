@@ -487,6 +487,9 @@ type FevmConfig struct {
 	// Set to 0 to keep all mappings
 	EthTxHashMappingLifetimeDays int `json:"ethTxHashMappingLifetimeDays"`
 
+	// EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter
+	EthTraceFilterMaxResults uint64 `json:"ethTraceFilterMaxResults"`
+
 	// EthBlkCacheSize specifies the size of the cache used for caching Ethereum blocks.
 	// This cache enhances the performance of the eth_getBlockByHash RPC call by minimizing the need to access chain state for
 	// recently requested blocks that are already cached.
@@ -513,6 +516,7 @@ func newFevmConfig() *FevmConfig {
 	return &FevmConfig{
 		EnableEthRPC:                 false,
 		EthTxHashMappingLifetimeDays: 0,
+		EthTraceFilterMaxResults:     500,
 		EthBlkCacheSize:              500,
 		Event: EventConfig{
 			DisableRealTimeFilterAPI: false,
