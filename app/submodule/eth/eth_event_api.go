@@ -26,6 +26,11 @@ import (
 	"github.com/zyedidia/generic/queue"
 )
 
+var (
+	// wait for 3 epochs
+	eventReadTimeout = 90 * time.Second
+)
+
 var _ v1.IETHEvent = (*ethEventAPI)(nil)
 
 func newEthEventAPI(ctx context.Context, em *EthSubModule) (*ethEventAPI, error) {
@@ -147,21 +152,150 @@ func (e *ethEventAPI) Close(ctx context.Context) error {
 	return nil
 }
 
+// TODO: For now, we're fetching logs from the index for the entire block and then filtering them by the transaction hash
+// This allows us to use the current schema of the event Index DB that has been optimised to use the "tipset_key_cid" index
+// However, this can be replaced to filter logs in the event Index DB by the "msgCid" if we pass it down to the query generator
+func (e *ethEventAPI) getEthLogsForBlockAndTransaction(ctx context.Context, blockHash *types.EthHash, txHash types.EthHash) ([]types.EthLog, error) {
+	ces, err := e.ethGetEventsForFilter(ctx, &types.EthFilterSpec{BlockHash: blockHash})
+	if err != nil {
+		return nil, err
+	}
+	logs, err := ethFilterLogsFromEvents(ctx, ces, e.em.chainModule.MessageStore)
+	if err != nil {
+		return nil, err
+	}
+	var out []types.EthLog
+	for _, log := range logs {
+		if log.TransactionHash == txHash {
+			out = append(out, log)
+		}
+	}
+	return out, nil
+}
+
 func (e *ethEventAPI) EthGetLogs(ctx context.Context, filterSpec *types.EthFilterSpec) (*types.EthFilterResult, error) {
+	ces, err := e.ethGetEventsForFilter(ctx, filterSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	return ethFilterResultFromEvents(ctx, ces, e.em.chainModule.MessageStore)
+}
+
+func (e *ethEventAPI) ethGetEventsForFilter(ctx context.Context, filterSpec *types.EthFilterSpec) ([]*filter.CollectedEvent, error) {
 	if e.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
 
-	// Create a temporary filter
-	f, err := e.installEthFilterSpec(ctx, filterSpec)
+	if e.EventFilterManager.EventIndex == nil {
+		return nil, fmt.Errorf("cannot use eth_get_logs if historical event index is disabled")
+	}
+
+	pf, err := e.parseEthFilterSpec(filterSpec)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse eth filter spec: %w", err)
+	}
+
+	if pf.tipsetCid == cid.Undef {
+		maxHeight := pf.maxHeight
+		if maxHeight == -1 {
+			// heaviest tipset doesn't have events because its messages haven't been executed yet
+			maxHeight = e.em.chainModule.ChainReader.GetHead().Height() - 1
+		}
+
+		if maxHeight < 0 {
+			return nil, fmt.Errorf("maxHeight requested is less than 0")
+		}
+
+		// we can't return events for the heaviest tipset as the transactions in that tipset will be executed
+		// in the next non null tipset (because of Filecoin's "deferred execution" model)
+		if maxHeight > e.em.chainModule.ChainReader.GetHead().Height()-1 {
+			return nil, fmt.Errorf("maxHeight requested is greater than the heaviest tipset")
+		}
+
+		err := e.waitForHeightProcessed(ctx, maxHeight)
+		if err != nil {
+			return nil, err
+		}
+		// TODO: Ideally we should also check that events for the epoch at `pf.minheight` have been indexed
+		// However, it is currently tricky to check/guarantee this for two reasons:
+		// a) Event Index is not aware of null-blocks. This means that the Event Index wont be able to say whether the block at
+		//    `pf.minheight` is a null block or whether it has no events
+		// b) There can be holes in the index where events at certain epoch simply haven't been indexed because of edge cases around
+		//    node restarts while indexing. This needs a long term "auto-repair"/"automated-backfilling" implementation in the index
+		// So, for now, the best we can do is ensure that the event index has evenets for events at height >= `pf.maxHeight`
+	} else {
+		ts, err := e.em.chainModule.ChainReader.GetTipSetByCid(ctx, pf.tipsetCid)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get tipset by cid: %w", err)
+		}
+		err = e.waitForHeightProcessed(ctx, ts.Height())
+		if err != nil {
+			return nil, err
+		}
+
+		b, err := e.EventFilterManager.EventIndex.IsTipsetProcessed(ctx, pf.tipsetCid.Bytes())
+		if err != nil {
+			return nil, fmt.Errorf("failed to check if tipset events have been indexed: %w", err)
+		}
+		if !b {
+			return nil, fmt.Errorf("event index failed to index tipset %s", pf.tipsetCid.String())
+		}
+	}
+
+	// Create a temporary filter
+	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to install event filter: %w", err)
 	}
 	ces := f.TakeCollectedEvents(ctx)
 
 	_ = e.uninstallFilter(ctx, f)
 
-	return ethFilterResultFromEvents(ces, e.em.chainModule.MessageStore)
+	return ces, nil
+}
+
+// note that we can have null blocks at the given height and the event Index is not null block aware
+// so, what we do here is wait till we see the event index contain a block at a height greater than the given height
+func (e *ethEventAPI) waitForHeightProcessed(ctx context.Context, height abi.ChainEpoch) error {
+	ei := e.EventFilterManager.EventIndex
+	if height > e.em.chainModule.ChainReader.GetHead().Height() {
+		return fmt.Errorf("height is in the future")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, eventReadTimeout)
+	defer cancel()
+
+	// if the height we're interested in has already been indexed -> there's nothing to do here
+	if b, err := ei.IsHeightPast(ctx, uint64(height)); err != nil {
+		return fmt.Errorf("failed to check if event index has events for given height: %w", err)
+	} else if b {
+		return nil
+	}
+
+	// subscribe for updates to the event index
+	subCh, unSubscribeF := ei.SubscribeUpdates()
+	defer unSubscribeF()
+
+	// it could be that the event index was update while the subscription was being processed -> check if index has what we need now
+	if b, err := ei.IsHeightPast(ctx, uint64(height)); err != nil {
+		return fmt.Errorf("failed to check if event index has events for given height: %w", err)
+	} else if b {
+		return nil
+	}
+
+	for {
+		select {
+		case <-subCh:
+			if b, err := ei.IsHeightPast(ctx, uint64(height)); err != nil {
+				return fmt.Errorf("failed to check if event index has events for given height: %w", err)
+			} else if b {
+				return nil
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }
 
 func (e *ethEventAPI) EthGetFilterChanges(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error) {
@@ -176,7 +310,7 @@ func (e *ethEventAPI) EthGetFilterChanges(ctx context.Context, id types.EthFilte
 
 	switch fc := f.(type) {
 	case filterEventCollector:
-		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore)
+		return ethFilterResultFromEvents(ctx, fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore)
 	case filterTipSetCollector:
 		return ethFilterResultFromTipSets(fc.TakeCollectedTipSets(ctx))
 	case filterMessageCollector:
@@ -198,7 +332,7 @@ func (e *ethEventAPI) EthGetFilterLogs(ctx context.Context, id types.EthFilterID
 
 	switch fc := f.(type) {
 	case filterEventCollector:
-		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore)
+		return ethFilterResultFromEvents(ctx, fc.TakeCollectedEvents(ctx), e.em.chainModule.MessageStore)
 	}
 
 	return nil, fmt.Errorf("wrong filter type")
@@ -552,6 +686,61 @@ func (e *ethEventAPI) GC(ctx context.Context, ttl time.Duration) {
 	}
 }
 
+type parsedFilter struct {
+	minHeight abi.ChainEpoch
+	maxHeight abi.ChainEpoch
+	tipsetCid cid.Cid
+	addresses []address.Address
+	keys      map[string][]types.ActorEventBlock
+}
+
+func (e *ethEventAPI) parseEthFilterSpec(filterSpec *types.EthFilterSpec) (*parsedFilter, error) {
+	var (
+		minHeight abi.ChainEpoch
+		maxHeight abi.ChainEpoch
+		tipsetCid cid.Cid
+		addresses []address.Address
+		keys      = map[string][][]byte{}
+	)
+
+	if filterSpec.BlockHash != nil {
+		if filterSpec.FromBlock != nil || filterSpec.ToBlock != nil {
+			return nil, fmt.Errorf("must not specify block hash and from/to block")
+		}
+
+		tipsetCid = filterSpec.BlockHash.ToCid()
+	} else {
+		var err error
+		head := e.em.chainModule.ChainReader.GetHead()
+		minHeight, maxHeight, err = parseBlockRange(head.Height(), filterSpec.FromBlock, filterSpec.ToBlock, e.MaxFilterHeightRange)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Convert all addresses to filecoin f4 addresses
+	for _, ea := range filterSpec.Address {
+		a, err := ea.ToFilecoinAddress()
+		if err != nil {
+			return nil, fmt.Errorf("invalid address %x", ea)
+		}
+		addresses = append(addresses, a)
+	}
+
+	keys, err := parseEthTopics(filterSpec.Topics)
+	if err != nil {
+		return nil, err
+	}
+
+	return &parsedFilter{
+		minHeight: minHeight,
+		maxHeight: maxHeight,
+		tipsetCid: tipsetCid,
+		addresses: addresses,
+		keys:      keysToKeysWithCodec(keys),
+	}, nil
+}
+
 type filterEventCollector interface {
 	TakeCollectedEvents(context.Context) []*filter.CollectedEvent
 }
@@ -627,8 +816,9 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []types.Et
 	return data, topics, true
 }
 
-func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageStore) (*types.EthFilterResult, error) {
-	res := &types.EthFilterResult{}
+// func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageStore) (*types.EthFilterResult, error) {
+func ethFilterLogsFromEvents(_ context.Context, evs []*filter.CollectedEvent, ms *chain.MessageStore) ([]types.EthLog, error) {
+	var logs []types.EthLog
 	for _, ev := range evs {
 		log := types.EthLog{
 			Removed:          ev.Reverted,
@@ -669,6 +859,20 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, ms *chain.MessageSt
 			return nil, err
 		}
 
+		logs = append(logs, log)
+	}
+
+	return logs, nil
+}
+
+func ethFilterResultFromEvents(ctx context.Context, evs []*filter.CollectedEvent, ms *chain.MessageStore) (*types.EthFilterResult, error) {
+	logs, err := ethFilterLogsFromEvents(ctx, evs, ms)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &types.EthFilterResult{}
+	for _, log := range logs {
 		res.Results = append(res.Results, log)
 	}
 
@@ -870,7 +1074,7 @@ func (e *ethSubscription) start(ctx context.Context) {
 			case v := <-e.in:
 				switch vt := v.(type) {
 				case *filter.CollectedEvent:
-					evs, err := ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.messageStore)
+					evs, err := ethFilterResultFromEvents(ctx, []*filter.CollectedEvent{vt}, e.messageStore)
 					if err != nil {
 						continue
 					}

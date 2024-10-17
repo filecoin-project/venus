@@ -192,6 +192,7 @@ func aliasETHAPI(rpcServer *jsonrpc.RPCServer) {
 	rpcServer.AliasMethod("eth_getMessageCidByTransactionHash", "Filecoin.EthGetMessageCidByTransactionHash")
 	rpcServer.AliasMethod("eth_getTransactionCount", "Filecoin.EthGetTransactionCount")
 	rpcServer.AliasMethod("eth_getTransactionReceipt", "Filecoin.EthGetTransactionReceipt")
+	rpcServer.AliasMethod("eth_getBlockReceipts", "Filecoin.EthGetBlockReceipts")
 	rpcServer.AliasMethod("eth_getTransactionByBlockHashAndIndex", "Filecoin.EthGetTransactionByBlockHashAndIndex")
 	rpcServer.AliasMethod("eth_getTransactionByBlockNumberAndIndex", "Filecoin.EthGetTransactionByBlockNumberAndIndex")
 

@@ -3,11 +3,11 @@ package vf3
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/multierr"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
@@ -136,7 +136,7 @@ func (l *leaser) newParticipationTicket(nn gpbft.NetworkName, participant uint64
 		FromInstance: from,
 		ValidityTerm: instances,
 	}).MarshalCBOR(&buf); err != nil {
-		return nil, xerrors.Errorf("issuing participation ticket: %w", err)
+		return nil, fmt.Errorf("issuing participation ticket: %w", err)
 	}
 	return buf.Bytes(), nil
 }

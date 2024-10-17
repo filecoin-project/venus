@@ -503,6 +503,10 @@ type EventsConfig struct {
 	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be
 	// disabled by setting their respective Disable* options in Fevm.Event.
 	EnableActorEventsAPI bool `json:"enableActorEventsAPI"`
+
+	// MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+	// the entire chain)
+	MaxFilterHeightRange uint64
 }
 
 func newFevmConfig() *FevmConfig {
@@ -524,6 +528,7 @@ func newFevmConfig() *FevmConfig {
 func newEventsConfig() *EventsConfig {
 	return &EventsConfig{
 		EnableActorEventsAPI: false,
+		MaxFilterHeightRange: 2880, // conservative limit of one day
 	}
 }
 

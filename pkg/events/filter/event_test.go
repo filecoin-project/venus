@@ -427,7 +427,7 @@ func buildTipSetEvents(tb testing.TB, rng *pseudo.Rand, h abi.ChainEpoch, em exe
 	return &TipSetEvents{
 		msgTS: msgTS,
 		rctTS: rctTS,
-		load: func(ctx context.Context, msgTs, rctTs *types.TipSet) ([]executedMessage, error) {
+		load: func(ctx context.Context, msgTS, rctTS *types.TipSet) ([]executedMessage, error) {
 			return []executedMessage{em}, nil
 		},
 	}

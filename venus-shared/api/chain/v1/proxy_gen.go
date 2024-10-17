@@ -885,6 +885,8 @@ type IETHStruct struct {
 		EthGetBalance                          func(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBigInt, error)                         `perm:"read"`
 		EthGetBlockByHash                      func(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error)                                                 `perm:"read"`
 		EthGetBlockByNumber                    func(ctx context.Context, blkNum string, fullTxInfo bool) (*types.EthBlock, error)                                                        `perm:"read"`
+		EthGetBlockReceipts                    func(ctx context.Context, blkParam types.EthBlockNumberOrHash) ([]*types.EthTxReceipt, error)                                             `perm:"read"`
+		EthGetBlockReceiptsLimited             func(ctx context.Context, blkParam types.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*types.EthTxReceipt, error)                       `perm:"read"`
 		EthGetBlockTransactionCountByHash      func(ctx context.Context, blkHash types.EthHash) (types.EthUint64, error)                                                                 `perm:"read"`
 		EthGetBlockTransactionCountByNumber    func(ctx context.Context, blkNum types.EthUint64) (types.EthUint64, error)                                                                `perm:"read"`
 		EthGetCode                             func(ctx context.Context, address types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error)                          `perm:"read"`
@@ -944,6 +946,12 @@ func (s *IETHStruct) EthGetBlockByHash(p0 context.Context, p1 types.EthHash, p2 
 }
 func (s *IETHStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (*types.EthBlock, error) {
 	return s.Internal.EthGetBlockByNumber(p0, p1, p2)
+}
+func (s *IETHStruct) EthGetBlockReceipts(p0 context.Context, p1 types.EthBlockNumberOrHash) ([]*types.EthTxReceipt, error) {
+	return s.Internal.EthGetBlockReceipts(p0, p1)
+}
+func (s *IETHStruct) EthGetBlockReceiptsLimited(p0 context.Context, p1 types.EthBlockNumberOrHash, p2 abi.ChainEpoch) ([]*types.EthTxReceipt, error) {
+	return s.Internal.EthGetBlockReceiptsLimited(p0, p1, p2)
 }
 func (s *IETHStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 types.EthHash) (types.EthUint64, error) {
 	return s.Internal.EthGetBlockTransactionCountByHash(p0, p1)
