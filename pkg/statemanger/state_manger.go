@@ -228,28 +228,17 @@ func (s *Stmgr) TipsetState(ctx context.Context, ts *types.TipSet) (*tree.State,
 
 // deprecated: this implementation needs more considerations
 func (s *Stmgr) Rollback(ctx context.Context, pts, cts *types.TipSet) error {
-	log.Infof("rollback chain head from(%d) to a valid tipset", pts.Height())
-redo:
+	log.Infof("rollback chain head from(%d)", pts.Height())
 	s.stLk.Lock()
+	defer s.stLk.Unlock()
+
 	if err := s.cs.DeleteTipSetMetadata(ctx, pts); err != nil {
-		s.stLk.Unlock()
 		return err
 	}
 	if err := s.cs.SetHead(ctx, pts); err != nil {
-		s.stLk.Unlock()
 		return err
 	}
-	s.stLk.Unlock()
 
-	if root, _, err := s.RunStateTransition(ctx, pts, nil, false); err != nil {
-		return err
-	} else if !root.Equals(cts.At(0).ParentStateRoot) {
-		cts = pts
-		if pts, err = s.cs.GetTipSet(ctx, cts.Parents()); err != nil {
-			return err
-		}
-		goto redo
-	}
 	return nil
 }
 
