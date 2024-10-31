@@ -19,7 +19,7 @@ type f3Status = func() (*manifest.Manifest, gpbft.Instant)
 type leaser struct {
 	mutex                sync.Mutex
 	leases               map[uint64]types.F3ParticipationLease
-	issuer               peer.ID
+	issuer               string // issuer is the base58 encoding of the node peer ID.
 	status               f3Status
 	maxLeasableInstances uint64
 	// Signals that a lease was created and/or updated.
@@ -29,7 +29,7 @@ type leaser struct {
 func newParticipationLeaser(nodeID peer.ID, status f3Status, maxLeasedInstances uint64) *leaser {
 	return &leaser{
 		leases:               make(map[uint64]types.F3ParticipationLease),
-		issuer:               nodeID,
+		issuer:               nodeID.String(),
 		status:               status,
 		maxLeasableInstances: maxLeasedInstances,
 		notifyParticipation:  make(chan struct{}, 1),
@@ -37,7 +37,9 @@ func newParticipationLeaser(nodeID peer.ID, status f3Status, maxLeasedInstances 
 }
 
 func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous types.F3ParticipationTicket, instances uint64) (types.F3ParticipationTicket, error) {
-
+	if instances == 0 {
+		return nil, errors.New("not enough instances")
+	}
 	if instances > l.maxLeasableInstances {
 		return nil, types.ErrF3ParticipationTooManyInstances
 	}
@@ -96,15 +98,25 @@ func (l *leaser) participate(ticket types.F3ParticipationTicket) (types.F3Partic
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	currentLease, found := l.leases[newLease.MinerID]
-	if found && currentLease.Network == newLease.Network && currentLease.FromInstance > newLease.FromInstance {
-		// For safety, strictly require lease start instance to never decrease.
-		return types.F3ParticipationLease{}, types.ErrF3ParticipationTicketStartBeforeExisting
+	if found {
+		// short-circuite for reparticipation.
+		if currentLease == newLease {
+			return newLease, nil
+		}
+		if currentLease.Network == newLease.Network && currentLease.FromInstance > newLease.FromInstance {
+			// For safety, strictly require lease start instance to never decrease.
+			return types.F3ParticipationLease{}, types.ErrF3ParticipationTicketStartBeforeExisting
+		}
+	} else {
+		log.Infof("started participating in F3 for miner %d", newLease.MinerID)
 	}
 	l.leases[newLease.MinerID] = newLease
 	select {
 	case l.notifyParticipation <- struct{}{}:
 	default:
 	}
+	newLease.ValidityTerm = newLease.ToInstance() - instant.ID
+	newLease.FromInstance = instant.ID
 	return newLease, nil
 }
 

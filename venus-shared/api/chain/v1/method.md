@@ -3859,9 +3859,9 @@ Response:
 {
   "Network": "filecoin",
   "Issuer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "MinerID": 42,
-  "FromInstance": 42,
-  "ValidityTerm": 42
+  "MinerID": 1234,
+  "FromInstance": 10,
+  "ValidityTerm": 15
 }
 ```
 

@@ -350,6 +350,16 @@ func init() {
 	}
 	addExample(&ethTraceFilterCriteria)
 	addExample(ethTraceFilterCriteria)
+
+	f3Lease := types.F3ParticipationLease{
+		Network:      "filecoin",
+		Issuer:       pid.String(),
+		MinerID:      1234,
+		FromInstance: 10,
+		ValidityTerm: 15,
+	}
+	addExample(f3Lease)
+	addExample(&f3Lease)
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {
