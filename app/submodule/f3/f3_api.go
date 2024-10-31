@@ -89,3 +89,10 @@ func (f3api *f3API) F3GetProgress(context.Context) (gpbft.Instant, error) {
 	}
 	return f3api.f3module.F3.Progress(), nil
 }
+
+func (f3api *f3API) F3ListParticipants(ctx context.Context) ([]types.F3Participant, error) {
+	if f3api.f3module.F3 == nil {
+		return nil, types.ErrF3Disabled
+	}
+	return f3api.f3module.F3.ListParticipants(), nil
+}
