@@ -80,8 +80,7 @@ func Calibration() *NetworkConf {
 			AllowableClockDriftSecs: 1,
 			Eip155ChainID:           314159,
 			ActorDebugging:          false,
-			F3Consensus:             true,
-			F3InitialPowerTableCID:  cid.Undef,
+			F3InitialPowerTableCID:  cid.MustParse("bafy2bzaceab236vmmb3n4q4tkvua2n4dphcbzzxerxuey3mot4g3cov5j3r2c"),
 		},
 	}
 
