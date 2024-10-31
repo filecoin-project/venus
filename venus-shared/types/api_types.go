@@ -528,6 +528,19 @@ func (l *F3ParticipationLease) ToInstance() uint64 {
 	return l.FromInstance + l.ValidityTerm
 }
 
+// F3Participant captures information about the miners that are currently
+// participating in F3, along with the number of instances for which their lease
+// is valid.
+type F3Participant struct {
+	// MinerID is the actor ID of the miner that is
+	MinerID uint64
+	// FromInstance specifies the instance ID from which this lease is valid.
+	FromInstance uint64
+	// ValidityTerm specifies the number of instances for which the lease remains
+	// valid from the FromInstance.
+	ValidityTerm uint64
+}
+
 var (
 	// ErrF3Disabled signals that F3 consensus process is disabled.
 	ErrF3Disabled = errF3Disabled{}

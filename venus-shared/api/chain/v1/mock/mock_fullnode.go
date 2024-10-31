@@ -1224,6 +1224,21 @@ func (mr *MockFullNodeMockRecorder) F3IsRunning(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3IsRunning", reflect.TypeOf((*MockFullNode)(nil).F3IsRunning), arg0)
 }
 
+// F3ListParticipants mocks base method.
+func (m *MockFullNode) F3ListParticipants(arg0 context.Context) ([]types0.F3Participant, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3ListParticipants", arg0)
+	ret0, _ := ret[0].([]types0.F3Participant)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3ListParticipants indicates an expected call of F3ListParticipants.
+func (mr *MockFullNodeMockRecorder) F3ListParticipants(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3ListParticipants", reflect.TypeOf((*MockFullNode)(nil).F3ListParticipants), arg0)
+}
+
 // F3Participate mocks base method.
 func (m *MockFullNode) F3Participate(arg0 context.Context, arg1 types0.F3ParticipationTicket) (types0.F3ParticipationLease, error) {
 	m.ctrl.T.Helper()

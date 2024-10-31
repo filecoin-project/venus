@@ -126,6 +126,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [F3GetOrRenewParticipationTicket](#f3getorrenewparticipationticket)
   * [F3GetProgress](#f3getprogress)
   * [F3IsRunning](#f3isrunning)
+  * [F3ListParticipants](#f3listparticipants)
   * [F3Participate](#f3participate)
 * [Market](#market)
   * [StateMarketParticipants](#statemarketparticipants)
@@ -3802,6 +3803,25 @@ Perms: read
 Inputs: `[]`
 
 Response: `true`
+
+### F3ListParticipants
+F3ListParticipants returns the list of miners that are currently participating in F3 via this node.
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  {
+    "MinerID": 42,
+    "FromInstance": 42,
+    "ValidityTerm": 42
+  }
+]
+```
 
 ### F3Participate
 F3Participate enrolls a storage provider in the F3 consensus process using a
