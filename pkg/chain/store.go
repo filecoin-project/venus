@@ -321,6 +321,10 @@ func (store *Store) GetTipSet(ctx context.Context, key types.TipSetKey) (*types.
 		return store.GetHead(), nil
 	}
 
+	return store.getTipSet(ctx, key)
+}
+
+func (store *Store) getTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
 	if val, has := store.tsCache.Get(key); has {
 		return val, nil
 	}
@@ -1099,9 +1103,7 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, *ty
 // SetCheckpoint will set a checkpoint past which the chainstore will not allow forks. If the new
 // checkpoint is not an ancestor of the current head, head will be set to the new checkpoint.
 //
-// NOTE: Checkpoints cannot be set beyond ForkLengthThreshold epochs in the past, but can be set
-// arbitrarily far into the future.
-// NOTE: The new checkpoint must already be synced.
+// NOTE: Checkpoints cannot revert more than policy.Finality epochs.
 func (store *Store) SetCheckpoint(ctx context.Context, ts *types.TipSet) error {
 	log.Infof("SetCheckPoint at %d: %v", ts.Height(), ts.Key())
 	buf := new(bytes.Buffer)
@@ -1113,26 +1115,57 @@ func (store *Store) SetCheckpoint(ctx context.Context, ts *types.TipSet) error {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 
-	// Otherwise, this operation could get _very_ expensive.
-	if store.head.Height()-ts.Height() > policy.ChainFinality {
-		return fmt.Errorf("cannot set a checkpoint before the fork threshold")
+	finality := store.head.Height() - policy.ChainFinality
+	targetChain, currentChain := ts, store.head
+
+	// First attempt to skip backwards to a common height using the chain index.
+	if targetChain.Height() > currentChain.Height() {
+		targetChain, err = store.GetTipSetByHeight(ctx, targetChain, currentChain.Height(), true)
+	} else if targetChain.Height() < currentChain.Height() {
+		currentChain, err = store.GetTipSetByHeight(ctx, currentChain, targetChain.Height(), true)
+	}
+	if err != nil {
+		return fmt.Errorf("checkpoint failed: error when finding the fork point: %w", err)
 	}
 
-	if !ts.Equals(store.head) {
-		anc, err := store.IsAncestorOf(ctx, ts, store.head)
-		if err != nil {
-			return fmt.Errorf("cannot determine whether checkpoint tipset is in main-chain: %w", err)
+	// Then walk backwards until either we find a common block (the fork height) or we reach
+	// finality. If the tipsets are _equal_ on the first pass through this loop, it means one
+	// chain is a prefix of the other chain because we've only walked back on one chain so far.
+	// In that case, we _don't_ check finality because we're not forking.
+	for !currentChain.Equals(targetChain) && currentChain.Height() > finality {
+		if currentChain.Height() >= targetChain.Height() {
+			currentChain, err = store.getTipSet(ctx, currentChain.Parents())
+			if err != nil {
+				return fmt.Errorf("checkpoint failed: error when walking the current chain: %w", err)
+			}
 		}
 
-		if !anc {
-			if err := store.setHead(ctx, ts); err != nil {
-				return fmt.Errorf("failed to switch chains when setting checkpoint: %w", err)
+		if targetChain.Height() > currentChain.Height() {
+			targetChain, err = store.getTipSet(ctx, targetChain.Parents())
+			if err != nil {
+				return fmt.Errorf("checkpoint failed: error when walking the target chain: %w", err)
 			}
 		}
 	}
 
+	// If we haven't found a common tipset by this point, we can't switch chains.
+	if !currentChain.Equals(targetChain) {
+		return fmt.Errorf("checkpoint failed: failed to find the fork point from %s (head) to %s (target) within finality",
+			store.head.Key(),
+			ts.Key(),
+		)
+	}
+
+	// If the target tipset isn't an ancestor of our current chain, we need to switch chains.
+	if !currentChain.Equals(ts) {
+		if err := store.setHead(ctx, ts); err != nil {
+			return fmt.Errorf("failed to switch chains when setting checkpoint: %w", err)
+		}
+	}
+
+	// Finally, set the checkpoint.
 	if err := store.ds.Put(ctx, CheckPoint, buf.Bytes()); err != nil {
-		return err
+		return fmt.Errorf("checkpoint failed: failed to record checkpoint in the datastore: %w", err)
 	}
 	store.checkPoint = ts.Key()
 
@@ -1145,17 +1178,12 @@ func (store *Store) IsAncestorOf(ctx context.Context, a, b *types.TipSet) (bool,
 		return false, nil
 	}
 
-	cur := b
-	for !a.Equals(cur) && cur.Height() > a.Height() {
-		next, err := store.GetTipSet(ctx, cur.Parents())
-		if err != nil {
-			return false, err
-		}
-
-		cur = next
+	target, err := store.GetTipSetByHeight(ctx, b, a.Height(), false)
+	if err != nil {
+		return false, err
 	}
 
-	return cur.Equals(a), nil
+	return target.Equals(a), nil
 }
 
 // GetCheckPoint get the check point from store or disk.
