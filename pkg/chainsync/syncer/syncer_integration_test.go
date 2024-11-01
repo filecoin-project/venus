@@ -91,6 +91,7 @@ func TestLoadFork(t *testing.T) {
 	// Load a new chain bsstore on the underlying data. It will only compute state for the
 	// left (heavy) branch. It has a fetcher that can't provide blocks.
 	newStore := chain.NewStore(builder.Repo().ChainDatastore(), builder.BlockStore(), genesis.At(0).Cid(), chainselector.Weight)
+	require.NoError(t, newStore.SetHead(ctx, genesis))
 	require.NoError(t, newStore.SetCheckpoint(ctx, genesis))
 	require.NoError(t, newStore.Load(ctx))
 	_, err = syncer.NewSyncer(stmgr,
