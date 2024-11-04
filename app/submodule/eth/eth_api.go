@@ -273,23 +273,13 @@ func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool
 	}
 }
 
-func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (*types.EthBlock, error) {
-	// Get the tipset for the specified block parameter
-	ts, err := a.parseBlkParam(ctx, blkParam, true)
+func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (types.EthBlock, error) {
+	ts, err := getTipsetByBlockNumber(ctx, a.em.chainModule.ChainReader, blkParam, true)
 	if err != nil {
-		if err == ErrNullRound {
-			// Return nil for null rounds
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to get tipset: %w", err)
-	}
-	// Create an Ethereum block from the Filecoin tipset
-	block, err := newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Ethereum block: %w", err)
+		return types.EthBlock{}, err
 	}
 
-	return &block, nil
+	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
 }
 
 func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error) {

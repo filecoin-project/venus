@@ -610,10 +610,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockByHash(arg0, arg1, arg2 interface
 }
 
 // EthGetBlockByNumber mocks base method.
-func (m *MockFullNode) EthGetBlockByNumber(arg0 context.Context, arg1 string, arg2 bool) (*types.EthBlock, error) {
+func (m *MockFullNode) EthGetBlockByNumber(arg0 context.Context, arg1 string, arg2 bool) (types.EthBlock, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBlockByNumber", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*types.EthBlock)
+	ret0, _ := ret[0].(types.EthBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1222,6 +1222,21 @@ func (m *MockFullNode) F3IsRunning(arg0 context.Context) (bool, error) {
 func (mr *MockFullNodeMockRecorder) F3IsRunning(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3IsRunning", reflect.TypeOf((*MockFullNode)(nil).F3IsRunning), arg0)
+}
+
+// F3ListParticipants mocks base method.
+func (m *MockFullNode) F3ListParticipants(arg0 context.Context) ([]types0.F3Participant, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3ListParticipants", arg0)
+	ret0, _ := ret[0].([]types0.F3Participant)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3ListParticipants indicates an expected call of F3ListParticipants.
+func (mr *MockFullNodeMockRecorder) F3ListParticipants(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3ListParticipants", reflect.TypeOf((*MockFullNode)(nil).F3ListParticipants), arg0)
 }
 
 // F3Participate mocks base method.

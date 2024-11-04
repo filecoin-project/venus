@@ -15,7 +15,6 @@ import (
 	exitcode "github.com/filecoin-project/go-state-types/exitcode"
 	proof "github.com/filecoin-project/go-state-types/proof"
 	cid "github.com/ipfs/go-cid"
-	peer "github.com/libp2p/go-libp2p/core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 	time "time"
@@ -2493,7 +2492,7 @@ func (t *F3ParticipationLease) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Issuer (peer.ID) (string)
+	// t.Issuer (string) (string)
 	if len(t.Issuer) > 8192 {
 		return xerrors.Errorf("Value in field t.Issuer was too long")
 	}
@@ -2559,7 +2558,7 @@ func (t *F3ParticipationLease) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.Network = gpbft.NetworkName(sval)
 	}
-	// t.Issuer (peer.ID) (string)
+	// t.Issuer (string) (string)
 
 	{
 		sval, err := cbg.ReadStringWithMax(cr, 8192)
@@ -2567,7 +2566,7 @@ func (t *F3ParticipationLease) UnmarshalCBOR(r io.Reader) (err error) {
 			return err
 		}
 
-		t.Issuer = peer.ID(sval)
+		t.Issuer = string(sval)
 	}
 	// t.MinerID (uint64) (uint64)
 

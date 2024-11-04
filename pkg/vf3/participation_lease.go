@@ -19,7 +19,7 @@ type f3Status = func() (*manifest.Manifest, gpbft.Instant)
 type leaser struct {
 	mutex                sync.Mutex
 	leases               map[uint64]types.F3ParticipationLease
-	issuer               peer.ID
+	issuer               string // issuer is the base58 encoding of the node peer ID.
 	status               f3Status
 	maxLeasableInstances uint64
 	// Signals that a lease was created and/or updated.
@@ -29,7 +29,7 @@ type leaser struct {
 func newParticipationLeaser(nodeID peer.ID, status f3Status, maxLeasedInstances uint64) *leaser {
 	return &leaser{
 		leases:               make(map[uint64]types.F3ParticipationLease),
-		issuer:               nodeID,
+		issuer:               nodeID.String(),
 		status:               status,
 		maxLeasableInstances: maxLeasedInstances,
 		notifyParticipation:  make(chan struct{}, 1),
@@ -37,7 +37,9 @@ func newParticipationLeaser(nodeID peer.ID, status f3Status, maxLeasedInstances 
 }
 
 func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous types.F3ParticipationTicket, instances uint64) (types.F3ParticipationTicket, error) {
-
+	if instances == 0 {
+		return nil, errors.New("not enough instances")
+	}
 	if instances > l.maxLeasableInstances {
 		return nil, types.ErrF3ParticipationTooManyInstances
 	}
@@ -55,7 +57,7 @@ func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous type
 		//   - it is valid and was issued by this node.
 		//
 		// Otherwise, return ErrF3ParticipationIssuerMismatch to signal to the caller the need for retry.
-		switch _, err := l.validate(manifest.NetworkName, currentInstance, previous); {
+		switch _, err := l.validateTicket(manifest.NetworkName, currentInstance, previous); {
 		case errors.Is(err, types.ErrF3ParticipationTicketInvalid):
 			// Invalid ticket means the miner must have got the ticket from a node with a potentially different version.
 			// Refuse to issue a new ticket in case there is some other node with active lease for the miner.
@@ -89,22 +91,32 @@ func (l *leaser) participate(ticket types.F3ParticipationTicket) (types.F3Partic
 	if manifest == nil {
 		return types.F3ParticipationLease{}, types.ErrF3NotReady
 	}
-	newLease, err := l.validate(manifest.NetworkName, instant.ID, ticket)
+	newLease, err := l.validateTicket(manifest.NetworkName, instant.ID, ticket)
 	if err != nil {
 		return types.F3ParticipationLease{}, err
 	}
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	currentLease, found := l.leases[newLease.MinerID]
-	if found && currentLease.Network == newLease.Network && currentLease.FromInstance > newLease.FromInstance {
-		// For safety, strictly require lease start instance to never decrease.
-		return types.F3ParticipationLease{}, types.ErrF3ParticipationTicketStartBeforeExisting
+	if found {
+		// short-circuite for reparticipation.
+		if currentLease == newLease {
+			return newLease, nil
+		}
+		if currentLease.Network == newLease.Network && currentLease.FromInstance > newLease.FromInstance {
+			// For safety, strictly require lease start instance to never decrease.
+			return types.F3ParticipationLease{}, types.ErrF3ParticipationTicketStartBeforeExisting
+		}
+	} else {
+		log.Infof("started participating in F3 for miner %d", newLease.MinerID)
 	}
 	l.leases[newLease.MinerID] = newLease
 	select {
 	case l.notifyParticipation <- struct{}{}:
 	default:
 	}
+	newLease.ValidityTerm = newLease.ToInstance() - instant.ID
+	newLease.FromInstance = instant.ID
 	return newLease, nil
 }
 
@@ -118,20 +130,32 @@ func (l *leaser) getParticipantsByInstance(network gpbft.NetworkName, instance u
 	}
 	var participants []uint64
 	for id, lease := range l.leases {
-		if currentNetwork != lease.Network {
-			// Lazily delete any lease that does not belong to network, likely acquired from
-			// prior manifests.
+		if _, err := l.validateLease(currentNetwork, instance, lease); err != nil {
+			// Lazily clear old leases.
+			log.Warnf("lost F3 participation lease for miner %d at instance %d since it is no loger valid: %v ", id, instance, err)
 			delete(l.leases, id)
-			log.Warnf("lost F3 participation lease for miner %d at instance %d due to network mismatch: %s != %s", id, instance, currentNetwork, lease.Network)
-		} else if instance > lease.ToInstance() {
-			// Lazily delete the expired leases.
-			delete(l.leases, id)
-			log.Warnf("lost F3 participation lease for miner %d due to instance (%d) > lease to instance (%d)", id, instance, lease.ToInstance())
 		} else {
 			participants = append(participants, id)
 		}
 	}
 	return participants
+}
+
+func (l *leaser) getValidLeases() []types.F3ParticipationLease {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	currentManifest, progress := l.status()
+	var leases []types.F3ParticipationLease
+	for id, lease := range l.leases {
+		// Lazily clear old leases.
+		if validatedLease, err := l.validateLease(currentManifest.NetworkName, progress.ID, lease); err != nil {
+			log.Warnf("lost F3 participation lease for miner %d at instance %d while getting valid leases since it is no loger valid: %v ", id, progress.ID, err)
+			delete(l.leases, id)
+		} else {
+			leases = append(leases, validatedLease)
+		}
+	}
+	return leases
 }
 
 func (l *leaser) newParticipationTicket(nn gpbft.NetworkName, participant uint64, from uint64, instances uint64) (types.F3ParticipationTicket, error) {
@@ -152,13 +176,16 @@ func (l *leaser) newParticipationTicket(nn gpbft.NetworkName, participant uint64
 	return buf.Bytes(), nil
 }
 
-func (l *leaser) validate(currentNetwork gpbft.NetworkName, currentInstance uint64, t types.F3ParticipationTicket) (types.F3ParticipationLease, error) {
+func (l *leaser) validateTicket(currentNetwork gpbft.NetworkName, currentInstance uint64, t types.F3ParticipationTicket) (types.F3ParticipationLease, error) {
 	var lease types.F3ParticipationLease
 	reader := bytes.NewReader(t)
 	if err := lease.UnmarshalCBOR(reader); err != nil {
 		return types.F3ParticipationLease{}, types.ErrF3ParticipationTicketInvalid
 	}
+	return l.validateLease(currentNetwork, currentInstance, lease)
+}
 
+func (l *leaser) validateLease(currentNetwork gpbft.NetworkName, currentInstance uint64, lease types.F3ParticipationLease) (types.F3ParticipationLease, error) {
 	// Combine the errors to remove significance of the order by which they are
 	// checked outside if this function.
 	var err error

@@ -513,8 +513,8 @@ type F3ParticipationTicket []byte
 type F3ParticipationLease struct {
 	// Network is the name of the network this lease belongs to.
 	Network gpbft.NetworkName
-	// Issuer is the identity of the node that issued the lease.
-	Issuer peer.ID
+	// Issuer is the identity of the node that issued the lease, encoded as base58.
+	Issuer string
 	// MinerID is the actor ID of the miner that holds the lease.
 	MinerID uint64
 	// FromInstance specifies the instance ID from which this lease is valid.
@@ -528,24 +528,37 @@ func (l *F3ParticipationLease) ToInstance() uint64 {
 	return l.FromInstance + l.ValidityTerm
 }
 
+// F3Participant captures information about the miners that are currently
+// participating in F3, along with the number of instances for which their lease
+// is valid.
+type F3Participant struct {
+	// MinerID is the actor ID of the miner that is
+	MinerID uint64
+	// FromInstance specifies the instance ID from which this lease is valid.
+	FromInstance uint64
+	// ValidityTerm specifies the number of instances for which the lease remains
+	// valid from the FromInstance.
+	ValidityTerm uint64
+}
+
 var (
 	// ErrF3Disabled signals that F3 consensus process is disabled.
-	ErrF3Disabled = errF3Disabled{}
+	ErrF3Disabled = &errF3Disabled{}
 	// ErrF3ParticipationTicketInvalid signals that F3ParticipationTicket cannot be decoded.
-	ErrF3ParticipationTicketInvalid = errF3ParticipationTicketInvalid{}
+	ErrF3ParticipationTicketInvalid = &errF3ParticipationTicketInvalid{}
 	// ErrF3ParticipationTicketExpired signals that the current GPBFT instance as surpassed the expiry of the ticket.
-	ErrF3ParticipationTicketExpired = errF3ParticipationTicketExpired{}
+	ErrF3ParticipationTicketExpired = &errF3ParticipationTicketExpired{}
 	// ErrF3ParticipationIssuerMismatch signals that the ticket is not issued by the current node.
-	ErrF3ParticipationIssuerMismatch = errF3ParticipationIssuerMismatch{}
+	ErrF3ParticipationIssuerMismatch = &errF3ParticipationIssuerMismatch{}
 	// ErrF3ParticipationTooManyInstances signals that participation ticket cannot be
 	// issued because it asks for too many instances.
-	ErrF3ParticipationTooManyInstances = errF3ParticipationTooManyInstances{}
+	ErrF3ParticipationTooManyInstances = &errF3ParticipationTooManyInstances{}
 	// ErrF3ParticipationTicketStartBeforeExisting signals that participation ticket
 	// is before the start instance of an existing lease held by the miner.
-	ErrF3ParticipationTicketStartBeforeExisting = errF3ParticipationTicketStartBeforeExisting{}
+	ErrF3ParticipationTicketStartBeforeExisting = &errF3ParticipationTicketStartBeforeExisting{}
 	// ErrF3NotReady signals that the F3 instance isn't ready for participation yet. The caller
 	// should back off and try again later.
-	ErrF3NotReady = errF3NotReady{}
+	ErrF3NotReady = &errF3NotReady{}
 
 	_ error = (*ErrOutOfGas)(nil)
 	// _ error = (*ErrActorNotFound)(nil)
