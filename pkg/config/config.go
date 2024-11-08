@@ -392,7 +392,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	// This fix upgrade only ran on calibrationnet
 	UpgradeCalibrationDragonFixHeight:    -3,
 	UpgradeWaffleHeight:                  4154640,
-	UpgradeTuktukHeight:                  99999999999,
+	UpgradeTuktukHeight:                  4461240,
 	UpgradeTuktukPowerRampDurationEpochs: 200,
 }
 

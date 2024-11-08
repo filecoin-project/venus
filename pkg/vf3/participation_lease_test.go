@@ -25,6 +25,26 @@ func TestLeaser(t *testing.T) {
 		require.Nil(t, ticket)
 	})
 
+	t.Run("participate", func(t *testing.T) {
+		ticket, err := subject.getOrRenewParticipationTicket(123, nil, 5)
+		require.NoError(t, err)
+		lease, err := subject.participate(ticket)
+		require.NoError(t, err)
+		require.Equal(t, uint64(123), lease.MinerID)
+		require.Equal(t, issuer.String(), lease.Issuer)
+		require.Equal(t, uint64(10), lease.FromInstance) // Current instance (10) + offset (5)
+		require.Equal(t, uint64(5), lease.ValidityTerm)  // Current instance (10) + offset (5)
+
+		progress.currentInstance += 2
+
+		lease, err = subject.participate(ticket)
+		require.NoError(t, err)
+		require.Equal(t, uint64(123), lease.MinerID)
+		require.Equal(t, issuer.String(), lease.Issuer)
+		require.Equal(t, uint64(12), lease.FromInstance) // Current instance (10) + offset (5)
+		require.Equal(t, uint64(3), lease.ValidityTerm)  // Current instance (10) + offset (5)
+	})
+
 	t.Run("get participants", func(t *testing.T) {
 		progress.currentInstance = 11
 		ticket1, err := subject.getOrRenewParticipationTicket(123, nil, 4)
