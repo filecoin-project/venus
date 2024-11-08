@@ -68,7 +68,7 @@ func Mainnet() *NetworkConf {
 				UpgradeDragonHeight:                  3855360,           // 2024-04-24T14:00:00Z
 				UpgradeCalibrationDragonFixHeight:    -102,              // This fix upgrade only ran on calibrationnet
 				UpgradeWaffleHeight:                  4154640,           // 2024-08-06T12:00:00Z
-				UpgradeTuktukHeight:                  9999999,
+				UpgradeTuktukHeight:                  4461240,           // 2024-11-20T23:00:00Z
 				UpgradeTuktukPowerRampDurationEpochs: builtin2.EpochsInYear,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
