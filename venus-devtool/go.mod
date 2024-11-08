@@ -8,11 +8,11 @@ require (
 	github.com/filecoin-project/go-address v1.2.0
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc7
-	github.com/filecoin-project/go-f3 v0.7.1
+	github.com/filecoin-project/go-f3 v0.7.2
 	github.com/filecoin-project/go-fil-markets v1.28.3
 	github.com/filecoin-project/go-jsonrpc v0.6.0
-	github.com/filecoin-project/go-state-types v0.15.0-rc1
-	github.com/filecoin-project/lotus v1.30.0-rc3
+	github.com/filecoin-project/go-state-types v0.15.0
+	github.com/filecoin-project/lotus v1.30.0
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-block-format v0.2.0
@@ -23,7 +23,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.11.0
 	github.com/multiformats/go-multiaddr v0.13.0
 	github.com/urfave/cli/v2 v2.25.5
-	github.com/whyrusleeping/cbor-gen v0.1.2
+	github.com/whyrusleeping/cbor-gen v0.2.0
 	golang.org/x/tools v0.24.0
 )
 
@@ -58,7 +58,7 @@ require (
 	github.com/drand/kyber v1.3.1 // indirect
 	github.com/drand/kyber-bls12381 v0.3.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/filecoin-project/filecoin-ffi v1.28.0-rc2 // indirect
+	github.com/filecoin-project/filecoin-ffi v1.30.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349 // indirect
 	github.com/filecoin-project/go-amt-ipld/v3 v3.1.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v4 v4.4.0 // indirect
@@ -210,13 +210,13 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
-	golang.org/x/crypto v0.27.0 // indirect
+	golang.org/x/crypto v0.28.0 // indirect
 	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // indirect
 	golang.org/x/mod v0.20.0 // indirect
 	golang.org/x/net v0.29.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
-	golang.org/x/sys v0.25.0 // indirect
-	golang.org/x/text v0.18.0 // indirect
+	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/text v0.19.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	gonum.org/v1/gonum v0.15.0 // indirect
 	google.golang.org/api v0.81.0 // indirect
