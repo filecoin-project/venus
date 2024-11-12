@@ -686,7 +686,7 @@ type EthFilterSpec struct {
 	BlockHash *EthHash `json:"blockHash,omitempty"`
 }
 
-// EthAddressSpec represents a list of addresses.
+// EthAddressList represents a list of addresses.
 // The JSON decoding must treat a string as equivalent to an array with one value, for example
 // "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
 type EthAddressList []EthAddress
