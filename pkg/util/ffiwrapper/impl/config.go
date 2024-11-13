@@ -16,7 +16,7 @@ type Config struct {
 	_ struct{} // guard against nameless init
 }
 
-//nolint
+// nolint
 func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version) (abi.RegisteredSealProof, error) {
 	switch {
 	case nv < network.Version7:

@@ -581,7 +581,7 @@ func (ctx *invocationContext) stateView() SyscallsStateView {
 	return newSyscallsStateView(ctx, ctx.vm)
 }
 
-// patternContext implements the PatternContext
+// patternContext2 implements the PatternContext
 type patternContext2 invocationContext
 
 var _ runtime.PatternContext = (*patternContext2)(nil)
