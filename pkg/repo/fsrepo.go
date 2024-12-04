@@ -628,7 +628,7 @@ func apiTokenFromFile(repoPath string) (string, error) {
 	tokenFile := filepath.Join(repoPath, apiToken)
 	token, err := os.ReadFile(tokenFile)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to read API file")
+		return "", errors.Wrap(err, "failed to read token file")
 	}
 
 	return strings.TrimSpace(string(token)), nil
