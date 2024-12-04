@@ -140,6 +140,7 @@ TOOL COMMANDS
   version                - Show venus version information
   seed                   - Seal sectors for genesis miner
   fetch                  - Fetch proving parameters
+  rpc                    - Interact with the jsonrpc api
 `,
 	},
 	Options: []cmds.Option{
@@ -165,6 +166,7 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 	"version": versionCmd,
 	"seed":    seedCmd,
 	"cid":     cidCmd,
+	"rpc":     rpcCmd,
 }
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
