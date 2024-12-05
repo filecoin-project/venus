@@ -117,6 +117,7 @@ func New(mctx context.Context, params F3Params) (*F3, error) {
 	doneCh := make(chan struct{})
 
 	go func() {
+		defer close(doneCh)
 		fff.runSigningLoop(lCtx)
 	}()
 
