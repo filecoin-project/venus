@@ -360,6 +360,31 @@ func init() {
 	}
 	addExample(f3Lease)
 	addExample(&f3Lease)
+
+	f3Cert := certs.FinalityCertificate{
+		GPBFTInstance: 0,
+		ECChain: []gpbft.TipSet{
+			{
+				Epoch:      0,
+				Key:        tsk.Bytes(),
+				PowerTable: c,
+			},
+		},
+		SupplementalData: gpbft.SupplementalData{
+			PowerTable: c,
+		},
+		Signers:   bitfield.NewFromSet([]uint64{2, 3, 5, 7}),
+		Signature: []byte("UnDadaSeA"),
+		PowerTableDelta: []certs.PowerTableDelta{
+			{
+				ParticipantID: 0,
+				PowerDelta:    gpbft.StoragePower{},
+				SigningKey:    []byte("BaRrelEYe"),
+			},
+		},
+	}
+	addExample(f3Cert)
+	addExample(&f3Cert)
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

@@ -229,6 +229,7 @@ api.FullNode:
 	ChainSetHead:	In=2,	Out=1,	CheckSum=cdfe593ac791e823186abb77bfad49a0
 	ChainStatObj:	In=3,	Out=2,	CheckSum=9db2a0d97998daaf9c15e7c3d6ffe82d
 	ChainTipSetWeight:	In=2,	Out=2,	CheckSum=22ac180fa0c583b4036666bfc155fd63
+	ChainValidateIndex:	In=3,	Out=2,	CheckSum=e85dc6ebd924ae3dd02e05d76e5df3c7
 	Closing:	In=1,	Out=2,	CheckSum=3e0dae65a2378c12be14cee8a60a3bfe
 	CreateBackup:	In=2,	Out=1,	CheckSum=7b0679c2c73ab9606a7da21c5251ad19
 	Discover:	In=1,	Out=2,	CheckSum=09640e20c6d71c3e96c7a56c8698acc9
@@ -253,8 +254,8 @@ api.FullNode:
 	EthGetLogs:	In=2,	Out=2,	CheckSum=e4d62fd3240fe04e452a06683a49cfe3
 	EthGetMessageCidByTransactionHash:	In=2,	Out=2,	CheckSum=aed16e041ddddc1fce0509d5f544feab
 	EthGetStorageAt:	In=4,	Out=2,	CheckSum=b15694d484eed3dcc915e6470af5703c
-	EthGetTransactionByBlockHashAndIndex:	In=3,	Out=2,	CheckSum=35fd0ffaa59afd599520dd3ed67a6527
-	EthGetTransactionByBlockNumberAndIndex:	In=3,	Out=2,	CheckSum=2c5c65acee5e71e01e46588db4a35bf9
+	EthGetTransactionByBlockHashAndIndex:	In=3,	Out=2,	CheckSum=9fd2c12046e70d752687d65d16c93f26
+	EthGetTransactionByBlockNumberAndIndex:	In=3,	Out=2,	CheckSum=97cdd7b7be84baf61755d887e290b288
 	EthGetTransactionByHash:	In=2,	Out=2,	CheckSum=755c3f781b7b3b6ee99da45260296c3f
 	EthGetTransactionByHashLimited:	In=3,	Out=2,	CheckSum=7c1fa7b8fe17eaf73eaea1f6ccdf927b
 	EthGetTransactionCount:	In=3,	Out=2,	CheckSum=d4f884ecece2de5517137c49d12be2c9
