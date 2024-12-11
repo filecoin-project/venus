@@ -199,45 +199,41 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 	stopwatch := syncOneTimer.Start()
 	defer stopwatch(ctx)
 
-	var err error
-
-	if !parent.Key().Equals(syncer.chainStore.GetCheckPoint().Key()) {
-		var wg errgroup.Group
-		for i := 0; i < next.Len(); i++ {
-			blk := next.At(i)
-			wg.Go(func() error {
-				// Fetch the URL.
-				err := syncer.blockValidator.ValidateFullBlock(ctx, blk)
-				if err == nil {
-					if err := syncer.chainStore.AddToTipSetTracker(ctx, blk); err != nil {
-						return fmt.Errorf("failed to add validated header to tipset tracker: %w", err)
-					}
+	var wg errgroup.Group
+	for i := 0; i < next.Len(); i++ {
+		blk := next.At(i)
+		wg.Go(func() error {
+			// Fetch the URL.
+			err := syncer.blockValidator.ValidateFullBlock(ctx, blk)
+			if err == nil {
+				if err := syncer.chainStore.AddToTipSetTracker(ctx, blk); err != nil {
+					return fmt.Errorf("failed to add validated header to tipset tracker: %w", err)
 				}
-				return err
-			})
-		}
-		err = wg.Wait()
-		if err != nil {
-			var rootNotMatch bool // nolint
+			}
+			return err
+		})
+	}
+	err := wg.Wait()
+	if err != nil {
+		var rootNotMatch bool // nolint
 
-			if merr, isok := err.(*multierror.Error); isok {
-				for _, e := range merr.Errors {
-					if isRootNotMatch(e) {
-						rootNotMatch = true
-						break
-					}
+		if merr, isok := err.(*multierror.Error); isok {
+			for _, e := range merr.Errors {
+				if isRootNotMatch(e) {
+					rootNotMatch = true
+					break
 				}
-			} else {
-				rootNotMatch = isRootNotMatch(err) // nolint
 			}
-
-			if rootNotMatch { // nolint
-				// todo: should here rollback, and re-compute?
-				_ = syncer.stmgr.Rollback(ctx, parent, next)
-			}
-
-			return fmt.Errorf("validate mining failed %w", err)
+		} else {
+			rootNotMatch = isRootNotMatch(err) // nolint
 		}
+
+		if rootNotMatch { // nolint
+			// todo: should here rollback, and re-compute?
+			_ = syncer.stmgr.Rollback(ctx, parent, next)
+		}
+
+		return fmt.Errorf("validate mining failed %w", err)
 	}
 
 	syncer.chainStore.PersistTipSetKey(ctx, next.Key())
