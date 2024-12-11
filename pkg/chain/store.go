@@ -100,7 +100,7 @@ type Store struct {
 	// head is the tipset at the head of the best known chain.
 	head *types.TipSet
 
-	checkPoint types.TipSetKey
+	checkPoint *types.TipSet
 	// Protects head and genesisCid.
 	mu sync.RWMutex
 
@@ -143,7 +143,6 @@ func NewStore(chainDs repo.Datastore,
 		bsstore:             bsstore,
 		headEvents:          pubsub.New(64),
 
-		checkPoint:     types.EmptyTSK,
 		genesis:        genesisCid,
 		reorgNotifeeCh: make(chan ReorgNotifee),
 		tsCache:        tsCache,
@@ -156,11 +155,22 @@ func NewStore(chainDs repo.Datastore,
 
 	val, err := store.ds.Get(context.TODO(), CheckPoint)
 	if err != nil {
-		store.checkPoint = types.NewTipSetKey(genesisCid)
+		store.checkPoint, err = store.GetTipSet(context.TODO(), types.NewTipSetKey(genesisCid))
+		if err != nil {
+			panic(fmt.Errorf("cannot get genesis tipset: %w", err))
+		}
 	} else {
-		_ = store.checkPoint.UnmarshalCBOR(bytes.NewReader(val)) //nolint:staticcheck
+		var checkPointTSK types.TipSetKey
+		err := checkPointTSK.UnmarshalCBOR(bytes.NewReader(val))
+		if err != nil {
+			panic(fmt.Errorf("cannot unmarshal checkpoint %s: %w", string(val), err))
+		}
+		store.checkPoint, err = store.GetTipSet(context.TODO(), checkPointTSK)
+		if err != nil {
+			panic(fmt.Errorf("cannot get checkpoint tipset: %w", err))
+		}
 	}
-	log.Infof("check point value: %v", store.checkPoint)
+	log.Infof("load check point height: %d, key: %v", store.checkPoint.Height(), store.checkPoint.Key())
 
 	store.reorgCh = store.reorgWorker(context.TODO())
 	return store
@@ -1112,8 +1122,8 @@ func (store *Store) SetCheckpoint(ctx context.Context, ts *types.TipSet) error {
 		return err
 	}
 
-	store.mu.RLock()
-	defer store.mu.RUnlock()
+	store.mu.Lock()
+	defer store.mu.Unlock()
 
 	finality := store.head.Height() - policy.ChainFinality
 	targetChain, currentChain := ts, store.head
@@ -1167,7 +1177,7 @@ func (store *Store) SetCheckpoint(ctx context.Context, ts *types.TipSet) error {
 	if err := store.ds.Put(ctx, CheckPoint, buf.Bytes()); err != nil {
 		return fmt.Errorf("checkpoint failed: failed to record checkpoint in the datastore: %w", err)
 	}
-	store.checkPoint = ts.Key()
+	store.checkPoint = ts
 
 	return nil
 }
@@ -1187,7 +1197,7 @@ func (store *Store) IsAncestorOf(ctx context.Context, a, b *types.TipSet) (bool,
 }
 
 // GetCheckPoint get the check point from store or disk.
-func (store *Store) GetCheckPoint() types.TipSetKey {
+func (store *Store) GetCheckPoint() *types.TipSet {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 
@@ -1722,7 +1732,7 @@ func (store *Store) exceedsForkLength(ctx context.Context, synced, external *typ
 		}
 
 		// Now check to see if we've walked back to the checkpoint.
-		if synced.Key().Equals(store.checkPoint) {
+		if synced.Key().Equals(store.checkPoint.Key()) {
 			return true, nil
 		}
 

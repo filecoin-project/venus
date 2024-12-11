@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // ChainSubmodule enhances the `Node` with chain capabilities.
@@ -33,8 +32,7 @@ type ChainSubmodule struct { //nolint
 	SystemCall                  vm.SyscallsImpl
 	CirculatingSupplyCalculator *chain.CirculatingSupplyCalculator
 
-	CheckPoint types.TipSetKey
-	Drand      beacon.Schedule
+	Drand beacon.Schedule
 
 	config chainConfig
 
@@ -92,7 +90,6 @@ func NewChainSubmodule(ctx context.Context,
 		Drand:                       drand,
 		config:                      config,
 		Waiter:                      waiter,
-		CheckPoint:                  chainStore.GetCheckPoint(),
 	}
 	err = store.ChainReader.Load(context.TODO())
 	if err != nil {
