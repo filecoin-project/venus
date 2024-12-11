@@ -418,6 +418,7 @@ api.FullNode:
 	StateMarketBalance:	In=3,	Out=2,	CheckSum=bbab976bd25166200f737c94fc970bc7
 	StateMarketDeals:	In=2,	Out=2,	CheckSum=46b5eef922e8252939bf00e1e80ae89e
 	StateMarketParticipants:	In=2,	Out=2,	CheckSum=acc9019d0b6e389743c6f992350f407c
+	StateMarketProposalPending:	In=3,	Out=2,	CheckSum=fbb29a0d0f9a5fe4d3149de39b8f07c0
 	StateMarketStorageDeal:	In=3,	Out=2,	CheckSum=94af302d39beba9f0ce7648f4118b6aa
 	StateMinerActiveSectors:	In=3,	Out=2,	CheckSum=6dc03bd9f54d60f68a2dd9790a6490a3
 	StateMinerAllocated:	In=3,	Out=2,	CheckSum=808e4357d56c3d08769a9d7a249ea7c0

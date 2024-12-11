@@ -156,6 +156,8 @@ type IChainInfo interface {
 	// Messages in the `apply` parameter must have the correct nonces, and gas
 	// values set.
 	StateCompute(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*types.ComputeStateOutput, error) //perm:read
+	// StateMarketProposalPending returns whether a given proposal CID is marked as pending in the market actor
+	StateMarketProposalPending(ctx context.Context, proposalCid cid.Cid, tsk types.TipSetKey) (bool, error) //perm:read
 }
 
 type IMinerState interface {

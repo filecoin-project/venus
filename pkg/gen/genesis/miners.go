@@ -320,7 +320,7 @@ func SetupStorageMiners(ctx context.Context,
 				}
 
 				rawPow = big.Add(rawPow, big.NewInt(int64(m.SectorSize)))
-				sectorWeight := builtin.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, big.Zero(), types.DealWeight(&preseal.Deal))
+				sectorWeight := builtin.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, types.DealWeight(&preseal.Deal))
 				minerInfos[i].sectorWeight = append(minerInfos[i].sectorWeight, sectorWeight)
 				qaPow = big.Add(qaPow, sectorWeight)
 			}

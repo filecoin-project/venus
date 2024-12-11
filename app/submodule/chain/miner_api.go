@@ -730,12 +730,12 @@ func (msa *minerStateAPI) calculateSectorWeight(ctx context.Context, maddr addre
 		return types.EmptyInt, fmt.Errorf("market actor not found")
 	} else if s, err := market.Load(store, act); err != nil {
 		return types.EmptyInt, fmt.Errorf("loading market actor state: %w", err)
-	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, height, pci.Expiration); err != nil {
+	} else if vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, height, pci.Expiration); err != nil {
 		return types.EmptyInt, fmt.Errorf("verifying deals for activation: %w", err)
 	} else {
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
 		duration := pci.Expiration - height
-		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
+		sectorWeight = builtin.QAPowerForWeight(ssize, duration, vw)
 	}
 
 	return sectorWeight, nil
@@ -937,7 +937,7 @@ func (msa *minerStateAPI) StateMinerInitialPledgeForSector(ctx context.Context, 
 	}
 
 	verifiedWeight := big.Mul(big.NewIntUnsigned(verifiedSize), big.NewInt(int64(sectorDuration)))
-	sectorWeight := builtin.QAPowerForWeight(sectorSize, sectorDuration, big.Zero(), verifiedWeight)
+	sectorWeight := builtin.QAPowerForWeight(sectorSize, sectorDuration, verifiedWeight)
 
 	epochsSinceRampStart, rampDurationEpochs, err := msa.getPledgeRampParams(ctx, ts.Height(), state)
 	if err != nil {

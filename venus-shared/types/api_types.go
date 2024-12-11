@@ -9,6 +9,7 @@ import (
 	gpbft "github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	exitcode "github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -480,6 +481,7 @@ type ForkUpgradeParams struct {
 	UpgradePhoenixHeight     abi.ChainEpoch
 	UpgradeWaffleHeight      abi.ChainEpoch
 	UpgradeTuktukHeight      abi.ChainEpoch
+	UpgradeTeepHeight        abi.ChainEpoch
 }
 
 type NodeStatus struct {
@@ -567,6 +569,8 @@ var (
 	_ error = (*errF3ParticipationTicketExpired)(nil)
 	_ error = (*errF3ParticipationIssuerMismatch)(nil)
 	_ error = (*errF3NotReady)(nil)
+	_ error = (*ErrExecutionReverted)(nil)
+	_ error = (*ErrNullRound)(nil)
 )
 
 // ErrOutOfGas signals that a call failed due to insufficient gas.
@@ -608,3 +612,43 @@ func (errF3ParticipationTicketStartBeforeExisting) Error() string {
 type errF3NotReady struct{}
 
 func (errF3NotReady) Error() string { return "f3 isn't yet ready to participate" }
+
+// ErrExecutionReverted is used to return execution reverted with a reason for a revert in the `data` field.
+type ErrExecutionReverted struct {
+	Message string
+	Data    string
+}
+
+// Error returns the error message.
+func (e *ErrExecutionReverted) Error() string { return e.Message }
+
+// NewErrExecutionReverted creates a new ErrExecutionReverted with the given reason.
+func NewErrExecutionReverted(exitCode exitcode.ExitCode, error, reason string, data []byte) *ErrExecutionReverted {
+	return &ErrExecutionReverted{
+		Message: fmt.Sprintf("message execution failed (exit=[%s], revert reason=[%s], vm error=[%s])", exitCode, reason, error),
+		Data:    fmt.Sprintf("0x%x", data),
+	}
+}
+
+type ErrNullRound struct {
+	Epoch   abi.ChainEpoch
+	Message string
+}
+
+func NewErrNullRound(epoch abi.ChainEpoch) *ErrNullRound {
+	return &ErrNullRound{
+		Epoch:   epoch,
+		Message: fmt.Sprintf("requested epoch was a null round (%d)", epoch),
+	}
+}
+
+func (e *ErrNullRound) Error() string {
+	return e.Message
+}
+
+// Is performs a non-strict type check, we only care if the target is an ErrNullRound
+// and will ignore the contents (specifically there is no matching on Epoch).
+func (e *ErrNullRound) Is(target error) bool {
+	_, ok := target.(*ErrNullRound)
+	return ok
+}

@@ -444,11 +444,14 @@ func decodeCreateViaEAM(et *types.ExecutionTrace) (initcode []byte, addr *types.
 	default:
 		return nil, nil, fmt.Errorf("unexpected CREATE method %d", et.Msg.Method)
 	}
-	ret, err := decodeReturn[eam12.CreateReturn](&et.MsgRct)
-	if err != nil {
-		return nil, nil, err
+	if et.MsgRct.ExitCode.IsSuccess() {
+		ret, err := decodeReturn[eam12.CreateReturn](&et.MsgRct)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to decode EAM create return: %w", err)
+		}
+		addr = (*types.EthAddress)(&ret.EthAddress)
 	}
-	return initcode, (*types.EthAddress)(&ret.EthAddress), nil
+	return initcode, addr, nil
 }
 
 // Build an EthTrace for an EVM "create" operation. This should only be called with an

@@ -21,7 +21,7 @@ func ButterflySnapNet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.NetworkButterfly,
-			GenesisNetworkVersion: network.Version22,
+			GenesisNetworkVersion: network.Version24,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -63,8 +63,9 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeCalibrationDragonFixHeight:    -102, // This fix upgrade only ran on calibrationnet
 				UpgradePhoenixHeight:                 -26,
 				UpgradeWaffleHeight:                  -27,
-				UpgradeTuktukHeight:                  9999999,
+				UpgradeTuktukHeight:                  -28,
 				UpgradeTuktukPowerRampDurationEpochs: builtin.EpochsInYear,
+				UpgradeTeepHeight:                    100,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,

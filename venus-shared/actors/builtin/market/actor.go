@@ -80,6 +80,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		case actorstypes.Version15:
 			return load15(store, act.Head)
 
+		case actorstypes.Version16:
+			return load16(store, act.Head)
+
 		}
 	}
 
@@ -159,6 +162,9 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 	case actorstypes.Version15:
 		return make15(store)
 
+	case actorstypes.Version16:
+		return make16(store)
+
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)
 }
@@ -178,9 +184,10 @@ type State interface {
 	States() (DealStates, error)
 	ProposalsChanged(State) (bool, error)
 	Proposals() (DealProposals, error)
+	PendingProposals() (PendingProposals, error)
 	VerifyDealsForActivation(
 		minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
-	) (weight, verifiedWeight abi.DealWeight, err error)
+	) (verifiedWeight abi.DealWeight, err error)
 	NextID() (abi.DealID, error)
 	GetState() interface{}
 	GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error)
@@ -205,6 +212,10 @@ type DealProposals interface {
 
 	array() adt.Array
 	decode(*cbg.Deferred) (*markettypes.DealProposal, error)
+}
+
+type PendingProposals interface {
+	Has(proposalCid cid.Cid) (bool, error)
 }
 
 type PublishStorageDealsReturn interface {
@@ -265,6 +276,9 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 
 	case actorstypes.Version15:
 		return decodePublishStorageDealsReturn15(b)
+
+	case actorstypes.Version16:
+		return decodePublishStorageDealsReturn16(b)
 
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)
@@ -394,5 +408,6 @@ func AllCodes() []cid.Cid {
 		(&state13{}).Code(),
 		(&state14{}).Code(),
 		(&state15{}).Code(),
+		(&state16{}).Code(),
 	}
 }

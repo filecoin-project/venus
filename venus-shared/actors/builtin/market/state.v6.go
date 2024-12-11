@@ -23,6 +23,8 @@ import (
 
 	market6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/market"
 	adt6 "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
+
+	"github.com/filecoin-project/go-state-types/builtin"
 )
 
 var _ State = (*state6)(nil)
@@ -106,6 +108,14 @@ func (s *state6) Proposals() (DealProposals, error) {
 	return &dealProposals6{proposalArray}, nil
 }
 
+func (s *state6) PendingProposals() (PendingProposals, error) {
+	proposalCidSet, err := adt6.AsSet(s.store, s.State.PendingProposals, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+	return &pendingProposals6{proposalCidSet}, nil
+}
+
 func (s *state6) EscrowTable() (BalanceTable, error) {
 	bt, err := adt6.AsBalanceTable(s.store, s.State.EscrowTable)
 	if err != nil {
@@ -124,9 +134,9 @@ func (s *state6) LockedTable() (BalanceTable, error) {
 
 func (s *state6) VerifyDealsForActivation(
 	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
-) (weight, verifiedWeight abi.DealWeight, err error) {
-	w, vw, _, err := market6.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
-	return w, vw, err
+) (verifiedWeight abi.DealWeight, err error) {
+	_, vw, _, err := market6.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
+	return vw, err
 }
 
 func (s *state6) NextID() (abi.DealID, error) {
@@ -282,6 +292,14 @@ func (s *dealProposals6) decode(val *cbg.Deferred) (*DealProposal, error) {
 
 func (s *dealProposals6) array() adt.Array {
 	return s.Array
+}
+
+type pendingProposals6 struct {
+	*adt6.Set
+}
+
+func (s *pendingProposals6) Has(proposalCid cid.Cid) (bool, error) {
+	return s.Set.Has(abi.CidKey(proposalCid))
 }
 
 func fromV6DealProposal(v6 market6.DealProposal) (DealProposal, error) {

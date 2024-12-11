@@ -64,8 +64,9 @@ func InteropNet() *NetworkConf {
 				UpgradeCalibrationDragonFixHeight:    -102, // This fix upgrade only ran on calibrationnet
 				UpgradePhoenixHeight:                 -26,
 				UpgradeWaffleHeight:                  -27,
-				UpgradeTuktukHeight:                  50,
+				UpgradeTuktukHeight:                  -28,
 				UpgradeTuktukPowerRampDurationEpochs: builtin.EpochsInYear,
+				UpgradeTeepHeight:                    50,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
