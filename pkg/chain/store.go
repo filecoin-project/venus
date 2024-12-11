@@ -1732,7 +1732,7 @@ func (store *Store) exceedsForkLength(ctx context.Context, synced, external *typ
 		}
 
 		// Now check to see if we've walked back to the checkpoint.
-		if synced.Key().Equals(store.GetCheckPoint().Key()) {
+		if synced.Key().Equals(store.checkPoint.Key()) {
 			return true, nil
 		}
 
