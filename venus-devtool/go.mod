@@ -219,7 +219,7 @@ require (
 	golang.org/x/text v0.20.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	gonum.org/v1/gonum v0.15.0 // indirect
-	google.golang.org/api v0.81.0 // indirect
+	google.golang.org/api v0.169.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240515191416-fc5f0ca64291 // indirect
 	google.golang.org/grpc v1.64.0 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
