@@ -761,6 +761,7 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 			UpgradePhoenixHeight:     cfg.NetworkParams.ForkUpgradeParam.UpgradePhoenixHeight,
 			UpgradeWaffleHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeWaffleHeight,
 			UpgradeTuktukHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeTuktukHeight,
+			UpgradeTeepHeight:        cfg.NetworkParams.ForkUpgradeParam.UpgradeTeepHeight,
 		},
 		Eip155ChainID: cfg.NetworkParams.Eip155ChainID,
 	}
@@ -941,4 +942,23 @@ func (cia *chainInfoAPI) StateCompute(ctx context.Context, height abi.ChainEpoch
 		Root:  st,
 		Trace: t,
 	}, nil
+}
+
+func (cia *chainInfoAPI) StateMarketProposalPending(ctx context.Context, proposalCid cid.Cid, tsk types.TipSetKey) (bool, error) {
+	ts, err := cia.ChainGetTipSet(ctx, tsk)
+	if err != nil {
+		return false, fmt.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	st, err := cia.chain.Stmgr.GetMarketState(ctx, ts)
+	if err != nil {
+		return false, err
+	}
+
+	props, err := st.PendingProposals()
+	if err != nil {
+		return false, err
+	}
+
+	return props.Has(proposalCid)
 }

@@ -45,6 +45,7 @@ func GetDefaultActros() *dispatch.CodeLoader {
 		DefaultActorBuilder.AddMany(actorstypes.Version13, dispatch.ActorsVersionPredicate(actorstypes.Version13), builtin.MakeRegistry(actorstypes.Version13))
 		DefaultActorBuilder.AddMany(actorstypes.Version14, dispatch.ActorsVersionPredicate(actorstypes.Version14), builtin.MakeRegistry(actorstypes.Version14))
 		DefaultActorBuilder.AddMany(actorstypes.Version15, dispatch.ActorsVersionPredicate(actorstypes.Version15), builtin.MakeRegistry(actorstypes.Version15))
+		DefaultActorBuilder.AddMany(actorstypes.Version16, dispatch.ActorsVersionPredicate(actorstypes.Version16), builtin.MakeRegistry(actorstypes.Version16))
 		defaultActors = DefaultActorBuilder.Build()
 	})
 

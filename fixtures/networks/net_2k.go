@@ -18,7 +18,7 @@ func Net2k() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.Network2k,
-			GenesisNetworkVersion: network.Version23,
+			GenesisNetworkVersion: network.Version24,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg2KiBV1,
 				abi.RegisteredSealProof_StackedDrg8MiBV1,
@@ -60,7 +60,8 @@ func Net2k() *NetworkConf {
 				UpgradePhoenixHeight:                 -26,
 				UpgradeWaffleHeight:                  -27,
 				UpgradeTuktukPowerRampDurationEpochs: 200,
-				UpgradeTuktukHeight:                  200,
+				UpgradeTuktukHeight:                  -28,
+				UpgradeTeepHeight:                    200,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,

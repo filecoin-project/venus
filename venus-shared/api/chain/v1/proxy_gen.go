@@ -314,6 +314,7 @@ type IChainInfoStruct struct {
 		StateGetRandomnessDigestFromTickets func(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error)                                                             `perm:"read"`
 		StateGetRandomnessFromBeacon        func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
 		StateGetRandomnessFromTickets       func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
+		StateMarketProposalPending          func(ctx context.Context, proposalCid cid.Cid, tsk types.TipSetKey) (bool, error)                                                                            `perm:"read"`
 		StateNetworkName                    func(ctx context.Context) (types.NetworkName, error)                                                                                                         `perm:"read"`
 		StateNetworkVersion                 func(ctx context.Context, tsk types.TipSetKey) (network.Version, error)                                                                                      `perm:"read"`
 		StateReplay                         func(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error)                                                                                  `perm:"read"`
@@ -429,6 +430,9 @@ func (s *IChainInfoStruct) StateGetRandomnessFromBeacon(p0 context.Context, p1 c
 }
 func (s *IChainInfoStruct) StateGetRandomnessFromTickets(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) {
 	return s.Internal.StateGetRandomnessFromTickets(p0, p1, p2, p3, p4)
+}
+func (s *IChainInfoStruct) StateMarketProposalPending(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (bool, error) {
+	return s.Internal.StateMarketProposalPending(p0, p1, p2)
 }
 func (s *IChainInfoStruct) StateNetworkName(p0 context.Context) (types.NetworkName, error) {
 	return s.Internal.StateNetworkName(p0)

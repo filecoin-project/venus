@@ -56,6 +56,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [StateGetRandomnessDigestFromTickets](#stategetrandomnessdigestfromtickets)
   * [StateGetRandomnessFromBeacon](#stategetrandomnessfrombeacon)
   * [StateGetRandomnessFromTickets](#stategetrandomnessfromtickets)
+  * [StateMarketProposalPending](#statemarketproposalpending)
   * [StateNetworkName](#statenetworkname)
   * [StateNetworkVersion](#statenetworkversion)
   * [StateReplay](#statereplay)
@@ -1414,7 +1415,7 @@ Perms: read
 Inputs:
 ```json
 [
-  24
+  25
 ]
 ```
 
@@ -1429,7 +1430,7 @@ Perms: read
 Inputs:
 ```json
 [
-  24
+  25
 ]
 ```
 
@@ -1879,7 +1880,8 @@ Response:
     "UpgradeDragonHeight": 10101,
     "UpgradePhoenixHeight": 10101,
     "UpgradeWaffleHeight": 10101,
-    "UpgradeTuktukHeight": 10101
+    "UpgradeTuktukHeight": 10101,
+    "UpgradeTeepHeight": 10101
   },
   "Eip155ChainID": 123
 }
@@ -1979,6 +1981,31 @@ Inputs:
 
 Response: `"Bw=="`
 
+### StateMarketProposalPending
+StateMarketProposalPending returns whether a given proposal CID is marked as pending in the market actor
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `true`
+
 ### StateNetworkName
 
 
@@ -2007,7 +2034,7 @@ Inputs:
 ]
 ```
 
-Response: `24`
+Response: `25`
 
 ### StateReplay
 

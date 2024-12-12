@@ -1436,6 +1436,9 @@ func (a *ethAPI) EthTraceFilter(ctx context.Context, filter types.EthTraceFilter
 	for blkNum := fromBlock; blkNum <= toBlock; blkNum++ {
 		blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(blkNum), 10))
 		if err != nil {
+			if errors.Is(err, &types.ErrNullRound{}) {
+				continue
+			}
 			return nil, fmt.Errorf("cannot get trace for block %d: %w", blkNum, err)
 		}
 

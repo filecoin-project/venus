@@ -29,8 +29,8 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v15/miner"
 	smoothingtypes "github.com/filecoin-project/go-state-types/builtin/v8/util/smoothing"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 )
 
 var InitActorAddr = builtin.InitActorAddr
@@ -66,8 +66,8 @@ type ExtendedSectorInfo = proof.ExtendedSectorInfo
 type PoStProof = proof.PoStProof
 type FilterEstimate = smoothingtypes.FilterEstimate
 
-func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
-	return minertypes.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
+func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, verifiedWeight abi.DealWeight) abi.StoragePower {
+	return minertypes.QAPowerForWeight(size, duration, verifiedWeight)
 }
 
 func ActorNameByCode(c cid.Cid) string {

@@ -24,6 +24,8 @@ import (
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
+
+	"github.com/filecoin-project/go-state-types/builtin"
 )
 
 var _ State = (*state8)(nil)
@@ -107,6 +109,14 @@ func (s *state8) Proposals() (DealProposals, error) {
 	return &dealProposals8{proposalArray}, nil
 }
 
+func (s *state8) PendingProposals() (PendingProposals, error) {
+	proposalCidSet, err := adt8.AsSet(s.store, s.State.PendingProposals, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+	return &pendingProposals8{proposalCidSet}, nil
+}
+
 func (s *state8) EscrowTable() (BalanceTable, error) {
 	bt, err := adt8.AsBalanceTable(s.store, s.State.EscrowTable)
 	if err != nil {
@@ -125,9 +135,9 @@ func (s *state8) LockedTable() (BalanceTable, error) {
 
 func (s *state8) VerifyDealsForActivation(
 	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
-) (weight, verifiedWeight abi.DealWeight, err error) {
-	w, vw, _, err := market8.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
-	return w, vw, err
+) (verifiedWeight abi.DealWeight, err error) {
+	_, vw, _, err := market8.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
+	return vw, err
 }
 
 func (s *state8) NextID() (abi.DealID, error) {
@@ -283,6 +293,14 @@ func (s *dealProposals8) decode(val *cbg.Deferred) (*DealProposal, error) {
 
 func (s *dealProposals8) array() adt.Array {
 	return s.Array
+}
+
+type pendingProposals8 struct {
+	*adt8.Set
+}
+
+func (s *pendingProposals8) Has(proposalCid cid.Cid) (bool, error) {
+	return s.Set.Has(abi.CidKey(proposalCid))
 }
 
 func fromV8DealProposal(v8 market8.DealProposal) (DealProposal, error) {
