@@ -237,7 +237,7 @@ func (a *ethAPI) EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, f
 
 func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool) (tipset *types.TipSet, err error) {
 	if blkParam == "earliest" {
-		return nil, fmt.Errorf("block param \"earliest\" is not supported")
+		return nil, errors.New("block param \"earliest\" is not supported")
 	}
 
 	head, err := a.chain.ChainHead(ctx)
@@ -250,7 +250,7 @@ func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool
 	case "latest":
 		parent, err := a.chain.ChainGetTipSet(ctx, head.Parents())
 		if err != nil {
-			return nil, fmt.Errorf("cannot get parent tipset")
+			return nil, errors.New("cannot get parent tipset")
 		}
 		return parent, nil
 	default:
@@ -260,7 +260,7 @@ func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool
 			return nil, fmt.Errorf("cannot parse block number: %v", err)
 		}
 		if abi.ChainEpoch(num) > head.Height()-1 {
-			return nil, fmt.Errorf("requested a future epoch (beyond 'latest')")
+			return nil, errors.New("requested a future epoch (beyond 'latest')")
 		}
 		ts, err := a.chain.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(num), head.Key())
 		if err != nil {
@@ -570,7 +570,7 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 
 	// StateManager.Call will panic if there is no parent
 	if ts.Height() == 0 {
-		return nil, fmt.Errorf("block param must not specify genesis block")
+		return nil, errors.New("block param must not specify genesis block")
 	}
 
 	actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, to, ts)
@@ -616,7 +616,7 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 	}
 
 	if res.MsgRct == nil {
-		return nil, fmt.Errorf("no message receipt")
+		return nil, errors.New("no message receipt")
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
@@ -649,7 +649,7 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 
 	l := len(position)
 	if l > 32 {
-		return nil, fmt.Errorf("supplied storage key is too long")
+		return nil, errors.New("supplied storage key is too long")
 	}
 
 	// pad with zero bytes if smaller than 32 bytes
@@ -714,7 +714,7 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 	}
 
 	if res.MsgRct == nil {
-		return nil, fmt.Errorf("no message receipt")
+		return nil, errors.New("no message receipt")
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
@@ -806,7 +806,7 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.
 		return types.EthFeeHistory{}, fmt.Errorf("decoding params: %w", err)
 	}
 	if params.BlkCount > 1024 {
-		return types.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
+		return types.EthFeeHistory{}, errors.New("block count should be smaller than 1024")
 	}
 	rewardPercentiles := make([]float64, 0)
 	if params.RewardPercentiles != nil {
@@ -1264,7 +1264,7 @@ func (a *ethAPI) EthTraceBlock(ctx context.Context, blkNum string) ([]*types.Eth
 
 func (a *ethAPI) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*types.EthTraceReplayBlockTransaction, error) {
 	if len(traceTypes) != 1 || traceTypes[0] != "trace" {
-		return nil, fmt.Errorf("only 'trace' is supported")
+		return nil, errors.New("only 'trace' is supported")
 	}
 
 	ts, err := getTipsetByBlockNumber(ctx, a.em.chainModule.ChainReader, blkNum, false)
@@ -1343,12 +1343,12 @@ func (a *ethAPI) EthTraceTransaction(ctx context.Context, txHash string) ([]*typ
 	}
 
 	if tx == nil {
-		return nil, fmt.Errorf("transaction not found")
+		return nil, errors.New("transaction not found")
 	}
 
 	// tx.BlockNumber is nil when the transaction is still in the mpool/pending
 	if tx.BlockNumber == nil {
-		return nil, fmt.Errorf("no trace for pending transactions")
+		return nil, errors.New("no trace for pending transactions")
 	}
 
 	blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(*tx.BlockNumber), 10))
@@ -1386,13 +1386,13 @@ func (a *ethAPI) EthTraceFilter(ctx context.Context, filter types.EthTraceFilter
 
 		switch blockValue {
 		case "earliest":
-			return 0, fmt.Errorf("block param \"earliest\" is not supported")
+			return 0, errors.New("block param \"earliest\" is not supported")
 		case "pending":
 			return types.EthUint64(head.Height()), nil
 		case "latest":
 			parent, err := a.em.chainModule.ChainReader.GetTipSet(ctx, head.Parents())
 			if err != nil {
-				return 0, fmt.Errorf("cannot get parent tipset")
+				return 0, errors.New("cannot get parent tipset")
 			}
 			return types.EthUint64(parent.Height()), nil
 		case "safe":
@@ -1486,23 +1486,23 @@ func matchFilterCriteria(trace *types.EthTraceBlock, fromDecodedAddresses []type
 	case "call":
 		action, ok := trace.Action.(*types.EthCallTraceAction)
 		if !ok {
-			return false, fmt.Errorf("invalid call trace action")
+			return false, errors.New("invalid call trace action")
 		}
 		traceTo = action.To
 		traceFrom = action.From
 	case "create":
 		result, okResult := trace.Result.(*types.EthCreateTraceResult)
 		if !okResult {
-			return false, fmt.Errorf("invalid create trace result")
+			return false, errors.New("invalid create trace result")
 		}
 
 		action, okAction := trace.Action.(*types.EthCreateTraceAction)
 		if !okAction {
-			return false, fmt.Errorf("invalid create trace action")
+			return false, errors.New("invalid create trace action")
 		}
 
 		if result.Address == nil {
-			return false, fmt.Errorf("address is nil in create trace result")
+			return false, errors.New("address is nil in create trace result")
 		}
 
 		traceTo = *result.Address

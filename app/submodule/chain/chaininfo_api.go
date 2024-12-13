@@ -372,7 +372,7 @@ func (cia *chainInfoAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.Chai
 	select {
 	case be, ok := <-e:
 		if !ok {
-			return nil, fmt.Errorf("beacon get returned no value")
+			return nil, errors.New("beacon get returned no value")
 		}
 		if be.Err != nil {
 			return nil, be.Err
@@ -798,7 +798,7 @@ func (cia *chainInfoAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, er
 func (cia *chainInfoAPI) StateActorManifestCID(ctx context.Context, nv network.Version) (cid.Cid, error) {
 	actorVersion, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
-		return cid.Undef, fmt.Errorf("invalid network version")
+		return cid.Undef, errors.New("invalid network version")
 	}
 
 	c, ok := actors.GetManifest(actorVersion)
@@ -915,7 +915,7 @@ func (cia *chainInfoAPI) ChainGetEvents(ctx context.Context, root cid.Cid) ([]ty
 	var evt types.Event
 	err = evtArr.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
 		if u > math.MaxInt {
-			return fmt.Errorf("too many events")
+			return errors.New("too many events")
 		}
 		if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
 			return err
