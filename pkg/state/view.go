@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -277,7 +278,7 @@ func (v *View) MinerExists(ctx context.Context, maddr addr.Address) (bool, error
 	if err == nil {
 		return true, nil
 	}
-	if err == types.ErrActorNotFound {
+	if errors.Is(err, types.ErrActorNotFound) {
 		return false, nil
 	}
 	return false, err

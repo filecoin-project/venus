@@ -72,7 +72,7 @@ func (ei *EthTxHashLookup) GetCidFromHash(txHash types.EthHash) (cid.Cid, error)
 	var c string
 	err := row.Scan(&c)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return cid.Undef, ErrNotFound
 		}
 		return cid.Undef, err
@@ -86,7 +86,7 @@ func (ei *EthTxHashLookup) GetHashFromCid(c cid.Cid) (types.EthHash, error) {
 	var hashString string
 	err := row.Scan(&c)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return types.EmptyEthHash, ErrNotFound
 		}
 		return types.EmptyEthHash, err
@@ -117,7 +117,7 @@ func NewTransactionHashLookup(path string) (*EthTxHashLookup, error) {
 	}
 
 	q, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='_meta';")
-	if err == sql.ErrNoRows || !q.Next() {
+	if errors.Is(err, sql.ErrNoRows) || !q.Next() {
 		// empty database, create the schema
 		for _, ddl := range ddls {
 			if _, err := db.Exec(ddl); err != nil {

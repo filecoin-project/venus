@@ -132,7 +132,7 @@ func (pm *Manager) AvailableFundsByFromTo(ctx context.Context, from address.Addr
 	}
 
 	ci, err := ca.outboundActiveByFromTo(ctx, from, to)
-	if err == ErrChannelNotTracked {
+	if errors.Is(err, ErrChannelNotTracked) {
 		// If there is no active channel between from / to we still want to
 		// return an empty ChannelAvailableFunds, so that clients can check
 		// for the existence of a channel between from / to without getting
@@ -167,7 +167,7 @@ func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address
 	pm.lk.Unlock()
 
 	if err != nil {
-		if err == datastore.ErrNotFound {
+		if errors.Is(err, datastore.ErrNotFound) {
 			return address.Undef, fmt.Errorf("could not find wait msg cid %s", mcid)
 		}
 		return address.Undef, err

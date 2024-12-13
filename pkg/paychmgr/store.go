@@ -291,7 +291,7 @@ func (ps *Store) ByChannelID(ctx context.Context, channelID string) (*pchTypes.C
 
 	res, err := ps.ds.Get(ctx, dskeyForChannel(channelID))
 	if err != nil {
-		if err == datastore.ErrNotFound {
+		if errors.Is(err, datastore.ErrNotFound) {
 			return nil, ErrChannelNotTracked
 		}
 		return nil, err
