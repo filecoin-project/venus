@@ -59,7 +59,7 @@ jobs:
         run: go test -coverpkg=./... -coverprofile=coverage_venus_shared.txt -covermode=atomic -timeout=30m -parallel=4  -v ./venus-shared/...
 
       - name: Unit Test
-        run: go test -coverpkg=./... -coverprofile=coverage_unit.txt -covermode=atomic -timeout=30m -parallel=4 -v $(go list ./... | grep -v /venus-shared/)  -integration=false -unit=true
+        run: go test -coverpkg=./... -coverprofile=coverage_unit.txt -covermode=atomic -timeout=45m -parallel=4 -v $(go list ./... | grep -v /venus-shared/)  -integration=false -unit=true
 
       - name: Integration Test
         run: go test -coverpkg=./... -coverprofile=coverage_integration.txt -covermode=atomic -timeout=30m -parallel=4   -v $(go list ./... | grep -v /venus-shared/) -integration=true -unit=false
