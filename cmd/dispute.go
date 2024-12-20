@@ -333,7 +333,7 @@ var disputerStartCmd = &cmds.Command{
 
 		for {
 			err := disputeLoop()
-			if err == context.Canceled {
+			if errors.Is(err, context.Canceled) {
 				disputeLog.Info("disputer shutting down")
 				break
 			}

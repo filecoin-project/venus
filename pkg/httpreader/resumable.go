@@ -2,6 +2,7 @@ package httpreader
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -103,7 +104,7 @@ func (r *ResumableReader) Read(p []byte) (n int, err error) {
 		n, err = r.reader.Read(p)
 		r.position += int64(n)
 
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
+		if err == io.EOF || errors.Is(err, io.ErrUnexpectedEOF) {
 			if r.position == r.contentLength {
 				if err := r.reader.Close(); err != nil {
 					log.Warnf("error closing reader: %+v", err)

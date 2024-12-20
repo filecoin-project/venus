@@ -83,7 +83,7 @@ func (r *Resolver) ResolveToLastNode(ctx context.Context, fpath path.Path) (cid.
 		}
 
 		if err != nil {
-			if err == dag.ErrLinkNotFound {
+			if errors.Is(err, dag.ErrLinkNotFound) {
 				err = ErrNoLink{Name: p[0], Node: nd.Cid()}
 			}
 			return cid.Cid{}, nil, err
@@ -104,7 +104,7 @@ func (r *Resolver) ResolveToLastNode(ctx context.Context, fpath path.Path) (cid.
 	// Confirm the path exists within the object
 	val, rest, err := nd.Resolve(p)
 	if err != nil {
-		if err == dag.ErrLinkNotFound {
+		if errors.Is(err, dag.ErrLinkNotFound) {
 			err = ErrNoLink{Name: p[0], Node: nd.Cid()}
 		}
 		return cid.Cid{}, nil, err
@@ -179,7 +179,7 @@ func (r *Resolver) ResolveLinks(ctx context.Context, ndd ipld.Node, names []stri
 		defer cancel()
 
 		lnk, rest, err := r.ResolveOnce(ctx, r.DAG, nd, names)
-		if err == dag.ErrLinkNotFound {
+		if errors.Is(err, dag.ErrLinkNotFound) {
 			return result, ErrNoLink{Name: names[0], Node: nd.Cid()}
 		} else if err != nil {
 			return result, err

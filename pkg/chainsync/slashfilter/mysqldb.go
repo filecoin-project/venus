@@ -2,6 +2,7 @@ package slashfilter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -69,7 +70,7 @@ func NewMysqlSlashFilter(cfg config.MySQLConfig) (ISlashFilter, error) {
 func (f *MysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) (cid.Cid, bool, error) {
 	var bk MinedBlock
 	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
-	if err == gorm.ErrRecordNotFound {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return cid.Undef, false, nil
 	}
 
@@ -90,7 +91,7 @@ func (f *MysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) (cid.Cid,
 func (f *MysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) (cid.Cid, bool, error) {
 	var bk MinedBlock
 	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and parent_key=?", bh.Miner.String(), types.NewTipSetKey(bh.Parents...).String()).Error
-	if err == gorm.ErrRecordNotFound {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return cid.Undef, false, nil
 	}
 
