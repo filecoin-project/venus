@@ -75,7 +75,7 @@ having to parse all the discussions that went into it.
 ## FAQ
 
 ##### How do I know what warrants a designdoc?
-A designdoc is a tool so like any apply it judiciously. If you’re building something that other devs are going to work within, or with, and it’s going to take you weeks or months to do it, it’s probably a good candidate for a designdoc. Or if it’s something critically important to the project, that’s probably also worth one. Or if it's a separate thingy with its own structure, then too.
+A designdoc is a tool so like any apply it judiciously. If you’re building something that other devs are going to work within, or with, and it’s going to take you weeks or months to do it, it’s probably a good candidate for a designdoc. Or if it’s something critically important to the project, that’s probably also worth one. Or if it's a separate thing with its own structure, then too.
 
 ##### But what if the designdoc is wrong? 
 With probability 1 it will be wrong. The point is to explicitly communicate what we are and are not trying to accomplish and to rationalize a proposal. It’s a planning tool and as soon as it is finished reality will start to diverge. But as they say: plans are worthless but planning is indispensable.
