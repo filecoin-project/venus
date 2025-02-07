@@ -342,7 +342,7 @@ func parseDrandBootstrap(df config.DrandConf) ([]peer.AddrInfo, error) {
 	// TODO: retry resolving, don't fail if at least one resolve succeeds
 	addrs, err := ParseAddresses(context.TODO(), df.Relays)
 	if err != nil {
-		gossipsubLog.Errorf("reoslving drand relays addresses: %+v", err)
+		gossipsubLog.Errorf("resolving drand relays addresses: %+v", err)
 		return nil, nil
 	}
 
