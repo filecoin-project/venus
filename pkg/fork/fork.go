@@ -1539,7 +1539,7 @@ func copyRec(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid, 
 	var lerr error
 	err = linksForObj(blk, func(link cid.Cid) {
 		if lerr != nil {
-			// Theres no erorr return on linksForObj callback :(
+			// Theres no error return on linksForObj callback :(
 			return
 		}
 
