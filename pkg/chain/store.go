@@ -263,7 +263,7 @@ func (store *Store) loadHead(ctx context.Context) (*types.TipSet, error) {
 	return store.GetTipSet(ctx, tsk)
 }
 
-// LoadTipsetMetadata load tipset status (state root and reciepts)
+// LoadTipsetMetadata load tipset status (state root and receipts)
 func (store *Store) LoadTipsetMetadata(ctx context.Context, ts *types.TipSet) (*TipSetMetadata, error) {
 	h := ts.Height()
 	key := datastore.NewKey(makeKey(ts.String(), h))

@@ -12,7 +12,7 @@ type IConfig interface {
 	ConfigGet(ctx context.Context, dottedPath string) (interface{}, error)
 }
 
-// configModule is plumbing implementation for setting and retrieving values from local config.
+// ConfigModule is plumbing implementation for setting and retrieving values from local config.
 type ConfigModule struct { //nolint
 	repo repo2.Repo
 	lock sync.Mutex

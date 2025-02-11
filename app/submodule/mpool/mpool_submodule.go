@@ -49,7 +49,7 @@ type messagepoolConfig interface {
 	Repo() repo.Repo
 }
 
-// MessagingSubmodule enhances the `Node` with internal message capabilities.
+// MessagePoolSubmodule enhances the `Node` with internal message capabilities.
 type MessagePoolSubmodule struct { //nolint
 	// Network Fields
 	MessageSub *pubsub.Subscription

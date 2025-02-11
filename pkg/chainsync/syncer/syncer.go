@@ -333,7 +333,7 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 	errProcessChan := make(chan error, 1)
 	errProcessChan <- nil // init
 	var wg sync.WaitGroup
-	// todo  write a pipline segment processor function
+	// todo  write a pipeline segment processor function
 	if err = rangeProcess(tipsets, func(segTipset []*types.TipSet) error {
 		// fetch messages
 		startTip := segTipset[0].Height()
@@ -464,7 +464,7 @@ loop:
 
 	if !ignoreCheckpoint {
 		if chkpt := syncer.chainStore.GetCheckPoint(); chkpt != nil && base.Height() <= chkpt.Height() {
-			return nil, fmt.Errorf("merge point affecting the checkpoing: %w", ErrForkCheckpoint)
+			return nil, fmt.Errorf("merge point affecting the checkpoint: %w", ErrForkCheckpoint)
 		}
 	}
 
