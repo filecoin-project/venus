@@ -37,7 +37,7 @@ func NewF3Submodule(ctx context.Context,
 		return nil, err
 	}
 
-	provider, err := vf3.NewManifestProvider(ctx, network.F3Cfg, chain.ChainReader, network.Pubsub, repo.MetaDatastore())
+	provider, err := vf3.NewManifestProvider(ctx, network.F3Cfg, chain.ChainReader, network.Pubsub, repo.MetaDatastore(), chain.API())
 	if err != nil {
 		return nil, err
 	}
