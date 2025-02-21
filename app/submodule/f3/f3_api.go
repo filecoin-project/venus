@@ -24,11 +24,11 @@ var ErrF3Disabled = errors.New("f3 is disabled")
 func (f3api *f3API) F3GetOrRenewParticipationTicket(ctx context.Context, miner address.Address, previous types.F3ParticipationTicket, instances uint64) (types.F3ParticipationTicket, error) {
 	if f3api.f3module.F3 == nil {
 		log.Infof("F3GetParticipationTicket called for %v, F3 is disabled", miner)
-		return types.F3ParticipationTicket{}, types.ErrF3Disabled
+		return nil, types.ErrF3Disabled
 	}
 	minerID, err := address.IDFromAddress(miner)
 	if err != nil {
-		return types.F3ParticipationTicket{}, fmt.Errorf("miner address is not of ID type: %v: %w", miner, err)
+		return nil, fmt.Errorf("miner address is not of ID type: %v: %w", miner, err)
 	}
 	return f3api.f3module.F3.GetOrRenewParticipationTicket(ctx, minerID, previous, instances)
 }
@@ -69,11 +69,11 @@ func (f3api *f3API) F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) 
 	return f3api.f3module.F3.GetF3PowerTable(ctx, tsk)
 }
 
-func (f3api *f3API) F3GetManifest(_ctx context.Context) (*manifest.Manifest, error) {
+func (f3api *f3API) F3GetManifest(ctx context.Context) (*manifest.Manifest, error) {
 	if f3api.f3module.F3 == nil {
 		return nil, ErrF3Disabled
 	}
-	return f3api.f3module.F3.GetManifest(), nil
+	return f3api.f3module.F3.GetManifest(ctx)
 }
 
 func (f3api *f3API) F3IsRunning(_ctx context.Context) (bool, error) {
