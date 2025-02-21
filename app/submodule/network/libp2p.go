@@ -81,6 +81,11 @@ func (noopLibP2PHost) ConnManager() connmgr.ConnManager {
 
 type noopLibP2PNetwork struct{}
 
+// CanDial implements network.Network.
+func (n noopLibP2PNetwork) CanDial(p peer.ID, addr multiaddr.Multiaddr) bool {
+	panic("unimplemented")
+}
+
 func (n noopLibP2PNetwork) ResourceManager() net.ResourceManager {
 	panic("implement me")
 }

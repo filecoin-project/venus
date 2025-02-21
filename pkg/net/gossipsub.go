@@ -317,14 +317,18 @@ func NewGossipSub(ctx context.Context,
 
 	if f3Config != nil {
 		if f3Config.StaticManifest != nil {
-			f3TopicName := manifest.PubSubTopicFromNetworkName(f3Config.StaticManifest.NetworkName)
-			allowTopics = append(allowTopics, f3TopicName)
+			gpbftTopic := manifest.PubSubTopicFromNetworkName(f3Config.StaticManifest.NetworkName)
+			chainexTopic := manifest.ChainExchangeTopicFromNetworkName(f3Config.StaticManifest.NetworkName)
+			allowTopics = append(allowTopics, gpbftTopic, chainexTopic)
 		}
 		if f3Config.DynamicManifestProvider != "" {
-			f3BaseTopicName := manifest.PubSubTopicFromNetworkName(f3Config.BaseNetworkName)
+			gpbftTopicPrefix := manifest.PubSubTopicFromNetworkName(f3Config.BaseNetworkName)
+			chainexTopicPrefix := manifest.ChainExchangeTopicFromNetworkName(f3Config.BaseNetworkName)
 			allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
-			for i := 0; i < vf3.MaxDynamicManifestChangesAllowed; i++ {
-				allowTopics = append(allowTopics, fmt.Sprintf("%s/%d", f3BaseTopicName, i))
+			for i := range vf3.MaxDynamicManifestChangesAllowed {
+				gpbftTopic := fmt.Sprintf("%s/%d", gpbftTopicPrefix, i)
+				chainexTopic := fmt.Sprintf("%s/%d", chainexTopicPrefix, i)
+				allowTopics = append(allowTopics, gpbftTopic, chainexTopic)
 			}
 		}
 	}

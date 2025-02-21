@@ -207,8 +207,23 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 	return fff.inner.GetLatestCert(ctx)
 }
 
-func (fff *F3) GetManifest() *manifest.Manifest {
-	return fff.inner.Manifest()
+func (fff *F3) GetManifest(ctx context.Context) (*manifest.Manifest, error) {
+	m := fff.inner.Manifest()
+	if m == nil {
+		return nil, manifest.ErrNoManifest
+	}
+	if m.InitialPowerTable.Defined() {
+		return m, nil
+	}
+	cert0, err := fff.inner.GetCert(ctx, 0)
+	if err != nil {
+		return m, nil // return manifest without power table
+	}
+
+	var mCopy = *m
+	m = &mCopy
+	m.InitialPowerTable = cert0.ECChain.Base().PowerTable
+	return m, nil
 }
 
 func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
