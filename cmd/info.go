@@ -114,8 +114,8 @@ var infoCmd = &cmds.Command{
 		}
 		tw := tabwriter.NewWriter(writer.w, 6, 6, 2, ' ', 0)
 		writer.Printf("Bandwidth:\n")
-		fmt.Fprintf(tw, "\tTotalIn\tTotalOut\tRateIn\tRateOut\n")
-		fmt.Fprintf(tw, "\t%s\t%s\t%s/s\t%s/s\n", humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
+		_, _ = fmt.Fprintf(tw, "\tTotalIn\tTotalOut\tRateIn\tRateOut\n")
+		_, _ = fmt.Fprintf(tw, "\t%s\t%s\t%s/s\t%s/s\n", humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
 		if err := tw.Flush(); err != nil {
 			return err
 		}

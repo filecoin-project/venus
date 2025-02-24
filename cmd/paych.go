@@ -328,7 +328,7 @@ var voucherListCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(buff, "Lane %d, Nonce %d: %s, voucher: %s\n", v.Lane, v.Nonce, v.Amount.String(), str)
+			_, _ = fmt.Fprintf(buff, "Lane %d, Nonce %d: %s, voucher: %s\n", v.Lane, v.Nonce, v.Amount.String(), str)
 		}
 
 		return re.Emit(buff)
@@ -362,7 +362,7 @@ var voucherBestSpendableCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(buff, "Lane %d, Nonce %d: %s, voucher: %s\n", v.Lane, v.Nonce, v.Amount.String(), str)
+			_, _ = fmt.Fprintf(buff, "Lane %d, Nonce %d: %s, voucher: %s\n", v.Lane, v.Nonce, v.Amount.String(), str)
 		}
 		return re.Emit(buff)
 	},
@@ -422,15 +422,15 @@ func paychStatus(writer io.Writer, avail *types.ChannelAvailableFunds) {
 	if avail.Channel == nil {
 		if avail.PendingWaitSentinel != nil {
 			fmt.Fprint(writer, "Creating channel\n")
-			fmt.Fprintf(writer, "  From:          %s\n", avail.From)
-			fmt.Fprintf(writer, "  To:            %s\n", avail.To)
-			fmt.Fprintf(writer, " Pending Amt: %s\n", types.FIL(avail.PendingAmt))
-			fmt.Fprintf(writer, "  Wait Sentinel: %s\n", avail.PendingWaitSentinel)
+			_, _ = fmt.Fprintf(writer, "  From:          %s\n", avail.From)
+			_, _ = fmt.Fprintf(writer, "  To:            %s\n", avail.To)
+			_, _ = fmt.Fprintf(writer, " Pending Amt: %s\n", types.FIL(avail.PendingAmt))
+			_, _ = fmt.Fprintf(writer, "  Wait Sentinel: %s\n", avail.PendingWaitSentinel)
 			return
 		}
 		fmt.Fprint(writer, "Channel does not exist\n")
-		fmt.Fprintf(writer, "  From: %s\n", avail.From)
-		fmt.Fprintf(writer, "  To:   %s\n", avail.To)
+		_, _ = fmt.Fprintf(writer, "  From: %s\n", avail.From)
+		_, _ = fmt.Fprintf(writer, "  To:   %s\n", avail.To)
 		return
 	}
 
