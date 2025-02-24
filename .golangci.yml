@@ -48,5 +48,6 @@ run:
     - venus-shared/actors/aerrors$
     - venus-shared/actors/builtin$
     - venus-shared/actors/policy$
+    - pkg/vm$
   skip-files:
     - ".*_gen\\.go$" # skip auto generated go files
