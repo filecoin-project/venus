@@ -1,6 +1,6 @@
 module github.com/filecoin-project/venus
 
-go 1.22.7
+go 1.23
 
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2

@@ -382,7 +382,7 @@ var statsBandwidthCmd = &cmds.Command{
 
 		tw := tabwriter.NewWriter(buf, 4, 4, 2, ' ', 0)
 
-		fmt.Fprintf(tw, "Segment\tTotalIn\tTotalOut\tRateIn\tRateOut\n")
+		_, _ = fmt.Fprintf(tw, "Segment\tTotalIn\tTotalOut\tRateIn\tRateOut\n")
 
 		if bypeer {
 			bw, err := netAPI.NetBandwidthStatsByPeer(ctx)
@@ -401,7 +401,7 @@ var statsBandwidthCmd = &cmds.Command{
 
 			for _, p := range peers {
 				s := bw[p]
-				fmt.Fprintf(tw, "%s\t%s\t%s\t%s/s\t%s/s\n", p, humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
+				_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s/s\t%s/s\n", p, humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
 			}
 		} else if byproto {
 			bw, err := netAPI.NetBandwidthStatsByProtocol(ctx)
@@ -423,7 +423,7 @@ var statsBandwidthCmd = &cmds.Command{
 				if p == "" {
 					p = "<unknown>"
 				}
-				fmt.Fprintf(tw, "%s\t%s\t%s\t%s/s\t%s/s\n", p, humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
+				_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s/s\t%s/s\n", p, humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
 			}
 		} else {
 
@@ -432,7 +432,7 @@ var statsBandwidthCmd = &cmds.Command{
 				return err
 			}
 
-			fmt.Fprintf(tw, "Total\t%s\t%s\t%s/s\t%s/s\n", humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
+			_, _ = fmt.Fprintf(tw, "Total\t%s\t%s\t%s/s\t%s/s\n", humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
 		}
 
 		if err := tw.Flush(); err != nil {
