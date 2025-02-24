@@ -83,7 +83,7 @@ func writeImports(deps map[string]util.ImportMeta, dst *bytes.Buffer) error {
 
 	}
 
-	fmt.Fprintln(dst, "import (")
+	_, _ = fmt.Fprintln(dst, "import (")
 	for _, impGroup := range imports {
 		for _, imp := range impGroup {
 			_, err := fmt.Fprintf(dst, "\t%s \"%s\"\n", imp[0], imp[1])
@@ -92,10 +92,10 @@ func writeImports(deps map[string]util.ImportMeta, dst *bytes.Buffer) error {
 			}
 		}
 
-		fmt.Fprintln(dst, "")
+		_, _ = fmt.Fprintln(dst, "")
 	}
 
-	fmt.Fprintln(dst, ")")
+	_, _ = fmt.Fprintln(dst, ")")
 	return nil
 }
 
@@ -155,7 +155,7 @@ func writeStruct(dst *bytes.Buffer, ifaceMeta *util.InterfaceMeta, astMeta *util
 
 	tmpBuf := &bytes.Buffer{}
 	if len(ifaceMeta.Defined) > 0 {
-		fmt.Fprint(dst, structInternalHead)
+		_, _ = fmt.Fprint(dst, structInternalHead)
 
 		for _, meth := range ifaceMeta.Defined {
 			_, _ = fmt.Fprintf(dst, "\t\t%s ", meth.Name)
@@ -168,13 +168,13 @@ func writeStruct(dst *bytes.Buffer, ifaceMeta *util.InterfaceMeta, astMeta *util
 			dst.WriteString(strings.ReplaceAll(tmpBuf.String(), "\n\t", ""))
 			tmpBuf.Reset()
 
-			fmt.Fprint(dst, util.GetMethodComment(meth))
+			_, _ = fmt.Fprint(dst, util.GetMethodComment(meth))
 		}
 
-		fmt.Fprint(dst, structInternalTail)
+		_, _ = fmt.Fprint(dst, structInternalTail)
 	}
 
-	fmt.Fprint(dst, structTail)
+	_, _ = fmt.Fprint(dst, structTail)
 	return nil
 }
 
@@ -186,7 +186,7 @@ func writeMethods(dst *bytes.Buffer, ifaceMeta *util.InterfaceMeta, astMeta *uti
 			return fmt.Errorf("write method for %s.%s: %w", ifaceMeta.Name, meth.Name, err)
 		}
 	}
-	fmt.Fprintln(dst, "")
+	_, _ = fmt.Fprintln(dst, "")
 	return nil
 }
 

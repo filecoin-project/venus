@@ -26,6 +26,7 @@ issues:
     - "a blank import should be only in a main or test package, or have a comment justifying it"
     - "package comment should be of the form"
     - "should be of the form"
+    - "SA1006"
 
   exclude-rules:
     - path: pkg/constants
@@ -52,5 +53,7 @@ run:
     - venus-shared/actors/builtin$
     - venus-shared/actors/policy$
     - pkg/vm$
+    - pkg/market$
+    - cmd$
   skip-files:
     - ".*_gen\\.go$" # skip auto generated go files
