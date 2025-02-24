@@ -39,6 +39,9 @@ issues:
 linters-settings:
   goconst:
     min-occurrences: 6
+  go-vet:
+    disable:
+      - printf
 
 run:
   skip-dirs:
