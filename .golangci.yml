@@ -39,7 +39,7 @@ issues:
 linters-settings:
   goconst:
     min-occurrences: 6
-  go-vet:
+  govet:
     disable:
       - printf
 
