@@ -324,7 +324,7 @@ type ChannelAvailableFunds struct {
 	PendingWaitSentinel *cid.Cid
 	// QueuedAmt is the amount that is queued up behind a pending request
 	QueuedAmt BigInt
-	// VoucherRedeemedAmt is the amount that is redeemed by vouchers on-chain
+	// VoucherReedeemedAmt is the amount that is redeemed by vouchers on-chain
 	// and in the local datastore
 	VoucherReedeemedAmt BigInt
 }
