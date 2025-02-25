@@ -1,6 +1,7 @@
 package vf3
 
 import (
+	"os"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -32,6 +33,10 @@ type Config struct {
 	// TESTINGAllowDynamicFinalize allow dynamic manifests to finalize tipsets. DO NOT ENABLE
 	// THIS IN PRODUCTION!
 	AllowDynamicFinalize bool
+
+	// ContractAddress specifies the address of the contract carring F3 parameters
+	ContractAddress      string
+	ContractPollInterval time.Duration
 }
 
 // NewManifest constructs a sane F3 manifest based on the passed parameters. This function does not
@@ -81,11 +86,22 @@ func NewConfig(nn string, netCfg *config.NetworkParamsConfig) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	pollInterval := 15 * time.Minute
+	if envVar := os.Getenv("VENUS_F3_POLL_INTERVAL"); len(envVar) != 0 {
+		d, err := time.ParseDuration(envVar)
+		if err != nil {
+			log.Errorf("invalid duration in VENUS_F3_POLL_INTERVAL, defaulting to %v", pollInterval)
+		} else {
+			pollInterval = d
+		}
+
+	}
 	c := &Config{
 		BaseNetworkName:          gpbft.NetworkName(nn),
 		PrioritizeStaticManifest: true,
 		DynamicManifestProvider:  manifestServerID,
 		AllowDynamicFinalize:     false,
+		ContractPollInterval:     pollInterval,
 	}
 	if netCfg.F3BootstrapEpoch >= 0 {
 		// todo:
