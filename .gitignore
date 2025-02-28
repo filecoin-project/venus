@@ -11,6 +11,7 @@ localnet.json
 coverprofile.html
 *.out
 *.so
+venus.log*
 
 actor-bundles-v8.*
 
