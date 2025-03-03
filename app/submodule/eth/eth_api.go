@@ -1000,7 +1000,7 @@ func (a *ethAPI) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (types
 		return types.EthUint64(0), fmt.Errorf("decoding params: %w", err)
 	}
 
-	msg, err := ethCallToFilecoinMessage(ctx, params.Tx)
+	msg, err := params.Tx.ToFilecoinMessage()
 	if err != nil {
 		return types.EthUint64(0), err
 	}
@@ -1166,7 +1166,7 @@ func ethGasSearch(
 }
 
 func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error) {
-	msg, err := ethCallToFilecoinMessage(ctx, tx)
+	msg, err := tx.ToFilecoinMessage()
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}

@@ -60,7 +60,6 @@ func NewGossipSub(ctx context.Context,
 
 	blockTopic := types.BlockTopic(networkName)
 	msgTopic := types.MessageTopic(networkName)
-	indexerIngestTopic := types.IndexerIngestTopic(networkName)
 
 	topicParams := map[string]*pubsub.TopicScoreParams{
 		blockTopic: {
@@ -145,22 +144,6 @@ func NewGossipSub(ctx context.Context,
 		msgTopic:   1,
 	}
 
-	ingestTopicParams := &pubsub.TopicScoreParams{
-		// expected ~0.5 confirmed deals / min. sampled
-		TopicWeight: 0.1,
-
-		TimeInMeshWeight:  0.00027, // ~1/3600
-		TimeInMeshQuantum: time.Second,
-		TimeInMeshCap:     1,
-
-		FirstMessageDeliveriesWeight: 0.5,
-		FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-		FirstMessageDeliveriesCap:    100, // allowing for burstiness
-
-		InvalidMessageDeliveriesWeight: -1000,
-		InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-	}
-
 	drandTopicParams := &pubsub.TopicScoreParams{
 		// expected 2 beaconsn/min
 		TopicWeight: 0.5, // 5x block topic; max cap is 62.5
@@ -207,9 +190,6 @@ func NewGossipSub(ctx context.Context,
 		pgTopicWeights[topic] = 5
 		drandTopics = append(drandTopics, topic)
 	}
-
-	// Index ingestion whitelist
-	topicParams[indexerIngestTopic] = ingestTopicParams
 
 	isBootstrapNode := bs
 
@@ -311,7 +291,6 @@ func NewGossipSub(ctx context.Context,
 	allowTopics := []string{
 		blockTopic,
 		msgTopic,
-		indexerIngestTopic,
 	}
 	allowTopics = append(allowTopics, drandTopics...)
 

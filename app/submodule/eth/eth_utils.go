@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-	"github.com/filecoin-project/venus/venus-shared/actors"
 	types2 "github.com/filecoin-project/venus/venus-shared/actors/types"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -146,64 +145,6 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, store *chain.Store, bl
 	}
 
 	return nil, errors.New("invalid block param")
-}
-
-func ethCallToFilecoinMessage(_ context.Context, tx types.EthCall) (*types.Message, error) {
-	var from address.Address
-	if tx.From == nil || *tx.From == (types.EthAddress{}) {
-		var err error
-		from, err = (types.EthAddress{}).ToFilecoinAddress()
-		if err != nil {
-			return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
-		}
-	} else {
-		// The from address must be translatable to an f4 address.
-		var err error
-		from, err = tx.From.ToFilecoinAddress()
-		if err != nil {
-			return nil, fmt.Errorf("failed to translate sender address (%s): %w", tx.From.String(), err)
-		}
-		if p := from.Protocol(); p != address.Delegated {
-			return nil, fmt.Errorf("expected a class 4 address, got: %d: %w", p, err)
-		}
-	}
-
-	var params []byte
-	if len(tx.Data) > 0 {
-		initcode := abi.CborBytes(tx.Data)
-		params2, err := actors.SerializeParams(&initcode)
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize params: %w", err)
-		}
-		params = params2
-	}
-
-	var to address.Address
-	var method abi.MethodNum
-	if tx.To == nil {
-		// this is a contract creation
-		to = builtin.EthereumAddressManagerActorAddr
-		method = builtin.MethodsEAM.CreateExternal
-	} else {
-		addr, err := tx.To.ToFilecoinAddress()
-		if err != nil {
-			return nil, fmt.Errorf("cannot get Filecoin address: %w", err)
-		}
-		to = addr
-
-		method = builtin.MethodsEVM.InvokeContract
-	}
-
-	return &types.Message{
-		From:       from,
-		To:         to,
-		Value:      big.Int(tx.Value),
-		Method:     method,
-		Params:     params,
-		GasLimit:   constants.BlockGasLimit,
-		GasFeeCap:  big.Zero(),
-		GasPremium: big.Zero(),
-	}, nil
 }
 
 func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, ms *chain.MessageStore, stmgr *statemanger.Stmgr) (types.EthBlock, error) {
