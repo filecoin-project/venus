@@ -47,7 +47,6 @@ import (
 	filexchange "github.com/filecoin-project/venus/pkg/net/exchange"
 	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
 	"github.com/filecoin-project/venus/pkg/net/peermgr"
-	"github.com/filecoin-project/venus/pkg/net/pubsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/vf3"
@@ -89,8 +88,6 @@ type NetworkSubmodule struct { //nolint
 
 	ScoreKeeper *net.ScoreKeeper
 
-	indexMsgRelayCancelFunc libp2pps.RelayCancelFunc
-
 	cfg   networkConfig
 	F3Cfg *vf3.Config
 }
@@ -116,7 +113,6 @@ func (networkSubmodule *NetworkSubmodule) Stop(ctx context.Context) {
 	if err := networkSubmodule.Router.(*dht.IpfsDHT).Close(); err != nil {
 		networkLogger.Errorf("error closing dht: %s", err.Error())
 	}
-	networkSubmodule.indexMsgRelayCancelFunc()
 }
 
 type networkConfig interface {
@@ -196,11 +192,6 @@ func NewNetworkSubmodule(ctx context.Context,
 		return nil, errors.Wrap(err, "failed to set up network")
 	}
 
-	indexMsgRelayCancelFunc, err := relayIndexerMessages(gsub, networkName, peerHost, chainStore)
-	if err != nil {
-		return nil, fmt.Errorf("failed to set up relay indexer messages: %w", err)
-	}
-
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router, bsnet.Prefix("/chain"))
 	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
@@ -233,24 +224,23 @@ func NewNetworkSubmodule(ctx context.Context,
 	helloHandler := helloprotocol.NewHelloProtocolHandler(peerHost, peerMgr, exchangeClient, chainStore, messageStore, config.GenesisCid(), time.Duration(config.Repo().Config().NetworkParams.BlockDelay)*time.Second)
 	// build the network submdule
 	return &NetworkSubmodule{
-		NetworkName:             networkName,
-		Host:                    peerHost,
-		RawHost:                 rawHost,
-		Router:                  router,
-		Pubsub:                  gsub,
-		Bitswap:                 bswap,
-		GraphExchange:           gsync,
-		ExchangeClient:          exchangeClient,
-		exchangeServer:          exchangeServer,
-		Network:                 network,
-		DataTransfer:            dt,
-		DataTransferHost:        dtNet,
-		PeerMgr:                 peerMgr,
-		HelloHandler:            helloHandler,
-		cfg:                     config,
-		ScoreKeeper:             sk,
-		indexMsgRelayCancelFunc: indexMsgRelayCancelFunc,
-		F3Cfg:                   f3Cfg,
+		NetworkName:      networkName,
+		Host:             peerHost,
+		RawHost:          rawHost,
+		Router:           router,
+		Pubsub:           gsub,
+		Bitswap:          bswap,
+		GraphExchange:    gsync,
+		ExchangeClient:   exchangeClient,
+		exchangeServer:   exchangeServer,
+		Network:          network,
+		DataTransfer:     dt,
+		DataTransferHost: dtNet,
+		PeerMgr:          peerMgr,
+		HelloHandler:     helloHandler,
+		cfg:              config,
+		ScoreKeeper:      sk,
+		F3Cfg:            f3Cfg,
 	}, nil
 }
 
@@ -467,27 +457,4 @@ func connectionManager(low, high uint, grace time.Duration, protected []string, 
 	}
 
 	return cm, nil
-}
-
-func relayIndexerMessages(ps *libp2pps.PubSub, nn string, h host.Host, chainReader *chain.Store) (libp2pps.RelayCancelFunc, error) {
-	topicName := types.IndexerIngestTopic(nn)
-
-	v := pubsub.NewIndexerMessageValidator(h.ID(), chainReader)
-
-	if err := ps.RegisterTopicValidator(topicName, v.Validate); err != nil {
-		return nil, fmt.Errorf("failed to register validator for topic %s, err: %w", topicName, err)
-	}
-
-	topicHandle, err := ps.Join(topicName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to join pubsub topic %s: %w", topicName, err)
-	}
-	cancelFunc, err := topicHandle.Relay()
-	if err != nil {
-		return nil, fmt.Errorf("failed to relay to pubsub messages for topic %s: %w", topicName, err)
-	}
-
-	networkLogger.Infof("relaying messages for pubsub topic %s", topicName)
-
-	return cancelFunc, nil
 }
