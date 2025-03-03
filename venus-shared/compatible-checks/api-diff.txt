@@ -65,6 +65,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- Shutdown
 	- StateGetAllAllocations
 	- StateGetAllClaims
+	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported field name: #3 field, SupportedProofTypes != PreCommitChallengeDelay; nested=nil}}}}
 	+ StateMinerInitialPledgeForSector
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
@@ -164,6 +165,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
+	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported field name: #3 field, SupportedProofTypes != PreCommitChallengeDelay; nested=nil}}}}
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- SyncCheckBad

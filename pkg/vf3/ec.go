@@ -145,15 +145,6 @@ func (ec *ecWrapper) getPowerTableTSK(ctx context.Context, tsk types.TipSetKey) 
 			return nil
 		}
 
-		// TODO: optimize
-		ok, err := powerState.MinerNominalPowerMeetsConsensusMinimum(minerAddr)
-		if err != nil {
-			return fmt.Errorf("checking consensus minimums: %w", err)
-		}
-		if !ok {
-			return nil
-		}
-
 		id, err := address.IDFromAddress(minerAddr)
 		if err != nil {
 			return fmt.Errorf("transforming address to ID: %w", err)
@@ -203,7 +194,7 @@ func (ec *ecWrapper) getPowerTableTSK(ctx context.Context, tsk types.TipSetKey) 
 		pe.PubKey = waddr.Payload()
 		powerEntries = append(powerEntries, pe)
 		return nil
-	})
+	}, true)
 	if err != nil {
 		return nil, fmt.Errorf("collecting the power table: %w", err)
 	}
