@@ -46,16 +46,6 @@ func MessageTopic(networkName string) string {
 	return fmt.Sprintf("/fil/msgs/%s", networkName)
 }
 
-func IndexerIngestTopic(networkName string) string {
-	// The network name testnetnet is here for historical reasons.
-	// Going forward we aim to use the name `mainnet` where possible.
-	if networkName == "testnetnet" {
-		networkName = "mainnet"
-	}
-
-	return "/indexer/ingest/" + networkName
-}
-
 func DrandTopic(chainInfoJSON string) (string, error) {
 	drandInfo := struct {
 		Hash string `json:"hash"`
