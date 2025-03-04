@@ -77,6 +77,7 @@ func ButterflySnapNet() *NetworkConf {
 			F3BootstrapEpoch:        -1,
 			ManifestServerID:        "12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6",
 			F3InitialPowerTableCID:  cid.Undef,
+			F3ParamsAddress:         "0x9fd3B2D38EE4C920c9954DA752eDF810887501c1",
 		},
 	}
 
