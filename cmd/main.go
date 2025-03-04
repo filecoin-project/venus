@@ -134,6 +134,9 @@ Cid COMMANDS
 Evm COMMANDS
   evm                    - Commands related to the Filecoin EVM runtime
 
+F3 COMMANDS
+  f3                     - Commands related to the Filecoin F3
+
 TOOL COMMANDS
   inspect                - Show info about the venus node
   log                    - Interact with the daemon event log output
@@ -186,6 +189,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"paych":   paychCmd,
 	"info":    infoCmd,
 	"evm":     evmCmd,
+	"f3":      f3Cmd,
 }
 
 func init() {
