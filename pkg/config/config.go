@@ -313,6 +313,7 @@ type NetworkParamsConfig struct {
 	ManifestServerID string         `json:"manifestServerID"`
 	// The initial F3 power table CID.
 	F3InitialPowerTableCID cid.Cid `json:"f3InitialPowerTableCID"`
+	F3ParamsAddress        string  `json:"f3ParamsAddress"`
 }
 
 // ForkUpgradeConfig record upgrade parameters

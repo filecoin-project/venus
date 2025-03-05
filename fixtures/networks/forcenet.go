@@ -79,6 +79,7 @@ func ForceNet() *NetworkConf {
 			F3BootstrapEpoch:        1000,
 			ManifestServerID:        "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG",
 			F3InitialPowerTableCID:  cid.Undef,
+			F3ParamsAddress:         "",
 		},
 	}
 

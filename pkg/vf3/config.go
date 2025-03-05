@@ -102,6 +102,7 @@ func NewConfig(nn string, netCfg *config.NetworkParamsConfig) (*Config, error) {
 		DynamicManifestProvider:  manifestServerID,
 		AllowDynamicFinalize:     false,
 		ContractPollInterval:     pollInterval,
+		ContractAddress:          netCfg.F3ParamsAddress,
 	}
 	if netCfg.F3BootstrapEpoch >= 0 {
 		// todo:
