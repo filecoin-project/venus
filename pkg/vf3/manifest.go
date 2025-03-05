@@ -161,6 +161,7 @@ func (cmp *ContractManifestProvider) Start(context.Context) error {
 	if err != nil {
 		log.Warnw("got error while fetching manifest from contract", "error", err)
 	}
+	log.Infof("fetched manifest from contract: %+v", knownManifest)
 	cmp.manifestChanges <- knownManifest
 
 	cmp.errgrp.Go(func() error {
