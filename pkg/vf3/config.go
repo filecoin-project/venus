@@ -2,6 +2,7 @@ package vf3
 
 import (
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -88,11 +89,12 @@ func NewConfig(nn string, netCfg *config.NetworkParamsConfig) (*Config, error) {
 	}
 	pollInterval := 15 * time.Minute
 	if envVar := os.Getenv("VENUS_F3_POLL_INTERVAL"); len(envVar) != 0 {
-		d, err := time.ParseDuration(envVar)
+		d, err := strconv.Atoi(envVar)
 		if err != nil {
-			log.Errorf("invalid duration in VENUS_F3_POLL_INTERVAL, defaulting to %v", pollInterval)
+			log.Errorf("invalid duration in VENUS_F3_POLL_INTERVAL, defaulting to %v(s)", pollInterval.Seconds())
 		} else {
-			pollInterval = d
+			pollInterval = time.Duration(d) * time.Second
+			log.Infof("VENUS_F3_POLL_INTERVAL set to %v(s)", pollInterval.Seconds())
 		}
 
 	}
