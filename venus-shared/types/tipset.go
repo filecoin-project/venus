@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -39,7 +40,7 @@ func NewTipSet(bhs []*BlockHeader) (*TipSet, error) {
 			return nil, fmt.Errorf("inconsistent block heights %d and %d", first.Height, blk.Height)
 		}
 
-		if !sortedCidArrsEqual(blk.Parents, first.Parents) {
+		if !slices.Equal(blk.Parents, first.Parents) {
 			return nil, fmt.Errorf("inconsistent block parents %s and %s", NewTipSetKey(first.Parents...), NewTipSetKey(blk.Parents...))
 		}
 
@@ -125,17 +126,7 @@ func (ts *TipSet) Equals(ots *TipSet) bool {
 		return false
 	}
 
-	if len(ts.cids) != len(ots.cids) {
-		return false
-	}
-
-	for i, cid := range ts.cids {
-		if cid != ots.cids[i] {
-			return false
-		}
-	}
-
-	return true
+	return slices.Equal(ts.cids, ots.cids)
 }
 
 // Len returns the number of blocks in the tipset.
@@ -256,20 +247,6 @@ func (ts *TipSet) ToSlice() []*BlockHeader {
 	slice := make([]*BlockHeader, len(ts.blocks))
 	copy(slice, ts.blocks)
 	return slice
-}
-
-func sortedCidArrsEqual(a, b []cid.Cid) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
 }
 
 func sortBlockHeadersInTipSet(blks []*blockHeaderWithCid) {
