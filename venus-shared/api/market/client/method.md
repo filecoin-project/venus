@@ -196,7 +196,7 @@ Response:
 ```
 
 ### ClientDealPieceCID
-ClientCalcCommP calculates the CommP and data size of the specified CID
+ClientDealPieceCID returns the Piece CID and data size for the specified CID
 
 
 Perms: read

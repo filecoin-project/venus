@@ -52,7 +52,7 @@ type IMarketClient interface {
 	ClientGetRetrievalUpdates(ctx context.Context) (<-chan client.RetrievalInfo, error) //perm:write
 	// ClientQueryAsk returns a signed StorageAsk from the specified miner.
 	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) //perm:read
-	// ClientCalcCommP calculates the CommP and data size of the specified CID
+	// ClientDealPieceCID returns the Piece CID and data size for the specified CID
 	ClientDealPieceCID(ctx context.Context, root cid.Cid) (client.DataCIDSize, error) //perm:read
 	// ClientCalcCommP calculates the CommP for a specified file
 	ClientCalcCommP(ctx context.Context, inpath string) (*client.CommPRet, error) //perm:write
