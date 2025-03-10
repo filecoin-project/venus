@@ -11,7 +11,7 @@ jobs:
 
   build_docker_image:
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -48,6 +48,6 @@ jobs:
         curl -O https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/dockerfile
         make docker TAG=latest
         docker tag ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:latest ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:${{ steps.vars.outputs.github_tag }}
-        docker login --username=${{steps.vars.outputs.docker_user_name}} --password ${{ secrets.DOCKER_PASSWORD }} 
+        docker login --username=${{steps.vars.outputs.docker_user_name}} --password ${{ secrets.DOCKER_PASSWORD }}
         docker push ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:${{ steps.vars.outputs.github_tag }}
         docker push ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:latest
