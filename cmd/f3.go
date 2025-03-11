@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"compress/flate"
 	"context"
+	"embed"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math"
+	"text/template"
 	"time"
 
+	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -21,6 +24,35 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
+//go:embed templates/f3_*.go.tmpl
+var f3TemplatesFS embed.FS
+var f3Templates = template.Must(
+	template.New("").
+		Funcs(template.FuncMap{
+			"ptDiffToString":            f3PowerTableDiffsToString,
+			"tipSetKeyToLotusTipSetKey": types.TipSetKeyFromBytes,
+			"add":                       func(a, b int) int { return a + b },
+			"sub":                       func(a, b int) int { return a - b },
+		}).
+		ParseFS(f3TemplatesFS, "templates/f3_*.go.tmpl"),
+)
+
+func f3PowerTableDiffsToString(diff certs.PowerTableDiff) (string, error) {
+	if len(diff) == 0 {
+		return "None", nil
+	}
+	totalDiff := gpbft.NewStoragePower(0).Int
+	for _, delta := range diff {
+		if !delta.IsZero() {
+			totalDiff = totalDiff.Add(totalDiff, delta.PowerDelta.Int)
+		}
+	}
+	if totalDiff.Cmp(gpbft.NewStoragePower(0).Int) == 0 {
+		return "None", nil
+	}
+	return fmt.Sprintf("Total of %s storage power across %d miner(s).", totalDiff, len(diff)), nil
+}
+
 var f3Cmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Interact with filecoin blockchain",
@@ -28,6 +60,7 @@ var f3Cmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"check-activation-raw": f3CheckActivationRaw,
 		"check-activation":     f3CheckActivation,
+		"status":               f3Status,
 	},
 }
 
@@ -168,4 +201,54 @@ var f3CheckActivationRaw = &cmds.Command{
 			return re.Emit(buf)
 		}
 	},
+}
+
+var f3Status = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Checks the F3 status.",
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		ctx := requestContext(req)
+
+		api := env.(*node.Env).F3API
+		running, err := api.F3IsRunning(ctx)
+		if err != nil {
+			return fmt.Errorf("getting running state: %w", err)
+		}
+		buf := new(bytes.Buffer)
+		_, _ = fmt.Fprintf(buf, "Running: %t\n", running)
+		if !running {
+			return nil
+		}
+
+		progress, err := api.F3GetProgress(ctx)
+		if err != nil {
+			return fmt.Errorf("getting progress: %w", err)
+		}
+
+		_, _ = fmt.Fprintln(buf, "Progress:")
+		_, _ = fmt.Fprintf(buf, "  Instance: %d\n", progress.ID)
+		_, _ = fmt.Fprintf(buf, "  Round:    %d\n", progress.Round)
+		_, _ = fmt.Fprintf(buf, "  Phase:    %s\n", progress.Phase)
+
+		manifest, err := api.F3GetManifest(ctx)
+		if err != nil {
+			return fmt.Errorf("getting manifest: %w", err)
+		}
+
+		if err := prettyPrintManifest(buf, manifest); err != nil {
+			return err
+		}
+
+		return re.Emit(buf)
+	},
+}
+
+func prettyPrintManifest(out io.Writer, manifest *manifest.Manifest) error {
+	if manifest == nil {
+		_, err := fmt.Fprintln(out, "Manifest: None")
+		return err
+	}
+
+	return f3Templates.ExecuteTemplate(out, "f3_manifest.go.tmpl", manifest)
 }
