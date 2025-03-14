@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -50,6 +51,7 @@ func NewManifestProvider(ctx context.Context,
 	ps *pubsub.PubSub,
 	mds datastore.Datastore,
 	stateCaller StateCaller,
+	f3InitialPowerTableCID cid.Cid,
 ) (prov manifest.ManifestProvider, err error) {
 	var primaryManifest manifest.ManifestProvider
 	if config.StaticManifest != nil {
@@ -57,7 +59,7 @@ func NewManifestProvider(ctx context.Context,
 		primaryManifest, err = manifest.NewStaticManifestProvider(config.StaticManifest)
 	} else if config.ContractAddress != "" {
 		log.Infow("using contract maniest as primary", "address", config.ContractAddress)
-		primaryManifest, err = NewContractManifestProvider(ctx, config, stateCaller)
+		primaryManifest, err = NewContractManifestProvider(ctx, config, stateCaller, f3InitialPowerTableCID)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("creating primary manifest: %w", err)
@@ -123,6 +125,8 @@ type ContractManifestProvider struct {
 	stateCaller  StateCaller
 	pollInterval time.Duration
 
+	f3InitialPowerTableCID cid.Cid
+
 	manifestChanges chan *manifest.Manifest
 
 	errgrp     *errgroup.Group
@@ -130,7 +134,11 @@ type ContractManifestProvider struct {
 	cancel     context.CancelFunc
 }
 
-func NewContractManifestProvider(ctx context.Context, config *Config, stateCaller StateCaller) (*ContractManifestProvider, error) {
+func NewContractManifestProvider(ctx context.Context,
+	config *Config,
+	stateCaller StateCaller,
+	f3InitialPowerTableCID cid.Cid,
+) (*ContractManifestProvider, error) {
 	ctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	errgrp, ctx := errgroup.WithContext(ctx)
 	return &ContractManifestProvider{
@@ -138,6 +146,8 @@ func NewContractManifestProvider(ctx context.Context, config *Config, stateCalle
 		address:      config.ContractAddress,
 		networkName:  config.BaseNetworkName,
 		pollInterval: config.ContractPollInterval,
+
+		f3InitialPowerTableCID: f3InitialPowerTableCID,
 
 		manifestChanges: make(chan *manifest.Manifest, 1),
 
@@ -240,6 +250,10 @@ func (cmp *ContractManifestProvider) fetchManifest(ctx context.Context) (*manife
 
 	if m.BootstrapEpoch < 0 || uint64(m.BootstrapEpoch) != activationEpoch {
 		return nil, fmt.Errorf("bootstrap epoch does not match: %d != %d", m.BootstrapEpoch, activationEpoch)
+	}
+
+	if !m.InitialPowerTable.Defined() && cmp.f3InitialPowerTableCID.Defined() {
+		m.InitialPowerTable = cmp.f3InitialPowerTableCID
 	}
 
 	if err := m.Validate(); err != nil {
