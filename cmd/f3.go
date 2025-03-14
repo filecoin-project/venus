@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vf3"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/utils"
+	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -85,7 +86,7 @@ var f3CheckActivation = &cmds.Command{
 			ContractPollInterval: 15 * time.Second,
 		}
 
-		prov, err := vf3.NewManifestProvider(ctx, &config, nil, nil, nil, env.(*node.Env).ChainAPI)
+		prov, err := vf3.NewManifestProvider(ctx, &config, nil, nil, nil, env.(*node.Env).ChainAPI, cid.Undef)
 		if err != nil {
 			return fmt.Errorf("creating manifest proivder: %w", err)
 		}
