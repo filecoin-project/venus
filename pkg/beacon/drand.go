@@ -97,15 +97,6 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 		dclient.WithLogger(&logger{&log.SugaredLogger}),
 	}
 
-	// if ps != nil {
-	// 	opts = append(opts, gclient.WithPubsub(ps))
-	// } else {
-	// 	if len(clients) == 0 {
-	// 		// This is necessary to convince a drand beacon to start without any clients. For historical
-	// 		// beacons we need them to be able to verify old entries but we don't need to fetch new ones.
-	// 		clients = append(clients, dclient.EmptyClientWithInfo(drandChain))
-	// 	}
-	// }
 	if len(clients) == 0 {
 		// This is necessary to convince a drand beacon to start without any clients. For historical
 		// beacons we need them to be able to verify old entries but we don't need to fetch new ones.
