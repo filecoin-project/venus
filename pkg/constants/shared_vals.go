@@ -28,30 +28,18 @@ const (
 )
 
 const (
-	FilBase               = uint64(2_000_000_000)
-	FilAllocStorageMining = uint64(1_100_000_000)
+	FilBase = uint64(2_000_000_000)
 )
 
 const (
 	FilecoinPrecision = uint64(1_000_000_000_000_000_000)
-	FilReserved       = uint64(300_000_000)
 )
 
-var (
-	InitialRewardBalance *big.Int
-	InitialFilReserved   *big.Int
-)
+var InitialRewardBalance = WholeFIL(1_100_000_000)
+var InitialFilReserved = WholeFIL(300_000_000)
 
 func SetAddressNetwork(n address.Network) {
 	address.CurrentNetwork = n
-}
-
-func init() {
-	InitialRewardBalance = big.NewInt(int64(FilAllocStorageMining))
-	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(int64(FilecoinPrecision)))
-
-	InitialFilReserved = big.NewInt(int64(FilReserved))
-	InitialFilReserved = InitialFilReserved.Mul(InitialFilReserved, big.NewInt(int64(FilecoinPrecision)))
 }
 
 // assuming 4000 messages per round, this lets us not lose any messages across a
@@ -70,3 +58,8 @@ const (
 
 // Epochs
 const MessageConfidence = uint64(5)
+
+func WholeFIL(whole uint64) *big.Int {
+	bigWhole := big.NewInt(int64(whole))
+	return bigWhole.Mul(bigWhole, big.NewInt(int64(FilecoinPrecision)))
+}

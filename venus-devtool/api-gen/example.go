@@ -387,6 +387,14 @@ func init() {
 	}
 	addExample(f3Cert)
 	addExample(&f3Cert)
+	addExample(gpbft.InstanceProgress{
+		Instant: gpbft.Instant{
+			ID:    1413,
+			Round: 1,
+			Phase: gpbft.COMMIT_PHASE,
+		},
+		Input: ecchain,
+	})
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

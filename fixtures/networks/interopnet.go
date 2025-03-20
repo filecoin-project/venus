@@ -5,6 +5,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
@@ -79,6 +80,8 @@ func InteropNet() *NetworkConf {
 			ManifestServerID:        "12D3KooWQJ2rdVnG4okDUB6yHQhAjNutGNemcM7XzqC9Eo4z9Jce",
 			F3InitialPowerTableCID:  cid.Undef,
 			F3ParamsAddress:         "",
+
+			UpgradeTeepInitialFilReserved: constants.InitialFilReserved, // FIP-0100: no change for interop
 		},
 	}
 

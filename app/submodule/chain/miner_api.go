@@ -320,10 +320,15 @@ func (msa *minerStateAPI) StateMinerDeadlines(ctx context.Context, maddr address
 		if err != nil {
 			return err
 		}
+		dailyFee, err := dl.DailyFee()
+		if err != nil {
+			return err
+		}
 
 		out[i] = types.Deadline{
 			PostSubmissions:      ps,
 			DisputableProofCount: l,
+			DailyFee:             dailyFee,
 		}
 		return nil
 	}); err != nil {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"reflect"
 	"regexp"
@@ -312,8 +313,9 @@ type NetworkParamsConfig struct {
 	F3BootstrapEpoch abi.ChainEpoch `json:"f3BootstrapEpoch"`
 	ManifestServerID string         `json:"manifestServerID"`
 	// The initial F3 power table CID.
-	F3InitialPowerTableCID cid.Cid `json:"f3InitialPowerTableCID"`
-	F3ParamsAddress        string  `json:"f3ParamsAddress"`
+	F3InitialPowerTableCID        cid.Cid  `json:"f3InitialPowerTableCID"`
+	F3ParamsAddress               string   `json:"f3ParamsAddress"`
+	UpgradeTeepInitialFilReserved *big.Int `json:"upgradeTeepInitialFilReserved"`
 }
 
 // ForkUpgradeConfig record upgrade parameters

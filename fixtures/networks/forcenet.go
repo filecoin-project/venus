@@ -5,6 +5,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 )
@@ -80,6 +81,8 @@ func ForceNet() *NetworkConf {
 			ManifestServerID:        "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG",
 			F3InitialPowerTableCID:  cid.Undef,
 			F3ParamsAddress:         "",
+
+			UpgradeTeepInitialFilReserved: constants.WholeFIL(1_400_000_000), // FIP-0100: 300M -> 1.4B FIL
 		},
 	}
 
