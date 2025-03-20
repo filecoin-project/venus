@@ -83,9 +83,9 @@ func (f3api *f3API) F3IsRunning(_ctx context.Context) (bool, error) {
 	return f3api.f3module.F3.IsRunning(), nil
 }
 
-func (f3api *f3API) F3GetProgress(context.Context) (gpbft.Instant, error) {
+func (f3api *f3API) F3GetProgress(context.Context) (gpbft.InstanceProgress, error) {
 	if f3api.f3module.F3 == nil {
-		return gpbft.Instant{}, types.ErrF3Disabled
+		return gpbft.InstanceProgress{}, types.ErrF3Disabled
 	}
 	return f3api.f3module.F3.Progress(), nil
 }

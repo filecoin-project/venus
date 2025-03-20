@@ -360,10 +360,18 @@ func init() {
 	}
 	addExample(f3Lease)
 	addExample(&f3Lease)
-
+	ecchain := &gpbft.ECChain{
+		TipSets: []*gpbft.TipSet{
+			{
+				Epoch:      0,
+				Key:        tsk.Bytes(),
+				PowerTable: c,
+			},
+		},
+	}
 	f3Cert := certs.FinalityCertificate{
 		GPBFTInstance: 0,
-		ECChain:       &gpbft.ECChain{},
+		ECChain:       ecchain,
 		SupplementalData: gpbft.SupplementalData{
 			PowerTable: c,
 		},

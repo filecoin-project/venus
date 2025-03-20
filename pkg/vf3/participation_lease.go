@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-type f3Status = func() (*manifest.Manifest, gpbft.Instant)
+type f3Status = func() (*manifest.Manifest, gpbft.InstanceProgress)
 
 type leaser struct {
 	mutex                sync.Mutex

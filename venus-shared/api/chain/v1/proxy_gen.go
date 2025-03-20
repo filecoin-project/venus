@@ -1101,7 +1101,7 @@ type IF3Struct struct {
 		F3GetLatestCertificate          func(ctx context.Context) (*certs.FinalityCertificate, error)                                                                                   `perm:"read"`
 		F3GetManifest                   func(ctx context.Context) (*manifest.Manifest, error)                                                                                           `perm:"read"`
 		F3GetOrRenewParticipationTicket func(ctx context.Context, minerID address.Address, previous types.F3ParticipationTicket, instances uint64) (types.F3ParticipationTicket, error) `perm:"sign"`
-		F3GetProgress                   func(ctx context.Context) (gpbft.Instant, error)                                                                                                `perm:"read"`
+		F3GetProgress                   func(ctx context.Context) (gpbft.InstanceProgress, error)                                                                                       `perm:"read"`
 		F3IsRunning                     func(ctx context.Context) (bool, error)                                                                                                         `perm:"read"`
 		F3ListParticipants              func(ctx context.Context) ([]types.F3Participant, error)                                                                                        `perm:"read"`
 		F3Participate                   func(ctx context.Context, ticket types.F3ParticipationTicket) (types.F3ParticipationLease, error)                                               `perm:"sign"`
@@ -1126,7 +1126,7 @@ func (s *IF3Struct) F3GetManifest(p0 context.Context) (*manifest.Manifest, error
 func (s *IF3Struct) F3GetOrRenewParticipationTicket(p0 context.Context, p1 address.Address, p2 types.F3ParticipationTicket, p3 uint64) (types.F3ParticipationTicket, error) {
 	return s.Internal.F3GetOrRenewParticipationTicket(p0, p1, p2, p3)
 }
-func (s *IF3Struct) F3GetProgress(p0 context.Context) (gpbft.Instant, error) {
+func (s *IF3Struct) F3GetProgress(p0 context.Context) (gpbft.InstanceProgress, error) {
 	return s.Internal.F3GetProgress(p0)
 }
 func (s *IF3Struct) F3IsRunning(p0 context.Context) (bool, error) { return s.Internal.F3IsRunning(p0) }
