@@ -3,6 +3,7 @@
 package beacon
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"testing"
@@ -11,20 +12,20 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 
-	dchain "github.com/drand/drand/chain"
-	hclient "github.com/drand/drand/client/http"
+	dchain "github.com/drand/drand/v2/common/chain"
+	hclient "github.com/drand/go-clients/client/http"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPrintGroupInfo(t *testing.T) {
 	tf.UnitTest(t)
 	server := config.DrandConfigs[config.DrandDevnet].Servers[0]
-	c, err := hclient.New(server, nil, nil)
+	chainInfo := config.DrandConfigs[config.DrandDevnet].ChainInfoJSON
+	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(chainInfo)))
 	assert.NoError(t, err)
-	cg := c.(interface {
-		FetchChainInfo(ctx context.Context, groupHash []byte) (*dchain.Info, error)
-	})
-	chain, err := cg.FetchChainInfo(context.Background(), nil)
+	c, err := hclient.NewWithInfo(&logger{&log.SugaredLogger}, server, drandChain, nil)
+	assert.NoError(t, err)
+	chain, err := c.FetchChainInfo(context.Background(), nil)
 	assert.NoError(t, err)
 	err = chain.ToJSON(os.Stdout, nil)
 	assert.NoError(t, err)
