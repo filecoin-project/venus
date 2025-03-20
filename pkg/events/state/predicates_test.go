@@ -535,16 +535,20 @@ func createSectorsAMT(ctx context.Context, t *testing.T, store adt2.Store, secto
 // returns a unique SectorOnChainInfo with each invocation with SectorNumber set to `sectorNo`.
 func newSectorOnChainInfo(sectorNo abi.SectorNumber, sealed cid.Cid, weight big.Int, activation, expiration abi.ChainEpoch) miner.SectorOnChainInfo {
 	info := newSectorPreCommitInfo(sectorNo, sealed, expiration)
+	expectedStoragePledge := abi.NewTokenAmount(0)
 	return miner.SectorOnChainInfo{
-		SectorNumber: info.SectorNumber,
-		SealProof:    info.SealProof,
-		SealedCID:    info.SealedCID,
-		Expiration:   info.Expiration,
+		SectorNumber:          info.SectorNumber,
+		SealProof:             info.SealProof,
+		SealedCID:             info.SealedCID,
+		Expiration:            info.Expiration,
+		ExpectedStoragePledge: &expectedStoragePledge,
+		ExpectedDayReward:     &expectedStoragePledge,
 
 		Activation:         activation,
 		DealWeight:         weight,
 		VerifiedDealWeight: weight,
 		InitialPledge:      big.Zero(),
+		DailyFee:           big.Zero(),
 	}
 }
 
