@@ -12,6 +12,7 @@ require (
 	github.com/filecoin-project/go-state-types v0.16.0-rc3.0.20250306021323-9c8991feee47
 	github.com/filecoin-project/lotus v1.28.2-0.20250228114543-e894b7f52d1c
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
+	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-block-format v0.2.0
 	github.com/ipfs/go-cid v0.5.0
@@ -94,7 +95,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.2.4 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
