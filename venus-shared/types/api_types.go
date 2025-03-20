@@ -169,6 +169,7 @@ type ProtocolParams struct {
 type Deadline struct {
 	PostSubmissions      bitfield.BitField
 	DisputableProofCount uint64
+	DailyFee             abi.TokenAmount
 }
 
 var MarketBalanceNil = MarketBalance{}

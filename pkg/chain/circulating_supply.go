@@ -52,20 +52,20 @@ type CirculatingSupplyCalculator struct {
 	genesisPledge abi.TokenAmount
 
 	genesisMsigLk     sync.Mutex
-	upgradeConfig     *config.ForkUpgradeConfig
+	networkParams     *config.NetworkParamsConfig
 	getNetworkVersion GetNetworkVersionFunc
 }
 
 // NewCirculatingSupplyCalculator create new  circulating supply calculator
 func NewCirculatingSupplyCalculator(bstore blockstoreutil.Blockstore,
 	genesisRoot cid.Cid,
-	upgradeConfig *config.ForkUpgradeConfig,
+	networkParams *config.NetworkParamsConfig,
 	getNetworkVersion GetNetworkVersionFunc,
 ) *CirculatingSupplyCalculator {
 	return &CirculatingSupplyCalculator{
 		bstore:            bstore,
 		genesisRoot:       genesisRoot,
-		upgradeConfig:     upgradeConfig,
+		networkParams:     networkParams,
 		getNetworkVersion: getNetworkVersion,
 	}
 }
@@ -79,8 +79,8 @@ func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx c
 	}
 
 	filReserveDisbursed := big.Zero()
-	if height > caculator.upgradeConfig.UpgradeAssemblyHeight {
-		filReserveDisbursed, err = caculator.GetFilReserveDisbursed(ctx, st)
+	if height > caculator.networkParams.ForkUpgradeParam.UpgradeAssemblyHeight {
+		filReserveDisbursed, err = caculator.GetFilReserveDisbursed(ctx, st, nv)
 		if err != nil {
 			return types.CirculatingSupply{}, fmt.Errorf("failed to calculate filReserveDisbursed: %v", err)
 		}
@@ -316,7 +316,7 @@ func (caculator *CirculatingSupplyCalculator) setupPostIgnitionVesting(_ context
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,
 			// In the pre-ignition logic, the start epoch was 0. This changes in the fork logic of the Ignition upgrade itself.
-			StartEpoch: caculator.upgradeConfig.UpgradeLiftoffHeight,
+			StartEpoch: caculator.networkParams.ForkUpgradeParam.UpgradeLiftoffHeight,
 		}
 		caculator.postIgnitionVesting = append(caculator.postIgnitionVesting, ns)
 	}
@@ -366,7 +366,7 @@ func (caculator *CirculatingSupplyCalculator) setupPostCalicoVesting(_ context.C
 			InitialBalance: big.Mul(v, big.NewInt(int64(constants.FilecoinPrecision))),
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,
-			StartEpoch:     caculator.upgradeConfig.UpgradeLiftoffHeight,
+			StartEpoch:     caculator.networkParams.ForkUpgradeParam.UpgradeLiftoffHeight,
 		}
 		caculator.postCalicoVesting = append(caculator.postCalicoVesting, ns)
 	}
@@ -400,12 +400,12 @@ func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, 
 		}
 	}
 
-	if height <= caculator.upgradeConfig.UpgradeIgnitionHeight {
+	if height <= caculator.networkParams.ForkUpgradeParam.UpgradeIgnitionHeight {
 		for _, v := range caculator.preIgnitionVesting {
 			au := big.Sub(v.InitialBalance, v.AmountLocked(height))
 			vf = big.Add(vf, au)
 		}
-	} else if height <= caculator.upgradeConfig.UpgradeCalicoHeight {
+	} else if height <= caculator.networkParams.ForkUpgradeParam.UpgradeCalicoHeight {
 		for _, v := range caculator.postIgnitionVesting {
 			// In the pre-ignition logic, we simply called AmountLocked(height), assuming startEpoch was 0.
 			// The start epoch changed in the Ignition upgrade.
@@ -422,7 +422,7 @@ func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, 
 	}
 
 	// After UpgradeAssemblyHeight these funds are accounted for in GetFilReserveDisbursed
-	if height <= caculator.upgradeConfig.UpgradeAssemblyHeight {
+	if height <= caculator.networkParams.ForkUpgradeParam.UpgradeAssemblyHeight {
 		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
 		vf = big.Add(vf, caculator.genesisPledge)
 	}
@@ -430,14 +430,23 @@ func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, 
 	return vf, nil
 }
 
-func (caculator *CirculatingSupplyCalculator) GetFilReserveDisbursed(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
+func (caculator *CirculatingSupplyCalculator) GetFilReserveDisbursed(ctx context.Context,
+	st tree.Tree,
+	nv network.Version,
+) (abi.TokenAmount, error) {
 	ract, found, err := st.GetActor(ctx, builtin.ReserveAddress)
 	if !found || err != nil {
 		return big.Zero(), fmt.Errorf("failed to get reserve actor: %v", err)
 	}
 
+	initial := constants.InitialFilReserved
+	if nv >= network.Version25 {
+		// See FIP-0100 and https://github.com/filecoin-project/lotus/pull/12938 for why this exists
+		initial = caculator.networkParams.UpgradeTeepInitialFilReserved
+	}
+
 	// If money enters the reserve actor, this could lead to a negative term
-	return big.Sub(big.NewFromGo(constants.InitialFilReserved), ract.Balance), nil
+	return big.Sub(big.NewFromGo(initial), ract.Balance), nil
 }
 
 // GetFilMined query reward contract to get amount of mined fil

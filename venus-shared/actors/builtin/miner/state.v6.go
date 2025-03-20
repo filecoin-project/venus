@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -513,6 +514,10 @@ func (d *deadline6) DisputableProofCount() (uint64, error) {
 
 }
 
+func (d *deadline6) DailyFee() (abi.TokenAmount, error) {
+	return big.Zero(), nil
+}
+
 func (p *partition6) AllSectors() (bitfield.BitField, error) {
 	return p.Partition.Sectors, nil
 }
@@ -534,14 +539,15 @@ func fromV6SectorOnChainInfo(v6 miner6.SectorOnChainInfo) SectorOnChainInfo {
 		SectorNumber:          v6.SectorNumber,
 		SealProof:             v6.SealProof,
 		SealedCID:             v6.SealedCID,
-		DealIDs:               v6.DealIDs,
+		DeprecatedDealIDs:     v6.DealIDs,
 		Activation:            v6.Activation,
 		Expiration:            v6.Expiration,
 		DealWeight:            v6.DealWeight,
 		VerifiedDealWeight:    v6.VerifiedDealWeight,
 		InitialPledge:         v6.InitialPledge,
-		ExpectedDayReward:     v6.ExpectedDayReward,
-		ExpectedStoragePledge: v6.ExpectedStoragePledge,
+		ExpectedDayReward:     &v6.ExpectedDayReward,
+		ExpectedStoragePledge: &v6.ExpectedStoragePledge,
+		DailyFee:              big.Zero(),
 	}
 	return info
 }

@@ -108,6 +108,7 @@ const (
 	SealRandomnessLookback         = ChainFinality
 	PaychSettleDelay               = paych16.SettleDelay
 	MaxPreCommitRandomnessLookback = builtin16.EpochsInDay + SealRandomnessLookback
+	DeclarationsMax                = 3000
 )
 
 var (
@@ -871,6 +872,9 @@ func GetAddressedSectorsMax(nwVer network.Version) (int, error) {
 	}
 }
 
+// GetDeclarationsMax is deprecated
+//
+// DEPRECATED: remove after nv25 (FIP 0100)
 func GetDeclarationsMax(nwVer network.Version) (int, error) {
 	v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {
@@ -941,7 +945,7 @@ func GetDeclarationsMax(nwVer network.Version) (int, error) {
 
 	case actorstypes.Version16:
 
-		return miner16.DeclarationsMax, nil
+		return DeclarationsMax, nil
 
 	default:
 		return 0, fmt.Errorf("unsupported network version")

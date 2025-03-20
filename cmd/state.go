@@ -293,7 +293,6 @@ var stateSectorCmd = &cmds.Command{
 		writer.Println("SectorNumber: ", si.SectorNumber)
 		writer.Println("SealProof: ", si.SealProof)
 		writer.Println("SealedCID: ", si.SealedCID)
-		writer.Println("DealIDs: ", si.DealIDs)
 		writer.Println()
 		writer.Println("Activation: ", EpochTimeTs(height, si.Activation, blockDelay, ts))
 		writer.Println("Expiration: ", EpochTimeTs(height, si.Expiration, blockDelay, ts))
@@ -301,8 +300,6 @@ var stateSectorCmd = &cmds.Command{
 		writer.Println("DealWeight: ", si.DealWeight)
 		writer.Println("VerifiedDealWeight: ", si.VerifiedDealWeight)
 		writer.Println("InitialPledge: ", types.FIL(si.InitialPledge))
-		writer.Println("ExpectedDayReward: ", types.FIL(si.ExpectedDayReward))
-		writer.Println("ExpectedStoragePledge: ", types.FIL(si.ExpectedStoragePledge))
 		writer.Println()
 
 		sp, err := env.(*node.Env).ChainAPI.StateSectorPartition(req.Context, maddr, abi.SectorNumber(sid), ts.Key())

@@ -72,7 +72,7 @@ func NewChainSubmodule(ctx context.Context,
 		return nil, err
 	}
 
-	circulatingSupplyCalculator := chain.NewCirculatingSupplyCalculator(repo.Datastore(), genBlk.ParentStateRoot, repo.Config().NetworkParams.ForkUpgradeParam, fork.GetNetworkVersion)
+	circulatingSupplyCalculator := chain.NewCirculatingSupplyCalculator(repo.Datastore(), genBlk.ParentStateRoot, repo.Config().NetworkParams, fork.GetNetworkVersion)
 
 	faultChecker := consensusfault.NewFaultChecker(chainStore, fork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, config.Verifier())

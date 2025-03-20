@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 )
@@ -83,6 +84,8 @@ func Mainnet() *NetworkConf {
 			ManifestServerID:        "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7",
 			F3InitialPowerTableCID:  cid.Undef,
 			F3ParamsAddress:         "",
+
+			UpgradeTeepInitialFilReserved: constants.InitialFilReserved, // FIP-0100: no change for mainnet
 		},
 	}
 

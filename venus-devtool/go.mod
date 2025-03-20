@@ -9,10 +9,9 @@ require (
 	github.com/filecoin-project/go-f3 v0.8.3
 	github.com/filecoin-project/go-fil-markets v1.28.3
 	github.com/filecoin-project/go-jsonrpc v0.7.0
-	github.com/filecoin-project/go-state-types v0.16.0-rc3.0.20250306021323-9c8991feee47
-	github.com/filecoin-project/lotus v1.28.2-0.20250228114543-e894b7f52d1c
+	github.com/filecoin-project/go-state-types v0.16.0-rc7
+	github.com/filecoin-project/lotus v1.32.0-rc3
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
-	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-block-format v0.2.0
 	github.com/ipfs/go-cid v0.5.0
@@ -22,8 +21,8 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.13.0
 	github.com/multiformats/go-multiaddr v0.14.0
 	github.com/urfave/cli/v2 v2.27.5
-	github.com/whyrusleeping/cbor-gen v0.3.0
-	golang.org/x/tools v0.30.0
+	github.com/whyrusleeping/cbor-gen v0.3.1
+	golang.org/x/tools v0.31.0
 )
 
 require (
@@ -95,12 +94,13 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.2.4 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hannahhoward/cbor-gen-for v0.0.0-20230214144701-5d17c9d5243c // indirect
-	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e // indirect
+	github.com/hannahhoward/go-pubsub v1.0.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
@@ -211,13 +211,13 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
-	golang.org/x/crypto v0.35.0 // indirect
+	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
-	golang.org/x/mod v0.23.0 // indirect
-	golang.org/x/net v0.36.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/mod v0.24.0 // indirect
+	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	gonum.org/v1/gonum v0.15.0 // indirect
 	google.golang.org/api v0.169.0 // indirect

@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
@@ -83,6 +84,8 @@ func Calibration() *NetworkConf {
 			ActorDebugging:          false,
 			F3InitialPowerTableCID:  cid.MustParse("bafy2bzaceab236vmmb3n4q4tkvua2n4dphcbzzxerxuey3mot4g3cov5j3r2c"),
 			F3ParamsAddress:         "",
+
+			UpgradeTeepInitialFilReserved: constants.WholeFIL(1_200_000_000), // FIP-0100: 300M -> 1.2B FIL
 		},
 	}
 
