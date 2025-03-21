@@ -11,6 +11,10 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.7.0
 	github.com/filecoin-project/go-state-types v0.16.0-rc7
 	github.com/filecoin-project/lotus v1.32.0-rc3
+	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
+	github.com/google/uuid v1.6.0
+	github.com/ipfs/go-block-format v0.2.0
+	github.com/ipfs/go-cid v0.5.0
 	github.com/ipfs/go-graphsync v0.16.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/libp2p/go-libp2p v0.39.1
