@@ -278,6 +278,11 @@ var stateSectorCmd = &cmds.Command{
 			return err
 		}
 
+		nv, err := env.(*node.Env).ChainAPI.StateNetworkVersion(ctx, ts.Key())
+		if err != nil {
+			return err
+		}
+
 		si, err := env.(*node.Env).ChainAPI.StateSectorGetInfo(ctx, maddr, abi.SectorNumber(sid), ts.Key())
 		if err != nil {
 			return err
@@ -300,18 +305,17 @@ var stateSectorCmd = &cmds.Command{
 		writer.Println("DealWeight: ", si.DealWeight)
 		writer.Println("VerifiedDealWeight: ", si.VerifiedDealWeight)
 		writer.Println("InitialPledge: ", types.FIL(si.InitialPledge))
-		writer.Println()
 
-		edr := big.Zero()
-		if si.ExpectedDayReward != nil {
-			edr = *si.ExpectedDayReward
+		if nv < network.Version25 {
+			if si.ExpectedDayReward != nil {
+				writer.Println("ExpectedDayReward: ", types.FIL(*si.ExpectedDayReward))
+			}
+			if si.ExpectedStoragePledge != nil {
+				writer.Println("ExpectedStoragePledge: ", types.FIL(*si.ExpectedStoragePledge))
+			}
 		}
-		writer.Println("ExpectedDayReward: ", types.FIL(edr))
-		esp := big.Zero()
-		if si.ExpectedStoragePledge != nil {
-			esp = *si.ExpectedStoragePledge
-		}
-		writer.Println("ExpectedStoragePledge: ", types.FIL(esp))
+
+		writer.Println()
 
 		sp, err := env.(*node.Env).ChainAPI.StateSectorPartition(req.Context, maddr, abi.SectorNumber(sid), ts.Key())
 		if err != nil {

@@ -67,6 +67,7 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeTuktukHeight:                  -28,
 				UpgradeTuktukPowerRampDurationEpochs: builtin.EpochsInYear,
 				UpgradeTeepHeight:                    100,
+				UpgradeTockHeight:                    200,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
