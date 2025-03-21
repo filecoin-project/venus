@@ -471,6 +471,11 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			}},
 			Expensive: true,
 		},
+		{
+			Height:    upgradeHeight.UpgradeTockHeight,
+			Network:   network.Version26,
+			Migration: nil,
+		},
 	}
 
 	for _, u := range updates {

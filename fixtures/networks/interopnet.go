@@ -68,6 +68,7 @@ func InteropNet() *NetworkConf {
 				UpgradeTuktukHeight:                  -28,
 				UpgradeTuktukPowerRampDurationEpochs: builtin.EpochsInYear,
 				UpgradeTeepHeight:                    50,
+				UpgradeTockHeight:                    100,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,

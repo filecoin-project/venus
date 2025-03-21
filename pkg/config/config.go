@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -355,6 +356,7 @@ type ForkUpgradeConfig struct {
 	UpgradeTuktukHeight                  abi.ChainEpoch `json:"upgradeTuktukHeight"`
 	UpgradeTuktukPowerRampDurationEpochs abi.ChainEpoch `json:"upgradeTuktukPowerRampDurationEpochs"`
 	UpgradeTeepHeight                    abi.ChainEpoch `json:"upgradeTeepHeight"`
+	UpgradeTockHeight                    abi.ChainEpoch `json:"upgradeTockHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -398,7 +400,8 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeWaffleHeight:                  4154640,
 	UpgradeTuktukHeight:                  4461240,
 	UpgradeTuktukPowerRampDurationEpochs: 200,
-	UpgradeTeepHeight:                    9999999999,
+	UpgradeTeepHeight:                    9999999998,
+	UpgradeTockHeight:                    9999999998 + 90*builtin.EpochsInDay,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {

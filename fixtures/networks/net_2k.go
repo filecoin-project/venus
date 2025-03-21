@@ -63,6 +63,7 @@ func Net2k() *NetworkConf {
 				UpgradeTuktukPowerRampDurationEpochs: 200,
 				UpgradeTuktukHeight:                  -28,
 				UpgradeTeepHeight:                    200,
+				UpgradeTockHeight:                    300,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,

@@ -74,7 +74,7 @@ func Calibration() *NetworkConf {
 				UpgradeWaffleHeight:                  1779094,       // 2024-07-11T12:00:00Z
 				UpgradeTuktukHeight:                  2078794,       // 2024-10-23T13:30:00Z
 				UpgradeTuktukPowerRampDurationEpochs: builtin.EpochsInDay * 3,
-				UpgradeTeepHeight:                    2520574, // 2025-03-25T23:00:00Z
+				UpgradeTeepHeight:                    2523454, // 2025-03-26T23:00:00Z
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,
@@ -95,6 +95,10 @@ func Calibration() *NetworkConf {
 	nc.Network.F3BootstrapEpoch = nc.Network.ForkUpgradeParam.UpgradeTuktukHeight + 2880
 	nc.Network.F3Enabled = true
 	nc.Network.ManifestServerID = "12D3KooWS9vD9uwm8u2uPyJV32QBAhKAmPYwmziAgr3Xzk2FU1Mr"
+
+	// This epoch, 7 days after Teep is the completion of FIP-0100 where actors will start applying
+	// the new daily fee to pre-Teep sectors being extended.
+	nc.Network.ForkUpgradeParam.UpgradeTockHeight = nc.Network.ForkUpgradeParam.UpgradeTeepHeight + builtin.EpochsInDay*7
 
 	return nc
 }
