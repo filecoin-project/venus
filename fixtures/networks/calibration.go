@@ -96,9 +96,9 @@ func Calibration() *NetworkConf {
 	nc.Network.F3Enabled = true
 	nc.Network.ManifestServerID = "12D3KooWS9vD9uwm8u2uPyJV32QBAhKAmPYwmziAgr3Xzk2FU1Mr"
 
-	// This epoch, 90 days after Teep is the completion of FIP-0100 where actors will start applying
+	// This epoch, 7 days after Teep is the completion of FIP-0100 where actors will start applying
 	// the new daily fee to pre-Teep sectors being extended.
-	nc.Network.ForkUpgradeParam.UpgradeTockHeight = nc.Network.ForkUpgradeParam.UpgradeTeepHeight + builtin.EpochsInDay*90
+	nc.Network.ForkUpgradeParam.UpgradeTockHeight = nc.Network.ForkUpgradeParam.UpgradeTeepHeight + builtin.EpochsInDay*7
 
 	return nc
 }
