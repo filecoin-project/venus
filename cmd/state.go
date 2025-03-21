@@ -302,6 +302,17 @@ var stateSectorCmd = &cmds.Command{
 		writer.Println("InitialPledge: ", types.FIL(si.InitialPledge))
 		writer.Println()
 
+		edr := big.Zero()
+		if si.ExpectedDayReward != nil {
+			edr = *si.ExpectedDayReward
+		}
+		writer.Println("ExpectedDayReward: ", types.FIL(edr))
+		esp := big.Zero()
+		if si.ExpectedStoragePledge != nil {
+			esp = *si.ExpectedStoragePledge
+		}
+		writer.Println("ExpectedStoragePledge: ", types.FIL(esp))
+
 		sp, err := env.(*node.Env).ChainAPI.StateSectorPartition(req.Context, maddr, abi.SectorNumber(sid), ts.Key())
 		if err != nil {
 			return err
