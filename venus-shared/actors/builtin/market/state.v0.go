@@ -380,3 +380,9 @@ func (s *state0) Code() cid.Cid {
 
 	return code
 }
+
+func (s *state0) ProviderSectors() (ProviderSectors, error) {
+
+	return nil, fmt.Errorf("unsupported before actors v13")
+
+}
