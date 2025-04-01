@@ -400,8 +400,8 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeWaffleHeight:                  4154640,
 	UpgradeTuktukHeight:                  4461240,
 	UpgradeTuktukPowerRampDurationEpochs: 200,
-	UpgradeTeepHeight:                    9999999998,
-	UpgradeTockHeight:                    9999999998 + 90*builtin.EpochsInDay,
+	UpgradeTeepHeight:                    4867320,
+	UpgradeTockHeight:                    4867320 + 90*builtin.EpochsInDay,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {

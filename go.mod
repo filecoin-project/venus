@@ -33,7 +33,7 @@ require (
 	github.com/filecoin-project/go-fil-markets v1.28.2
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.16.0-rc7
+	github.com/filecoin-project/go-state-types v0.16.0
 	github.com/filecoin-project/pubsub v1.0.0
 	github.com/filecoin-project/specs-actors v0.9.15-0.20220514164640-94e0d5e123bd
 	github.com/filecoin-project/specs-actors/v2 v2.3.6

@@ -75,7 +75,7 @@ func Mainnet() *NetworkConf {
 				UpgradeWaffleHeight:                  4154640,           // 2024-08-06T12:00:00Z
 				UpgradeTuktukHeight:                  4461240,           // 2024-11-20T23:00:00Z
 				UpgradeTuktukPowerRampDurationEpochs: builtin2.EpochsInYear,
-				UpgradeTeepHeight:                    99999999999,
+				UpgradeTeepHeight:                    4867320, // 2025-04-10T23:00:00Z
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:          address.Mainnet,
@@ -87,7 +87,7 @@ func Mainnet() *NetworkConf {
 			F3BootstrapEpoch:        -1,
 			ManifestServerID:        "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7",
 			F3InitialPowerTableCID:  cid.Undef,
-			F3ParamsAddress:         "",
+			F3ParamsAddress:         "0xA19080A1Bcb82Bb61bcb9691EC94653Eb5315716",
 
 			UpgradeTeepInitialFilReserved: constants.InitialFilReserved, // FIP-0100: no change for mainnet
 		},
