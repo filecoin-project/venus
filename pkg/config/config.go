@@ -357,6 +357,7 @@ type ForkUpgradeConfig struct {
 	UpgradeTuktukPowerRampDurationEpochs abi.ChainEpoch `json:"upgradeTuktukPowerRampDurationEpochs"`
 	UpgradeTeepHeight                    abi.ChainEpoch `json:"upgradeTeepHeight"`
 	UpgradeTockHeight                    abi.ChainEpoch `json:"upgradeTockHeight"`
+	UpgradeTockFixHeight                 abi.ChainEpoch `json:"upgradeTockFixHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {

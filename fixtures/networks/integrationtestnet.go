@@ -61,6 +61,7 @@ func IntegrationNet() *NetworkConf {
 				UpgradeWaffleHeight:               4154640,
 				UpgradeTuktukHeight:               4461240,
 				UpgradeTeepHeight:                 4867320,
+				UpgradeTockFixHeight:              -29,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:          address.Testnet,
