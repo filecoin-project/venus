@@ -67,7 +67,7 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeTuktukHeight:                  -28,
 				UpgradeTuktukPowerRampDurationEpochs: builtin.EpochsInYear,
 				UpgradeTeepHeight:                    100,
-				UpgradeTockHeight:                    200,
+				UpgradeTockFixHeight:                 -29,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
@@ -84,6 +84,8 @@ func ButterflySnapNet() *NetworkConf {
 			UpgradeTeepInitialFilReserved: constants.WholeFIL(1_600_000_000), // FIP-0100: 300M -> 1.6B FIL
 		},
 	}
+
+	nc.Network.ForkUpgradeParam.UpgradeTockHeight = nc.Network.ForkUpgradeParam.UpgradeTeepHeight + builtin.EpochsInDay*2
 
 	return nc
 }

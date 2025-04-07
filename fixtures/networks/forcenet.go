@@ -70,6 +70,7 @@ func ForceNet() *NetworkConf {
 				UpgradeTuktukPowerRampDurationEpochs: 200,
 				UpgradeTeepHeight:                    200,
 				UpgradeTockHeight:                    300,
+				UpgradeTockFixHeight:                 -29,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
