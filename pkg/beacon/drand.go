@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	dcommon "github.com/drand/drand/v2/common"
-	dchain "github.com/drand/drand/v2/common/chain"
-	dlog "github.com/drand/drand/v2/common/log"
-	dcrypto "github.com/drand/drand/v2/crypto"
-	dclient "github.com/drand/go-clients/client"
-	hclient "github.com/drand/go-clients/client/http"
-	drand "github.com/drand/go-clients/drand"
+	dchain "github.com/drand/drand/chain"
+	dclient "github.com/drand/drand/client"
+	hclient "github.com/drand/drand/client/http"
+	dcrypto "github.com/drand/drand/crypto"
+	dlog "github.com/drand/drand/log"
 	"github.com/drand/kyber"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"go.uber.org/zap"
@@ -34,7 +32,7 @@ import (
 // The root trust for the Drand chain is configured from build.DrandChain.
 type DrandBeacon struct {
 	isChained bool
-	client    drand.Client
+	client    dclient.Client
 
 	pubkey kyber.Point
 
@@ -81,13 +79,15 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 		return nil, fmt.Errorf("unable to unmarshal drand chain info: %w", err)
 	}
 
-	var clients []drand.Client
+	var clients []dclient.Client
 	for _, url := range config.Servers {
-		hc, err := hclient.NewWithInfo(&logger{&log.SugaredLogger}, url, drandChain, nil)
+		// hc, err := hclient.NewWithInfo(&logger{&log.SugaredLogger}, url, drandChain, nil)
+		hc, err := hclient.NewWithInfo(url, drandChain, nil)
 		if err != nil {
 			return nil, fmt.Errorf("could not create http drand client: %w", err)
 		}
-		hc.SetUserAgent("drand-client-lotus/" + constants.UserVersion())
+		// hc.SetUserAgent("drand-client-lotus/" + constants.UserVersion())
+		hc.(DrandHTTPClient).SetUserAgent("drand-client-lotus/" + constants.BuildVersion)
 		clients = append(clients, hc)
 	}
 
@@ -97,11 +97,13 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 		dclient.WithLogger(&logger{&log.SugaredLogger}),
 	}
 
-	if len(clients) == 0 {
-		// This is necessary to convince a drand beacon to start without any clients. For historical
-		// beacons we need them to be able to verify old entries but we don't need to fetch new ones.
-		clients = append(clients, dclient.EmptyClientWithInfo(drandChain))
-	}
+	// if len(clients) == 0 {
+	// 	// This is necessary to convince a drand beacon to start without any clients. For historical
+	// 	// beacons we need them to be able to verify old entries but we don't need to fetch new ones.
+	// 	clients = append(clients, dclient.EmptyClientWithInfo(drandChain))
+	// }
+
+	log.Info("drand beacon without pubsub")
 
 	client, err := dclient.Wrap(clients, opts...)
 	if err != nil {
@@ -119,7 +121,7 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 		localCache: lc,
 	}
 
-	sch, err := dcrypto.GetSchemeByID(drandChain.Scheme)
+	sch, err := dcrypto.GetSchemeByIDWithDefault(drandChain.Scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -154,8 +156,10 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan Response 
 		if err != nil {
 			br.Err = fmt.Errorf("drand failed Get request: %w", err)
 		} else {
-			br.Entry.Round = resp.GetRound()
-			br.Entry.Data = resp.GetSignature()
+			// br.Entry.Round = resp.GetRound()
+			// br.Entry.Data = resp.GetSignature()
+			br.Entry.Round = resp.Round()
+			br.Entry.Data = resp.Signature()
 		}
 		log.Infow("done fetching randomness", "round", round, "took", time.Since(start))
 		out <- br
@@ -182,7 +186,7 @@ func (db *DrandBeacon) VerifyEntry(entry types.BeaconEntry, prevEntrySig []byte)
 		// return no error if the value is in the cache already
 		return nil
 	}
-	b := &dcommon.Beacon{
+	b := &dchain.Beacon{
 		PreviousSig: prevEntrySig,
 		Round:       entry.Round,
 		Signature:   entry.Data,
