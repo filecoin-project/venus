@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	must "github.com/filecoin-project/venus/venus-shared/utils"
 )
@@ -54,11 +55,26 @@ func NewManifestProvider(ctx context.Context,
 	f3InitialPowerTableCID cid.Cid,
 ) (prov manifest.ManifestProvider, err error) {
 	var primaryManifest manifest.ManifestProvider
-	if config.StaticManifest != nil {
-		log.Infof("using static maniest as primary")
+
+	// Check if static manifest activation is disabled
+	staticDisabled := false
+	if config.StaticManifest != nil && constants.IsF3EpochActivationDisabled(config.StaticManifest.BootstrapEpoch) {
+		log.Warnf("F3 activation disabled by environment configuration for bootstrap epoch %d", config.StaticManifest.BootstrapEpoch)
+		staticDisabled = true
+	}
+
+	// Check if contract manifest activation is disabled
+	contractDisabled := false
+	if config.ContractAddress != "" && constants.IsF3ContractActivationDisabled(config.ContractAddress) {
+		log.Warnf("F3 activation disabled by environment configuration for contract %s", config.ContractAddress)
+		contractDisabled = true
+	}
+
+	if config.StaticManifest != nil && !staticDisabled {
+		log.Infof("using static manifest as primary")
 		primaryManifest, err = manifest.NewStaticManifestProvider(config.StaticManifest)
-	} else if config.ContractAddress != "" {
-		log.Infow("using contract maniest as primary", "address", config.ContractAddress)
+	} else if config.ContractAddress != "" && !contractDisabled {
+		log.Infow("using contract manifest as primary", "address", config.ContractAddress)
 		primaryManifest, err = NewContractManifestProvider(ctx, config, stateCaller, f3InitialPowerTableCID)
 	}
 	if err != nil {
