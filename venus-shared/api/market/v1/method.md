@@ -114,6 +114,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [SectorSetExpectedSealDuration](#sectorsetexpectedsealduration)
   * [UpdateDealOnPacking](#updatedealonpacking)
   * [UpdateDealStatus](#updatedealstatus)
+  * [UpdateDirectDealPayloadCID](#updatedirectdealpayloadcid)
   * [UpdateDirectDealState](#updatedirectdealstate)
   * [UpdateStorageDealPayloadSize](#updatestoragedealpayloadsize)
   * [UpdateStorageDealStatus](#updatestoragedealstatus)
@@ -1049,6 +1050,9 @@ Response:
   "Client": "f01234",
   "Provider": "f01234",
   "PayloadSize": 42,
+  "PayloadCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "State": 1,
   "AllocationID": 42,
   "ClaimID": 42,
@@ -1086,6 +1090,9 @@ Response:
   "Client": "f01234",
   "Provider": "f01234",
   "PayloadSize": 42,
+  "PayloadCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "State": 1,
   "AllocationID": 42,
   "ClaimID": 42,
@@ -1218,12 +1225,12 @@ Inputs:
 [
   {
     "SkipCommP": true,
-    "NoCopyCarFile": true,
-    "SkipGenerateIndex": true,
     "DealParams": [
       {
-        "FilePath": "string value",
         "PayloadSize": 42,
+        "PayloadCID": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
         "DealUUID": "07070707-0707-0707-0707-070707070707",
         "AllocationID": 42,
         "PieceCID": {
@@ -1377,6 +1384,9 @@ Response:
     "Client": "f01234",
     "Provider": "f01234",
     "PayloadSize": 42,
+    "PayloadCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "State": 1,
     "AllocationID": 42,
     "ClaimID": 42,
@@ -2865,6 +2875,23 @@ Inputs:
   5432,
   "Undefine",
   42
+]
+```
+
+Response: `{}`
+
+### UpdateDirectDealPayloadCID
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "07070707-0707-0707-0707-070707070707",
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 ]
 ```
 

@@ -1615,6 +1615,20 @@ func (mr *MockIMarketMockRecorder) UpdateDealStatus(arg0, arg1, arg2, arg3, arg4
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDealStatus", reflect.TypeOf((*MockIMarket)(nil).UpdateDealStatus), arg0, arg1, arg2, arg3, arg4)
 }
 
+// UpdateDirectDealPayloadCID mocks base method.
+func (m *MockIMarket) UpdateDirectDealPayloadCID(arg0 context.Context, arg1 uuid.UUID, arg2 cid.Cid) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateDirectDealPayloadCID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateDirectDealPayloadCID indicates an expected call of UpdateDirectDealPayloadCID.
+func (mr *MockIMarketMockRecorder) UpdateDirectDealPayloadCID(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDirectDealPayloadCID", reflect.TypeOf((*MockIMarket)(nil).UpdateDirectDealPayloadCID), arg0, arg1, arg2)
+}
+
 // UpdateDirectDealState mocks base method.
 func (m *MockIMarket) UpdateDirectDealState(arg0 context.Context, arg1 uuid.UUID, arg2 market.DirectDealState) error {
 	m.ctrl.T.Helper()
