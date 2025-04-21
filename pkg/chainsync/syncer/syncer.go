@@ -557,7 +557,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 		return nil, err
 	}
 
-	gensisiBlock, err := syncer.chainStore.GetGenesisBlock(ctx)
+	genesisBlock, err := syncer.chainStore.GetGenesisBlock(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -569,7 +569,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 
 	for cur := 0; cur < len(tips); {
 		if nts.Height() == 0 {
-			if !gensisiBlock.Equals(nts.At(0)) {
+			if !genesisBlock.Equals(nts.At(0)) {
 				return nil, fmt.Errorf("somehow synced chain that linked back to a different genesis (bad genesis: %s)", nts.Key())
 			}
 			return nil, fmt.Errorf("synced chain forked at genesis, refusing to sync; incoming: %s", incoming.ToSlice())
