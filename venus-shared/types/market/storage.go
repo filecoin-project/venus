@@ -190,6 +190,7 @@ type DirectDeal struct {
 	Provider  address.Address
 
 	PayloadSize uint64
+	PayloadCID  cid.Cid
 
 	State DirectDealState
 
@@ -210,19 +211,13 @@ type DirectDeal struct {
 
 type DirectDealParams struct {
 	// Commp will not be calculated and verified
-	SkipCommP bool
-	// not copy car file to piece storage
-	NoCopyCarFile bool
-	// skip generate index
-	SkipGenerateIndex bool
-
+	SkipCommP  bool
 	DealParams []DirectDealParam
 }
 
 type DirectDealParam struct {
-	// FilePath and PayloadSize cannot both be empty
-	FilePath    string
 	PayloadSize uint64
+	PayloadCID  cid.Cid
 
 	DealUUID     uuid.UUID
 	AllocationID uint64
