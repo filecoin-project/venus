@@ -895,7 +895,7 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 
 		var b types.BlockHeader
 		if err := b.UnmarshalCBOR(bytes.NewBuffer(data.RawData())); err != nil {
-			return fmt.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
+			return fmt.Errorf("unmarshalling block header (cid=%s): %w", blk, err)
 		}
 
 		if currentMinHeight > b.Height {
