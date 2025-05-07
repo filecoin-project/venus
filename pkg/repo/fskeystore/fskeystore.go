@@ -126,6 +126,7 @@ func (ks *FSKeystore) List() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer dir.Close()
 
 	dirs, err := dir.Readdirnames(0)
 	if err != nil {
