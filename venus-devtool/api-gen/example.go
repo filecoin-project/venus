@@ -437,7 +437,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 		return struct{}{}
 	}
 
-	_, _ = fmt.Fprintf(os.Stderr, "Warnning: No example value for type: %s (method '%s')\n", t, method)
+	_, _ = fmt.Fprintf(os.Stderr, "Warning: No example value for type: %s (method '%s')\n", t, method)
 	return nil
 }
 

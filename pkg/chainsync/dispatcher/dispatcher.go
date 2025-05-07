@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sync"
-	atmoic2 "sync/atomic"
+	atomic2 "sync/atomic"
 	"time"
 
 	"github.com/filecoin-project/pubsub"
@@ -282,7 +282,7 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 			if syncTarget, popped := d.selectTarget(lastTarget, ch); popped {
 				lastTarget = syncTarget
 				if d.conCurrent.Get() < d.maxCount {
-					atmoic2.StoreInt64(&unsolvedNotify, 0)
+					atomic2.StoreInt64(&unsolvedNotify, 0)
 					syncTarget.State = types.StateInSyncing
 					ctx, cancel := context.WithCancel(ctx)
 					d.cancelControler.PushBack(cancel)
@@ -298,16 +298,16 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 
 						// new 'target' notify may ignored, because of 'conCurrent' reaching 'maxCount',
 						// that means there is a new 'target' waiting for solving.
-						if atmoic2.LoadInt64(&unsolvedNotify) > 0 {
+						if atomic2.LoadInt64(&unsolvedNotify) > 0 {
 							ch <- struct{}{}
 						}
 					}()
 				} else {
-					atmoic2.StoreInt64(&unsolvedNotify, 1)
+					atomic2.StoreInt64(&unsolvedNotify, 1)
 				}
 			}
 		case <-ctx.Done():
-			atmoic2.StoreInt64(&unsolvedNotify, 0)
+			atomic2.StoreInt64(&unsolvedNotify, 0)
 			d.workTracker.UnsubNewTarget(chKey)
 			ch = nil
 			log.Infof("context.done in dispatcher.syncworker.")
