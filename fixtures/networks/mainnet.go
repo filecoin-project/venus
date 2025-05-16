@@ -87,7 +87,7 @@ func Mainnet() *NetworkConf {
 			F3Enabled:               true,
 			F3BootstrapEpoch:        -1,
 			ManifestServerID:        "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7",
-			F3InitialPowerTableCID:  cid.Undef,
+			F3InitialPowerTableCID:  cid.MustParse("bafy2bzacecklgxd2eksmodvhgurqvorkg3wamgqkrunir3al2gchv2cikgmbu"),
 			F3ParamsAddress:         "0xA19080A1Bcb82Bb61bcb9691EC94653Eb5315716",
 
 			UpgradeTeepInitialFilReserved: constants.InitialFilReserved, // FIP-0100: no change for mainnet
