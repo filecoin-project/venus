@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"compress/flate"
-	"context"
 	"embed"
 	"encoding/binary"
 	"encoding/json"
@@ -11,17 +10,14 @@ import (
 	"io"
 	"math"
 	"text/template"
-	"time"
 
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/pkg/vf3"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/utils"
-	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -60,50 +56,7 @@ var f3Cmd = &cmds.Command{
 	},
 	Subcommands: map[string]*cmds.Command{
 		"check-activation-raw": f3CheckActivationRaw,
-		"check-activation":     f3CheckActivation,
 		"status":               f3Status,
-	},
-}
-
-var f3CheckActivation = &cmds.Command{
-	Helptext: cmds.HelpText{
-		Tagline: "queries f3 parameters contract using chain module",
-	},
-	Arguments: []cmds.Argument{
-		cmds.StringArg("contract", true, false, "address contract to query"),
-	},
-	Options: []cmds.Option{
-		cmds.StringOption("network-name", "network name").WithDefault("filecoin"),
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		contract := req.Arguments[0]
-		ctx := requestContext(req)
-
-		networkName, _ := req.Options["network-name"].(string)
-		config := vf3.Config{
-			BaseNetworkName:      gpbft.NetworkName(networkName),
-			ContractAddress:      contract,
-			ContractPollInterval: 15 * time.Second,
-		}
-
-		prov, err := vf3.NewManifestProvider(ctx, &config, nil, nil, nil, env.(*node.Env).ChainAPI, cid.Undef)
-		if err != nil {
-			return fmt.Errorf("creating manifest proivder: %w", err)
-		}
-
-		err = prov.Start(ctx)
-		if err != nil {
-			return fmt.Errorf("starting manifest provider: %w", err)
-		}
-		for {
-			select {
-			case m := <-prov.ManifestUpdates():
-				_ = re.Emit(m)
-			case <-ctx.Done():
-				_ = prov.Stop(context.Background())
-				return nil
-			}
-		}
 	},
 }
 

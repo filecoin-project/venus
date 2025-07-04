@@ -1,6 +1,8 @@
 package networks
 
 import (
+	_ "embed"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -9,7 +11,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
 )
 
 func Mainnet() *NetworkConf {
@@ -78,18 +79,13 @@ func Mainnet() *NetworkConf {
 				UpgradeTeepHeight:                    4878840, // 2025-04-14T23:00:00Z
 				UpgradeTockFixHeight:                 -1,
 			},
-			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
-			AddressNetwork:          address.Mainnet,
-			PropagationDelaySecs:    10,
-			AllowableClockDriftSecs: 1,
-			Eip155ChainID:           314,
-			ActorDebugging:          false,
-			F3Enabled:               true,
-			F3BootstrapEpoch:        -1,
-			ManifestServerID:        "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7",
-			F3InitialPowerTableCID:  cid.MustParse("bafy2bzacecklgxd2eksmodvhgurqvorkg3wamgqkrunir3al2gchv2cikgmbu"),
-			F3ParamsAddress:         "0xA19080A1Bcb82Bb61bcb9691EC94653Eb5315716",
-
+			DrandSchedule:                 map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
+			AddressNetwork:                address.Mainnet,
+			PropagationDelaySecs:          10,
+			AllowableClockDriftSecs:       1,
+			Eip155ChainID:                 314,
+			ActorDebugging:                false,
+			F3Enabled:                     true,
 			UpgradeTeepInitialFilReserved: constants.InitialFilReserved, // FIP-0100: no change for mainnet
 		},
 	}

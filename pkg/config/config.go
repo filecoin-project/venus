@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -309,13 +308,8 @@ type NetworkParamsConfig struct {
 	// As per https://github.com/ethereum-lists/chains
 	Eip155ChainID int `json:"-"`
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
-	ActorDebugging   bool           `json:"-"`
-	F3Enabled        bool           `json:"f3Enabled"`
-	F3BootstrapEpoch abi.ChainEpoch `json:"f3BootstrapEpoch"`
-	ManifestServerID string         `json:"manifestServerID"`
-	// The initial F3 power table CID.
-	F3InitialPowerTableCID        cid.Cid  `json:"f3InitialPowerTableCID"`
-	F3ParamsAddress               string   `json:"f3ParamsAddress"`
+	ActorDebugging                bool     `json:"-"`
+	F3Enabled                     bool     `json:"f3Enabled"`
 	UpgradeTeepInitialFilReserved *big.Int `json:"upgradeTeepInitialFilReserved"`
 }
 

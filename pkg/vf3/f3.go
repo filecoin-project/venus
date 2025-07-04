@@ -52,16 +52,15 @@ func init() {
 }
 
 type F3Params struct {
-	ManifestProvider manifest.ManifestProvider
-	PubSub           *pubsub.PubSub
-	Host             host.Host
-	ChainStore       *chain.Store
-	StateManager     *statemanger.Stmgr
-	Datastore        datastore.Batching
-	WalletSign       wallet.WalletSignFunc
-	SyncerAPI        v1api.ISyncer
-	Config           *Config
-	RepoPath         string
+	PubSub       *pubsub.PubSub
+	Host         host.Host
+	ChainStore   *chain.Store
+	StateManager *statemanger.Stmgr
+	Datastore    datastore.Batching
+	WalletSign   wallet.WalletSignFunc
+	SyncerAPI    v1api.ISyncer
+	Config       *Config
+	RepoPath     string
 
 	Net v1api.INetwork
 }
@@ -69,6 +68,9 @@ type F3Params struct {
 var log = logging.Logger("f3")
 
 func New(mctx context.Context, params F3Params) (*F3, error) {
+	if params.Config.StaticManifest == nil {
+		return nil, fmt.Errorf("configuration invalid, nil StaticManifest in the Config")
+	}
 	ds := namespace.Wrap(params.Datastore, datastore.NewKey("/f3"))
 	ec := &ecWrapper{
 		ChainStore:   params.ChainStore,
@@ -78,7 +80,7 @@ func New(mctx context.Context, params F3Params) (*F3, error) {
 	verif := blssig.VerifierWithKeyOnG1()
 
 	f3FsPath := filepath.Join(params.RepoPath, "f3")
-	module, err := f3.New(mctx, params.ManifestProvider, ds,
+	module, err := f3.New(mctx, *params.Config.StaticManifest, ds,
 		params.Host, params.PubSub, verif, ec, f3FsPath)
 
 	if err != nil {
@@ -93,7 +95,7 @@ func New(mctx context.Context, params F3Params) (*F3, error) {
 	// maxLeasableInstances is the maximum number of leased F3 instances this node
 	// would give out.
 	const maxLeasableInstances = 5
-	status := func() (*manifest.Manifest, gpbft.InstanceProgress) {
+	status := func() (manifest.Manifest, gpbft.InstanceProgress) {
 		return module.Manifest(), module.Progress()
 	}
 
@@ -144,7 +146,7 @@ func (fff *F3) runSigningLoop(ctx context.Context) {
 		signatureBuilder, err := mb.PrepareSigningInputs(gpbft.ActorID(minerID))
 		if errors.Is(err, gpbft.ErrNoPower) {
 			// we don't have any power in F3, continue
-			log.Debug("no power to participate in F3: %+v", err)
+			log.Debugf("no power to participate in F3: %+v", err)
 			return nil
 		}
 		if err != nil {
@@ -209,21 +211,16 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 
 func (fff *F3) GetManifest(ctx context.Context) (*manifest.Manifest, error) {
 	m := fff.inner.Manifest()
-	if m == nil {
-		return nil, manifest.ErrNoManifest
-	}
 	if m.InitialPowerTable.Defined() {
-		return m, nil
+		return &m, nil
 	}
 	cert0, err := fff.inner.GetCert(ctx, 0)
 	if err != nil {
-		return m, nil // return manifest without power table
+		return &m, nil // return manifest without power table
 	}
 
-	var mCopy = *m
-	m = &mCopy
 	m.InitialPowerTable = cert0.ECChain.Base().PowerTable
-	return m, nil
+	return &m, nil
 }
 
 func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
