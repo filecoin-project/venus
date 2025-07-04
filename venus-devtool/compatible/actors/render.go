@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -98,7 +99,12 @@ func renderSeparated(t *template.Template, dir string, versions []int) error {
 			return fmt.Errorf("render separated template for ver %d: %w", v, err)
 		}
 
-		formatted, err := util.FmtFile("", buf.Bytes())
+		data, err := removeDuplicateLinesFromBytes(buf.Bytes(), "builtin16")
+		if err != nil {
+			return fmt.Errorf("remove duplicate lines failed: %v", err)
+		}
+
+		formatted, err := util.FmtFile("", data)
 		if err != nil {
 			return fmt.Errorf("format go source file for ver %d: %w", v, err)
 		}
@@ -110,4 +116,33 @@ func renderSeparated(t *template.Template, dir string, versions []int) error {
 	}
 
 	return nil
+}
+
+func removeDuplicateLinesFromBytes(data []byte, dumpString string) ([]byte, error) {
+	seenLines := make(map[string]struct{})
+	var orderedLines []string
+
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.Contains(line, dumpString) {
+			if _, exists := seenLines[line]; !exists {
+				seenLines[line] = struct{}{}
+				orderedLines = append(orderedLines, line)
+			}
+		} else {
+			orderedLines = append(orderedLines, line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("scanner failed: %v", err)
+	}
+
+	var result bytes.Buffer
+	for _, line := range orderedLines {
+		result.WriteString(line + "\n")
+	}
+
+	return result.Bytes(), nil
 }
