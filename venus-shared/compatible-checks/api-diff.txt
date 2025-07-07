@@ -63,12 +63,15 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
+	> StateCall {[func(context.Context, *types.Message, types.TipSetKey) (*types.InvocResult, error) <> func(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)] base=func out type: #0 input; nested={[*types.InvocResult <> *api.InvocResult] base=pointed type; nested={[types.InvocResult <> api.InvocResult] base=struct field; nested={[types.InvocResult <> api.InvocResult] base=exported field type: #4 field named ExecutionTrace; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=struct field; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=exported fields count: 5 != 7; nested=nil}}}}}}
+	> StateCompute {[func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*types.ComputeStateOutput, error) <> func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*api.ComputeStateOutput, error)] base=func out type: #0 input; nested={[*types.ComputeStateOutput <> *api.ComputeStateOutput] base=pointed type; nested={[types.ComputeStateOutput <> api.ComputeStateOutput] base=struct field; nested={[types.ComputeStateOutput <> api.ComputeStateOutput] base=exported field type: #1 field named Trace; nested={[[]*types.InvocResult <> []*api.InvocResult] base=slice element; nested={[*types.InvocResult <> *api.InvocResult] base=pointed type; nested={[types.InvocResult <> api.InvocResult] base=struct field; nested={[types.InvocResult <> api.InvocResult] base=exported field type: #4 field named ExecutionTrace; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=struct field; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=exported fields count: 5 != 7; nested=nil}}}}}}}}}}
 	- StateGetAllAllocations
 	- StateGetAllClaims
 	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported field name: #3 field, SupportedProofTypes != PreCommitChallengeDelay; nested=nil}}}}
 	+ StateMinerInitialPledgeForSector
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
+	> StateReplay {[func(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error) <> func(context.Context, types.TipSetKey, cid.Cid) (*api.InvocResult, error)] base=func out type: #0 input; nested={[*types.InvocResult <> *api.InvocResult] base=pointed type; nested={[types.InvocResult <> api.InvocResult] base=struct field; nested={[types.InvocResult <> api.InvocResult] base=exported field type: #4 field named ExecutionTrace; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=struct field; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=exported fields count: 5 != 7; nested=nil}}}}}}
 	- SyncCheckBad
 	- SyncMarkBad
 	- SyncUnmarkAllBad
@@ -106,6 +109,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ Concurrent
 	- CreateBackup
 	- Discover
+	> EthGetBlockTransactionCountByNumber {[func(context.Context, types.EthUint64) (types.EthUint64, error) <> func(context.Context, string) (ethtypes.EthUint64, error)] base=func in type: #1 input; nested={[types.EthUint64 <> string] base=type kinds: uint64 != string; nested=nil}}
 	> EthGetTransactionByBlockHashAndIndex {[func(context.Context, types.EthHash, types.EthUint64) (types.EthTx, error) <> func(context.Context, ethtypes.EthHash, ethtypes.EthUint64) (*ethtypes.EthTx, error)] base=func out type: #0 input; nested={[types.EthTx <> *ethtypes.EthTx] base=type kinds: struct != ptr; nested=nil}}
 	> EthGetTransactionByBlockNumberAndIndex {[func(context.Context, types.EthUint64, types.EthUint64) (types.EthTx, error) <> func(context.Context, string, ethtypes.EthUint64) (*ethtypes.EthTx, error)] base=func in type: #1 input; nested={[types.EthUint64 <> string] base=type kinds: uint64 != string; nested=nil}}
 	- EthSendRawTransactionUntrusted
@@ -165,9 +169,12 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
+	> StateCall {[func(context.Context, *types.Message, types.TipSetKey) (*types.InvocResult, error) <> func(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)] base=func out type: #0 input; nested={[*types.InvocResult <> *api.InvocResult] base=pointed type; nested={[types.InvocResult <> api.InvocResult] base=struct field; nested={[types.InvocResult <> api.InvocResult] base=exported field type: #4 field named ExecutionTrace; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=struct field; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=exported fields count: 5 != 7; nested=nil}}}}}}
+	> StateCompute {[func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*types.ComputeStateOutput, error) <> func(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*api.ComputeStateOutput, error)] base=func out type: #0 input; nested={[*types.ComputeStateOutput <> *api.ComputeStateOutput] base=pointed type; nested={[types.ComputeStateOutput <> api.ComputeStateOutput] base=struct field; nested={[types.ComputeStateOutput <> api.ComputeStateOutput] base=exported field type: #1 field named Trace; nested={[[]*types.InvocResult <> []*api.InvocResult] base=slice element; nested={[*types.InvocResult <> *api.InvocResult] base=pointed type; nested={[types.InvocResult <> api.InvocResult] base=struct field; nested={[types.InvocResult <> api.InvocResult] base=exported field type: #4 field named ExecutionTrace; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=struct field; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=exported fields count: 5 != 7; nested=nil}}}}}}}}}}
 	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported field name: #3 field, SupportedProofTypes != PreCommitChallengeDelay; nested=nil}}}}
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
+	> StateReplay {[func(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error) <> func(context.Context, types.TipSetKey, cid.Cid) (*api.InvocResult, error)] base=func out type: #0 input; nested={[*types.InvocResult <> *api.InvocResult] base=pointed type; nested={[types.InvocResult <> api.InvocResult] base=struct field; nested={[types.InvocResult <> api.InvocResult] base=exported field type: #4 field named ExecutionTrace; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=struct field; nested={[types.ExecutionTrace <> types.ExecutionTrace] base=exported fields count: 5 != 7; nested=nil}}}}}}
 	- SyncCheckBad
 	- SyncMarkBad
 	- SyncUnmarkAllBad

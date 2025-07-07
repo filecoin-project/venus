@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-type f3Status = func() (*manifest.Manifest, gpbft.InstanceProgress)
+type f3Status = func() (manifest.Manifest, gpbft.InstanceProgress)
 
 type leaser struct {
 	mutex                sync.Mutex
@@ -45,9 +45,6 @@ func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous type
 	}
 
 	manifest, instant := l.status()
-	if manifest == nil {
-		return nil, types.ErrF3NotReady
-	}
 	currentInstance := instant.ID
 	if len(previous) != 0 {
 		// A previous ticket is present. To avoid overlapping lease across multiple
@@ -88,9 +85,6 @@ func (l *leaser) getOrRenewParticipationTicket(participant uint64, previous type
 
 func (l *leaser) participate(ticket types.F3ParticipationTicket) (types.F3ParticipationLease, error) {
 	manifest, instant := l.status()
-	if manifest == nil {
-		return types.F3ParticipationLease{}, types.ErrF3NotReady
-	}
 	newLease, err := l.validateTicket(manifest.NetworkName, instant.ID, ticket)
 	if err != nil {
 		return types.F3ParticipationLease{}, err

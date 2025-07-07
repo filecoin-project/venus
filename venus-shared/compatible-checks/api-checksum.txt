@@ -244,10 +244,10 @@ api.FullNode:
 	EthGetBalance:	In=3,	Out=2,	CheckSum=80912669b93ebbd53024dbc6b4f39d94
 	EthGetBlockByHash:	In=3,	Out=2,	CheckSum=606bca6c962d8e2d4e0b8bb14e8fa0a9
 	EthGetBlockByNumber:	In=3,	Out=2,	CheckSum=9d82b96bb03c2de85dc7a31e7d4c45d2
-	EthGetBlockReceipts:	In=2,	Out=2,	CheckSum=e2817ae4c1a093339a0fd251150de95a
-	EthGetBlockReceiptsLimited:	In=3,	Out=2,	CheckSum=f5992631f35a54511e4a494b84e66b33
+	EthGetBlockReceipts:	In=2,	Out=2,	CheckSum=706a2761ee1e72997f4d3665ef027f1f
+	EthGetBlockReceiptsLimited:	In=3,	Out=2,	CheckSum=69f326d2bac39e0c81593941b04303d5
 	EthGetBlockTransactionCountByHash:	In=2,	Out=2,	CheckSum=aea75f99eaccb878b97512a29568c204
-	EthGetBlockTransactionCountByNumber:	In=2,	Out=2,	CheckSum=2c3bfb8fef7edce8563d84eab6e9bf4f
+	EthGetBlockTransactionCountByNumber:	In=2,	Out=2,	CheckSum=9d61e1ee40881f6fae3601b8065d7a0b
 	EthGetCode:	In=3,	Out=2,	CheckSum=a186786e31338dc69207e934b426cc67
 	EthGetFilterChanges:	In=2,	Out=2,	CheckSum=7900665c8164ddcc00b0b3934b35dc45
 	EthGetFilterLogs:	In=2,	Out=2,	CheckSum=7900665c8164ddcc00b0b3934b35dc45
@@ -260,8 +260,8 @@ api.FullNode:
 	EthGetTransactionByHashLimited:	In=3,	Out=2,	CheckSum=7c1fa7b8fe17eaf73eaea1f6ccdf927b
 	EthGetTransactionCount:	In=3,	Out=2,	CheckSum=d4f884ecece2de5517137c49d12be2c9
 	EthGetTransactionHashByCid:	In=2,	Out=2,	CheckSum=89cd0fe449cbdd9630c413e6d0888da4
-	EthGetTransactionReceipt:	In=2,	Out=2,	CheckSum=af6d9dda90fdb0f9427498580b9481a6
-	EthGetTransactionReceiptLimited:	In=3,	Out=2,	CheckSum=99f66b4b8a94d6a6e61198953ddf75e8
+	EthGetTransactionReceipt:	In=2,	Out=2,	CheckSum=2c51b071c703d913177a956c6f036d79
+	EthGetTransactionReceiptLimited:	In=3,	Out=2,	CheckSum=0b8afccf0f5b959bf98ce4dd37e4b1b9
 	EthMaxPriorityFeePerGas:	In=1,	Out=2,	CheckSum=e2f5588dddfc36a9cdef0fad6f4db93e
 	EthNewBlockFilter:	In=1,	Out=2,	CheckSum=0b236ca49b91eef3180d6b4082640f0f
 	EthNewFilter:	In=2,	Out=2,	CheckSum=bb78bd1380d703c64ed4573a220daea0
