@@ -2,7 +2,6 @@ package networks
 
 import (
 	"embed"
-	_ "embed"
 	"encoding/json"
 	"io"
 	"os"
