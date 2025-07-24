@@ -37,23 +37,17 @@ func NewF3Submodule(ctx context.Context,
 		return nil, err
 	}
 
-	provider, err := vf3.NewManifestProvider(ctx, network.F3Cfg, chain.ChainReader, network.Pubsub,
-		repo.MetaDatastore(), chain.API(), netConf.F3InitialPowerTableCID)
-	if err != nil {
-		return nil, err
-	}
 	m, err := vf3.New(ctx, vf3.F3Params{
-		ManifestProvider: provider,
-		PubSub:           network.Pubsub,
-		Host:             network.Host,
-		ChainStore:       chain.ChainReader,
-		StateManager:     chain.Stmgr,
-		Datastore:        repo.MetaDatastore(),
-		WalletSign:       walletSign,
-		SyncerAPI:        syncer.API(),
-		Config:           network.F3Cfg,
-		RepoPath:         repoPath,
-		Net:              network.API(),
+		PubSub:       network.Pubsub,
+		Host:         network.Host,
+		ChainStore:   chain.ChainReader,
+		StateManager: chain.Stmgr,
+		Datastore:    repo.MetaDatastore(),
+		WalletSign:   walletSign,
+		SyncerAPI:    syncer.API(),
+		Config:       network.F3Cfg,
+		RepoPath:     repoPath,
+		Net:          network.API(),
 	})
 	if err != nil {
 		return nil, err

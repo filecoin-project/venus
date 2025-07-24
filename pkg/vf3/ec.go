@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-f3/ec"
 	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/vm"
@@ -17,6 +18,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"golang.org/x/xerrors"
 )
 
 var (
@@ -28,6 +30,8 @@ type ecWrapper struct {
 	ChainStore   *chain.Store
 	StateManager *statemanger.Stmgr
 	SyncerAPI    v1api.ISyncer
+
+	mapReduceCache builtin.MapReduceCache
 }
 
 type f3TipSet struct {
@@ -139,15 +143,19 @@ func (ec *ecWrapper) getPowerTableTSK(ctx context.Context, tsk types.TipSetKey) 
 		return nil, fmt.Errorf("loading power actor state: %w", err)
 	}
 
+	claims, err := powerState.CollectEligibleClaims(&ec.mapReduceCache)
+	if err != nil {
+		return nil, fmt.Errorf("collecting valid claims: %w", err)
+	}
 	var powerEntries gpbft.PowerEntries
-	err = powerState.ForEachClaim(func(minerAddr address.Address, claim power.Claim) error {
+	for _, claim := range claims {
 		if claim.QualityAdjPower.Sign() <= 0 {
-			return nil
+			continue
 		}
 
-		id, err := address.IDFromAddress(minerAddr)
+		id, err := address.IDFromAddress(claim.Address)
 		if err != nil {
-			return fmt.Errorf("transforming address to ID: %w", err)
+			return nil, fmt.Errorf("transforming address to ID: %w", err)
 		}
 
 		pe := gpbft.PowerEntry{
@@ -155,48 +163,41 @@ func (ec *ecWrapper) getPowerTableTSK(ctx context.Context, tsk types.TipSetKey) 
 			Power: claim.QualityAdjPower,
 		}
 
-		act, found, err := state.GetActor(ctx, minerAddr)
-		if err != nil {
-			return fmt.Errorf("(get sset) failed to load miner actor: %w", err)
-		}
-		if !found {
-			return fmt.Errorf("(get sset) failed to find miner actor by address: %s", minerAddr)
+		act, found, err := state.GetActor(ctx, claim.Address)
+		if err != nil || !found {
+			return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
 		}
 		mstate, err := miner.Load(ec.ChainStore.Store(ctx), act)
 		if err != nil {
-			return fmt.Errorf("(get sset) failed to load miner actor state: %w", err)
+			return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 		}
 
 		info, err := mstate.Info()
 		if err != nil {
-			return fmt.Errorf("failed to load actor info: %w", err)
+			return nil, fmt.Errorf("failed to load actor info: %w", err)
 		}
 		// check fee debt
 		if debt, err := mstate.FeeDebt(); err != nil {
-			return err
+			return nil, err
 		} else if !debt.IsZero() {
 			// fee debt don't add the miner to power table
-			return nil
+			continue
 		}
 		// check consensus faults
 		if ts.Height() <= info.ConsensusFaultElapsed {
-			return nil
+			continue
 		}
 
 		waddr, err := vm.ResolveToDeterministicAddress(ctx, state, info.Worker, ec.ChainStore.Store(ctx))
 		if err != nil {
-			return fmt.Errorf("resolve miner worker address: %w", err)
+			return nil, xerrors.Errorf("resolve miner worker address: %w", err)
 		}
 
 		if waddr.Protocol() != address.BLS {
-			return fmt.Errorf("wrong type of worker address")
+			return nil, xerrors.Errorf("wrong type of worker address")
 		}
 		pe.PubKey = waddr.Payload()
 		powerEntries = append(powerEntries, pe)
-		return nil
-	}, true)
-	if err != nil {
-		return nil, fmt.Errorf("collecting the power table: %w", err)
 	}
 
 	sort.Sort(powerEntries)

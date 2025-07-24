@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
 )
 
 func ButterflySnapNet() *NetworkConf {
@@ -76,10 +75,6 @@ func ButterflySnapNet() *NetworkConf {
 			Eip155ChainID:           3141592,
 			ActorDebugging:          false,
 			F3Enabled:               true,
-			F3BootstrapEpoch:        -1,
-			ManifestServerID:        "12D3KooWJr9jy4ngtJNR7JC1xgLFra3DjEtyxskRYWvBK9TC3Yn6",
-			F3InitialPowerTableCID:  cid.Undef,
-			F3ParamsAddress:         "0x9fd3B2D38EE4C920c9954DA752eDF810887501c1",
 
 			UpgradeTeepInitialFilReserved: constants.WholeFIL(1_600_000_000), // FIP-0100: 300M -> 1.6B FIL
 		},

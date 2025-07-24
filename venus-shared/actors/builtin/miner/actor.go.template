@@ -380,7 +380,7 @@ func PledgePenaltyForContinuedFault(
         {{- end}}
     {{- end}}
     default:
-        return big.Zero(), fmt.Errorf("unsupported network version: %d", v)
+        return big.Zero(), fmt.Errorf("unsupported network version: %d", nwVer)
     }
 }
 
@@ -403,6 +403,6 @@ func PledgePenaltyForTermination(
         {{- end}}
     {{- end}}
     default:
-        return big.Zero(), fmt.Errorf("unsupported network version: %d", v)
+        return big.Zero(), fmt.Errorf("unsupported network version: %d", nwVer)
     }
 }

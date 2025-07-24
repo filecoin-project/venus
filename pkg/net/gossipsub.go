@@ -2,7 +2,6 @@ package net
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"time"
 
@@ -200,6 +199,15 @@ func NewGossipSub(ctx context.Context,
 		// Gossipsubv1.1 configuration
 		pubsub.WithFloodPublish(true),
 		pubsub.WithMessageIdFn(hashMsgId),
+		// Bump the validation queue to accommodate the increase in gossipsub message
+		// exchange rate as a result of f3. The size of 256 should offer enough headroom
+		// for slower F3 validation while avoiding: 1) avoid excessive memory usage, 2)
+		// dropped consensus related messages and 3) cascading effect among other topics
+		// since this config isn't topic-specific.
+		//
+		// Note that the worst case memory footprint is 256 MiB based on the default
+		// message size of 1 MiB, which isn't overridden in Lotus.
+		pubsub.WithValidateQueueSize(256),
 		pubsub.WithPeerScore(
 			&pubsub.PeerScoreParams{
 				AppSpecificScore: func(p peer.ID) float64 {
@@ -295,20 +303,10 @@ func NewGossipSub(ctx context.Context,
 	allowTopics = append(allowTopics, drandTopics...)
 
 	if f3Config != nil {
-		if f3Config.StaticManifest != nil || f3Config.ContractAddress != "" {
+		if f3Config.StaticManifest != nil {
 			gpbftTopic := manifest.PubSubTopicFromNetworkName(f3Config.BaseNetworkName)
 			chainexTopic := manifest.ChainExchangeTopicFromNetworkName(f3Config.BaseNetworkName)
 			allowTopics = append(allowTopics, gpbftTopic, chainexTopic)
-		}
-		if f3Config.DynamicManifestProvider != "" {
-			gpbftTopicPrefix := manifest.PubSubTopicFromNetworkName(f3Config.BaseNetworkName)
-			chainexTopicPrefix := manifest.ChainExchangeTopicFromNetworkName(f3Config.BaseNetworkName)
-			allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
-			for i := range vf3.MaxDynamicManifestChangesAllowed {
-				gpbftTopic := fmt.Sprintf("%s/%d", gpbftTopicPrefix, i)
-				chainexTopic := fmt.Sprintf("%s/%d", chainexTopicPrefix, i)
-				allowTopics = append(allowTopics, gpbftTopic, chainexTopic)
-			}
 		}
 	}
 

@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
 )
 
 func IntegrationNet() *NetworkConf {
@@ -70,10 +69,6 @@ func IntegrationNet() *NetworkConf {
 			Eip155ChainID:           314,
 			ActorDebugging:          false,
 			F3Enabled:               false,
-			F3BootstrapEpoch:        -1,
-			ManifestServerID:        "12D3KooWHcNBkqXEBrsjoveQvj6zDF3vK5S9tAfqyYaQF1LGSJwG",
-			F3InitialPowerTableCID:  cid.Undef,
-			F3ParamsAddress:         "",
 
 			UpgradeTeepInitialFilReserved: constants.InitialFilReserved,
 		},

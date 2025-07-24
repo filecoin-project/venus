@@ -460,7 +460,7 @@ func PledgePenaltyForContinuedFault(
 
 	switch v {
 	default:
-		return big.Zero(), fmt.Errorf("unsupported network version: %d", v)
+		return big.Zero(), fmt.Errorf("unsupported network version: %d", nwVer)
 	}
 }
 
@@ -479,6 +479,6 @@ func PledgePenaltyForTermination(
 	case actorstypes.Version16:
 		return minertypes16.PledgePenaltyForTermination(initialPledge, sectorAge, faultFee), nil
 	default:
-		return big.Zero(), fmt.Errorf("unsupported network version: %d", v)
+		return big.Zero(), fmt.Errorf("unsupported network version: %d", nwVer)
 	}
 }

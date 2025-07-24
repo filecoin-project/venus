@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
 )
 
 type NetworkConf struct {
@@ -83,8 +82,6 @@ func Calibration() *NetworkConf {
 			AllowableClockDriftSecs: 1,
 			Eip155ChainID:           314159,
 			ActorDebugging:          false,
-			F3InitialPowerTableCID:  cid.MustParse("bafy2bzaceab236vmmb3n4q4tkvua2n4dphcbzzxerxuey3mot4g3cov5j3r2c"),
-			F3ParamsAddress:         "",
 
 			UpgradeTeepInitialFilReserved: constants.WholeFIL(1_200_000_000), // FIP-0100: 300M -> 1.2B FIL
 		},
@@ -93,9 +90,7 @@ func Calibration() *NetworkConf {
 	nc.Network.ForkUpgradeParam.UpgradePhoenixHeight = nc.Network.ForkUpgradeParam.UpgradeDragonHeight + 120
 	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
 
-	nc.Network.F3BootstrapEpoch = nc.Network.ForkUpgradeParam.UpgradeTuktukHeight + 2880
 	nc.Network.F3Enabled = true
-	nc.Network.ManifestServerID = "12D3KooWS9vD9uwm8u2uPyJV32QBAhKAmPYwmziAgr3Xzk2FU1Mr"
 
 	// This epoch, 7 days after Teep is the completion of FIP-0100 where actors will start applying
 	// the new daily fee to pre-Teep sectors being extended.
