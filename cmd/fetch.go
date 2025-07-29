@@ -39,6 +39,6 @@ var fetchCmd = &cmds.Command{
 			}
 			return nil
 		}
-		return errors.New("uncorrect parameters")
+		return errors.New("incorrect parameters")
 	},
 }

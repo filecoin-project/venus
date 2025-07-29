@@ -118,11 +118,11 @@ var f3CheckActivationRaw = &cmds.Command{
 		slot, retBytes = retBytes[:32], retBytes[32:]
 		for i := range 31 {
 			if slot[i] != 0 {
-				return fmt.Errorf("wrong value for offest (padding): slot[%d] = 0x%x != 0x00", i, slot[i])
+				return fmt.Errorf("wrong value for offset (padding): slot[%d] = 0x%x != 0x00", i, slot[i])
 			}
 		}
 		if slot[31] != 0x40 {
-			return fmt.Errorf("wrong value for offest : slot[31] = 0x%x != 0x40", slot[31])
+			return fmt.Errorf("wrong value for offset : slot[31] = 0x%x != 0x40", slot[31])
 		}
 		slot, retBytes = retBytes[:32], retBytes[32:]
 		slot = slot[24:32]
