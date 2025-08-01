@@ -224,7 +224,7 @@ func TestNonExistingKey(t *testing.T) {
 		t.Fatalf("expected: %s, got %s", ErrNoSuchKey, err)
 	}
 	if k != nil {
-		t.Fatalf("Get on nonexistant key should give nil")
+		t.Fatalf("Get on nonexistent key should give nil")
 	}
 }
 
@@ -233,7 +233,7 @@ func TestMakeKeystoreNoDir(t *testing.T) {
 
 	_, err := NewFSKeystore("/this/is/not/a/real/dir")
 	if err == nil {
-		t.Fatal("shouldn't be able to make a keystore in a nonexistant directory")
+		t.Fatal("shouldn't be able to make a keystore in a nonexistent directory")
 	}
 }
 
