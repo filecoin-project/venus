@@ -76,6 +76,13 @@ func (f3api *f3API) F3GetManifest(ctx context.Context) (*manifest.Manifest, erro
 	return f3api.f3module.F3.GetManifest(ctx)
 }
 
+func (f3api *f3API) F3GetPowerTableByInstance(ctx context.Context, instance uint64) (gpbft.PowerEntries, error) {
+	if f3api.f3module.F3 == nil {
+		return gpbft.PowerEntries{}, ErrF3Disabled
+	}
+	return f3api.f3module.F3.GetPowerTableByInstance(ctx, instance)
+}
+
 func (f3api *f3API) F3IsRunning(_ctx context.Context) (bool, error) {
 	if f3api.f3module.F3 == nil {
 		return false, ErrF3Disabled

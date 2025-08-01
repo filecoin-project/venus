@@ -1101,6 +1101,7 @@ type IF3Struct struct {
 		F3GetLatestCertificate          func(ctx context.Context) (*certs.FinalityCertificate, error)                                                                                   `perm:"read"`
 		F3GetManifest                   func(ctx context.Context) (*manifest.Manifest, error)                                                                                           `perm:"read"`
 		F3GetOrRenewParticipationTicket func(ctx context.Context, minerID address.Address, previous types.F3ParticipationTicket, instances uint64) (types.F3ParticipationTicket, error) `perm:"sign"`
+		F3GetPowerTableByInstance       func(ctx context.Context, instance uint64) (gpbft.PowerEntries, error)                                                                          `perm:"read"`
 		F3GetProgress                   func(ctx context.Context) (gpbft.InstanceProgress, error)                                                                                       `perm:"read"`
 		F3IsRunning                     func(ctx context.Context) (bool, error)                                                                                                         `perm:"read"`
 		F3ListParticipants              func(ctx context.Context) ([]types.F3Participant, error)                                                                                        `perm:"read"`
@@ -1125,6 +1126,9 @@ func (s *IF3Struct) F3GetManifest(p0 context.Context) (*manifest.Manifest, error
 }
 func (s *IF3Struct) F3GetOrRenewParticipationTicket(p0 context.Context, p1 address.Address, p2 types.F3ParticipationTicket, p3 uint64) (types.F3ParticipationTicket, error) {
 	return s.Internal.F3GetOrRenewParticipationTicket(p0, p1, p2, p3)
+}
+func (s *IF3Struct) F3GetPowerTableByInstance(p0 context.Context, p1 uint64) (gpbft.PowerEntries, error) {
+	return s.Internal.F3GetPowerTableByInstance(p0, p1)
 }
 func (s *IF3Struct) F3GetProgress(p0 context.Context) (gpbft.InstanceProgress, error) {
 	return s.Internal.F3GetProgress(p0)

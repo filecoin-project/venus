@@ -68,6 +68,7 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- IMinerState.StateMinerSectorSize
 	- IMinerState.StateMinerWorkerAddress
 	- EthSubscriber.EthSubscription
+	- IF3.F3GetPowerTableByInstance
 	- IMessagePool.GasBatchEstimateMessageGas
 	- IMessagePool.MpoolDeleteByAdress
 	- IMessagePool.MpoolPublishByAddr

@@ -63,6 +63,8 @@ type IF3 interface {
 	F3GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) //perm:read
 	// F3GetManifest returns the current manifest being used for F3
 	F3GetManifest(ctx context.Context) (*manifest.Manifest, error) //perm:read
+	// F3GetPowerTableByInstance returns the power table (committee) used to validate the specified instance.
+	F3GetPowerTableByInstance(ctx context.Context, instance uint64) (gpbft.PowerEntries, error) //perm:read
 	// F3IsRunning returns true if the F3 instance is running, false if it's not running but
 	// it's enabled, and an error when disabled entirely.
 	F3IsRunning(ctx context.Context) (bool, error) //perm:read
