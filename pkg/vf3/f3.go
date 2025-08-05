@@ -231,6 +231,11 @@ func (fff *F3) GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.
 	return fff.inner.GetPowerTable(ctx, tsk.Bytes())
 }
 
+// GetPowerTableByInstance returns the power table (committee) used to validate the specified instance.
+func (fff *F3) GetPowerTableByInstance(ctx context.Context, instance uint64) (gpbft.PowerEntries, error) {
+	return fff.inner.GetPowerTableByInstance(ctx, instance)
+}
+
 func (fff *F3) IsRunning() bool {
 	return fff.inner.IsRunning()
 }

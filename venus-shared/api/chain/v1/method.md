@@ -125,6 +125,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [F3GetLatestCertificate](#f3getlatestcertificate)
   * [F3GetManifest](#f3getmanifest)
   * [F3GetOrRenewParticipationTicket](#f3getorrenewparticipationticket)
+  * [F3GetPowerTableByInstance](#f3getpowertablebyinstance)
   * [F3GetProgress](#f3getprogress)
   * [F3IsRunning](#f3isrunning)
   * [F3ListParticipants](#f3listparticipants)
@@ -3818,6 +3819,30 @@ Inputs:
 ```
 
 Response: `"Bw=="`
+
+### F3GetPowerTableByInstance
+F3GetPowerTableByInstance returns the power table (committee) used to validate the specified instance.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  42
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": 1000,
+    "Power": "0",
+    "PubKey": "Bw=="
+  }
+]
+```
 
 ### F3GetProgress
 F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
