@@ -85,5 +85,5 @@ Lotus方面backport指master的pr合到`release/vX.Y.Z`, Venus基于master的话
 
 ### 发版后:
 
-- [ ] （可选）按需更新[release-issue-templat.md](https://github.com/filecoin-project/venus/blob/master/documentation/misc/release-issue-template.md)模版
-- [ ] （可选）使用[release-issue-templat.md](https://github.com/filecoin-project/venus/blob/master/documentation/misc/release-issue-templat.md)模版创建下一个发版issue
+- [ ] （可选）按需更新[release-issue-template.md](https://github.com/filecoin-project/venus/blob/master/documentation/misc/release-issue-template.md)模版
+- [ ] （可选）使用[release-issue-template.md](https://github.com/filecoin-project/venus/blob/master/documentation/misc/release-issue-template.md)模版创建下一个发版issue
