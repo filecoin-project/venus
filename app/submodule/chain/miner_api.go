@@ -1301,7 +1301,7 @@ func (msa *minerStateAPI) StateVerifiedClientStatus(ctx context.Context, addr ad
 
 	aid, err := view.LookupID(ctx, addr)
 	if err != nil {
-		return nil, fmt.Errorf("loook up id of %s : %v", addr, err)
+		return nil, fmt.Errorf("look up id of %s : %v", addr, err)
 	}
 
 	nv, err := msa.ChainSubmodule.API().StateNetworkVersion(ctx, tsk)
