@@ -90,7 +90,7 @@ var disputerMsgCmd = &cmds.Command{
 		})
 
 		if aerr != nil {
-			return fmt.Errorf("failed to serailize params: %w", aerr)
+			return fmt.Errorf("failed to serialize params: %w", aerr)
 		}
 
 		dmsg := &types.Message{
@@ -263,7 +263,7 @@ var disputerStartCmd = &cmds.Command{
 				if err != nil {
 					disputeLog.Errorw("failed to dispute post message", "err", err.Error(), "miner", dpmsg.To)
 				} else {
-					disputeLog.Infow("submited dispute", "mcid", m.Cid(), "miner", dpmsg.To)
+					disputeLog.Infow("submitted dispute", "mcid", m.Cid(), "miner", dpmsg.To)
 				}
 			}
 
@@ -360,7 +360,7 @@ func makeDisputeWindowedPosts(ctx context.Context, api v1api.IChain, dl minerDea
 		})
 
 		if aerr != nil {
-			return nil, fmt.Errorf("failed to serailize params: %w", aerr)
+			return nil, fmt.Errorf("failed to serialize params: %w", aerr)
 		}
 
 		dispute := &types.Message{

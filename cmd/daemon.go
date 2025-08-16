@@ -328,7 +328,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	// The request is expected to remain open so the daemon uses the request context.
 	// Pass a new context here if the flow changes such that the command should exit while leaving
-	// a forked deamon running.
+	// a forked daemon running.
 	return fcn.RunRPCAndWait(req.Context, RootCmdDaemon, ready)
 }
 
