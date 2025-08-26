@@ -99,7 +99,7 @@ func renderSeparated(t *template.Template, dir string, versions []int) error {
 			return fmt.Errorf("render separated template for ver %d: %w", v, err)
 		}
 
-		data, err := removeDuplicateLinesFromBytes(buf.Bytes(), "builtin16")
+		data, err := removeDuplicateLinesFromBytes(buf.Bytes(), "builtin17")
 		if err != nil {
 			return fmt.Errorf("remove duplicate lines failed: %v", err)
 		}
