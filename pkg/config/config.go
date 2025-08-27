@@ -352,6 +352,7 @@ type ForkUpgradeConfig struct {
 	UpgradeTeepHeight                    abi.ChainEpoch `json:"upgradeTeepHeight"`
 	UpgradeTockHeight                    abi.ChainEpoch `json:"upgradeTockHeight"`
 	UpgradeTockFixHeight                 abi.ChainEpoch `json:"upgradeTockFixHeight"`
+	UpgradeXxHeight                      abi.ChainEpoch `json:"upgradeXxHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -398,6 +399,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeTeepHeight:                    4867320,
 	UpgradeTockHeight:                    4867320 + 90*builtin.EpochsInDay,
 	UpgradeTockFixHeight:                 -29,
+	UpgradeXxHeight:                      99999999,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {

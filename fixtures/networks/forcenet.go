@@ -19,7 +19,7 @@ func ForceNet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.NetworkForce,
-			GenesisNetworkVersion: network.Version24,
+			GenesisNetworkVersion: network.Version26,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg8MiBV1,
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
@@ -67,9 +67,10 @@ func ForceNet() *NetworkConf {
 				UpgradeWaffleHeight:                  -27,
 				UpgradeTuktukHeight:                  -28,
 				UpgradeTuktukPowerRampDurationEpochs: 200,
-				UpgradeTeepHeight:                    200,
-				UpgradeTockHeight:                    300,
+				UpgradeTeepHeight:                    -30,
+				UpgradeTockHeight:                    -31,
 				UpgradeTockFixHeight:                 -29,
+				UpgradeXxHeight:                      200,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
