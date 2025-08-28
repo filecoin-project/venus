@@ -417,8 +417,13 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 		return types.EthUint64(0), fmt.Errorf("failed to process block param: %v, %w", blkParam, err)
 	}
 
+	stateCid, _, err := a.em.chainModule.Stmgr.StateView(ctx, ts)
+	if err != nil {
+		return 0, err
+	}
+
 	// Get the actor state at the specified tipset
-	actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, addr, ts)
+	actor, err := a.em.chainModule.Stmgr.GetActorRaw(ctx, addr, stateCid)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return 0, nil
