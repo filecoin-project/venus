@@ -587,7 +587,12 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 		return nil, errors.New("block param must not specify genesis block")
 	}
 
-	actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, to, ts)
+	stateCid, _, err := a.em.chainModule.Stmgr.StateView(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	actor, err := a.em.chainModule.Stmgr.GetActorRaw(ctx, to, stateCid)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return nil, nil
@@ -615,7 +620,7 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 	// Try calling until we find a height with no migration.
 	var res *types.InvocResult
 	for {
-		res, err = a.em.chainModule.Stmgr.Call(ctx, msg, ts)
+		res, err = a.em.chainModule.Stmgr.CallOnState(ctx, stateCid, msg, ts)
 		if err != fork.ErrExpensiveFork {
 			break
 		}
@@ -674,13 +679,12 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 		return nil, fmt.Errorf("cannot get Filecoin address: %w", err)
 	}
 
-	// use the system actor as the caller
-	from, err := address.NewIDAddress(0)
+	stateCid, _, err := a.em.chainModule.Stmgr.StateView(ctx, ts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
+		return nil, err
 	}
 
-	actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, to, ts)
+	actor, err := a.em.chainModule.Stmgr.GetActorRaw(ctx, to, stateCid)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return types.EthBytes(make([]byte, 32)), nil
@@ -700,7 +704,7 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 	}
 
 	msg := &types.Message{
-		From:       from,
+		From:       builtinactors.SystemActorAddr,
 		To:         to,
 		Value:      big.Zero(),
 		Method:     builtin.MethodsEVM.GetStorageAt,
@@ -713,7 +717,7 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 	// Try calling until we find a height with no migration.
 	var res *types.InvocResult
 	for {
-		res, err = a.em.chainModule.Stmgr.Call(ctx, msg, ts)
+		res, err = a.em.chainModule.Stmgr.CallOnState(ctx, stateCid, msg, ts)
 		if err != fork.ErrExpensiveFork {
 			break
 		}

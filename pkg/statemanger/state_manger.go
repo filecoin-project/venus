@@ -335,6 +335,27 @@ func (s *Stmgr) GetActorAt(ctx context.Context, addr address.Address, ts *types.
 	return actor, nil
 }
 
+func (s *Stmgr) GetActorRaw(ctx context.Context, addr address.Address, stateCid cid.Cid) (*types.Actor, error) {
+	if addr.Empty() {
+		return nil, types.ErrActorNotFound
+	}
+
+	state, err := tree.LoadState(ctx, s.cs.Store(ctx), stateCid)
+	if err != nil {
+		return nil, err
+	}
+
+	actor, find, err := state.GetActor(ctx, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	if !find {
+		return nil, types.ErrActorNotFound
+	}
+	return actor, nil
+}
+
 // deprecated: in future use.
 func (s *Stmgr) RunStateTransitionV2(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "Exected.RunStateTransition")
