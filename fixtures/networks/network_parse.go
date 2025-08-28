@@ -50,7 +50,7 @@ func SetConfigFromNetworkType(cfg *config.Config, networkType types.NetworkType)
 
 	if constants.DisableF3 {
 		cfg.NetworkParams.F3Enabled = false
-		log.Warnf("F3 is disabled")
+		log.Warn("F3 is disabled")
 	}
 	return nil
 }
