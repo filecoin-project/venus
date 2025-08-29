@@ -772,7 +772,7 @@ func (e *EthAddressList) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// TopicSpec represents a specification for matching by topic. An empty spec means all topics
+// EthTopicSpec represents a specification for matching by topic. An empty spec means all topics
 // will be matched. Otherwise topics are matched conjunctively in the first dimension of the
 // slice and disjunctively in the second dimension. Topics are matched in order.
 // An event log with topics [A, B] will be matched by the following topic specs:
@@ -812,7 +812,7 @@ func (e *EthHashList) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// FilterResult represents the response from executing a filter: a list of block hashes, a list of transaction hashes
+// EthFilterResult represents the response from executing a filter: a list of block hashes, a list of transaction hashes
 // or a list of logs
 // This is a union type. Only one field will be populated.
 // The JSON encoding must produce an array of the populated field.

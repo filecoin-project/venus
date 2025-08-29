@@ -707,7 +707,7 @@ Response:
 ```
 
 ### ClientListDataTransfers
-ClientListTransfers returns the status of all ongoing transfers of data
+ClientListDataTransfers returns the status of all ongoing transfers of data
 
 
 Perms: write
