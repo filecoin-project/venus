@@ -484,6 +484,7 @@ type ForkUpgradeParams struct {
 	UpgradeTuktukHeight      abi.ChainEpoch
 	UpgradeTeepHeight        abi.ChainEpoch
 	UpgradeTockHeight        abi.ChainEpoch
+	UpgradeXxHeight          abi.ChainEpoch
 }
 
 type NodeStatus struct {

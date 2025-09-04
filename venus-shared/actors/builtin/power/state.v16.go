@@ -21,6 +21,8 @@ import (
 	builtin16 "github.com/filecoin-project/go-state-types/builtin"
 	power16 "github.com/filecoin-project/go-state-types/builtin/v16/power"
 	adt16 "github.com/filecoin-project/go-state-types/builtin/v16/util/adt"
+
+	builtin17 "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var _ State = (*state16)(nil)
@@ -129,7 +131,7 @@ func (s *state16) ListAllMiners() ([]address.Address, error) {
 	return miners, nil
 }
 
-func (s *state16) CollectEligibleClaims(cacheInOut *builtin16.MapReduceCache) ([]builtin16.OwnedClaim, error) {
+func (s *state16) CollectEligibleClaims(cacheInOut *builtin17.MapReduceCache) ([]builtin17.OwnedClaim, error) {
 
 	return s.State.CollectEligibleClaims(s.store, cacheInOut)
 

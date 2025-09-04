@@ -417,8 +417,13 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 		return types.EthUint64(0), fmt.Errorf("failed to process block param: %v, %w", blkParam, err)
 	}
 
+	stateCid, _, err := a.em.chainModule.Stmgr.StateView(ctx, ts)
+	if err != nil {
+		return 0, err
+	}
+
 	// Get the actor state at the specified tipset
-	actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, addr, ts)
+	actor, err := a.em.chainModule.Stmgr.GetActorRaw(ctx, addr, stateCid)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return 0, nil
@@ -464,8 +469,10 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 		return nil, fmt.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
 	}
 	if msgLookup == nil {
-		// This is the best we can do. In theory, we could have just not indexed this
-		// transaction, but there's no way to check that here.
+		// This is the best we can do. We may just not have indexed this transaction, or we may have a
+		// limit applied and not searched far back enough, but we don't have a way to go. Because
+		// Ethereum tooling expects an empty response for transaction-not-found, we don't have a way of
+		// differentiating between "can't find" and "doesn't exist".
 		return nil, nil
 	}
 
@@ -507,6 +514,14 @@ func (a *ethAPI) EthGetBlockReceiptsLimited(ctx context.Context, blockParam type
 	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.em.chainModule.ChainReader, blockParam)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tipset: %w", err)
+	}
+
+	head, err := a.chain.ChainHead(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get head: %v", err)
+	}
+	if limit > constants.LookbackNoLimit && ts.Height() < head.Height() {
+		return nil, fmt.Errorf("tipset %s is older than the allowed lookback limit", ts.Key())
 	}
 
 	tsCid, err := ts.Key().Cid()
@@ -577,7 +592,12 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 		return nil, errors.New("block param must not specify genesis block")
 	}
 
-	actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, to, ts)
+	stateCid, _, err := a.em.chainModule.Stmgr.StateView(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	actor, err := a.em.chainModule.Stmgr.GetActorRaw(ctx, to, stateCid)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return nil, nil
@@ -605,7 +625,7 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 	// Try calling until we find a height with no migration.
 	var res *types.InvocResult
 	for {
-		res, err = a.em.chainModule.Stmgr.Call(ctx, msg, ts)
+		res, err = a.em.chainModule.Stmgr.CallOnState(ctx, stateCid, msg, ts)
 		if err != fork.ErrExpensiveFork {
 			break
 		}
@@ -664,13 +684,12 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 		return nil, fmt.Errorf("cannot get Filecoin address: %w", err)
 	}
 
-	// use the system actor as the caller
-	from, err := address.NewIDAddress(0)
+	stateCid, _, err := a.em.chainModule.Stmgr.StateView(ctx, ts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
+		return nil, err
 	}
 
-	actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, to, ts)
+	actor, err := a.em.chainModule.Stmgr.GetActorRaw(ctx, to, stateCid)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return types.EthBytes(make([]byte, 32)), nil
@@ -690,7 +709,7 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 	}
 
 	msg := &types.Message{
-		From:       from,
+		From:       builtinactors.SystemActorAddr,
 		To:         to,
 		Value:      big.Zero(),
 		Method:     builtin.MethodsEVM.GetStorageAt,
@@ -703,7 +722,7 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 	// Try calling until we find a height with no migration.
 	var res *types.InvocResult
 	for {
-		res, err = a.em.chainModule.Stmgr.Call(ctx, msg, ts)
+		res, err = a.em.chainModule.Stmgr.CallOnState(ctx, stateCid, msg, ts)
 		if err != fork.ErrExpensiveFork {
 			break
 		}

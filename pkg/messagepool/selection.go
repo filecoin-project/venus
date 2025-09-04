@@ -476,7 +476,7 @@ func (mp *MessagePool) selectMessagesGreedy(ctx context.Context, curTS, ts *type
 	result := mp.selectPriorityMessages(ctx, pending, baseFee, ts)
 
 	// have we filled the block?
-	if result.gasLimit < minGas || len(result.msgs) > constants.BlockMessageLimit {
+	if result.gasLimit < minGas || len(result.msgs) >= constants.BlockMessageLimit {
 		return result, nil
 	}
 
