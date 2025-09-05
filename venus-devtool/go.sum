@@ -212,8 +212,8 @@ github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc7 h1:v+zJS5B6pA3ptWZS4t
 github.com/filecoin-project/go-data-transfer/v2 v2.0.0-rc7/go.mod h1:V3Y4KbttaCwyg1gwkP7iai8CbQx4mZUGjd3h9GZWLKE=
 github.com/filecoin-project/go-ds-versioning v0.1.2 h1:to4pTadv3IeV1wvgbCbN6Vqd+fu+7tveXgv/rCEZy6w=
 github.com/filecoin-project/go-ds-versioning v0.1.2/go.mod h1:C9/l9PnB1+mwPa26BBVpCjG/XQCB0yj/q5CK2J8X1I4=
-github.com/filecoin-project/go-f3 v0.8.9 h1:0SHqwWmcVAL02Or7uE4P7qG1feopyVBSlgrUxkHkQBM=
-github.com/filecoin-project/go-f3 v0.8.9/go.mod h1:hFvb2CMxHDmlJAVzfiIL/V8zCtNMQqfSnhP5TyM6CHI=
+github.com/filecoin-project/go-f3 v0.8.10 h1:Mm+daAn9EKqTTDY3ICbPTR2i3Opjb4gr6Y7bJ8oCA84=
+github.com/filecoin-project/go-f3 v0.8.10/go.mod h1:hFvb2CMxHDmlJAVzfiIL/V8zCtNMQqfSnhP5TyM6CHI=
 github.com/filecoin-project/go-fil-commcid v0.2.0 h1:B+5UX8XGgdg/XsdUpST4pEBviKkFOw+Fvl2bLhSKGpI=
 github.com/filecoin-project/go-fil-commcid v0.2.0/go.mod h1:8yigf3JDIil+/WpqR5zoKyP0jBPCOGtEqq/K1CcMy9Q=
 github.com/filecoin-project/go-fil-commp-hashhash v0.2.0 h1:HYIUugzjq78YvV3vC6rL95+SfC/aSTVSnZSZiDV5pCk=
@@ -246,8 +246,8 @@ github.com/filecoin-project/go-statemachine v1.0.3/go.mod h1:jZdXXiHa61n4NmgWFG4
 github.com/filecoin-project/go-statestore v0.1.0/go.mod h1:LFc9hD+fRxPqiHiaqUEZOinUJB4WARkRfNl10O7kTnI=
 github.com/filecoin-project/go-statestore v0.2.0 h1:cRRO0aPLrxKQCZ2UOQbzFGn4WDNdofHZoGPjfNaAo5Q=
 github.com/filecoin-project/go-statestore v0.2.0/go.mod h1:8sjBYbS35HwPzct7iT4lIXjLlYyPor80aU7t7a/Kspo=
-github.com/filecoin-project/lotus v1.28.2-0.20250825034907-8238f4f4b3cb h1:cMpoZ2QYMAkYcizhVtHhagWotrxW8XgGgyTn+egJ0iI=
-github.com/filecoin-project/lotus v1.28.2-0.20250825034907-8238f4f4b3cb/go.mod h1:YLCNt3c6yhJNE2C0rQDNBhM5r/AXGIhe1dYy4vRZKAg=
+github.com/filecoin-project/lotus v1.34.0-rc1 h1:KJC+S6Erg+6RoLQbQI2zgAwS+XfkZlhik9pE2xxxQ/A=
+github.com/filecoin-project/lotus v1.34.0-rc1/go.mod h1:L23R+rrmgSbEYzc75+f5R0mirVs738N4B2cCl9agbqA=
 github.com/filecoin-project/pubsub v1.0.0 h1:ZTmT27U07e54qV1mMiQo4HDr0buo8I1LDHBYLXlsNXM=
 github.com/filecoin-project/pubsub v1.0.0/go.mod h1:GkpB33CcUtUNrLPhJgfdy4FDx4OMNR9k+46DHx/Lqrg=
 github.com/filecoin-project/specs-actors v0.9.13/go.mod h1:TS1AW/7LbG+615j4NsjMK1qlpAwaFsG9w0V2tg2gSao=
@@ -955,8 +955,8 @@ github.com/prometheus/procfs v0.16.1/go.mod h1:teAbpZRB1iIAJYREa1LsoWUXykVXA1KlT
 github.com/prometheus/statsd_exporter v0.22.7/go.mod h1:N/TevpjkIh9ccs6nuzY3jQn9dFqnUakOjnEuMPJJJnI=
 github.com/prometheus/statsd_exporter v0.23.0 h1:GEkriUCmARYh1gSA0gzpvmTg/oHMc5MfDFNlS/che4E=
 github.com/prometheus/statsd_exporter v0.23.0/go.mod h1:1itCY9XMa2p5pjO5HseGjs5cnaIA5qxLCYmn3OUna58=
-github.com/puzpuzpuz/xsync/v2 v2.4.1 h1:aGdE1C/HaR/QC6YAFdtZXi60Df8/qBIrs8PKrzkItcM=
-github.com/puzpuzpuz/xsync/v2 v2.4.1/go.mod h1:gD2H2krq/w52MfPLE+Uy64TzJDVY7lP2znR9qmR35kU=
+github.com/puzpuzpuz/xsync/v2 v2.5.1 h1:mVGYAvzDSu52+zaGyNjC+24Xw2bQi3kTr4QJ6N9pIIU=
+github.com/puzpuzpuz/xsync/v2 v2.5.1/go.mod h1:gD2H2krq/w52MfPLE+Uy64TzJDVY7lP2znR9qmR35kU=
 github.com/quic-go/qpack v0.5.1 h1:giqksBPnT/HDtZ6VhtFKgoLOWmlyo9Ei6u9PqzIMbhI=
 github.com/quic-go/qpack v0.5.1/go.mod h1:+PC4XFrEskIVkcLzpEkbLqq1uCoxPhQuvK5rH1ZgaEg=
 github.com/quic-go/quic-go v0.52.0 h1:/SlHrCRElyaU6MaEPKqKr9z83sBg2v4FLLvWM+Z47pA=

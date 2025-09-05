@@ -165,10 +165,15 @@ var newMinerCmd = &cmds.Command{
 			sender = faddr
 		}
 
+		deposit, err := env.(*node.Env).ChainAPI.StateMinerCreationDeposit(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
 		createStorageMinerMsg := &types.Message{
 			To:    power.Address,
 			From:  sender,
-			Value: big.Zero(),
+			Value: deposit,
 
 			Method: power.Methods.CreateMiner,
 			Params: params,

@@ -209,6 +209,7 @@ api.FullNode:
 	ChainGetBlock:	In=2,	Out=2,	CheckSum=0d2bba23d84a51413bbbebe218dcbcf9
 	ChainGetBlockMessages:	In=2,	Out=2,	CheckSum=944437b34bb952bf3d50aa6415c9e0d3
 	ChainGetEvents:	In=2,	Out=2,	CheckSum=bc5a40732c7568871ff76ba8359f39a7
+	ChainGetFinalizedTipSet:	In=1,	Out=2,	CheckSum=6d1e4c4d8184dc8d645a56278f14cfad
 	ChainGetGenesis:	In=1,	Out=2,	CheckSum=6d1e4c4d8184dc8d645a56278f14cfad
 	ChainGetMessage:	In=2,	Out=2,	CheckSum=d1c0ae931458a2a7b07de152ca3de558
 	ChainGetMessagesInTipset:	In=2,	Out=2,	CheckSum=6c0bfa48ffcacdfa9dbed1b9e23ad88e
@@ -424,6 +425,7 @@ api.FullNode:
 	StateMinerActiveSectors:	In=3,	Out=2,	CheckSum=0bd2cadbf89e24edfacf73b33afa9700
 	StateMinerAllocated:	In=3,	Out=2,	CheckSum=808e4357d56c3d08769a9d7a249ea7c0
 	StateMinerAvailableBalance:	In=3,	Out=2,	CheckSum=a05010da3c73edfba49c3b5d28a216cd
+	StateMinerCreationDeposit:	In=2,	Out=2,	CheckSum=22ac180fa0c583b4036666bfc155fd63
 	StateMinerDeadlines:	In=3,	Out=2,	CheckSum=5b128c75ba4953740906520cca96b962
 	StateMinerFaults:	In=3,	Out=2,	CheckSum=9d26d848f93597964f751b43edd3d476
 	StateMinerInfo:	In=3,	Out=2,	CheckSum=4ba684a8519aa97d4df405cee3496e7c
