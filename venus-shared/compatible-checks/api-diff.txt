@@ -98,6 +98,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- ChainBlockstoreInfo
 	- ChainCheckBlockstore
 	- ChainExportRangeInternal
+	- ChainGetFinalizedTipSet
 	- ChainGetNode
 	+ ChainGetReceipts
 	- ChainHotGC

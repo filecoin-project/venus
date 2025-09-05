@@ -107,6 +107,7 @@ type IMinerStateStruct struct {
 		StateMinerActiveSectors            func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*lminer.SectorOnChainInfo, error)                                          `perm:"read"`
 		StateMinerAllocated                func(context.Context, address.Address, types.TipSetKey) (*bitfield.BitField, error)                                                                 `perm:"read"`
 		StateMinerAvailableBalance         func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (big.Int, error)                                                              `perm:"read"`
+		StateMinerCreationDeposit          func(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error)                                                                                `perm:"read"`
 		StateMinerDeadlines                func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]types.Deadline, error)                                                     `perm:"read"`
 		StateMinerFaults                   func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)                                                    `perm:"read"`
 		StateMinerInfo                     func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (types.MinerInfo, error)                                                      `perm:"read"`
@@ -209,6 +210,9 @@ func (s *IMinerStateStruct) StateMinerAllocated(p0 context.Context, p1 address.A
 }
 func (s *IMinerStateStruct) StateMinerAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (big.Int, error) {
 	return s.Internal.StateMinerAvailableBalance(p0, p1, p2)
+}
+func (s *IMinerStateStruct) StateMinerCreationDeposit(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) {
+	return s.Internal.StateMinerCreationDeposit(p0, p1)
 }
 func (s *IMinerStateStruct) StateMinerDeadlines(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]types.Deadline, error) {
 	return s.Internal.StateMinerDeadlines(p0, p1, p2)
