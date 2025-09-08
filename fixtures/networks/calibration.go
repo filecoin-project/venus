@@ -75,7 +75,7 @@ func Calibration() *NetworkConf {
 				UpgradeTuktukPowerRampDurationEpochs: builtin.EpochsInDay * 3,
 				UpgradeTeepHeight:                    2523454, // 2025-03-26T23:00:00Z
 				UpgradeTockFixHeight:                 2558014, // 2025-04-07T23:00:00Z
-				UpgradeXxHeight:                      3007294, // 2025-09-10T23:00:00Z
+				UpgradeGoldenWeekHeight:              3007294, // 2025-09-10T23:00:00Z
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,

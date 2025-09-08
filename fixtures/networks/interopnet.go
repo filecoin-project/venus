@@ -69,7 +69,7 @@ func InteropNet() *NetworkConf {
 				UpgradeTeepHeight:                    -30,
 				UpgradeTockHeight:                    -31,
 				UpgradeTockFixHeight:                 -29,
-				UpgradeXxHeight:                      50,
+				UpgradeGoldenWeekHeight:              50,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
