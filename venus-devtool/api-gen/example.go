@@ -395,6 +395,12 @@ func init() {
 		},
 		Input: ecchain,
 	})
+	addExample(types.IpldOpGet)
+	addExample(&types.TraceIpld{
+		Op:   types.IpldOpGet,
+		Cid:  c,
+		Size: 123,
+	})
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

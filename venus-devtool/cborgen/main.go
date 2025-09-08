@@ -60,6 +60,7 @@ func main() {
 				types.ActorTrace{},
 				types.MessageTrace{},
 				types.ReturnTrace{},
+				types.TraceIpld{},
 				types.ExecutionTrace{},
 				types.F3ParticipationLease{},
 			},
