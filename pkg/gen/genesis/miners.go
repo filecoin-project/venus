@@ -197,7 +197,12 @@ func SetupStorageMiners(ctx context.Context,
 				params = mustEnc(constructorParams)
 			}
 
-			rval, err := doExecValue(ctx, genesisVM, power.Address, m.Owner, m.PowerBalance, power.Methods.CreateMiner, params)
+			deposit, err := CalculateMinerCreationDepositForGenesis(ctx, genesisVM, adt.WrapStore(ctx, cst))
+			if err != nil {
+				return cid.Undef, fmt.Errorf("calculating miner creation deposit: %w", err)
+			}
+
+			rval, err := doExecValue(ctx, genesisVM, power.Address, m.Owner, deposit, power.Methods.CreateMiner, params)
 			if err != nil {
 				return cid.Undef, fmt.Errorf("failed to create genesis miner: %w", err)
 			}

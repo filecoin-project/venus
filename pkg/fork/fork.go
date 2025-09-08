@@ -481,7 +481,7 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			Network:   network.Version26,
 			Migration: cf.UpgradeActorsV16Fix,
 		}, {
-			Height:    upgradeHeight.UpgradeXxHeight,
+			Height:    upgradeHeight.UpgradeGoldenWeekHeight,
 			Network:   network.Version27,
 			Migration: cf.UpgradeActorsV17,
 			PreMigrations: []PreMigration{{

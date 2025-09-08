@@ -964,6 +964,78 @@ func (msa *minerStateAPI) StateMinerInitialPledgeForSector(ctx context.Context, 
 	return types.BigDiv(types.BigMul(initialPledge, initialPledgeNum), initialPledgeDen), nil
 }
 
+func (msa *minerStateAPI) StateMinerCreationDeposit(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) {
+	// Reference implementation: https://github.com/filecoin-project/builtin-actors/blob/00db828d09c3dfb61fe768ff6a19416a313444bd/actors/miner/src/lib.rs#L5264-L5279
+	nv, err := msa.ChainSubmodule.API().StateNetworkVersion(ctx, tsk)
+	if err != nil {
+		return types.EmptyInt, fmt.Errorf("getting network version: %w", err)
+	}
+
+	if nv < network.Version27 {
+		return big.Zero(), nil
+	}
+
+	// Get current chain head
+	ts, err := msa.ChainReader.GetTipSet(ctx, tsk)
+	if err != nil {
+		return types.EmptyInt, fmt.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	_, state, err := msa.ChainSubmodule.Stmgr.ParentState(ctx, ts)
+	if err != nil {
+		return types.EmptyInt, fmt.Errorf("loading state %s: %w", tsk, err)
+	}
+
+	rewardActor, found, err := state.GetActor(ctx, reward.Address)
+	if err != nil {
+		return types.EmptyInt, fmt.Errorf("loading reward actor: %w", err)
+	}
+	if !found {
+		return types.EmptyInt, errors.New("not found reward")
+	}
+
+	rewardState, err := reward.Load(msa.ChainReader.Store(ctx), rewardActor)
+	if err != nil {
+		return types.EmptyInt, fmt.Errorf("loading reward actor state: %w", err)
+	}
+
+	circSupply, err := msa.StateVMCirculatingSupplyInternal(ctx, ts.Key())
+	if err != nil {
+		return types.EmptyInt, fmt.Errorf("getting circulating supply: %w", err)
+	}
+
+	pledgeCollateral, powerSmoothed, err := msa.pledgeCalculationInputs(ctx, state)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	// Get network parameters to obtain ConsensusMinerMinPower
+	networkParams, err := msa.ChainSubmodule.API().StateGetNetworkParams(ctx)
+	if err != nil {
+		return types.EmptyInt, fmt.Errorf("getting network params: %w", err)
+	}
+	createMinerDepositPower := big.Div(networkParams.ConsensusMinerMinPower, big.NewInt(10))
+
+	epochsSinceRampStart, rampDurationEpochs, err := msa.getPledgeRampParams(ctx, ts.Height(), state)
+	if err != nil {
+		return types.EmptyInt, fmt.Errorf("getting pledge ramp params: %w", err)
+	}
+
+	deposit, err := rewardState.InitialPledgeForPower(
+		createMinerDepositPower,
+		pledgeCollateral,
+		powerSmoothed,
+		circSupply.FilCirculating,
+		epochsSinceRampStart,
+		rampDurationEpochs,
+	)
+	if err != nil {
+		return types.EmptyInt, fmt.Errorf("calculating initial pledge for power: %w", err)
+	}
+
+	return deposit, nil
+}
+
 // StateVMCirculatingSupplyInternal returns an approximation of the circulating supply of Filecoin at the given tipset.
 // This is the value reported by the runtime interface to actors code.
 func (msa *minerStateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (types.CirculatingSupply, error) {
