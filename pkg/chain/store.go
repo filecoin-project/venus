@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -24,10 +25,14 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-f3/certstore"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
@@ -983,19 +988,11 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 }
 
 // Import import a car file into local db
-func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, *types.BlockHeader, error) {
+func (store *Store) Import(ctx context.Context, network string, f3Ds datastore.Datastore, r io.Reader) (*types.TipSet, *types.BlockHeader, error) {
 	br, err := carv2.NewBlockReader(r)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loadcar failed: %w", err)
 	}
-
-	if len(br.Roots) == 0 {
-		return nil, nil, fmt.Errorf("no roots in snapshot car file")
-	}
-
-	var tailBlock types.BlockHeader
-	tailBlock.Height = abi.ChainEpoch(-1)
-	nextTailCid := br.Roots[0]
 
 	parallelPuts := 5
 	putThrottle := make(chan error, parallelPuts)
@@ -1003,7 +1000,70 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, *ty
 		putThrottle <- nil
 	}
 
+	roots := br.Roots
+
+	var nextTailCid cid.Cid
+
+	var tailBlock types.BlockHeader
+	tailBlock.Height = abi.ChainEpoch(-1)
+
 	var buf []blocks.Block
+
+	if len(roots) == 0 {
+		return nil, nil, fmt.Errorf("no roots in snapshot car file")
+	}
+
+	if len(roots) == V2SnapshotRootCount {
+		var metadata SnapshotMetadata
+		blk, err := br.Next()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read snapshot metadata block: %w", err)
+		}
+
+		if err := metadata.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+			// Only one cid in roots, but not metadata, maybe it's a genesis block
+			log.Infof("failed to unmarshal snapshot metadata block: %v, attempting to parse the block as a genesis block instead", err)
+			if err := tailBlock.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+				return nil, nil, fmt.Errorf("failed to unmarshal genesis block: %w", err)
+			}
+			if len(tailBlock.Parents) > 0 {
+				nextTailCid = tailBlock.Parents[0]
+			} else {
+				// note: even the 0th block has a parent linking to the cbor genesis block
+				return nil, nil, fmt.Errorf("current block (epoch %d cid %s) has no parents", tailBlock.Height, tailBlock.Cid())
+			}
+
+			buf = append(buf, blk)
+		} else {
+			if metadata.F3Data != nil {
+				// import f3 snapshot
+				cid, f3Reader, _, err := br.NextReader()
+				if err != nil {
+					return nil, nil, fmt.Errorf("failed to read F3Data reader: %w", err)
+				}
+				if cid != *metadata.F3Data {
+					return nil, nil, fmt.Errorf("F3Data CID mismatch")
+				}
+
+				f3r := bufio.NewReader(f3Reader)
+
+				prefix := F3DatastorePrefix(network)
+				f3DsWrapper := namespace.Wrap(f3Ds, prefix)
+
+				log.Info("Importing F3Data to datastore")
+				if err := certstore.ImportSnapshotToDatastore(ctx, f3r, f3DsWrapper); err != nil {
+					return nil, nil, fmt.Errorf("failed to import f3Data to datastore: %w", err)
+				}
+			}
+
+			roots = metadata.HeadTipsetKey
+			nextTailCid = roots[0]
+		}
+	} else {
+		// V1 format: roots directly contains the tipset CIDs
+		nextTailCid = roots[0]
+	}
+
 	for {
 		blk, err := br.Next()
 		if err != nil {
@@ -1108,6 +1168,14 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, *ty
 	}
 
 	return root, &tailBlock, nil
+}
+
+func F3DatastorePrefix(network string) datastore.Key {
+	if network == "testnetnet" {
+		network = "filecoin"
+	}
+
+	return datastore.NewKey("/f3/" + string(network))
 }
 
 // SetCheckpoint will set a checkpoint past which the chainstore will not allow forks. If the new

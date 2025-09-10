@@ -186,7 +186,7 @@ func initRun(req *cmds.Request, repoDir string) error {
 	// import snapshot argument only work when init
 	importPath, _ := req.Options[ImportSnapshot].(string)
 	if len(importPath) != 0 {
-		err := Import(req.Context, rep, importPath)
+		err := Import(req.Context, rep, network, importPath)
 		if err != nil {
 			log.Errorf("failed to import snapshot, import path: %s, error: %s", importPath, err.Error())
 			return err
