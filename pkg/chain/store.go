@@ -1175,7 +1175,7 @@ func F3DatastorePrefix(network string) datastore.Key {
 		network = "filecoin"
 	}
 
-	return datastore.NewKey("/f3/" + string(network))
+	return datastore.NewKey("/f3/" + network)
 }
 
 // SetCheckpoint will set a checkpoint past which the chainstore will not allow forks. If the new
