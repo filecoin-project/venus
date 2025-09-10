@@ -123,8 +123,6 @@ require (
 	github.com/filecoin-project/go-clock v0.1.0 // indirect
 	github.com/filecoin-project/go-commp-utils/v2 v2.1.0 // indirect
 	github.com/filecoin-project/go-fil-commp-hashhash v0.2.0 // indirect
-	github.com/gammazero/chanqueue v1.1.0 // indirect
-	github.com/gammazero/deque v1.0.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/ipfs/go-blockservice v0.5.2 // indirect
 	github.com/ipfs/go-ipfs-blockstore v1.3.1 // indirect
@@ -359,6 +357,8 @@ require (
 )
 
 replace github.com/kilic/bls12-381 v0.1.1-0.20220929213557-ca162e8a70f4 => github.com/kilic/bls12-381 v0.1.0 // to fix bls signature validation
+
+replace github.com/ipfs/boxo v0.32.0 => github.com/ipfs/boxo v0.20.0
 
 replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
