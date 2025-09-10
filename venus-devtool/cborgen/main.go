@@ -140,7 +140,7 @@ func main() {
 		}
 	}
 
-	if err := gen.WriteTupleEncodersToFile(filepath.Join("../pkg/chain", "cbor_snapshot_gen.go"), "chain", chain.SnapshotMetadata{}); err != nil {
+	if err := gen.WriteMapEncodersToFile(filepath.Join("../pkg/chain", "cbor_snapshot_gen.go"), "chain", chain.SnapshotMetadata{}); err != nil {
 		log.Fatalf("gen for %s: %s", "../pkg/chain", err)
 	}
 }

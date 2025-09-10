@@ -52,7 +52,7 @@ func (t *SnapshotMetadata) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.Version (store.SnapshotVersion) (uint64)
+	// t.Version (chain.SnapshotVersion) (uint64)
 	if len("Version") > 8192 {
 		return xerrors.Errorf("Value in field \"Version\" was too long")
 	}
@@ -161,7 +161,7 @@ func (t *SnapshotMetadata) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
-			// t.Version (store.SnapshotVersion) (uint64)
+			// t.Version (chain.SnapshotVersion) (uint64)
 		case "Version":
 
 			{
