@@ -19,7 +19,9 @@ var f3FS embed.FS
 func getF3ManifestBytes(networkType types.NetworkType) ([]byte, error) {
 	fileName := ""
 	switch networkType {
-	case types.NetworkForce, types.Network2k:
+	case types.NetworkForce:
+		fileName = "f3manifest_force.json"
+	case types.Network2k:
 		fileName = "f3manifest_2k.json"
 	case types.NetworkInterop:
 		fileName = "f3manifest_interop.json"
