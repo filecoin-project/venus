@@ -78,7 +78,7 @@ func Mainnet() *NetworkConf {
 				UpgradeTuktukPowerRampDurationEpochs: builtin2.EpochsInYear,
 				UpgradeTeepHeight:                    4878840, // 2025-04-14T23:00:00Z
 				UpgradeTockFixHeight:                 -1,
-				UpgradeGoldenWeekHeight:              9999999999,
+				UpgradeGoldenWeekHeight:              5348280, // 2025-09-24T23:00:00Z
 			},
 			DrandSchedule:                 map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:                address.Mainnet,

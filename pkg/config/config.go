@@ -399,7 +399,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeTeepHeight:                    4867320,
 	UpgradeTockHeight:                    4867320 + 90*builtin.EpochsInDay,
 	UpgradeTockFixHeight:                 -29,
-	UpgradeGoldenWeekHeight:              99999999,
+	UpgradeGoldenWeekHeight:              5348280,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
