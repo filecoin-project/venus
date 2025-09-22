@@ -30,7 +30,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	"github.com/filecoin-project/venus/venus-shared/blockstore"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/params"
@@ -75,7 +74,7 @@ var statMinerPowerCmd = &cmds.Command{
 			return err
 		}
 
-		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstoreutil.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
 		nst, err := tree.LoadState(ctx, store, head.ParentState())
 		if err != nil {
 			return fmt.Errorf("loading new state tree: %w", err)
