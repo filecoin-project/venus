@@ -3,7 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	stdbig "math/big"
@@ -56,7 +56,7 @@ var statMinerPowerCmd = &cmds.Command{
 	},
 	Options: []cmds.Option{
 		cmds.IntOption("days", "How many days to search for blocks ahead").WithDefault(15),
-		cmds.StringOption("output", "Output venus miner information to file").WithDefault("~/venus_miners.json"),
+		cmds.StringOption("output", "Output venus miner information to file").WithDefault("~/venus_miners.csv"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := req.Context
@@ -131,11 +131,16 @@ var statMinerPowerCmd = &cmds.Command{
 		writer.Printf("venus power percentage: %v%%, lotus power percentage: %v%%\n",
 			venusPercentage.Text('f', 2), lotusPercentage.Text('f', 2))
 
-		data, err := json.MarshalIndent(miners, "", "\t")
-		if err != nil {
-			return err
+		csvBuf := new(bytes.Buffer)
+		w := csv.NewWriter(csvBuf)
+		_ = w.Write([]string{"MinerID", "Power"})
+
+		for miner, power := range miners {
+			_ = w.Write([]string{miner, power.String()})
 		}
-		if err := os.WriteFile(output, data, 0o644); err != nil {
+		w.Flush()
+
+		if err := os.WriteFile(output, csvBuf.Bytes(), 0o644); err != nil {
 			return err
 		}
 
