@@ -2,7 +2,12 @@ package cmd
 
 import (
 	"bytes"
+	"context"
+	"encoding/csv"
+	"errors"
 	"fmt"
+	stdbig "math/big"
+	"os"
 	"time"
 
 	"github.com/docker/go-units"
@@ -13,14 +18,18 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/mitchellh/go-homedir"
 
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/params"
@@ -33,11 +42,143 @@ var minerCmd = &cmds.Command{
 		Tagline: "Interact with actors. Actors are built-in smart contracts.",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"new":     newMinerCmd,
-		"info":    minerInfoCmd,
-		"actor":   minerActorCmd,
-		"proving": minerProvingCmd,
+		"new":        newMinerCmd,
+		"info":       minerInfoCmd,
+		"actor":      minerActorCmd,
+		"proving":    minerProvingCmd,
+		"stat-power": statMinerPowerCmd,
 	},
+}
+
+var statMinerPowerCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "stat venus miner power.",
+	},
+	Options: []cmds.Option{
+		cmds.IntOption("days", "How many days to search for blocks ahead").WithDefault(15),
+		cmds.StringOption("output", "Output venus miner information to file").WithDefault("~/venus_miners.csv"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		ctx := req.Context
+		days, _ := req.Options["days"].(int)
+		output, _ := req.Options["output"].(string)
+
+		var err error
+		output, err = homedir.Expand(output)
+		if err != nil {
+			return err
+		}
+
+		head, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstoreutil.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
+		nst, err := tree.LoadState(ctx, store, head.ParentState())
+		if err != nil {
+			return fmt.Errorf("loading new state tree: %w", err)
+		}
+
+		pact, find, err := nst.GetActor(ctx, power.Address)
+		if err != nil {
+			return fmt.Errorf("getting power actor: %w", err)
+		}
+		if !find {
+			return errors.New("power actor not exist")
+		}
+
+		pst, err := power.Load(adt.WrapStore(ctx, store), pact)
+		if err != nil {
+			return fmt.Errorf("getting power state: %w", err)
+		}
+
+		activeMinerCount, _, err := pst.MinerCounts()
+		if err != nil {
+			return err
+		}
+		netPower, err := pst.TotalPower()
+		if err != nil {
+			return err
+		}
+
+		miners, err := statVenusMinerPower(ctx, env.(*node.Env).ChainAPI, days)
+		if err != nil {
+			return err
+		}
+		venusPower := abi.NewStoragePower(0)
+		for _, power := range miners {
+			venusPower = abi.StoragePower{Int: big.Zero().Add(venusPower.Int, power.Int)}
+		}
+
+		onePib := abi.NewStoragePower(1 << 50)
+		netPib := abi.StoragePower{Int: big.Zero().Div(netPower.QualityAdjPower.Int, onePib.Int)}
+		venusPib := abi.StoragePower{Int: big.Zero().Div(venusPower.Int, onePib.Int)}
+		lotusPib := abi.StoragePower{Int: big.Zero().Sub(netPib.Int, venusPib.Int)}
+
+		venusPercentage := new(stdbig.Float).Mul(new(stdbig.Float).Quo(new(stdbig.Float).
+			SetInt(venusPib.Int), new(stdbig.Float).SetInt(netPib.Int)), stdbig.NewFloat(100))
+		lotusPercentage := new(stdbig.Float).Mul(new(stdbig.Float).Quo(new(stdbig.Float).
+			SetInt(lotusPib.Int), new(stdbig.Float).SetInt(netPib.Int)), stdbig.NewFloat(100))
+
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
+
+		writer.Printf("total miner count: %v, venus miner count: %v, lotus miner count: %v\n",
+			activeMinerCount, len(miners), int(activeMinerCount)-len(miners))
+		writer.Printf("total power: %vPib, venus power: %vPib, lotus power: %vPib\n",
+			netPib, venusPib, lotusPib)
+		writer.Printf("venus power percentage: %v%%, lotus power percentage: %v%%\n",
+			venusPercentage.Text('f', 2), lotusPercentage.Text('f', 2))
+
+		csvBuf := new(bytes.Buffer)
+		w := csv.NewWriter(csvBuf)
+		_ = w.Write([]string{"MinerID", "Power"})
+
+		for miner, power := range miners {
+			_ = w.Write([]string{miner, power.String()})
+		}
+		w.Flush()
+
+		if err := os.WriteFile(output, csvBuf.Bytes(), 0o644); err != nil {
+			return err
+		}
+
+		return re.Emit(buf)
+	},
+}
+
+func statVenusMinerPower(ctx context.Context, chainAPI v1api.IChain, days int) (map[string]big.Int, error) {
+	head, err := chainAPI.ChainHead(ctx)
+	if err != nil {
+		return nil, err
+	}
+	end := max(head.Height()-builtin.EpochsInDay*abi.ChainEpoch(days), 0)
+	tsk := head.Key()
+
+	miners := make(map[string]big.Int)
+	for head.Height() > end {
+		for _, blk := range head.Blocks() {
+			if blk.ForkSignaling == 0 {
+				continue
+			}
+			_, ok := miners[blk.Miner.String()]
+			if ok {
+				continue
+			}
+			minerPower, err := chainAPI.StateMinerPower(ctx, blk.Miner, tsk)
+			if err != nil {
+				return nil, err
+			}
+			miners[blk.Miner.String()] = minerPower.MinerPower.QualityAdjPower
+		}
+		head, err = chainAPI.ChainGetTipSet(ctx, head.Parents())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return miners, nil
 }
 
 var newMinerCmd = &cmds.Command{

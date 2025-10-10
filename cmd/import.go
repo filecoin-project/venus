@@ -91,9 +91,6 @@ func importChain(ctx context.Context, r repo.Repo, network string, fname string)
 	}
 
 	f3Ds := namespace.Wrap(r.MetaDatastore(), datastore.NewKey("/f3"))
-	if err != nil {
-		return fmt.Errorf("failed to open f3 datastore: %w", err)
-	}
 
 	bar.Start()
 	tip, genesisBlk, err := chainStore.Import(ctx, network, f3Ds, ir)
