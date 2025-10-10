@@ -17,7 +17,7 @@ require (
 	github.com/ipfs/go-cid v0.5.0
 	github.com/ipfs/go-graphsync v0.16.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
-	github.com/libp2p/go-libp2p v0.42.0
+	github.com/libp2p/go-libp2p v0.43.0
 	github.com/libp2p/go-libp2p-pubsub v0.13.0
 	github.com/multiformats/go-multiaddr v0.16.1
 	github.com/urfave/cli/v2 v2.27.5
