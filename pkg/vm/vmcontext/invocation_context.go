@@ -42,7 +42,7 @@ type topLevelContext struct {
 type invocationContext struct {
 	vm                *LegacyVM
 	topLevel          *topLevelContext
-	originMsg         VmMessage // msg not trasfer from and to address
+	originMsg         VmMessage // msg not transfer from and to address
 	msg               VmMessage // The message being processed
 	gasTank           *gas.GasTracker
 	randSource        HeadChainRandomness
@@ -589,7 +589,7 @@ var _ runtime.PatternContext = (*patternContext2)(nil)
 func (ctx *patternContext2) CallerCode() cid.Cid {
 	toActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, ctx.originMsg.From)
 	if err != nil || !found {
-		panic(fmt.Errorf("cannt find to actor %v", err))
+		panic(fmt.Errorf("cannot find to actor %v", err))
 	}
 	return toActor.Code
 }

@@ -73,7 +73,7 @@ func init() {
 		for i, coef := range coefs {
 			c, ok := new(big.Int).SetString(coef, 10)
 			if !ok {
-				panic("could not parse exp paramemter")
+				panic("could not parse exp parameter")
 			}
 			// << 256 (Q.0 to Q.256), >> 128 to transform integer params to coefficients
 			c = c.Lsh(c, precision-128)
@@ -166,7 +166,7 @@ type poiss struct {
 // newPoiss starts poisson inverted CDF
 // lambda is in Q.256 format
 // returns (instance, `1-poisscdf(0, lambda)`)
-// CDF value returend is reused when calling `next`
+// CDF value returned is reused when calling `next`
 func newPoiss(lambda *big.Int) (*poiss, *big.Int) {
 	// pmf(k) = (lambda^k)*(e^lambda) / k!
 	// k = 0 here, so it simplifies to just e^-lambda
