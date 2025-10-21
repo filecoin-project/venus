@@ -246,7 +246,7 @@ func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.
 	if nil != s.stopFlag(false) {
 		return cid.Undef, cid.Undef, fmt.Errorf("state manager is stopping")
 	}
-	ctx, span := trace.StartSpan(ctx, "Exected.RunStateTransition")
+	ctx, span := trace.StartSpan(ctx, "Executed.RunStateTransition")
 	defer span.End()
 
 	key := ts.Key()
@@ -358,7 +358,7 @@ func (s *Stmgr) GetActorRaw(ctx context.Context, addr address.Address, stateCid 
 
 // deprecated: in future use.
 func (s *Stmgr) RunStateTransitionV2(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
-	ctx, span := trace.StartSpan(ctx, "Exected.RunStateTransition")
+	ctx, span := trace.StartSpan(ctx, "Executed.RunStateTransition")
 	defer span.End()
 
 	var state stateComputeResult

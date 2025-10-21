@@ -75,7 +75,7 @@ type MemoryInfo struct {
 	Virtual uint64
 }
 
-// Runtime returns infrormation about the golang runtime.
+// Runtime returns information about the golang runtime.
 func (g *inspector) Runtime() *RuntimeInfo {
 	return &RuntimeInfo{
 		OS:            runtime.GOOS,
