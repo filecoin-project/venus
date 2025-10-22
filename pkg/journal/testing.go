@@ -40,7 +40,7 @@ type entry struct {
 	kvs   []interface{}
 }
 
-// MemoryWriter writes journal entires in memory.
+// MemoryWriter writes journal entries in memory.
 type MemoryWriter struct {
 	topic   string
 	journal *MemoryJournal

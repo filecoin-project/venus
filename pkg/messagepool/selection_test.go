@@ -967,7 +967,7 @@ func TestOptimalMessageSelection1(t *testing.T) {
 	tf.UnitTest(t)
 
 	// this test uses just a single actor sending messages with a low tq
-	// the chain depenent merging algorithm should pick messages from the actor
+	// the chain dependent merging algorithm should pick messages from the actor
 	// from the start
 	mp, tma := makeTestMpool()
 
@@ -1028,7 +1028,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 
 	// this test uses two actors sending messages to each other, with the first
 	// actor paying (much) higher gas premium than the second.
-	// We select with a low ticket quality; the chain depenent merging algorithm should pick
+	// We select with a low ticket quality; the chain dependent merging algorithm should pick
 	// messages from the second actor from the start
 	mp, tma := makeTestMpool()
 
@@ -1101,7 +1101,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 
 	// this test uses 10 actors sending a block of messages to each other, with the first
 	// actors paying higher gas premium than the subsequent actors.
-	// We select with a low ticket quality; the chain depenent merging algorithm should pick
+	// We select with a low ticket quality; the chain dependent merging algorithm should pick
 	// messages from the median actor from the start
 	mp, tma := makeTestMpool()
 

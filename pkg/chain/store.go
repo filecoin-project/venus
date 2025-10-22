@@ -195,7 +195,7 @@ func NewStore(chainDs repo.Datastore,
 // then Load could be tricked into loading an invalid chain. Load will error if the
 // head does not link back to the expected genesis block, or the Store's
 // datastore does not store a link in the chain.  In case of error the caller
-// should not consider the chain useable and propagate the error.
+// should not consider the chain usable and propagate the error.
 func (store *Store) Load(ctx context.Context) (err error) {
 	ctx, span := trace.StartSpan(ctx, "Store.Load")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
