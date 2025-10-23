@@ -79,7 +79,7 @@ func (cs *ChainSeed) GiveKey(ctx context.Context, t *testing.T, nd *node.Node, k
 	return addr
 }
 
-// GiveMiner gives the specified miner to the node. Returns the address and the owner addresss
+// GiveMiner gives the specified miner to the node. Returns the address and the owner address
 func (cs *ChainSeed) GiveMiner(t *testing.T, nd *node.Node, which int) (address.Address, address.Address) {
 	t.Helper()
 	cfg := nd.Repo().Config()

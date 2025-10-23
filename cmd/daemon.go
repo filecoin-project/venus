@@ -45,7 +45,7 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(makeGenFlag, "make genesis"),
 		cmds.StringOption(preTemplateFlag, "template for make genesis"),
 		cmds.StringOption(SwarmAddress, "multiaddress to listen on for filecoin network connections"),
-		cmds.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publically dialable"),
+		cmds.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publicly dialable"),
 		cmds.BoolOption(OfflineMode, "start the node without networking"),
 		cmds.BoolOption(ELStdout),
 		cmds.BoolOption(ULimit, "manage open file limit").WithDefault(true),
