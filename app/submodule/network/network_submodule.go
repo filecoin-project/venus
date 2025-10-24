@@ -346,7 +346,7 @@ func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.Ipl
 	return appstate.NewView(cborStore, genesis.ParentStateRoot).InitNetworkName(ctx)
 }
 
-// address determines if we are publically dialable.  If so use public
+// address determines if we are publicly dialable.  If so use public
 // address, if not configure node to announce relay address.
 func buildHost(_ context.Context, config networkConfig, libP2pOpts []libp2p.Option, cfg *config.Config) (types.RawHost, error) {
 	if config.IsRelay() {

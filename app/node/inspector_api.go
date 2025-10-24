@@ -127,7 +127,7 @@ func (g *inspector) Disk() (*DiskInfo, error) {
 	}, nil
 }
 
-// Memory return information about system meory usage.
+// Memory return information about system memory usage.
 func (g *inspector) Memory() (*MemoryInfo, error) {
 	meminfo, err := sysi.MemoryInfo()
 	if err != nil {
