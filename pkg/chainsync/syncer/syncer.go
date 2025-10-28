@@ -338,12 +338,12 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 		// fetch messages
 		startTip := segTipset[0].Height()
 		emdTipset := segTipset[len(segTipset)-1].Height()
-		logSyncer.Debugf("start to fetch message segement %d-%d", startTip, emdTipset)
+		logSyncer.Debugf("start to fetch message segment %d-%d", startTip, emdTipset)
 		_, err := syncer.fetchSegMessage(ctx, segTipset)
 		if err != nil {
 			return err
 		}
-		logSyncer.Debugf("finish to fetch message segement %d-%d", startTip, emdTipset)
+		logSyncer.Debugf("finish to fetch message segment %d-%d", startTip, emdTipset)
 		err = <-errProcessChan
 		if err != nil {
 			return fmt.Errorf("process message failed %v", err)
@@ -351,8 +351,8 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			logSyncer.Debugf("start to process message segement %d-%d", startTip, emdTipset)
-			defer logSyncer.Debugf("finish to process message segement %d-%d", startTip, emdTipset)
+			logSyncer.Debugf("start to process message segment %d-%d", startTip, emdTipset)
+			defer logSyncer.Debugf("finish to process message segment %d-%d", startTip, emdTipset)
 			var processErr error
 			parent, processErr = syncer.processTipSetSegment(ctx, target, parent, segTipset)
 			if processErr != nil {

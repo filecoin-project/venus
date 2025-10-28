@@ -558,7 +558,7 @@ func (st *State) ForEach(f func(ActorKey, *types.Actor) error) error {
 			}
 
 			// no need to record anything here, there are no duplicates in the actors HAMT
-			// iself.
+			// itself.
 			if _, ok := seen[addr]; ok {
 				return nil
 			}
@@ -576,7 +576,7 @@ func (st *State) ForEach(f func(ActorKey, *types.Actor) error) error {
 		}
 
 		// no need to record anything here, there are no duplicates in the actors HAMT
-		// iself.
+		// itself.
 		if _, ok := seen[addr]; ok {
 			return nil
 		}
