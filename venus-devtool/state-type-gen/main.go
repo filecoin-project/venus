@@ -125,8 +125,9 @@ var stateTypesOpt = option{
 // venus-shared/actors/types
 var sharedTypesOpt = option{
 	skipStructs: map[string]struct{}{
-		"ActorV5":     {},
-		"TempEthCall": {},
+		"ActorV5":       {},
+		"EthCallDecode": {},
+		"EthCallRaw":    {},
 	},
 	skipAllVar: false,
 	skipVars:   []string{"Eip155ChainID"},
