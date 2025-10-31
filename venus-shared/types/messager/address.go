@@ -29,7 +29,7 @@ func (as AddressState) String() string {
 	case AddressStateForbbiden:
 		return "Forbbiden"
 	default:
-		return fmt.Sprintf("unknow state %d", as)
+		return fmt.Sprintf("unknown state %d", as)
 	}
 }
 
