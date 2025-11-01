@@ -44,7 +44,7 @@ type client struct {
 var _ Client = (*client)(nil)
 
 // NewClient creates a new libp2p-based exchange.Client that uses the libp2p
-// ChainExhange protocol as the fetching mechanism.
+// ChainExchange protocol as the fetching mechanism.
 func NewClient(host host.Host, pmgr peermgr.IPeerMgr) Client {
 	return &client{
 		host:        host,
