@@ -26,7 +26,7 @@ func (IsAccountActor) IsMatch(ctx runtime.PatternContext) bool {
 //	return builtin.IsInitActor(ctx.CallerCode())
 //}
 
-// Any patterns always passses.
+// Any patterns always passes.
 type Any struct{}
 
 // IsMatch returns "True" if the patterns matches
