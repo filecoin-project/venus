@@ -1457,7 +1457,7 @@ func (store *Store) LookupID(ctx context.Context, ts *types.TipSet, addr address
 }
 
 // ResolveToDeterministicAddress get key address of specify address.
-// if ths addr is bls/secpk address, return directly, other get the pubkey and generate address
+// if this addr is bls/secpk address, return directly, other get the pubkey and generate address
 func (store *Store) ResolveToDeterministicAddress(ctx context.Context, ts *types.TipSet, addr address.Address) (address.Address, error) {
 	st, err := store.StateView(ctx, ts)
 	if err != nil {
