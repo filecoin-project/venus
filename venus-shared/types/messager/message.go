@@ -166,7 +166,7 @@ type MsgQueryParams struct {
 	// Message From
 	From []address.Address
 
-	// the time stamp that query msgs updated before
+	// the timestamp that query msgs updated before
 	ByUpdateAt *time.Time
 
 	// order by Asc or Desc, Default is Desc
