@@ -97,7 +97,7 @@ func New{{ .APIName }}RPC(ctx context.Context, addr string, requestHeader http.H
 	return &res, closer, err
 }
 
-// Dial{{ .APIName }}RPC is a more convinient way of building client, as it resolves any format (url, multiaddr) of addr string.
+// Dial{{ .APIName }}RPC is a more convenient way of building client, as it resolves any format (url, multiaddr) of addr string.
 {{- if .ExtendOpts}}
 func Dial{{ .APIName }}RPC(ctx context.Context, addr string, token string, requestHeader http.Header, opts ...FullNodeOption) ({{ .APIName }}, jsonrpc.ClientCloser, error) {
 {{else}}

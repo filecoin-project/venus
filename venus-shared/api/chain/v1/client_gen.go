@@ -57,7 +57,7 @@ func NewFullNodeRPC(ctx context.Context, addr string, requestHeader http.Header,
 	return &res, closer, err
 }
 
-// DialFullNodeRPC is a more convinient way of building client, as it resolves any format (url, multiaddr) of addr string.
+// DialFullNodeRPC is a more convenient way of building client, as it resolves any format (url, multiaddr) of addr string.
 func DialFullNodeRPC(ctx context.Context, addr string, token string, requestHeader http.Header, opts ...FullNodeOption) (FullNode, jsonrpc.ClientCloser, error) {
 	ainfo := api.NewAPIInfo(addr, token)
 	endpoint, err := ainfo.DialArgs(api.VerString(MajorVersion))
