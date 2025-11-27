@@ -15,7 +15,7 @@ const (
 	AddressStateAlive
 	AddressStateRemoving
 	AddressStateRemoved
-	AddressStateForbbiden // forbbiden received message
+	AddressStateForbbiden // forbbiden to received message
 )
 
 func (as AddressState) String() string {

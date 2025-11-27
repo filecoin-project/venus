@@ -678,7 +678,7 @@ func (syncer *Syncer) getFullBlock(ctx context.Context, tipset *types.TipSet) (*
 	return types.NewFullTipSet(fullBlocks), nil
 }
 
-// processTipSetSegment process a batch of tipset in turn，
+// processTipSetSegment process a batch of tipset in turn.
 func (syncer *Syncer) processTipSetSegment(ctx context.Context, target *syncTypes.Target, parent *types.TipSet, segTipset []*types.TipSet) (*types.TipSet, error) {
 	for i, ts := range segTipset {
 		err := syncer.syncOne(ctx, parent, ts)
