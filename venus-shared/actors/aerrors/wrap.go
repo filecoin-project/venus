@@ -88,7 +88,7 @@ func Fatalf(format string, args ...interface{}) ActorError {
 	}
 }
 
-// Wrap extens chain of errors with a message
+// Wrap extensible chain of errors with a message
 func Wrap(err ActorError, message string) ActorError {
 	if err == nil {
 		return nil
