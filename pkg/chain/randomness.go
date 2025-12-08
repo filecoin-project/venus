@@ -119,7 +119,7 @@ func (c *ChainRandomnessSource) GetBeaconRandomnessTipset(ctx context.Context, r
 // If `head` is empty (as when processing the pre-genesis state or the genesis block), the seed derived from
 // a fixed genesis ticket.
 // Note that this may produce the same value for different, neighbouring epochs when the epoch references a round
-// in which no blocks were produced (an empty tipset or "null block"). A caller desiring a unique see for each epoch
+// in which no blocks were produced (an empty tipset or "null block"). A caller desiring a unique seed for each epoch
 // should blend in some distinguishing value (such as the epoch itself) into a hash of this ticket.
 func (c *ChainRandomnessSource) getChainRandomness(ctx context.Context, epoch abi.ChainEpoch, lookback bool) (types.Ticket, error) {
 	if !c.head.IsEmpty() {
