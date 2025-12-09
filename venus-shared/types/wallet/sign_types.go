@@ -224,7 +224,7 @@ func GetSignBytesAndObj(toSign []byte, meta types.MsgMeta) (interface{}, []byte,
 func CborDecodeInto(r []byte, v interface{}) error {
 	unmarshaler, isOk := v.(cbor.Unmarshaler)
 	if !isOk {
-		return fmt.Errorf("not an 'unmarhsaler'")
+		return fmt.Errorf("not an 'unmarshaler'")
 	}
 	if err := unmarshaler.UnmarshalCBOR(bytes.NewReader(r)); err != nil {
 		return fmt.Errorf("cbor unmarshal:%w", err)

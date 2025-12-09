@@ -326,7 +326,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 
 	terminate := make(chan error, 1)
 
-	// todo: design an genterfull
+	// todo: design a graceful
 	memguard.CatchSignal(func(signal os.Signal) {
 		log.Infof("received signal(%s), venus will shutdown...", signal.String())
 		log.Infof("shutting down server...")

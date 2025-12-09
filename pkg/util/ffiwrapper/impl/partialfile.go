@@ -23,7 +23,7 @@ const veryLargeRle = 1 << 20
 // in a sector are unsealed, and which are not (holes)
 
 // unsealed sector files internally have this structure
-// [unpadded (raw) data][rle+][4B LE length fo the rle+ field]
+// [unpadded (raw) data][rle+][4B LE length of the rle+ field]
 
 type partialFile struct {
 	maxPiece abi.PaddedPieceSize
