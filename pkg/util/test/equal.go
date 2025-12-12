@@ -11,7 +11,7 @@ import (
 
 // Equal asserts that two objects are equal.
 //
-//    assert.Equal(t, 123, 123)
+//	assert.Equal(t, 123, 123)
 //
 // Pointer variable equality is determined based on the equality of the
 // referenced values (as opposed to the memory addresses). Function equality
