@@ -104,7 +104,7 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 }
 
 // flexibleNonces should be either nil or of len(msgs), it signifies that message at given index
-// has non-determied nonce at this point
+// has non-determined nonce at this point
 func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message, interned bool, flexibleNonces []bool) (result [][]types.MessageCheckStatus, err error) {
 	if mp.api.IsLite() {
 		return nil, nil
