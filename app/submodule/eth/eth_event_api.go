@@ -219,11 +219,11 @@ func (e *ethEventAPI) ethGetEventsForFilter(ctx context.Context, filterSpec *typ
 		}
 		// TODO: Ideally we should also check that events for the epoch at `pf.minheight` have been indexed
 		// However, it is currently tricky to check/guarantee this for two reasons:
-		// a) Event Index is not aware of null-blocks. This means that the Event Index wont be able to say whether the block at
+		// a) Event Index is not aware of null-blocks. This means that the Event Index won't be able to say whether the block at
 		//    `pf.minheight` is a null block or whether it has no events
 		// b) There can be holes in the index where events at certain epoch simply haven't been indexed because of edge cases around
 		//    node restarts while indexing. This needs a long term "auto-repair"/"automated-backfilling" implementation in the index
-		// So, for now, the best we can do is ensure that the event index has evenets for events at height >= `pf.maxHeight`
+		// So, for now, the best we can do is ensure that the event index has events for events at height >= `pf.maxHeight`
 	} else {
 		ts, err := e.em.chainModule.ChainReader.GetTipSetByCid(ctx, pf.tipsetCid)
 		if err != nil {
