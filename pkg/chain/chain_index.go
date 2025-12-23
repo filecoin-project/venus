@@ -58,10 +58,10 @@ type lbEntry struct {
 	target       types.TipSetKey
 }
 
-// GetTipSetByHeight get tipset at specify height from specify tipset
-// the tipset within the skiplength is directly obtained by reading the database.
-// if the height difference exceeds the skiplength, the tipset is read from caching.
-// if the caching fails, the tipset is obtained by reading the database and updating the cache
+// GetTipSetByHeight gets tipset at specified height from specified tipset
+// The tipset within the skiplength is directly obtained by reading the database.
+// If the height difference exceeds the skiplength, the tipset is read from caching.
+// If the caching fails, the tipset is obtained by reading the database and updating the cache
 func (ci *ChainIndex) GetTipSetByHeight(ctx context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
 	if from.Height()-to <= ci.skipLength {
 		return ci.walkBack(ctx, from, to)

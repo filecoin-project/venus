@@ -35,9 +35,9 @@ type RandomBeacon interface {
 	IsChained() bool
 }
 
-// ValidateBlockValues Verify that the beacon in the block header is correct, first get beacon server at block epoch and parent block epoch in schedule.
-// if paraent beacon is the same beacon server. value beacon normally but if not equal, means that the pre entry in another beacon chain, so just validate
-// beacon value in current block header. the first values is parent beacon the second value is current beacon.
+// ValidateBlockValues verifies that the beacon in the block header is correct, first get beacon server at block epoch and parent block epoch in schedule.
+// If parent beacon is the same beacon server, validate beacon normally but if not equal, means that the pre entry in another beacon chain, so just validate
+// beacon value in current block header. The first value is parent beacon the second value is current beacon.
 func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockHeader, parentEpoch abi.ChainEpoch, prevEntry *types.BeaconEntry) error {
 	parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
 	currBeacon := bSchedule.BeaconForEpoch(h.Height)
