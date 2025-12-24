@@ -34,6 +34,7 @@ func init() {
 			RPCMeta: util.RPCMeta{
 				Version:         0,
 				MethodNamespace: "Message",
+				ApiNamespace:    "messager.IMessager",
 			},
 		},
 		util.APIMeta{
@@ -43,7 +44,8 @@ func init() {
 				IncludeAll: true,
 			},
 			RPCMeta: util.RPCMeta{
-				Version: 0,
+				Version:      0,
+				ApiNamespace: "wallet.IFullAPI",
 			},
 		},
 		util.APIMeta{
@@ -55,6 +57,7 @@ func init() {
 			RPCMeta: util.RPCMeta{
 				Version:         2,
 				MethodNamespace: "Gateway",
+				ApiNamespace:    "gateway.IGateway",
 			},
 		},
 		util.APIMeta{
@@ -66,6 +69,7 @@ func init() {
 			RPCMeta: util.RPCMeta{
 				Version:         1,
 				MethodNamespace: "Gateway",
+				ApiNamespace:    "gateway.IGateway",
 			},
 		},
 		util.APIMeta{
@@ -77,6 +81,7 @@ func init() {
 			RPCMeta: util.RPCMeta{
 				Version:         0,
 				MethodNamespace: "Gateway",
+				ApiNamespace:    "gateway.IGateway",
 			},
 		},
 		util.APIMeta{
@@ -88,6 +93,7 @@ func init() {
 			RPCMeta: util.RPCMeta{
 				Version:         0,
 				MethodNamespace: "VENUS_MARKET",
+				ApiNamespace:    "v1.IMarket",
 			},
 		},
 		util.APIMeta{
@@ -99,6 +105,7 @@ func init() {
 			RPCMeta: util.RPCMeta{
 				Version:         1,
 				MethodNamespace: "VENUS_MARKET",
+				ApiNamespace:    "v1.IMarket",
 			},
 		},
 		util.APIMeta{
@@ -110,6 +117,7 @@ func init() {
 			RPCMeta: util.RPCMeta{
 				Version:         0,
 				MethodNamespace: "VENUS_MARKET_CLIENT",
+				ApiNamespace:    "client.IMarketClient",
 			},
 		},
 	)
