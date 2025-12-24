@@ -1344,7 +1344,7 @@ func (store *Store) Blockstore() blockstoreutil.Blockstore { // nolint
 	return store.bsstore
 }
 
-// GetParentReceipt get the receipt of parent tipset at specify message slot
+// GetParentReceipt gets the receipt of parent tipset at specified message slot
 func (store *Store) GetParentReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
 	ctx := context.TODO()
 	// block headers use adt0, for now.
@@ -1456,8 +1456,8 @@ func (store *Store) LookupID(ctx context.Context, ts *types.TipSet, addr address
 	return st.LookupID(addr)
 }
 
-// ResolveToDeterministicAddress get key address of specify address.
-// if this addr is bls/secpk address, return directly, other get the pubkey and generate address
+// ResolveToDeterministicAddress gets key address of specified address.
+// If this addr is bls/secpk address, return directly, otherwise get the pubkey and generate address
 func (store *Store) ResolveToDeterministicAddress(ctx context.Context, ts *types.TipSet, addr address.Address) (address.Address, error) {
 	st, err := store.StateView(ctx, ts)
 	if err != nil {
