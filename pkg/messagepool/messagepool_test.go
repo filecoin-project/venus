@@ -690,6 +690,36 @@ func TestPruningSimple(t *testing.T) {
 	}
 }
 
+func TestGasRewardNegative(t *testing.T) {
+	var mp MessagePool
+
+	msg := types.SignedMessage{
+		Message: types.Message{
+			GasLimit:   1000,
+			GasFeeCap:  tbig.NewInt(20000),
+			GasPremium: tbig.NewInt(15000),
+		},
+	}
+	baseFee := tbig.NewInt(30000)
+	// Over the GasPremium, but under the BaseFee
+	gr1 := mp.getGasReward(&msg, baseFee)
+
+	msg.Message.GasFeeCap = tbig.NewInt(15000)
+	// Equal to GasPremium, under the BaseFee
+	gr2 := mp.getGasReward(&msg, baseFee)
+
+	msg.Message.GasFeeCap = tbig.NewInt(10000)
+	// Under both GasPremium and BaseFee
+	gr3 := mp.getGasReward(&msg, baseFee)
+
+	assert.True(t, gr1.Sign() < 0)
+	assert.True(t, gr2.Sign() < 0)
+	assert.True(t, gr3.Sign() < 0)
+
+	assert.True(t, gr1.Cmp(gr2) > 0)
+	assert.True(t, gr2.Cmp(gr3) > 0)
+}
+
 func TestLoadLocal(t *testing.T) {
 	tf.UnitTest(t)
 
