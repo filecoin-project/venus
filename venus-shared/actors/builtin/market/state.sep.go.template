@@ -31,7 +31,7 @@ import (
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
 {{end}}
-{{if (ge .v 9)}}
+{{if (ge .v 3)}}
 	"github.com/filecoin-project/go-state-types/builtin"
 {{end}}
 )
@@ -129,6 +129,14 @@ func (s *state{{.v}}) Proposals() (DealProposals, error) {
 	return &dealProposals{{.v}}{proposalArray}, nil
 }
 
+func (s *state{{.v}}) PendingProposals() (PendingProposals, error) {
+	proposalCidSet, err := adt{{.v}}.AsSet(s.store, s.State.PendingProposals{{if (ge .v 3)}}, builtin.DefaultHamtBitwidth{{end}})
+	if err != nil {
+		return nil, err
+	}
+	return &pendingProposals{{.v}}{proposalCidSet}, nil
+}
+
 func (s *state{{.v}}) EscrowTable() (BalanceTable, error) {
 	bt, err := adt{{.v}}.AsBalanceTable(s.store, s.State.EscrowTable)
 	if err != nil {
@@ -147,9 +155,9 @@ func (s *state{{.v}}) LockedTable() (BalanceTable, error) {
 
 func (s *state{{.v}}) VerifyDealsForActivation(
 	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
-) (weight, verifiedWeight abi.DealWeight, err error) {
-	w, vw{{if (ge .v 2)}}, _{{end}}, err := market{{.v}}.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
-	return w, vw, err
+) (verifiedWeight abi.DealWeight, err error) {
+	_, vw{{if (ge .v 2)}}, _{{end}}, err := market{{.v}}.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
+	return vw, err
 }
 
 func (s *state{{.v}}) NextID() (abi.DealID, error) {
@@ -309,6 +317,14 @@ func (s *dealProposals{{.v}}) array() adt.Array {
 	return s.Array
 }
 
+type pendingProposals{{.v}} struct {
+    *adt{{.v}}.Set
+}
+
+func (s *pendingProposals{{.v}}) Has(proposalCid cid.Cid) (bool, error) {
+    return s.Set.Has(abi.CidKey(proposalCid))
+}
+
 func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) (DealProposal, error) {
     {{if (le .v 7)}}
         label, err := labelFromGoString(v{{.v}}.Label)
@@ -445,3 +461,63 @@ func (s *state{{.v}}) Code() cid.Cid {
 
 	return code
 }
+
+func (s *state{{.v}}) ProviderSectors() (ProviderSectors, error) {
+{{if lt .v 13}}
+	return nil, fmt.Errorf("unsupported before actors v13")
+{{else}}
+	proverSectors, err := adt{{.v}}.AsMap(s.store, s.State.ProviderSectors, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+	return &providerSectors{{.v}}{proverSectors, s.store}, nil
+{{end}}
+}
+
+{{if ge .v 13}}
+	type providerSectors{{.v}} struct {
+		*adt{{.v}}.Map
+		adt{{.v}}.Store
+	}
+
+	type sectorDealIDs{{.v}} struct {
+		*adt{{.v}}.Map
+	}
+
+	func (s *providerSectors{{.v}}) Get(actorId abi.ActorID) (SectorDealIDs, bool, error) {
+		var sectorDealIdsCID cbg.CborCid
+		if ok, err := s.Map.Get(abi.UIntKey(uint64(actorId)), &sectorDealIdsCID); err != nil {
+			return nil, false, fmt.Errorf("failed to load sector deal ids for actor %d: %w", actorId, err)
+		} else if !ok {
+			return nil, false, nil
+		}
+		sectorDealIds, err := adt{{.v}}.AsMap(s.Store, cid.Cid(sectorDealIdsCID), builtin.DefaultHamtBitwidth)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to load sector deal ids for actor %d: %w", actorId, err)
+		}
+		return &sectorDealIDs{{.v}}{sectorDealIds}, true, nil
+	}
+
+	func (s *sectorDealIDs{{.v}}) ForEach(cb func(abi.SectorNumber, []abi.DealID) error) error {
+		var dealIds abi.DealIDList
+		return s.Map.ForEach(&dealIds, func(key string) error {
+			uk, err := abi.ParseUIntKey(key)
+			if err != nil {
+				return fmt.Errorf("failed to parse sector number from key %s: %w", key, err)
+			}
+			return cb(abi.SectorNumber(uk), dealIds)
+		})
+	}
+
+	func (s *sectorDealIDs{{.v}}) Get(sectorNumber abi.SectorNumber) ([]abi.DealID, bool, error) {
+		var dealIds abi.DealIDList
+		found, err := s.Map.Get(abi.UIntKey(uint64(sectorNumber)), &dealIds)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to load sector deal ids for sector %d: %w", sectorNumber, err)
+		}
+		if !found {
+			return nil, false, nil
+		}
+		return dealIds, true, nil
+	}
+{{end}}

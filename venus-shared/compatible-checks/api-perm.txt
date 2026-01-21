@@ -11,6 +11,7 @@ v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/fi
 	- IChainInfo.ProtocolParameters
 	- IChainInfo.ResolveToKeyAddr
 	- IChainInfo.VerifyEntry
+	- IMinerState.StateMinerInitialPledgeForSector
 	- IMinerState.StateMinerSectorSize
 	- IMinerState.StateMinerWorkerAddress
 	- ICommon.StartTime

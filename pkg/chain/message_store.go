@@ -111,7 +111,7 @@ func (ms *MessageStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid
 	return blsCids, secpCids, nil
 }
 
-// LoadMessage load message of specify message cid
+// LoadMessage loads message of specified message cid
 // First get the unsigned message. If it is not found, then get the signed message. If still not found, an error will be returned
 func (ms *MessageStore) LoadMessage(ctx context.Context, mid cid.Cid) (types.ChainMsg, error) {
 	m, err := ms.LoadUnsignedMessage(ctx, mid)

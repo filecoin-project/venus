@@ -1,0 +1,50 @@
+Manifest:
+  Protocol Version:     {{.ProtocolVersion}}
+  Initial Instance:     {{.InitialInstance}}
+  Initial Power Table:  {{if .InitialPowerTable.Defined}}{{.InitialPowerTable}}{{else}}unknown{{end}}
+  Bootstrap Epoch:      {{.BootstrapEpoch}}
+  Network Name:         {{.NetworkName}}
+  Committee Lookback:   {{.CommitteeLookback}}
+  Catch Up Alignment:   {{.CatchUpAlignment}}
+
+  GPBFT Delta:                        {{.Gpbft.Delta}}
+  GPBFT Delta BackOff Exponent:       {{.Gpbft.DeltaBackOffExponent}}
+  GPBFT Quality Delta Multiplier:     {{.Gpbft.QualityDeltaMultiplier}}
+  GPBFT Max Lookahead Rounds:         {{.Gpbft.MaxLookaheadRounds}}
+  GPBFT Chain Proposed Length:        {{.Gpbft.ChainProposedLength}}
+  GPBFT Rebroadcast Backoff Base:     {{.Gpbft.RebroadcastBackoffBase}}
+  GPBFT Rebroadcast Backoff Exponent: {{.Gpbft.RebroadcastBackoffExponent}}
+  GPBFT Rebroadcast Backoff Spread:   {{.Gpbft.RebroadcastBackoffSpread}}
+  GPBFT Rebroadcast Backoff Max:      {{.Gpbft.RebroadcastBackoffMax}}
+
+  EC Period:            {{.EC.Period}}
+  EC Finality:          {{.EC.Finality}}
+  EC Delay Multiplier:  {{.EC.DelayMultiplier}}
+  EC Head Lookback:     {{.EC.HeadLookback}}
+  EC Finalize:          {{.EC.Finalize}}
+
+  Certificate Exchange Client Timeout:    {{.CertificateExchange.ClientRequestTimeout}}
+  Certificate Exchange Server Timeout:    {{.CertificateExchange.ServerRequestTimeout}}
+  Certificate Exchange Min Poll Interval: {{.CertificateExchange.MinimumPollInterval}}
+  Certificate Exchange Max Poll Interval: {{.CertificateExchange.MaximumPollInterval}}
+
+  PubSub Compression Enabled:               {{.PubSub.CompressionEnabled}}
+  PubSub Chain Compression Enabled:         {{.PubSub.ChainCompressionEnabled}}
+  PubSub GMessage Subscription Buffer Size: {{.PubSub.GMessageSubscriptionBufferSize}}
+  PubSub Validated Message Buffer Size:     {{.PubSub.ValidatedMessageBufferSize}}
+
+  Chain Exchange Subscription Buffer Size:           {{.ChainExchange.SubscriptionBufferSize}}
+  Chain Exchange Max Chain Length:                   {{.ChainExchange.MaxChainLength}}
+  Chain Exchange Max Instance Lookahead:             {{.ChainExchange.MaxInstanceLookahead}}
+  Chain Exchange Max Discovered Chains Per Instance: {{.ChainExchange.MaxDiscoveredChainsPerInstance}}
+  Chain Exchange Max Wanted Chains Per Instance:     {{.ChainExchange.MaxWantedChainsPerInstance}}
+  Chain Exchange Rebroadcast Interval:               {{.ChainExchange.RebroadcastInterval}}
+  Chain Exchange Max Timestamp Age:                  {{.ChainExchange.MaxTimestampAge}}
+
+  Partial Message Pending Discovered Chains Buffer Size:      {{.PartialMessageManager.PendingDiscoveredChainsBufferSize}}
+  Partial Message Pending Partial Messages Buffer Size:       {{.PartialMessageManager.PendingPartialMessagesBufferSize}}
+  Partial Message Pending Chain Broadcasts Buffer Size:       {{.PartialMessageManager.PendingChainBroadcastsBufferSize}}
+  Partial Message Pending Instance Removal Buffer Size:       {{.PartialMessageManager.PendingInstanceRemovalBufferSize}}
+  Partial Message Completed Messages Buffer Size:             {{.PartialMessageManager.CompletedMessagesBufferSize}}
+  Partial Message Max Buffered Messages Per Instance:         {{.PartialMessageManager.MaxBufferedMessagesPerInstance}}
+  Partial Message Max Cached Validated Messages Per Instance: {{.PartialMessageManager.MaxCachedValidatedMessagesPerInstance}}

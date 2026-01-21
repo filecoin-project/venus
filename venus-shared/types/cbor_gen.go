@@ -8,6 +8,7 @@ import (
 	"math"
 	"sort"
 
+	gpbft "github.com/filecoin-project/go-f3/gpbft"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
@@ -2255,7 +2256,108 @@ func (t *ReturnTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	return nil
 }
 
-var lengthBufExecutionTrace = []byte{133}
+var lengthBufTraceIpld = []byte{131}
+
+func (t *TraceIpld) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufTraceIpld); err != nil {
+		return err
+	}
+
+	// t.Op (types.Op) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Op)); err != nil {
+		return err
+	}
+
+	// t.Cid (cid.Cid) (struct)
+
+	if err := cbg.WriteCid(cw, t.Cid); err != nil {
+		return xerrors.Errorf("failed to write cid field t.Cid: %w", err)
+	}
+
+	// t.Size (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Size)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *TraceIpld) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = TraceIpld{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 3 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.Op (types.Op) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Op = Op(extra)
+
+	}
+	// t.Cid (cid.Cid) (struct)
+
+	{
+
+		c, err := cbg.ReadCid(cr)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.Cid: %w", err)
+		}
+
+		t.Cid = c
+
+	}
+	// t.Size (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Size = uint64(extra)
+
+	}
+	return nil
+}
+
+var lengthBufExecutionTrace = []byte{135}
 
 func (t *ExecutionTrace) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -2313,6 +2415,43 @@ func (t *ExecutionTrace) MarshalCBOR(w io.Writer) error {
 		}
 
 	}
+
+	// t.Logs ([]string) (slice)
+	if len(t.Logs) > 1000000000 {
+		return xerrors.Errorf("Slice value in field t.Logs was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.Logs))); err != nil {
+		return err
+	}
+	for _, v := range t.Logs {
+		if len(v) > 8192 {
+			return xerrors.Errorf("Value in field v was too long")
+		}
+
+		if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(v))); err != nil {
+			return err
+		}
+		if _, err := cw.WriteString(string(v)); err != nil {
+			return err
+		}
+
+	}
+
+	// t.IpldOps ([]types.TraceIpld) (slice)
+	if len(t.IpldOps) > 1000000000 {
+		return xerrors.Errorf("Slice value in field t.IpldOps was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.IpldOps))); err != nil {
+		return err
+	}
+	for _, v := range t.IpldOps {
+		if err := v.MarshalCBOR(cw); err != nil {
+			return err
+		}
+
+	}
 	return nil
 }
 
@@ -2335,7 +2474,7 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 5 {
+	if extra != 7 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -2461,6 +2600,230 @@ func (t *ExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 		}
+	}
+	// t.Logs ([]string) (slice)
+
+	maj, extra, err = cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+
+	if extra > 1000000000 {
+		return fmt.Errorf("t.Logs: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+
+	if extra > 0 {
+		t.Logs = make([]string, extra)
+	}
+
+	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
+
+			{
+				sval, err := cbg.ReadStringWithMax(cr, 8192)
+				if err != nil {
+					return err
+				}
+
+				t.Logs[i] = string(sval)
+			}
+
+		}
+	}
+	// t.IpldOps ([]types.TraceIpld) (slice)
+
+	maj, extra, err = cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+
+	if extra > 1000000000 {
+		return fmt.Errorf("t.IpldOps: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+
+	if extra > 0 {
+		t.IpldOps = make([]TraceIpld, extra)
+	}
+
+	for i := 0; i < int(extra); i++ {
+		{
+			var maj byte
+			var extra uint64
+			var err error
+			_ = maj
+			_ = extra
+			_ = err
+
+			{
+
+				if err := t.IpldOps[i].UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.IpldOps[i]: %w", err)
+				}
+
+			}
+
+		}
+	}
+	return nil
+}
+
+var lengthBufF3ParticipationLease = []byte{133}
+
+func (t *F3ParticipationLease) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufF3ParticipationLease); err != nil {
+		return err
+	}
+
+	// t.Network (gpbft.NetworkName) (string)
+	if len(t.Network) > 8192 {
+		return xerrors.Errorf("Value in field t.Network was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Network))); err != nil {
+		return err
+	}
+	if _, err := cw.WriteString(string(t.Network)); err != nil {
+		return err
+	}
+
+	// t.Issuer (string) (string)
+	if len(t.Issuer) > 8192 {
+		return xerrors.Errorf("Value in field t.Issuer was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Issuer))); err != nil {
+		return err
+	}
+	if _, err := cw.WriteString(string(t.Issuer)); err != nil {
+		return err
+	}
+
+	// t.MinerID (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.MinerID)); err != nil {
+		return err
+	}
+
+	// t.FromInstance (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.FromInstance)); err != nil {
+		return err
+	}
+
+	// t.ValidityTerm (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.ValidityTerm)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *F3ParticipationLease) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = F3ParticipationLease{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 5 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.Network (gpbft.NetworkName) (string)
+
+	{
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
+		if err != nil {
+			return err
+		}
+
+		t.Network = gpbft.NetworkName(sval)
+	}
+	// t.Issuer (string) (string)
+
+	{
+		sval, err := cbg.ReadStringWithMax(cr, 8192)
+		if err != nil {
+			return err
+		}
+
+		t.Issuer = string(sval)
+	}
+	// t.MinerID (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.MinerID = uint64(extra)
+
+	}
+	// t.FromInstance (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.FromInstance = uint64(extra)
+
+	}
+	// t.ValidityTerm (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.ValidityTerm = uint64(extra)
+
 	}
 	return nil
 }

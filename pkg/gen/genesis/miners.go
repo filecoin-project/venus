@@ -197,7 +197,12 @@ func SetupStorageMiners(ctx context.Context,
 				params = mustEnc(constructorParams)
 			}
 
-			rval, err := doExecValue(ctx, genesisVM, power.Address, m.Owner, m.PowerBalance, power.Methods.CreateMiner, params)
+			deposit, err := CalculateMinerCreationDepositForGenesis(ctx, genesisVM, adt.WrapStore(ctx, cst))
+			if err != nil {
+				return cid.Undef, fmt.Errorf("calculating miner creation deposit: %w", err)
+			}
+
+			rval, err := doExecValue(ctx, genesisVM, power.Address, m.Owner, deposit, power.Methods.CreateMiner, params)
 			if err != nil {
 				return cid.Undef, fmt.Errorf("failed to create genesis miner: %w", err)
 			}
@@ -320,7 +325,7 @@ func SetupStorageMiners(ctx context.Context,
 				}
 
 				rawPow = big.Add(rawPow, big.NewInt(int64(m.SectorSize)))
-				sectorWeight := builtin.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, big.Zero(), types.DealWeight(&preseal.Deal))
+				sectorWeight := builtin.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, types.DealWeight(&preseal.Deal))
 				minerInfos[i].sectorWeight = append(minerInfos[i].sectorWeight, sectorWeight)
 				qaPow = big.Add(qaPow, sectorWeight)
 			}
@@ -682,6 +687,11 @@ func SetupStorageMiners(ctx context.Context,
 
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
+
+func (fr *fakeRand) GetBeaconEntry(ctx context.Context, randEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	r, _ := fr.GetChainRandomness(ctx, randEpoch)
+	return &types.BeaconEntry{Round: 10, Data: r[:]}, nil
+}
 
 func (fr *fakeRand) GetBeaconRandomness(ctx context.Context, randEpoch abi.ChainEpoch) ([32]byte, error) {
 	out := make([]byte, 32)

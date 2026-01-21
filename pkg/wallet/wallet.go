@@ -25,6 +25,8 @@ var (
 	walletLog          = logging.Logger("wallet")
 )
 
+type WalletSignFunc func(ctx context.Context, addr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error)
+
 // WalletIntersection
 // nolint
 type WalletIntersection interface {

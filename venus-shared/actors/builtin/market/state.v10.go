@@ -109,6 +109,14 @@ func (s *state10) Proposals() (DealProposals, error) {
 	return &dealProposals10{proposalArray}, nil
 }
 
+func (s *state10) PendingProposals() (PendingProposals, error) {
+	proposalCidSet, err := adt10.AsSet(s.store, s.State.PendingProposals, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+	return &pendingProposals10{proposalCidSet}, nil
+}
+
 func (s *state10) EscrowTable() (BalanceTable, error) {
 	bt, err := adt10.AsBalanceTable(s.store, s.State.EscrowTable)
 	if err != nil {
@@ -127,9 +135,9 @@ func (s *state10) LockedTable() (BalanceTable, error) {
 
 func (s *state10) VerifyDealsForActivation(
 	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
-) (weight, verifiedWeight abi.DealWeight, err error) {
-	w, vw, _, err := market10.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
-	return w, vw, err
+) (verifiedWeight abi.DealWeight, err error) {
+	_, vw, _, err := market10.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
+	return vw, err
 }
 
 func (s *state10) NextID() (abi.DealID, error) {
@@ -287,6 +295,14 @@ func (s *dealProposals10) array() adt.Array {
 	return s.Array
 }
 
+type pendingProposals10 struct {
+	*adt10.Set
+}
+
+func (s *pendingProposals10) Has(proposalCid cid.Cid) (bool, error) {
+	return s.Set.Has(abi.CidKey(proposalCid))
+}
+
 func fromV10DealProposal(v10 market10.DealProposal) (DealProposal, error) {
 
 	label, err := fromV10Label(v10.Label)
@@ -410,4 +426,10 @@ func (s *state10) Code() cid.Cid {
 	}
 
 	return code
+}
+
+func (s *state10) ProviderSectors() (ProviderSectors, error) {
+
+	return nil, fmt.Errorf("unsupported before actors v13")
+
 }

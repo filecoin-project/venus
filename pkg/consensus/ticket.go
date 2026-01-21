@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/blake2b"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/venus-shared/types"

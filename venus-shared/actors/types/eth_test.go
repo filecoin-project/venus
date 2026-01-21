@@ -2,9 +2,11 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -103,6 +105,17 @@ func TestEthHash(t *testing.T) {
 		jm, err := json.Marshal(h)
 		require.NoError(t, err)
 		require.Equal(t, hash, string(jm))
+	}
+
+	for _, c := range []cid.Cid{
+		cid.Undef,
+		cid.MustParse("bafy2bzacaa"),
+		cid.MustParse("bafkqaaa"),
+		cid.MustParse("bafy2bzacidqenpags5upxuhzpynnbhaojm5cy6dfoiojibz4gk2u4degs4qiclksacibt65ogzfjqionu7o25nl3y4ayzsizwbc32crqgnrqntqv"),
+		cid.MustParse("bafyrgqhai26anf3i7pips7q22coa4sz2fr4gk4q4sqdtymvvjyginfzaqewveaeqdh524nsktaq43j65v22xxrybrtertmcfxufdam3da3hbk"),
+	} {
+		_, err := EthHashFromCid(c)
+		require.ErrorContains(t, err, "CID does not have the expected prefix")
 	}
 }
 
@@ -275,7 +288,6 @@ func TestEthFilterResultMarshalJSON(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		tc := tc
 		t.Run("", func(t *testing.T) {
 			data, err := json.Marshal(tc.res)
 			require.NoError(t, err)
@@ -399,7 +411,6 @@ func TestEthAddressListUnmarshalJSON(t *testing.T) {
 		},
 	}
 	for _, tc := range testcases {
-		tc := tc
 		t.Run("", func(t *testing.T) {
 			var got EthAddressList
 			err := json.Unmarshal([]byte(tc.input), &got)
@@ -443,4 +454,116 @@ func TestEthHashListUnmarshalJSON(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, tc.want, got)
 	}
+}
+
+func BenchmarkEthHashFromCid(b *testing.B) {
+	c := cid.MustParse("bafy2bzacedwviarjtjraqakob5pslltmuo5n3xev3nt5zylezofkbbv5jclyu")
+
+	for i := 0; i < b.N; i++ {
+		_, err := EthHashFromCid(c)
+		if err != nil {
+			b.Fatalf("Error in EthHashFromCid: %v", err)
+		}
+	}
+}
+
+func TestEthBlockNumberOrHashUnmarshalJSON(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected func() EthBlockNumberOrHash
+		wantErr  bool
+	}{
+		{
+			name:  "Valid block number",
+			input: `{"blockNumber": "0x1234"}`,
+			expected: func() EthBlockNumberOrHash {
+				v := uint64(0x1234)
+				return EthBlockNumberOrHash{BlockNumber: (*EthUint64)(&v)}
+			},
+		},
+		{
+			name:  "Valid block hash",
+			input: `{"blockHash": "0x1234567890123456789012345678901234567890123456789012345678901234"}`,
+			expected: func() EthBlockNumberOrHash {
+				h, _ := ParseEthHash("0x1234567890123456789012345678901234567890123456789012345678901234")
+				return EthBlockNumberOrHash{BlockHash: &h}
+			},
+		},
+		{
+			name:  "Valid block number as string",
+			input: `"0x1234"`,
+			expected: func() EthBlockNumberOrHash {
+				v := uint64(0x1234)
+				return EthBlockNumberOrHash{BlockNumber: (*EthUint64)(&v)}
+			},
+		},
+		{
+			name:  "Valid block hash as string",
+			input: `"0x1234567890123456789012345678901234567890123456789012345678901234"`,
+			expected: func() EthBlockNumberOrHash {
+				h, _ := ParseEthHash("0x1234567890123456789012345678901234567890123456789012345678901234")
+				return EthBlockNumberOrHash{BlockHash: &h}
+			},
+		},
+		{
+			name:  "Valid 'latest' string",
+			input: `"latest"`,
+			expected: func() EthBlockNumberOrHash {
+				return EthBlockNumberOrHash{PredefinedBlock: stringPtr("latest")}
+			},
+		},
+		{
+			name:  "Valid 'earliest' string",
+			input: `"earliest"`,
+			expected: func() EthBlockNumberOrHash {
+				return EthBlockNumberOrHash{PredefinedBlock: stringPtr("earliest")}
+			},
+		},
+		{
+			name:  "Valid 'pending' string",
+			input: `"pending"`,
+			expected: func() EthBlockNumberOrHash {
+				return EthBlockNumberOrHash{PredefinedBlock: stringPtr("pending")}
+			},
+		},
+		{
+			name:    "Invalid: both block number and hash",
+			input:   `{"blockNumber": "0x1234", "blockHash": "0x1234567890123456789012345678901234567890123456789012345678901234"}`,
+			wantErr: true,
+		},
+		{
+			name:    "Invalid block number",
+			input:   `{"blockNumber": "invalid"}`,
+			wantErr: true,
+		},
+		{
+			name:    "Invalid block hash",
+			input:   `{"blockHash": "invalid"}`,
+			wantErr: true,
+		},
+		{
+			name:    "Invalid string",
+			input:   `"invalid"`,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var got EthBlockNumberOrHash
+			err := got.UnmarshalJSON([]byte(tc.input))
+
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err, fmt.Sprintf("did not expect error but got %s", err))
+				require.Equal(t, tc.expected(), got)
+			}
+		})
+	}
+}
+
+func stringPtr(s string) *string {
+	return &s
 }

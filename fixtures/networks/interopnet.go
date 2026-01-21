@@ -5,6 +5,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -31,37 +33,43 @@ func InteropNet() *NetworkConf {
 			MinVerifiedDealSize:     256,
 			PreCommitChallengeDelay: abi.ChainEpoch(10),
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
-				BreezeGasTampingDuration:          0,
-				UpgradeBreezeHeight:               -1,
-				UpgradeSmokeHeight:                -2,
-				UpgradeIgnitionHeight:             -3,
-				UpgradeRefuelHeight:               -4,
-				UpgradeAssemblyHeight:             -5,
-				UpgradeTapeHeight:                 -6,
-				UpgradeLiftoffHeight:              -7,
-				UpgradeKumquatHeight:              -8,
-				UpgradeCalicoHeight:               -9,
-				UpgradePersianHeight:              -10,
-				UpgradeOrangeHeight:               -11,
-				UpgradeClausHeight:                -12,
-				UpgradeTrustHeight:                -13,
-				UpgradeNorwegianHeight:            -14,
-				UpgradeTurboHeight:                -15,
-				UpgradeHyperdriveHeight:           -16,
-				UpgradeChocolateHeight:            -17,
-				UpgradeOhSnapHeight:               -18,
-				UpgradeSkyrHeight:                 -19,
-				UpgradeSharkHeight:                -20,
-				UpgradeHyggeHeight:                -21,
-				UpgradeLightningHeight:            -22,
-				UpgradeThunderHeight:              -23,
-				UpgradeWatermelonHeight:           -24,
-				UpgradeWatermelonFixHeight:        -100, // This fix upgrade only ran on calibrationnet
-				UpgradeWatermelonFix2Height:       -101, // This fix upgrade only ran on calibrationnet
-				UpgradeDragonHeight:               -25,
-				UpgradeCalibrationDragonFixHeight: -102, // This fix upgrade only ran on calibrationnet
-				UpgradePhoenixHeight:              -26,
-				UpgradeWaffleHeight:               50,
+				BreezeGasTampingDuration:             0,
+				UpgradeBreezeHeight:                  -1,
+				UpgradeSmokeHeight:                   -2,
+				UpgradeIgnitionHeight:                -3,
+				UpgradeRefuelHeight:                  -4,
+				UpgradeAssemblyHeight:                -5,
+				UpgradeTapeHeight:                    -6,
+				UpgradeLiftoffHeight:                 -7,
+				UpgradeKumquatHeight:                 -8,
+				UpgradeCalicoHeight:                  -9,
+				UpgradePersianHeight:                 -10,
+				UpgradeOrangeHeight:                  -11,
+				UpgradeClausHeight:                   -12,
+				UpgradeTrustHeight:                   -13,
+				UpgradeNorwegianHeight:               -14,
+				UpgradeTurboHeight:                   -15,
+				UpgradeHyperdriveHeight:              -16,
+				UpgradeChocolateHeight:               -17,
+				UpgradeOhSnapHeight:                  -18,
+				UpgradeSkyrHeight:                    -19,
+				UpgradeSharkHeight:                   -20,
+				UpgradeHyggeHeight:                   -21,
+				UpgradeLightningHeight:               -22,
+				UpgradeThunderHeight:                 -23,
+				UpgradeWatermelonHeight:              -24,
+				UpgradeWatermelonFixHeight:           -100, // This fix upgrade only ran on calibrationnet
+				UpgradeWatermelonFix2Height:          -101, // This fix upgrade only ran on calibrationnet
+				UpgradeDragonHeight:                  -25,
+				UpgradeCalibrationDragonFixHeight:    -102, // This fix upgrade only ran on calibrationnet
+				UpgradePhoenixHeight:                 -26,
+				UpgradeWaffleHeight:                  -27,
+				UpgradeTuktukHeight:                  -28,
+				UpgradeTuktukPowerRampDurationEpochs: builtin.EpochsInYear,
+				UpgradeTeepHeight:                    -30,
+				UpgradeTockHeight:                    -31,
+				UpgradeTockFixHeight:                 -29,
+				UpgradeGoldenWeekHeight:              50,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
@@ -70,8 +78,8 @@ func InteropNet() *NetworkConf {
 			Eip155ChainID:           3141592,
 			ActorDebugging:          false,
 			F3Enabled:               true,
-			F3BootstrapEpoch:        1000,
-			ManifestServerID:        "12D3KooWQJ2rdVnG4okDUB6yHQhAjNutGNemcM7XzqC9Eo4z9Jce",
+
+			UpgradeTeepInitialFilReserved: constants.InitialFilReserved, // FIP-0100: no change for interop
 		},
 	}
 

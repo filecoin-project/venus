@@ -60,6 +60,7 @@ var (
 	ErrNewChainTooLong = errors.New("input chain forked from best chain past finality limit")
 	// ErrUnexpectedStoreState indicates that the syncer's chain bsstore is violating expected invariants.
 	ErrUnexpectedStoreState = errors.New("the chain bsstore is in an unexpected state")
+	ErrForkCheckpoint       = fmt.Errorf("fork would require us to diverge from checkpointed block")
 
 	logSyncer = logging.Logger("chainsync.syncer")
 )
@@ -137,8 +138,7 @@ type Syncer struct {
 
 	clock clock.Clock
 
-	bsstore    blockstoreutil.Blockstore
-	checkPoint types.TipSetKey
+	bsstore blockstoreutil.Blockstore
 
 	fork fork.IFork
 
@@ -199,45 +199,41 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 	stopwatch := syncOneTimer.Start()
 	defer stopwatch(ctx)
 
-	var err error
-
-	if !parent.Key().Equals(syncer.checkPoint) {
-		var wg errgroup.Group
-		for i := 0; i < next.Len(); i++ {
-			blk := next.At(i)
-			wg.Go(func() error {
-				// Fetch the URL.
-				err := syncer.blockValidator.ValidateFullBlock(ctx, blk)
-				if err == nil {
-					if err := syncer.chainStore.AddToTipSetTracker(ctx, blk); err != nil {
-						return fmt.Errorf("failed to add validated header to tipset tracker: %w", err)
-					}
+	var wg errgroup.Group
+	for i := 0; i < next.Len(); i++ {
+		blk := next.At(i)
+		wg.Go(func() error {
+			// Fetch the URL.
+			err := syncer.blockValidator.ValidateFullBlock(ctx, blk)
+			if err == nil {
+				if err := syncer.chainStore.AddToTipSetTracker(ctx, blk); err != nil {
+					return fmt.Errorf("failed to add validated header to tipset tracker: %w", err)
 				}
-				return err
-			})
-		}
-		err = wg.Wait()
-		if err != nil {
-			var rootNotMatch bool // nolint
+			}
+			return err
+		})
+	}
+	err := wg.Wait()
+	if err != nil {
+		var rootNotMatch bool // nolint
 
-			if merr, isok := err.(*multierror.Error); isok {
-				for _, e := range merr.Errors {
-					if isRootNotMatch(e) {
-						rootNotMatch = true
-						break
-					}
+		if merr, isok := err.(*multierror.Error); isok {
+			for _, e := range merr.Errors {
+				if isRootNotMatch(e) {
+					rootNotMatch = true
+					break
 				}
-			} else {
-				rootNotMatch = isRootNotMatch(err) // nolint
 			}
-
-			if rootNotMatch { // nolint
-				// todo: should here rollback, and re-compute?
-				_ = syncer.stmgr.Rollback(ctx, parent, next)
-			}
-
-			return fmt.Errorf("validate mining failed %w", err)
+		} else {
+			rootNotMatch = isRootNotMatch(err) // nolint
 		}
+
+		if rootNotMatch { // nolint
+			// todo: should here rollback, and re-compute?
+			_ = syncer.stmgr.Rollback(ctx, parent, next)
+		}
+
+		return fmt.Errorf("validate mining failed %w", err)
 	}
 
 	syncer.chainStore.PersistTipSetKey(ctx, next.Key())
@@ -297,8 +293,25 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 		return errors.New("do not sync to a target has synced before")
 	}
 
+	if target.Head.Height() == head.Height() {
+		// check if maybeHead is fully contained in headTipSet
+		// meaning we already synced all the blocks that are a part of maybeHead
+		// if that is the case, there is nothing for us to do
+		// we need to exit out early, otherwise checkpoint-fork logic might wrongly reject it
+		fullyContained := true
+		for _, c := range target.Head.Cids() {
+			if !head.Contains(c) {
+				fullyContained = false
+				break
+			}
+		}
+		if fullyContained {
+			return nil
+		}
+	}
+
 	syncer.exchangeClient.AddPeer(target.Sender)
-	tipsets, err := syncer.fetchChainBlocks(ctx, head, target.Head)
+	tipsets, err := syncer.fetchChainBlocks(ctx, head, target.Head, false)
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
@@ -320,17 +333,17 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 	errProcessChan := make(chan error, 1)
 	errProcessChan <- nil // init
 	var wg sync.WaitGroup
-	// todo  write a pipline segment processor function
+	// todo  write a pipeline segment processor function
 	if err = rangeProcess(tipsets, func(segTipset []*types.TipSet) error {
 		// fetch messages
 		startTip := segTipset[0].Height()
 		emdTipset := segTipset[len(segTipset)-1].Height()
-		logSyncer.Debugf("start to fetch message segement %d-%d", startTip, emdTipset)
+		logSyncer.Debugf("start to fetch message segment %d-%d", startTip, emdTipset)
 		_, err := syncer.fetchSegMessage(ctx, segTipset)
 		if err != nil {
 			return err
 		}
-		logSyncer.Debugf("finish to fetch message segement %d-%d", startTip, emdTipset)
+		logSyncer.Debugf("finish to fetch message segment %d-%d", startTip, emdTipset)
 		err = <-errProcessChan
 		if err != nil {
 			return fmt.Errorf("process message failed %v", err)
@@ -338,15 +351,15 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			logSyncer.Debugf("start to process message segement %d-%d", startTip, emdTipset)
-			defer logSyncer.Debugf("finish to process message segement %d-%d", startTip, emdTipset)
+			logSyncer.Debugf("start to process message segment %d-%d", startTip, emdTipset)
+			defer logSyncer.Debugf("finish to process message segment %d-%d", startTip, emdTipset)
 			var processErr error
 			parent, processErr = syncer.processTipSetSegment(ctx, target, parent, segTipset)
 			if processErr != nil {
 				errProcessChan <- processErr
 				return
 			}
-			if !parent.Key().Equals(syncer.checkPoint) {
+			if !parent.Key().Equals(syncer.chainStore.GetCheckPoint().Key()) {
 				logSyncer.Debugf("set chain head, height:%d, blocks:%d", parent.Height(), parent.Len())
 				if err := syncer.chainStore.RefreshHeaviestTipSet(ctx, parent.Height()); err != nil {
 					errProcessChan <- err
@@ -374,7 +387,7 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 // if local db not exist, get block from network(libp2p),
 // if there is a fork, get the common root tipset of knowntip and targettip, and return the block data from root tipset to targettip
 // local(···->A->B) + incoming(C->D->E)  => ···->A->B->C->D->E
-func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *types.TipSet, targetTip *types.TipSet) ([]*types.TipSet, error) {
+func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *types.TipSet, targetTip *types.TipSet, ignoreCheckpoint bool) ([]*types.TipSet, error) {
 	chainTipsets := []*types.TipSet{targetTip}
 	flushDB := func(saveTips []*types.TipSet) error {
 		bs := blockstoreutil.NewTemporary()
@@ -448,6 +461,13 @@ loop:
 	if err != nil {
 		return nil, fmt.Errorf("failed to load next local tipset: %w", err)
 	}
+
+	if !ignoreCheckpoint {
+		if chkpt := syncer.chainStore.GetCheckPoint(); chkpt != nil && base.Height() <= chkpt.Height() {
+			return nil, fmt.Errorf("merge point affecting the checkpoint: %w", ErrForkCheckpoint)
+		}
+	}
+
 	if base.IsChildOf(knownParent) {
 		// common case: receiving a block thats potentially part of the same tipset as our best block
 		chain.Reverse(chainTipsets)
@@ -456,7 +476,7 @@ loop:
 
 	logSyncer.Warnf("(fork detected) synced header chain, base: %v(%d), knownTip: %v(%d)", base.Key(), base.Height(),
 		knownTip.Key(), knownTip.Height())
-	fork, err := syncer.syncFork(ctx, base, knownTip)
+	fork, err := syncer.syncFork(ctx, base, knownTip, ignoreCheckpoint)
 	if err != nil {
 		if errors.Is(err, ErrForkTooLong) {
 			// TODO: we're marking this block bad in the same way that we mark invalid blocks bad. Maybe distinguish?
@@ -486,7 +506,15 @@ loop:
 //		D->E-F(targetTip）
 //	A						 => D->E>F
 //		B-C(knownTip)
-func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, known *types.TipSet) ([]*types.TipSet, error) {
+func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, known *types.TipSet, ignoreCheckpoint bool) ([]*types.TipSet, error) {
+	var chkpt *types.TipSet
+	if !ignoreCheckpoint {
+		chkpt = syncer.chainStore.GetCheckPoint()
+		if known.Equals(chkpt) {
+			return nil, ErrForkCheckpoint
+		}
+	}
+
 	incomingParentsTsk := incoming.Parents()
 	commonParent := false
 	for _, incomingParent := range incomingParentsTsk.Cids() {
@@ -529,7 +557,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 		return nil, err
 	}
 
-	gensisiBlock, err := syncer.chainStore.GetGenesisBlock(ctx)
+	genesisBlock, err := syncer.chainStore.GetGenesisBlock(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -541,7 +569,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 
 	for cur := 0; cur < len(tips); {
 		if nts.Height() == 0 {
-			if !gensisiBlock.Equals(nts.At(0)) {
+			if !genesisBlock.Equals(nts.At(0)) {
 				return nil, fmt.Errorf("somehow synced chain that linked back to a different genesis (bad genesis: %s)", nts.Key())
 			}
 			return nil, fmt.Errorf("synced chain forked at genesis, refusing to sync; incoming: %s", incoming.ToSlice())
@@ -650,7 +678,7 @@ func (syncer *Syncer) getFullBlock(ctx context.Context, tipset *types.TipSet) (*
 	return types.NewFullTipSet(fullBlocks), nil
 }
 
-// processTipSetSegment process a batch of tipset in turn，
+// processTipSetSegment process a batch of tipset in turn.
 func (syncer *Syncer) processTipSetSegment(ctx context.Context, target *syncTypes.Target, parent *types.TipSet, segTipset []*types.TipSet) (*types.TipSet, error) {
 	for i, ts := range segTipset {
 		err := syncer.syncOne(ctx, parent, ts)
@@ -672,6 +700,54 @@ func (syncer *Syncer) processTipSetSegment(ctx context.Context, target *syncType
 // Head get latest head from chain store
 func (syncer *Syncer) Head() *types.TipSet {
 	return syncer.chainStore.GetHead()
+}
+
+func (syncer *Syncer) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {
+	if tsk.IsEmpty() {
+		return fmt.Errorf("called with empty tsk")
+	}
+
+	ts, err := syncer.chainStore.GetTipSet(ctx, tsk)
+	if err != nil {
+		tss, err := syncer.exchangeClient.GetBlocks(ctx, tsk, 1)
+		if err != nil {
+			return fmt.Errorf("failed to fetch tipset: %w", err)
+		} else if len(tss) != 1 {
+			return fmt.Errorf("expected 1 tipset, got %d", len(tss))
+		}
+		ts = tss[0]
+	}
+
+	head := syncer.Head()
+	target := &syncTypes.Target{
+		Head:    ts,
+		Base:    syncer.Head(),
+		Current: syncer.Head(),
+		Start:   time.Now(),
+	}
+	if !head.Equals(ts) {
+		if anc, err := syncer.chainStore.IsAncestorOf(ctx, ts, head); err != nil {
+			return fmt.Errorf("failed to walk the chain when checkpointing: %w", err)
+		} else if !anc {
+			tipsets, err := syncer.fetchChainBlocks(ctx, head, target.Head, true)
+			if err != nil {
+				return errors.Wrapf(err, "failure fetching or validating headers")
+			}
+			logSyncer.Debugf("fetch header success at %v %s ...", tipsets[0].Height(), tipsets[0].Key())
+
+			err = syncer.syncSegement(ctx, target, tipsets)
+			if err != nil {
+				return fmt.Errorf("failed to sync segment: %w", err)
+			}
+
+		} // else new checkpoint is on the current chain, we definitely have the tipsets.
+	} // else current head, no need to switch.
+
+	if err := syncer.chainStore.SetCheckpoint(ctx, ts); err != nil {
+		return fmt.Errorf("failed to set the chain checkpoint: %w", err)
+	}
+
+	return nil
 }
 
 // TODO: this function effectively accepts unchecked input from the network,

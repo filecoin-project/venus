@@ -43,6 +43,8 @@ func (cbor *CborBlockStore) PutBlocks(ctx context.Context, blocks []*types.Block
 func newChainStore(r repo.Repo, genTS *types.TipSet) *CborBlockStore {
 	tempBlock := r.Datastore()
 	cborStore := cbor.NewCborStore(tempBlock)
+	blkBytes, _ := genTS.Blocks()[0].ToStorageBlock()
+	_ = tempBlock.Put(context.Background(), blkBytes)
 	return &CborBlockStore{
 		Store:     chain.NewStore(r.ChainDatastore(), tempBlock, genTS.At(0).Cid(), chainselector.Weight),
 		cborStore: cborStore,

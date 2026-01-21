@@ -2,6 +2,8 @@ package wallet
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -16,6 +18,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/pkg/wallet/gateway"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -23,11 +26,12 @@ var log = logging.Logger("wallet")
 
 // WalletSubmodule enhances the `Node` with a "wallet" and FIL transfer capabilities.
 type WalletSubmodule struct { // nolint
-	Chain   *chain.ChainSubmodule
-	Wallet  *wallet.Wallet
-	adapter wallet.WalletIntersection
-	Signer  types.Signer
-	Config  *config.ConfigModule
+	Chain         *chain.ChainSubmodule
+	Wallet        *wallet.Wallet
+	adapter       wallet.WalletIntersection
+	Signer        types.Signer
+	Config        *config.ConfigModule
+	WalletGateway *gateway.WalletGateway
 }
 
 type walletRepo interface {
@@ -66,12 +70,25 @@ func NewWalletSubmodule(ctx context.Context,
 	} else {
 		adapter = fcWallet
 	}
+
+	var wg *gateway.WalletGateway
+	if len(repo.Config().Wallet.GatewayBacked) != 0 {
+		// GatewayBacked token:url
+		tokenURL := strings.SplitN(repo.Config().Wallet.GatewayBacked, ":", 2)
+		fmt.Println(tokenURL)
+		wg, err = gateway.NewWalletGateway(ctx, tokenURL[1], tokenURL[0])
+		if err != nil {
+			return nil, err
+		}
+		log.Info("wallet gateway set up")
+	}
 	return &WalletSubmodule{
-		Config:  cfgModule,
-		Chain:   chain,
-		Wallet:  fcWallet,
-		adapter: adapter,
-		Signer:  state.NewSigner(headSigner, fcWallet),
+		Config:        cfgModule,
+		Chain:         chain,
+		Wallet:        fcWallet,
+		adapter:       adapter,
+		Signer:        state.NewSigner(headSigner, fcWallet),
+		WalletGateway: wg,
 	}, nil
 }
 
@@ -92,6 +109,13 @@ func (wallet *WalletSubmodule) V0API() v0api.IWallet {
 
 func (wallet *WalletSubmodule) WalletIntersection() wallet.WalletIntersection {
 	return wallet.adapter
+}
+
+func (wallet *WalletSubmodule) GetWalletSign() wallet.WalletSignFunc {
+	if wallet.WalletGateway == nil {
+		return wallet.adapter.WalletSign
+	}
+	return wallet.WalletGateway.WalletSign
 }
 
 func getPassphraseConfig(cfg *pconfig.Config) (pconfig.PassphraseConfig, error) {

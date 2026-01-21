@@ -196,7 +196,7 @@ Response:
 ```
 
 ### ClientDealPieceCID
-ClientCalcCommP calculates the CommP and data size of the specified CID
+ClientDealPieceCID returns the Piece CID and data size for the specified CID
 
 
 Perms: read
@@ -707,7 +707,7 @@ Response:
 ```
 
 ### ClientListDataTransfers
-ClientListTransfers returns the status of all ongoing transfers of data
+ClientListDataTransfers returns the status of all ongoing transfers of data
 
 
 Perms: write

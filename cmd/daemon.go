@@ -45,7 +45,7 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(makeGenFlag, "make genesis"),
 		cmds.StringOption(preTemplateFlag, "template for make genesis"),
 		cmds.StringOption(SwarmAddress, "multiaddress to listen on for filecoin network connections"),
-		cmds.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publically dialable"),
+		cmds.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publicly dialable"),
 		cmds.BoolOption(OfflineMode, "start the node without networking"),
 		cmds.BoolOption(ELStdout),
 		cmds.BoolOption(ULimit, "manage open file limit").WithDefault(true),
@@ -58,6 +58,7 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(Network, "when set, populates config with network specific parameters, eg. mainnet,2k,calibrationnet,interopnet,butterflynet").WithDefault("mainnet"),
 		cmds.StringOption(Password, "set wallet password"),
 		cmds.StringOption(Profile, "specify type of node, eg. bootstrapper"),
+		cmds.StringOption(WalletGateway, "set sophon gateway url and token, eg. token:url"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if limit, _ := req.Options[ULimit].(bool); limit {
@@ -168,6 +169,9 @@ func initRun(req *cmds.Request, repoDir string) error {
 			return fmt.Errorf("must also pass token with venus auth service to `--%s`", AuthServiceToken)
 		}
 	}
+	if walletGateway, ok := req.Options[WalletGateway].(string); ok && len(walletGateway) > 0 {
+		cfg.Wallet.GatewayBacked = walletGateway
+	}
 
 	if err := rep.ReplaceConfig(cfg); err != nil {
 		log.Errorf("Error replacing config %s", err)
@@ -182,7 +186,7 @@ func initRun(req *cmds.Request, repoDir string) error {
 	// import snapshot argument only work when init
 	importPath, _ := req.Options[ImportSnapshot].(string)
 	if len(importPath) != 0 {
-		err := Import(req.Context, rep, importPath)
+		err := Import(req.Context, rep, network, importPath)
 		if err != nil {
 			log.Errorf("failed to import snapshot, import path: %s, error: %s", importPath, err.Error())
 			return err
@@ -239,6 +243,9 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 	if len(config.API.VenusAuthURL)+len(config.API.VenusAuthToken) > 0 && len(config.API.VenusAuthToken)*len(config.API.VenusAuthURL) == 0 {
 		return fmt.Errorf("must set both venus auth service url and token at the same time")
+	}
+	if walletGateway, ok := req.Options[WalletGateway].(string); ok && len(walletGateway) > 0 {
+		config.Wallet.GatewayBacked = walletGateway
 	}
 
 	if bootPeers, ok := req.Options[BootstrapPeers].([]string); ok && len(bootPeers) > 0 {
@@ -321,7 +328,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	// The request is expected to remain open so the daemon uses the request context.
 	// Pass a new context here if the flow changes such that the command should exit while leaving
-	// a forked deamon running.
+	// a forked daemon running.
 	return fcn.RunRPCAndWait(req.Context, RootCmdDaemon, ready)
 }
 

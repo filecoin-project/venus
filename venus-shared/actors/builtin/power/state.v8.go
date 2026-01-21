@@ -21,6 +21,8 @@ import (
 	builtin8 "github.com/filecoin-project/go-state-types/builtin"
 	power8 "github.com/filecoin-project/go-state-types/builtin/v8/power"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+
+	builtin17 "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var _ State = (*state8)(nil)
@@ -99,6 +101,14 @@ func (s *state8) MinerCounts() (uint64, uint64, error) {
 	return uint64(s.State.MinerAboveMinPowerCount), uint64(s.State.MinerCount), nil
 }
 
+func (s *state8) RampStartEpoch() int64 {
+	return 0
+}
+
+func (s *state8) RampDurationEpochs() uint64 {
+	return 0
+}
+
 func (s *state8) ListAllMiners() ([]address.Address, error) {
 	claims, err := s.claims()
 	if err != nil {
@@ -121,7 +131,25 @@ func (s *state8) ListAllMiners() ([]address.Address, error) {
 	return miners, nil
 }
 
-func (s *state8) ForEachClaim(cb func(miner address.Address, claim Claim) error) error {
+func (s *state8) CollectEligibleClaims(cacheInOut *builtin17.MapReduceCache) ([]builtin17.OwnedClaim, error) {
+
+	var res []builtin17.OwnedClaim
+	err := s.ForEachClaim(func(miner address.Address, claim Claim) error {
+		res = append(res, builtin17.OwnedClaim{
+			Address:         miner,
+			RawBytePower:    claim.RawBytePower,
+			QualityAdjPower: claim.QualityAdjPower,
+		})
+		return nil
+	}, true)
+	if err != nil {
+		return nil, fmt.Errorf("collecting claims: %w", err)
+	}
+	return res, nil
+
+}
+
+func (s *state8) ForEachClaim(cb func(miner address.Address, claim Claim) error, onlyEligible bool) error {
 	claims, err := s.claims()
 	if err != nil {
 		return err
@@ -133,10 +161,25 @@ func (s *state8) ForEachClaim(cb func(miner address.Address, claim Claim) error)
 		if err != nil {
 			return err
 		}
-		return cb(a, Claim{
-			RawBytePower:    claim.RawBytePower,
-			QualityAdjPower: claim.QualityAdjPower,
-		})
+		if !onlyEligible {
+			return cb(a, Claim{
+				RawBytePower:    claim.RawBytePower,
+				QualityAdjPower: claim.QualityAdjPower,
+			})
+		}
+
+		eligible, err := s.State.ClaimMeetsConsensusMinimums(&claim)
+
+		if err != nil {
+			return fmt.Errorf("checking consensus minimums: %w", err)
+		}
+		if eligible {
+			return cb(a, Claim{
+				RawBytePower:    claim.RawBytePower,
+				QualityAdjPower: claim.QualityAdjPower,
+			})
+		}
+		return nil
 	})
 }
 

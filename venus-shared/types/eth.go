@@ -54,6 +54,8 @@ type (
 	EthTopicSpec                   = types.EthTopicSpec
 	EthTrace                       = types.EthTrace
 	EthTraceBlock                  = types.EthTraceBlock
+	EthTraceFilterCriteria         = types.EthTraceFilterCriteria
+	EthTraceFilterResult           = types.EthTraceFilterResult
 	EthTraceReplayBlockTransaction = types.EthTraceReplayBlockTransaction
 	EthTraceTransaction            = types.EthTraceTransaction
 	EthTxReceipt                   = types.EthTxReceipt

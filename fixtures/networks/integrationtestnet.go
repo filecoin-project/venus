@@ -5,6 +5,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -56,6 +58,10 @@ func IntegrationNet() *NetworkConf {
 				UpgradeDragonHeight:               3855360,
 				UpgradeCalibrationDragonFixHeight: -102, // This fix upgrade only ran on calibrationnet
 				UpgradeWaffleHeight:               4154640,
+				UpgradeTuktukHeight:               4461240,
+				UpgradeTeepHeight:                 4867320,
+				UpgradeTockFixHeight:              -29,
+				UpgradeGoldenWeekHeight:           5348280,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:          address.Testnet,
@@ -64,13 +70,15 @@ func IntegrationNet() *NetworkConf {
 			Eip155ChainID:           314,
 			ActorDebugging:          false,
 			F3Enabled:               false,
-			F3BootstrapEpoch:        -1,
-			ManifestServerID:        "12D3KooWENMwUF9YxvQxar7uBWJtZkA6amvK4xWmKXfSiHUo2Qq7",
+
+			UpgradeTeepInitialFilReserved: constants.InitialFilReserved,
 		},
 	}
 
 	nc.Network.ForkUpgradeParam.UpgradePhoenixHeight = nc.Network.ForkUpgradeParam.UpgradeDragonHeight + 10
 	nc.Network.DrandSchedule[nc.Network.ForkUpgradeParam.UpgradePhoenixHeight] = config.DrandQuicknet
+
+	nc.Network.ForkUpgradeParam.UpgradeTockHeight = nc.Network.ForkUpgradeParam.UpgradeTeepHeight + builtin.EpochsInDay*90
 
 	return nc
 }

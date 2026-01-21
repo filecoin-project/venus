@@ -68,7 +68,7 @@ func NewSignedMessage(ctx context.Context, msg types.Message, s types.Signer) (*
 // in tests instead of manually creating messages -- it both reduces duplication and gives us
 // exactly one place to create valid messages for tests if messages require validation in the
 // future.
-// TODO support chosing from address
+// TODO support choosing from address
 func NewSignedMessageForTestGetter(ms MockSigner) func(uint64) *types.SignedMessage {
 	i := 0
 	return func(nonce uint64) *types.SignedMessage {
@@ -194,7 +194,7 @@ func SignMsgs(ms MockSigner, msgs []*types.Message) ([]*types.SignedMessage, err
 // at a later point.
 func NewMsgsWithAddrs(n int, a []address.Address) []*types.Message {
 	if n > len(a) {
-		panic("cannot create more messages than there are addresess for")
+		panic("cannot create more messages than there are addresses for")
 	}
 	newMsg := NewMessageForTestGetter()
 	msgs := make([]*types.Message, n)

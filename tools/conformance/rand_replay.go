@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/test-vectors/schema"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type ReplayingRand struct {
@@ -67,4 +68,20 @@ func (r *ReplayingRand) GetBeaconRandomness(ctx context.Context, round abi.Chain
 	r.reporter.Logf("returning fallback beacon randomness: epoch=%d, ", round)
 
 	return r.fallback.GetBeaconRandomness(ctx, round)
+}
+
+func (r *ReplayingRand) GetBeaconEntry(ctx context.Context, round abi.ChainEpoch) (*types.BeaconEntry, error) {
+	rule := schema.RandomnessRule{
+		Kind:  schema.RandomnessBeacon,
+		Epoch: int64(round),
+	}
+
+	if ret, ok := r.match(rule); ok {
+		r.reporter.Logf("returning saved beacon randomness: epoch=%d, result=%x", round, ret)
+		return &types.BeaconEntry{Round: 10, Data: ret[:]}, nil
+	}
+
+	r.reporter.Logf("returning fallback beacon randomness: epoch=%d, ", round)
+
+	return r.fallback.GetBeaconEntry(ctx, round)
 }

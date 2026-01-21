@@ -148,7 +148,7 @@ func (d *actorDispatcher) Signature(methodNum abi.MethodNum) (MethodSignature, *
 	return d.signature(methodNum)
 }
 
-// ExcuteError error in vm excute
+// ExcuteError error in vm execute
 type ExcuteError struct {
 	code exitcode.ExitCode
 	msg  string

@@ -258,7 +258,7 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Messag
 	})
 }
 
-// MpoolBatchPush batch pushes a unsigned message to mempool.
+// MpoolBatchPush batch pushes an unsigned message to mempool.
 func (a *MessagePoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
 	var messageCids []cid.Cid
 	for _, smsg := range smsgs {
@@ -292,7 +292,7 @@ func (a *MessagePoolAPI) MpoolBatchPushUntrusted(ctx context.Context, smsgs []*t
 	return messageCids, nil
 }
 
-// MpoolBatchPushMessage batch pushes a unsigned message to mempool.
+// MpoolBatchPushMessage batch pushes an unsigned message to mempool.
 func (a *MessagePoolAPI) MpoolBatchPushMessage(ctx context.Context, msgs []*types.Message, spec *types.MessageSendSpec) ([]*types.SignedMessage, error) {
 	var smsgs []*types.SignedMessage
 	for _, msg := range msgs {

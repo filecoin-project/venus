@@ -14,10 +14,11 @@ import (
 	bitfield "github.com/filecoin-project/go-bitfield"
 	certs "github.com/filecoin-project/go-f3/certs"
 	gpbft "github.com/filecoin-project/go-f3/gpbft"
+	manifest "github.com/filecoin-project/go-f3/manifest"
 	jsonrpc "github.com/filecoin-project/go-jsonrpc"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
-	miner "github.com/filecoin-project/go-state-types/builtin/v13/miner"
+	miner "github.com/filecoin-project/go-state-types/builtin/v17/miner"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	miner0 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifreg "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -623,6 +624,36 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockByNumber(arg0, arg1, arg2 interfa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetBlockByNumber", reflect.TypeOf((*MockFullNode)(nil).EthGetBlockByNumber), arg0, arg1, arg2)
 }
 
+// EthGetBlockReceipts mocks base method.
+func (m *MockFullNode) EthGetBlockReceipts(arg0 context.Context, arg1 types.EthBlockNumberOrHash) ([]*types.EthTxReceipt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetBlockReceipts", arg0, arg1)
+	ret0, _ := ret[0].([]*types.EthTxReceipt)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthGetBlockReceipts indicates an expected call of EthGetBlockReceipts.
+func (mr *MockFullNodeMockRecorder) EthGetBlockReceipts(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetBlockReceipts", reflect.TypeOf((*MockFullNode)(nil).EthGetBlockReceipts), arg0, arg1)
+}
+
+// EthGetBlockReceiptsLimited mocks base method.
+func (m *MockFullNode) EthGetBlockReceiptsLimited(arg0 context.Context, arg1 types.EthBlockNumberOrHash, arg2 abi.ChainEpoch) ([]*types.EthTxReceipt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetBlockReceiptsLimited", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*types.EthTxReceipt)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthGetBlockReceiptsLimited indicates an expected call of EthGetBlockReceiptsLimited.
+func (mr *MockFullNodeMockRecorder) EthGetBlockReceiptsLimited(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetBlockReceiptsLimited", reflect.TypeOf((*MockFullNode)(nil).EthGetBlockReceiptsLimited), arg0, arg1, arg2)
+}
+
 // EthGetBlockTransactionCountByHash mocks base method.
 func (m *MockFullNode) EthGetBlockTransactionCountByHash(arg0 context.Context, arg1 types.EthHash) (types.EthUint64, error) {
 	m.ctrl.T.Helper()
@@ -998,6 +1029,21 @@ func (mr *MockFullNodeMockRecorder) EthTraceBlock(arg0, arg1 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceBlock", reflect.TypeOf((*MockFullNode)(nil).EthTraceBlock), arg0, arg1)
 }
 
+// EthTraceFilter mocks base method.
+func (m *MockFullNode) EthTraceFilter(arg0 context.Context, arg1 types.EthTraceFilterCriteria) ([]*types.EthTraceFilterResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthTraceFilter", arg0, arg1)
+	ret0, _ := ret[0].([]*types.EthTraceFilterResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthTraceFilter indicates an expected call of EthTraceFilter.
+func (mr *MockFullNodeMockRecorder) EthTraceFilter(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceFilter", reflect.TypeOf((*MockFullNode)(nil).EthTraceFilter), arg0, arg1)
+}
+
 // EthTraceReplayBlockTransactions mocks base method.
 func (m *MockFullNode) EthTraceReplayBlockTransactions(arg0 context.Context, arg1 string, arg2 []string) ([]*types.EthTraceReplayBlockTransaction, error) {
 	m.ctrl.T.Helper()
@@ -1118,19 +1164,109 @@ func (mr *MockFullNodeMockRecorder) F3GetLatestCertificate(arg0 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetLatestCertificate", reflect.TypeOf((*MockFullNode)(nil).F3GetLatestCertificate), arg0)
 }
 
-// F3Participate mocks base method.
-func (m *MockFullNode) F3Participate(arg0 context.Context, arg1 address.Address, arg2, arg3 time.Time) (bool, error) {
+// F3GetManifest mocks base method.
+func (m *MockFullNode) F3GetManifest(arg0 context.Context) (*manifest.Manifest, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "F3Participate", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "F3GetManifest", arg0)
+	ret0, _ := ret[0].(*manifest.Manifest)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetManifest indicates an expected call of F3GetManifest.
+func (mr *MockFullNodeMockRecorder) F3GetManifest(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetManifest", reflect.TypeOf((*MockFullNode)(nil).F3GetManifest), arg0)
+}
+
+// F3GetOrRenewParticipationTicket mocks base method.
+func (m *MockFullNode) F3GetOrRenewParticipationTicket(arg0 context.Context, arg1 address.Address, arg2 types0.F3ParticipationTicket, arg3 uint64) (types0.F3ParticipationTicket, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetOrRenewParticipationTicket", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(types0.F3ParticipationTicket)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetOrRenewParticipationTicket indicates an expected call of F3GetOrRenewParticipationTicket.
+func (mr *MockFullNodeMockRecorder) F3GetOrRenewParticipationTicket(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetOrRenewParticipationTicket", reflect.TypeOf((*MockFullNode)(nil).F3GetOrRenewParticipationTicket), arg0, arg1, arg2, arg3)
+}
+
+// F3GetPowerTableByInstance mocks base method.
+func (m *MockFullNode) F3GetPowerTableByInstance(arg0 context.Context, arg1 uint64) (gpbft.PowerEntries, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetPowerTableByInstance", arg0, arg1)
+	ret0, _ := ret[0].(gpbft.PowerEntries)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetPowerTableByInstance indicates an expected call of F3GetPowerTableByInstance.
+func (mr *MockFullNodeMockRecorder) F3GetPowerTableByInstance(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetPowerTableByInstance", reflect.TypeOf((*MockFullNode)(nil).F3GetPowerTableByInstance), arg0, arg1)
+}
+
+// F3GetProgress mocks base method.
+func (m *MockFullNode) F3GetProgress(arg0 context.Context) (gpbft.InstanceProgress, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3GetProgress", arg0)
+	ret0, _ := ret[0].(gpbft.InstanceProgress)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3GetProgress indicates an expected call of F3GetProgress.
+func (mr *MockFullNodeMockRecorder) F3GetProgress(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3GetProgress", reflect.TypeOf((*MockFullNode)(nil).F3GetProgress), arg0)
+}
+
+// F3IsRunning mocks base method.
+func (m *MockFullNode) F3IsRunning(arg0 context.Context) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3IsRunning", arg0)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// F3Participate indicates an expected call of F3Participate.
-func (mr *MockFullNodeMockRecorder) F3Participate(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+// F3IsRunning indicates an expected call of F3IsRunning.
+func (mr *MockFullNodeMockRecorder) F3IsRunning(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3Participate", reflect.TypeOf((*MockFullNode)(nil).F3Participate), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3IsRunning", reflect.TypeOf((*MockFullNode)(nil).F3IsRunning), arg0)
+}
+
+// F3ListParticipants mocks base method.
+func (m *MockFullNode) F3ListParticipants(arg0 context.Context) ([]types0.F3Participant, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3ListParticipants", arg0)
+	ret0, _ := ret[0].([]types0.F3Participant)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3ListParticipants indicates an expected call of F3ListParticipants.
+func (mr *MockFullNodeMockRecorder) F3ListParticipants(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3ListParticipants", reflect.TypeOf((*MockFullNode)(nil).F3ListParticipants), arg0)
+}
+
+// F3Participate mocks base method.
+func (m *MockFullNode) F3Participate(arg0 context.Context, arg1 types0.F3ParticipationTicket) (types0.F3ParticipationLease, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "F3Participate", arg0, arg1)
+	ret0, _ := ret[0].(types0.F3ParticipationLease)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// F3Participate indicates an expected call of F3Participate.
+func (mr *MockFullNodeMockRecorder) F3Participate(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "F3Participate", reflect.TypeOf((*MockFullNode)(nil).F3Participate), arg0, arg1)
 }
 
 // FilecoinAddressToEthAddress mocks base method.
@@ -2858,6 +2994,21 @@ func (mr *MockFullNodeMockRecorder) StateMarketParticipants(arg0, arg1 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMarketParticipants", reflect.TypeOf((*MockFullNode)(nil).StateMarketParticipants), arg0, arg1)
 }
 
+// StateMarketProposalPending mocks base method.
+func (m *MockFullNode) StateMarketProposalPending(arg0 context.Context, arg1 cid.Cid, arg2 types0.TipSetKey) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMarketProposalPending", arg0, arg1, arg2)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMarketProposalPending indicates an expected call of StateMarketProposalPending.
+func (mr *MockFullNodeMockRecorder) StateMarketProposalPending(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMarketProposalPending", reflect.TypeOf((*MockFullNode)(nil).StateMarketProposalPending), arg0, arg1, arg2)
+}
+
 // StateMarketStorageDeal mocks base method.
 func (m *MockFullNode) StateMarketStorageDeal(arg0 context.Context, arg1 abi.DealID, arg2 types0.TipSetKey) (*types0.MarketDeal, error) {
 	m.ctrl.T.Helper()
@@ -2918,6 +3069,21 @@ func (mr *MockFullNodeMockRecorder) StateMinerAvailableBalance(arg0, arg1, arg2 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerAvailableBalance", reflect.TypeOf((*MockFullNode)(nil).StateMinerAvailableBalance), arg0, arg1, arg2)
 }
 
+// StateMinerCreationDeposit mocks base method.
+func (m *MockFullNode) StateMinerCreationDeposit(arg0 context.Context, arg1 types0.TipSetKey) (big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMinerCreationDeposit", arg0, arg1)
+	ret0, _ := ret[0].(big.Int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMinerCreationDeposit indicates an expected call of StateMinerCreationDeposit.
+func (mr *MockFullNodeMockRecorder) StateMinerCreationDeposit(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerCreationDeposit", reflect.TypeOf((*MockFullNode)(nil).StateMinerCreationDeposit), arg0, arg1)
+}
+
 // StateMinerDeadlines mocks base method.
 func (m *MockFullNode) StateMinerDeadlines(arg0 context.Context, arg1 address.Address, arg2 types0.TipSetKey) ([]types0.Deadline, error) {
 	m.ctrl.T.Helper()
@@ -2976,6 +3142,21 @@ func (m *MockFullNode) StateMinerInitialPledgeCollateral(arg0 context.Context, a
 func (mr *MockFullNodeMockRecorder) StateMinerInitialPledgeCollateral(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerInitialPledgeCollateral", reflect.TypeOf((*MockFullNode)(nil).StateMinerInitialPledgeCollateral), arg0, arg1, arg2, arg3)
+}
+
+// StateMinerInitialPledgeForSector mocks base method.
+func (m *MockFullNode) StateMinerInitialPledgeForSector(arg0 context.Context, arg1 abi.ChainEpoch, arg2 abi.SectorSize, arg3 uint64, arg4 types0.TipSetKey) (big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMinerInitialPledgeForSector", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(big.Int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMinerInitialPledgeForSector indicates an expected call of StateMinerInitialPledgeForSector.
+func (mr *MockFullNodeMockRecorder) StateMinerInitialPledgeForSector(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerInitialPledgeForSector", reflect.TypeOf((*MockFullNode)(nil).StateMinerInitialPledgeForSector), arg0, arg1, arg2, arg3, arg4)
 }
 
 // StateMinerPartitions mocks base method.
@@ -3351,6 +3532,20 @@ func (m *MockFullNode) SubscribeActorEventsRaw(arg0 context.Context, arg1 *types
 func (mr *MockFullNodeMockRecorder) SubscribeActorEventsRaw(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeActorEventsRaw", reflect.TypeOf((*MockFullNode)(nil).SubscribeActorEventsRaw), arg0, arg1)
+}
+
+// SyncCheckpoint mocks base method.
+func (m *MockFullNode) SyncCheckpoint(arg0 context.Context, arg1 types0.TipSetKey) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SyncCheckpoint", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SyncCheckpoint indicates an expected call of SyncCheckpoint.
+func (mr *MockFullNodeMockRecorder) SyncCheckpoint(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncCheckpoint", reflect.TypeOf((*MockFullNode)(nil).SyncCheckpoint), arg0, arg1)
 }
 
 // SyncIncomingBlocks mocks base method.

@@ -349,6 +349,21 @@ func (cia *chainInfoAPI) VerifyEntry(parent, child *types.BeaconEntry, height ab
 // the entry has not yet been produced, the call will block until the entry
 // becomes available
 func (cia *chainInfoAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	ts := cia.chain.ChainReader.GetHead()
+	if epoch <= ts.Height() {
+		if epoch < 0 {
+			epoch = 0
+		}
+		// get the beacon entry off the chain
+		ts, err := cia.chain.ChainReader.GetTipSet(ctx, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+		r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand, cia.chain.Fork.GetNetworkVersion)
+		return r.GetBeaconEntry(ctx, epoch)
+	}
+
+	// else we're asking for the future, get it from drand and block until it arrives
 	b := cia.chain.Drand.BeaconForEpoch(epoch)
 	nv := cia.chain.Fork.GetNetworkVersion(ctx, epoch)
 	rr := b.MaxBeaconRoundForEpoch(nv, epoch)
@@ -357,7 +372,7 @@ func (cia *chainInfoAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.Chai
 	select {
 	case be, ok := <-e:
 		if !ok {
-			return nil, fmt.Errorf("beacon get returned no value")
+			return nil, errors.New("beacon get returned no value")
 		}
 		if be.Err != nil {
 			return nil, be.Err
@@ -586,7 +601,7 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 				// This is not necessarily an error -- EVM methods (and in the future native actors) may
 				// return just bytes, and in the not so distant future we'll have native wasm actors
 				// that are by definition not in the registry.
-				// So in this case, log a debug message and retun the raw bytes.
+				// So in this case, log a debug message and return the raw bytes.
 				log.Debugf("failed to get return type: %s", err)
 				returndec = recpt.Return
 			case err != nil:
@@ -745,6 +760,10 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 			UpgradeDragonHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeDragonHeight,
 			UpgradePhoenixHeight:     cfg.NetworkParams.ForkUpgradeParam.UpgradePhoenixHeight,
 			UpgradeWaffleHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeWaffleHeight,
+			UpgradeTuktukHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeTuktukHeight,
+			UpgradeTeepHeight:        cfg.NetworkParams.ForkUpgradeParam.UpgradeTeepHeight,
+			UpgradeTockHeight:        cfg.NetworkParams.ForkUpgradeParam.UpgradeTockHeight,
+			UpgradeGoldenWeekHeight:  cfg.NetworkParams.ForkUpgradeParam.UpgradeGoldenWeekHeight,
 		},
 		Eip155ChainID: cfg.NetworkParams.Eip155ChainID,
 	}
@@ -781,7 +800,7 @@ func (cia *chainInfoAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, er
 func (cia *chainInfoAPI) StateActorManifestCID(ctx context.Context, nv network.Version) (cid.Cid, error) {
 	actorVersion, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
-		return cid.Undef, fmt.Errorf("invalid network version")
+		return cid.Undef, errors.New("invalid network version")
 	}
 
 	c, ok := actors.GetManifest(actorVersion)
@@ -898,7 +917,7 @@ func (cia *chainInfoAPI) ChainGetEvents(ctx context.Context, root cid.Cid) ([]ty
 	var evt types.Event
 	err = evtArr.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
 		if u > math.MaxInt {
-			return fmt.Errorf("too many events")
+			return errors.New("too many events")
 		}
 		if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
 			return err
@@ -925,4 +944,23 @@ func (cia *chainInfoAPI) StateCompute(ctx context.Context, height abi.ChainEpoch
 		Root:  st,
 		Trace: t,
 	}, nil
+}
+
+func (cia *chainInfoAPI) StateMarketProposalPending(ctx context.Context, proposalCid cid.Cid, tsk types.TipSetKey) (bool, error) {
+	ts, err := cia.ChainGetTipSet(ctx, tsk)
+	if err != nil {
+		return false, fmt.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	st, err := cia.chain.Stmgr.GetMarketState(ctx, ts)
+	if err != nil {
+		return false, err
+	}
+
+	props, err := st.PendingProposals()
+	if err != nil {
+		return false, err
+	}
+
+	return props.Has(proposalCid)
 }

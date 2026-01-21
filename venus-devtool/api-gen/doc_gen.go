@@ -186,32 +186,32 @@ curl http://<ip>:<port>/rpc/v{{ .APIVersion }} -X POST -H "Content-Type: applica
 			return g.Methods[i].Name < g.Methods[j].Name
 		})
 
-		fmt.Fprintf(buf, "* [%s](#%s)\n", g.GroupName, strings.ToLower(g.GroupName))
+		_, _ = fmt.Fprintf(buf, "* [%s](#%s)\n", g.GroupName, strings.ToLower(g.GroupName))
 		for _, method := range g.Methods {
-			fmt.Fprintf(buf, "  * [%s](#%s)\n", method.Name, strings.ToLower(method.Name))
+			_, _ = fmt.Fprintf(buf, "  * [%s](#%s)\n", method.Name, strings.ToLower(method.Name))
 		}
 	}
 
-	fmt.Fprintf(buf, "\n")
+	_, _ = fmt.Fprintf(buf, "\n")
 	for _, g := range groups {
-		fmt.Fprintf(buf, "## %s\n\n", g.GroupName)
+		_, _ = fmt.Fprintf(buf, "## %s\n\n", g.GroupName)
 
 		for _, m := range g.Methods {
-			fmt.Fprintf(buf, "### %s\n", m.Name)
-			fmt.Fprintf(buf, "%s\n\n", m.Comment)
+			_, _ = fmt.Fprintf(buf, "### %s\n", m.Name)
+			_, _ = fmt.Fprintf(buf, "%s\n\n", m.Comment)
 
-			fmt.Fprintf(buf, "Perms: %s\n\n", m.Perm)
+			_, _ = fmt.Fprintf(buf, "Perms: %s\n\n", m.Perm)
 
 			if strings.Count(m.InputExample, "\n") > 0 {
-				fmt.Fprintf(buf, "Inputs:\n```json\n%s\n```\n\n", m.InputExample)
+				_, _ = fmt.Fprintf(buf, "Inputs:\n```json\n%s\n```\n\n", m.InputExample)
 			} else {
-				fmt.Fprintf(buf, "Inputs: `%s`\n\n", m.InputExample)
+				_, _ = fmt.Fprintf(buf, "Inputs: `%s`\n\n", m.InputExample)
 			}
 
 			if strings.Count(m.ResponseExample, "\n") > 0 {
-				fmt.Fprintf(buf, "Response:\n```json\n%s\n```\n\n", m.ResponseExample)
+				_, _ = fmt.Fprintf(buf, "Response:\n```json\n%s\n```\n\n", m.ResponseExample)
 			} else {
-				fmt.Fprintf(buf, "Response: `%s`\n\n", m.ResponseExample)
+				_, _ = fmt.Fprintf(buf, "Response: `%s`\n\n", m.ResponseExample)
 			}
 		}
 	}

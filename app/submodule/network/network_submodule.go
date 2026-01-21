@@ -47,9 +47,9 @@ import (
 	filexchange "github.com/filecoin-project/venus/pkg/net/exchange"
 	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
 	"github.com/filecoin-project/venus/pkg/net/peermgr"
-	"github.com/filecoin-project/venus/pkg/net/pubsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	appstate "github.com/filecoin-project/venus/pkg/state"
+	"github.com/filecoin-project/venus/pkg/vf3"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
@@ -88,9 +88,8 @@ type NetworkSubmodule struct { //nolint
 
 	ScoreKeeper *net.ScoreKeeper
 
-	indexMsgRelayCancelFunc libp2pps.RelayCancelFunc
-
-	cfg networkConfig
+	cfg   networkConfig
+	F3Cfg *vf3.Config
 }
 
 // API create a new network implement
@@ -114,7 +113,6 @@ func (networkSubmodule *NetworkSubmodule) Stop(ctx context.Context) {
 	if err := networkSubmodule.Router.(*dht.IpfsDHT).Close(); err != nil {
 		networkLogger.Errorf("error closing dht: %s", err.Error())
 	}
-	networkSubmodule.indexMsgRelayCancelFunc()
 }
 
 type networkConfig interface {
@@ -145,6 +143,11 @@ func NewNetworkSubmodule(ctx context.Context,
 		}
 	}
 
+	var f3Cfg *vf3.Config
+	if cfg.NetworkParams.F3Enabled {
+		f3Cfg = vf3.NewConfig(networkName, cfg.NetworkParams)
+	}
+
 	// peer manager
 	bootNodes, err := net.ParseAddresses(ctx, cfg.Bootstrap.Addresses)
 	if err != nil {
@@ -164,7 +167,7 @@ func NewNetworkSubmodule(ctx context.Context,
 		return nil, err
 	}
 
-	router, err := makeDHT(ctx, rawHost, config, networkName, bootNodes, cfg.PubsubConfig.Bootstrapper)
+	router, err := makeDHT(ctx, rawHost, config, networkName, cfg.PubsubConfig.Bootstrapper)
 	if err != nil {
 		return nil, err
 	}
@@ -181,14 +184,9 @@ func NewNetworkSubmodule(ctx context.Context,
 	}
 
 	sk := net.NewScoreKeeper()
-	gsub, err := net.NewGossipSub(ctx, peerHost, sk, networkName, cfg.NetworkParams.DrandSchedule, bootNodes, cfg.PubsubConfig.Bootstrapper, config.Repo().Config().NetworkParams.F3Enabled)
+	gsub, err := net.NewGossipSub(ctx, peerHost, sk, networkName, cfg.NetworkParams.DrandSchedule, bootNodes, cfg.PubsubConfig.Bootstrapper, f3Cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up network")
-	}
-
-	indexMsgRelayCancelFunc, err := relayIndexerMessages(gsub, networkName, peerHost, chainStore)
-	if err != nil {
-		return nil, fmt.Errorf("failed to set up relay indexer messages: %w", err)
 	}
 
 	// set up bitswap
@@ -223,23 +221,23 @@ func NewNetworkSubmodule(ctx context.Context,
 	helloHandler := helloprotocol.NewHelloProtocolHandler(peerHost, peerMgr, exchangeClient, chainStore, messageStore, config.GenesisCid(), time.Duration(config.Repo().Config().NetworkParams.BlockDelay)*time.Second)
 	// build the network submdule
 	return &NetworkSubmodule{
-		NetworkName:             networkName,
-		Host:                    peerHost,
-		RawHost:                 rawHost,
-		Router:                  router,
-		Pubsub:                  gsub,
-		Bitswap:                 bswap,
-		GraphExchange:           gsync,
-		ExchangeClient:          exchangeClient,
-		exchangeServer:          exchangeServer,
-		Network:                 network,
-		DataTransfer:            dt,
-		DataTransferHost:        dtNet,
-		PeerMgr:                 peerMgr,
-		HelloHandler:            helloHandler,
-		cfg:                     config,
-		ScoreKeeper:             sk,
-		indexMsgRelayCancelFunc: indexMsgRelayCancelFunc,
+		NetworkName:      networkName,
+		Host:             peerHost,
+		RawHost:          rawHost,
+		Router:           router,
+		Pubsub:           gsub,
+		Bitswap:          bswap,
+		GraphExchange:    gsync,
+		ExchangeClient:   exchangeClient,
+		exchangeServer:   exchangeServer,
+		Network:          network,
+		DataTransfer:     dt,
+		DataTransferHost: dtNet,
+		PeerMgr:          peerMgr,
+		HelloHandler:     helloHandler,
+		cfg:              config,
+		ScoreKeeper:      sk,
+		F3Cfg:            f3Cfg,
 	}, nil
 }
 
@@ -348,7 +346,7 @@ func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.Ipl
 	return appstate.NewView(cborStore, genesis.ParentStateRoot).InitNetworkName(ctx)
 }
 
-// address determines if we are publically dialable.  If so use public
+// address determines if we are publicly dialable.  If so use public
 // address, if not configure node to announce relay address.
 func buildHost(_ context.Context, config networkConfig, libP2pOpts []libp2p.Option, cfg *config.Config) (types.RawHost, error) {
 	if config.IsRelay() {
@@ -390,7 +388,7 @@ func buildHost(_ context.Context, config networkConfig, libP2pOpts []libp2p.Opti
 	return libp2p.New(opts...)
 }
 
-func makeDHT(ctx context.Context, h types.RawHost, config networkConfig, networkName string, bootNodes []peer.AddrInfo, bootstrapper bool) (routing.Routing, error) {
+func makeDHT(ctx context.Context, h types.RawHost, config networkConfig, networkName string, bootstrapper bool) (routing.Routing, error) {
 	mode := dht.ModeAuto
 	if bootstrapper {
 		mode = dht.ModeServer
@@ -456,27 +454,4 @@ func connectionManager(low, high uint, grace time.Duration, protected []string, 
 	}
 
 	return cm, nil
-}
-
-func relayIndexerMessages(ps *libp2pps.PubSub, nn string, h host.Host, chainReader *chain.Store) (libp2pps.RelayCancelFunc, error) {
-	topicName := types.IndexerIngestTopic(nn)
-
-	v := pubsub.NewIndexerMessageValidator(h.ID(), chainReader)
-
-	if err := ps.RegisterTopicValidator(topicName, v.Validate); err != nil {
-		return nil, fmt.Errorf("failed to register validator for topic %s, err: %w", topicName, err)
-	}
-
-	topicHandle, err := ps.Join(topicName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to join pubsub topic %s: %w", topicName, err)
-	}
-	cancelFunc, err := topicHandle.Relay()
-	if err != nil {
-		return nil, fmt.Errorf("failed to relay to pubsub messages for topic %s: %w", topicName, err)
-	}
-
-	networkLogger.Infof("relaying messages for pubsub topic %s", topicName)
-
-	return cancelFunc, nil
 }

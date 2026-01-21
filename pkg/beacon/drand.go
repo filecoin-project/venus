@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	dchain "github.com/drand/drand/chain"
-	dclient "github.com/drand/drand/client"
-	hclient "github.com/drand/drand/client/http"
-	dcrypto "github.com/drand/drand/crypto"
-	dlog "github.com/drand/drand/log"
+	dcommon "github.com/drand/drand/v2/common"
+	dchain "github.com/drand/drand/v2/common/chain"
+	dlog "github.com/drand/drand/v2/common/log"
+	dcrypto "github.com/drand/drand/v2/crypto"
+	dclient "github.com/drand/go-clients/client"
+	hclient "github.com/drand/go-clients/client/http"
+	drand "github.com/drand/go-clients/drand"
 	"github.com/drand/kyber"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"go.uber.org/zap"
@@ -32,7 +34,7 @@ import (
 // The root trust for the Drand chain is configured from build.DrandChain.
 type DrandBeacon struct {
 	isChained bool
-	client    dclient.Client
+	client    drand.Client
 
 	pubkey kyber.Point
 
@@ -72,22 +74,21 @@ func (l *logger) AddCallerSkip(skip int) dlog.Logger {
 	return &logger{l.SugaredLogger.With(zap.AddCallerSkip(skip))}
 }
 
-// NewDrandBeacon create new beacon client from config, genesis block time and block delay
+// NewDrandBeacon creates new beacon client from config, genesis block time and block delay
 func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*DrandBeacon, error) {
 	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(config.ChainInfoJSON)))
 	if err != nil {
 		return nil, fmt.Errorf("unable to unmarshal drand chain info: %w", err)
 	}
 
-	var clients []dclient.Client
+	var clients []drand.Client
 	for _, url := range config.Servers {
-		hc, err := hclient.NewWithInfo(url, drandChain, nil)
+		hc, err := hclient.NewWithInfo(&logger{&log.SugaredLogger}, url, drandChain, nil)
 		if err != nil {
 			return nil, fmt.Errorf("could not create http drand client: %w", err)
 		}
-		hc.(DrandHTTPClient).SetUserAgent("drand-client-lotus/" + constants.BuildVersion)
+		hc.SetUserAgent("drand-client-lotus/" + constants.UserVersion())
 		clients = append(clients, hc)
-
 	}
 
 	opts := []dclient.Option{
@@ -96,7 +97,11 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 		dclient.WithLogger(&logger{&log.SugaredLogger}),
 	}
 
-	log.Info("drand beacon without pubsub")
+	if len(clients) == 0 {
+		// This is necessary to convince a drand beacon to start without any clients. For historical
+		// beacons we need them to be able to verify old entries but we don't need to fetch new ones.
+		clients = append(clients, dclient.EmptyClientWithInfo(drandChain))
+	}
 
 	client, err := dclient.Wrap(clients, opts...)
 	if err != nil {
@@ -114,7 +119,7 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 		localCache: lc,
 	}
 
-	sch, err := dcrypto.GetSchemeByIDWithDefault(drandChain.Scheme)
+	sch, err := dcrypto.GetSchemeByID(drandChain.Scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +133,7 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 	return db, nil
 }
 
-// Entry get a beacon value of specify block height,
+// Entry gets a beacon value of specified block height
 func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan Response {
 	out := make(chan Response, 1)
 	if round != 0 {
@@ -149,8 +154,8 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan Response 
 		if err != nil {
 			br.Err = fmt.Errorf("drand failed Get request: %w", err)
 		} else {
-			br.Entry.Round = resp.Round()
-			br.Entry.Data = resp.Signature()
+			br.Entry.Round = resp.GetRound()
+			br.Entry.Data = resp.GetSignature()
 		}
 		log.Infow("done fetching randomness", "round", round, "took", time.Since(start))
 		out <- br
@@ -177,7 +182,7 @@ func (db *DrandBeacon) VerifyEntry(entry types.BeaconEntry, prevEntrySig []byte)
 		// return no error if the value is in the cache already
 		return nil
 	}
-	b := &dchain.Beacon{
+	b := &dcommon.Beacon{
 		PreviousSig: prevEntrySig,
 		Round:       entry.Round,
 		Signature:   entry.Data,
@@ -193,7 +198,7 @@ func (db *DrandBeacon) VerifyEntry(entry types.BeaconEntry, prevEntrySig []byte)
 	return nil
 }
 
-// MaxBeaconRoundForEpoch get the turn of beacon chain corresponding to chain height
+// MaxBeaconRoundForEpoch gets the turn of beacon chain corresponding to chain height
 func (db *DrandBeacon) MaxBeaconRoundForEpoch(nv network.Version, filEpoch abi.ChainEpoch) uint64 {
 	// TODO: sometimes the genesis time for filecoin is zero and this goes negative
 	latestTS := ((uint64(filEpoch) * db.filRoundTime) + db.filGenTime) - db.filRoundTime

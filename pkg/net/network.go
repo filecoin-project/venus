@@ -192,16 +192,10 @@ func (network *Network) Connectedness(p peer.ID) (network2.Connectedness, error)
 
 // AutoNatStatus return a struct with current NAT status and public dial address
 func (network *Network) AutoNatStatus() (types.NatInfo, error) {
-	autonat := network.rawHost.(*basichost.BasicHost).GetAutoNat()
-
-	if autonat == nil {
-		return types.NatInfo{
-			Reachability: network2.ReachabilityUnknown,
-		}, nil
-	}
+	reachability := network.rawHost.(*basichost.BasicHost).Reachability()
 
 	var addrs []string
-	if autonat.Status() == network2.ReachabilityPublic {
+	if reachability == network2.ReachabilityPublic {
 		for _, addr := range network.host.Addrs() {
 			if manet.IsPublicAddr(addr) {
 				addrs = append(addrs, addr.String())
@@ -210,7 +204,7 @@ func (network *Network) AutoNatStatus() (types.NatInfo, error) {
 	}
 
 	return types.NatInfo{
-		Reachability: autonat.Status(),
+		Reachability: reachability,
 		PublicAddrs:  addrs,
 	}, nil
 }

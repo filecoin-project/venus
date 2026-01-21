@@ -346,7 +346,7 @@ func (mp *MessagePool) selectMessagesOptimal(ctx context.Context, curTS, ts *typ
 		log.Infow("merge message chains done", "took", dt)
 	}
 
-	// 7. We have reached the edge of what can fit wholesale; if we still hae available
+	// 7. We have reached the edge of what can fit wholesale; if we still have available
 	//    gasLimit to pack some more chains, then trim the last chain and push it down.
 	//    Trimming invalidates subsequent dependent chains so that they can't be selected
 	//    as their dependency cannot be (fully) included.
@@ -476,7 +476,7 @@ func (mp *MessagePool) selectMessagesGreedy(ctx context.Context, curTS, ts *type
 	result := mp.selectPriorityMessages(ctx, pending, baseFee, ts)
 
 	// have we filled the block?
-	if result.gasLimit < minGas || len(result.msgs) > constants.BlockMessageLimit {
+	if result.gasLimit < minGas || len(result.msgs) >= constants.BlockMessageLimit {
 		return result, nil
 	}
 

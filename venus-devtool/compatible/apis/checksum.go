@@ -28,12 +28,12 @@ var checksumCmd = &cli.Command{
 
 				for ii := 0; ii < numIn; ii++ {
 					inTyp := meth.Type.In(ii)
-					fmt.Fprintf(&buf, "\tIn: %s\n", formatType(inTyp)) // nolint
+					_, _ = fmt.Fprintf(&buf, "\tIn: %s\n", formatType(inTyp)) // nolint
 				}
 
 				for oi := 0; oi < numOut; oi++ {
 					outTyp := meth.Type.Out(oi)
-					fmt.Fprintf(&buf, "\tOut: %s\n", formatType(outTyp)) // nolint
+					_, _ = fmt.Fprintf(&buf, "\tOut: %s\n", formatType(outTyp)) // nolint
 				}
 
 				fmt.Printf("\t%s:\tIn=%d,\tOut=%d,\tCheckSum=%x\n", meth.Name, numIn, numOut, md5.Sum(buf.Bytes()))

@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -24,10 +25,14 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-f3/certstore"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
@@ -100,7 +105,7 @@ type Store struct {
 	// head is the tipset at the head of the best known chain.
 	head *types.TipSet
 
-	checkPoint types.TipSetKey
+	checkPoint *types.TipSet
 	// Protects head and genesisCid.
 	mu sync.RWMutex
 
@@ -143,7 +148,6 @@ func NewStore(chainDs repo.Datastore,
 		bsstore:             bsstore,
 		headEvents:          pubsub.New(64),
 
-		checkPoint:     types.EmptyTSK,
 		genesis:        genesisCid,
 		reorgNotifeeCh: make(chan ReorgNotifee),
 		tsCache:        tsCache,
@@ -156,11 +160,22 @@ func NewStore(chainDs repo.Datastore,
 
 	val, err := store.ds.Get(context.TODO(), CheckPoint)
 	if err != nil {
-		store.checkPoint = types.NewTipSetKey(genesisCid)
+		store.checkPoint, err = store.GetTipSet(context.TODO(), types.NewTipSetKey(genesisCid))
+		if err != nil {
+			panic(fmt.Errorf("cannot get genesis tipset: %w", err))
+		}
 	} else {
-		_ = store.checkPoint.UnmarshalCBOR(bytes.NewReader(val)) //nolint:staticcheck
+		var checkPointTSK types.TipSetKey
+		err := checkPointTSK.UnmarshalCBOR(bytes.NewReader(val))
+		if err != nil {
+			panic(fmt.Errorf("cannot unmarshal checkpoint %s: %w", string(val), err))
+		}
+		store.checkPoint, err = store.GetTipSet(context.TODO(), checkPointTSK)
+		if err != nil {
+			panic(fmt.Errorf("cannot get checkpoint tipset: %w", err))
+		}
 	}
-	log.Infof("check point value: %v", store.checkPoint)
+	log.Infof("load check point height: %d, key: %v", store.checkPoint.Height(), store.checkPoint.Key())
 
 	store.reorgCh = store.reorgWorker(context.TODO())
 	return store
@@ -180,7 +195,7 @@ func NewStore(chainDs repo.Datastore,
 // then Load could be tricked into loading an invalid chain. Load will error if the
 // head does not link back to the expected genesis block, or the Store's
 // datastore does not store a link in the chain.  In case of error the caller
-// should not consider the chain useable and propagate the error.
+// should not consider the chain usable and propagate the error.
 func (store *Store) Load(ctx context.Context) (err error) {
 	ctx, span := trace.StartSpan(ctx, "Store.Load")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -253,7 +268,7 @@ func (store *Store) loadHead(ctx context.Context) (*types.TipSet, error) {
 	return store.GetTipSet(ctx, tsk)
 }
 
-// LoadTipsetMetadata load tipset status (state root and reciepts)
+// LoadTipsetMetadata load tipset status (state root and receipts)
 func (store *Store) LoadTipsetMetadata(ctx context.Context, ts *types.TipSet) (*TipSetMetadata, error) {
 	h := ts.Height()
 	key := datastore.NewKey(makeKey(ts.String(), h))
@@ -321,6 +336,10 @@ func (store *Store) GetTipSet(ctx context.Context, key types.TipSetKey) (*types.
 		return store.GetHead(), nil
 	}
 
+	return store.getTipSet(ctx, key)
+}
+
+func (store *Store) getTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
 	if val, has := store.tsCache.Get(key); has {
 		return val, nil
 	}
@@ -881,7 +900,7 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 
 		var b types.BlockHeader
 		if err := b.UnmarshalCBOR(bytes.NewBuffer(data.RawData())); err != nil {
-			return fmt.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
+			return fmt.Errorf("unmarshalling block header (cid=%s): %w", blk, err)
 		}
 
 		if currentMinHeight > b.Height {
@@ -969,19 +988,11 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 }
 
 // Import import a car file into local db
-func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, *types.BlockHeader, error) {
+func (store *Store) Import(ctx context.Context, network string, f3Ds datastore.Datastore, r io.Reader) (*types.TipSet, *types.BlockHeader, error) {
 	br, err := carv2.NewBlockReader(r)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loadcar failed: %w", err)
 	}
-
-	if len(br.Roots) == 0 {
-		return nil, nil, fmt.Errorf("no roots in snapshot car file")
-	}
-
-	var tailBlock types.BlockHeader
-	tailBlock.Height = abi.ChainEpoch(-1)
-	nextTailCid := br.Roots[0]
 
 	parallelPuts := 5
 	putThrottle := make(chan error, parallelPuts)
@@ -989,7 +1000,70 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, *ty
 		putThrottle <- nil
 	}
 
+	roots := br.Roots
+
+	var nextTailCid cid.Cid
+
+	var tailBlock types.BlockHeader
+	tailBlock.Height = abi.ChainEpoch(-1)
+
 	var buf []blocks.Block
+
+	if len(roots) == 0 {
+		return nil, nil, fmt.Errorf("no roots in snapshot car file")
+	}
+
+	if len(roots) == V2SnapshotRootCount {
+		var metadata SnapshotMetadata
+		blk, err := br.Next()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read snapshot metadata block: %w", err)
+		}
+
+		if err := metadata.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+			// Only one cid in roots, but not metadata, maybe it's a genesis block
+			log.Infof("failed to unmarshal snapshot metadata block: %v, attempting to parse the block as a genesis block instead", err)
+			if err := tailBlock.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+				return nil, nil, fmt.Errorf("failed to unmarshal genesis block: %w", err)
+			}
+			if len(tailBlock.Parents) > 0 {
+				nextTailCid = tailBlock.Parents[0]
+			} else {
+				// note: even the 0th block has a parent linking to the cbor genesis block
+				return nil, nil, fmt.Errorf("current block (epoch %d cid %s) has no parents", tailBlock.Height, tailBlock.Cid())
+			}
+
+			buf = append(buf, blk)
+		} else {
+			if metadata.F3Data != nil {
+				// import f3 snapshot
+				cid, f3Reader, _, err := br.NextReader()
+				if err != nil {
+					return nil, nil, fmt.Errorf("failed to read F3Data reader: %w", err)
+				}
+				if cid != *metadata.F3Data {
+					return nil, nil, fmt.Errorf("F3Data CID mismatch")
+				}
+
+				f3r := bufio.NewReader(f3Reader)
+
+				prefix := F3DatastorePrefix(network)
+				f3DsWrapper := namespace.Wrap(f3Ds, prefix)
+
+				log.Info("Importing F3Data to datastore")
+				if err := certstore.ImportSnapshotToDatastore(ctx, f3r, f3DsWrapper); err != nil {
+					return nil, nil, fmt.Errorf("failed to import f3Data to datastore: %w", err)
+				}
+			}
+
+			roots = metadata.HeadTipsetKey
+			nextTailCid = roots[0]
+		}
+	} else {
+		// V1 format: roots directly contains the tipset CIDs
+		nextTailCid = roots[0]
+	}
+
 	for {
 		blk, err := br.Next()
 		if err != nil {
@@ -1096,24 +1170,105 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, *ty
 	return root, &tailBlock, nil
 }
 
-// SetCheckPoint set current checkpoint
-func (store *Store) SetCheckPoint(checkPoint types.TipSetKey) {
-	store.checkPoint = checkPoint
+func F3DatastorePrefix(network string) datastore.Key {
+	if network == "testnetnet" {
+		network = "filecoin"
+	}
+
+	return datastore.NewKey("/f3/" + network)
 }
 
-// WriteCheckPoint writes the given cids to disk.
-func (store *Store) WriteCheckPoint(ctx context.Context, cids types.TipSetKey) error {
-	log.Infof("WriteCheckPoint %v", cids)
+// SetCheckpoint will set a checkpoint past which the chainstore will not allow forks. If the new
+// checkpoint is not an ancestor of the current head, head will be set to the new checkpoint.
+//
+// NOTE: Checkpoints cannot revert more than policy.Finality epochs.
+func (store *Store) SetCheckpoint(ctx context.Context, ts *types.TipSet) error {
+	log.Infof("SetCheckPoint at %d: %v", ts.Height(), ts.Key())
 	buf := new(bytes.Buffer)
-	err := cids.MarshalCBOR(buf)
+	err := ts.Key().MarshalCBOR(buf)
 	if err != nil {
 		return err
 	}
-	return store.ds.Put(ctx, CheckPoint, buf.Bytes())
+
+	store.mu.Lock()
+	defer store.mu.Unlock()
+
+	finality := store.head.Height() - policy.ChainFinality
+	targetChain, currentChain := ts, store.head
+
+	// First attempt to skip backwards to a common height using the chain index.
+	if targetChain.Height() > currentChain.Height() {
+		targetChain, err = store.GetTipSetByHeight(ctx, targetChain, currentChain.Height(), true)
+	} else if targetChain.Height() < currentChain.Height() {
+		currentChain, err = store.GetTipSetByHeight(ctx, currentChain, targetChain.Height(), true)
+	}
+	if err != nil {
+		return fmt.Errorf("checkpoint failed: error when finding the fork point: %w", err)
+	}
+
+	// Then walk backwards until either we find a common block (the fork height) or we reach
+	// finality. If the tipsets are _equal_ on the first pass through this loop, it means one
+	// chain is a prefix of the other chain because we've only walked back on one chain so far.
+	// In that case, we _don't_ check finality because we're not forking.
+	for !currentChain.Equals(targetChain) && currentChain.Height() > finality {
+		if currentChain.Height() >= targetChain.Height() {
+			currentChain, err = store.getTipSet(ctx, currentChain.Parents())
+			if err != nil {
+				return fmt.Errorf("checkpoint failed: error when walking the current chain: %w", err)
+			}
+		}
+
+		if targetChain.Height() > currentChain.Height() {
+			targetChain, err = store.getTipSet(ctx, targetChain.Parents())
+			if err != nil {
+				return fmt.Errorf("checkpoint failed: error when walking the target chain: %w", err)
+			}
+		}
+	}
+
+	// If we haven't found a common tipset by this point, we can't switch chains.
+	if !currentChain.Equals(targetChain) {
+		return fmt.Errorf("checkpoint failed: failed to find the fork point from %s (head) to %s (target) within finality",
+			store.head.Key(),
+			ts.Key(),
+		)
+	}
+
+	// If the target tipset isn't an ancestor of our current chain, we need to switch chains.
+	if !currentChain.Equals(ts) {
+		if err := store.setHead(ctx, ts); err != nil {
+			return fmt.Errorf("failed to switch chains when setting checkpoint: %w", err)
+		}
+	}
+
+	// Finally, set the checkpoint.
+	if err := store.ds.Put(ctx, CheckPoint, buf.Bytes()); err != nil {
+		return fmt.Errorf("checkpoint failed: failed to record checkpoint in the datastore: %w", err)
+	}
+	store.checkPoint = ts
+
+	return nil
+}
+
+// IsAncestorOf returns true if 'a' is an ancestor of 'b'
+func (store *Store) IsAncestorOf(ctx context.Context, a, b *types.TipSet) (bool, error) {
+	if b.Height() <= a.Height() {
+		return false, nil
+	}
+
+	target, err := store.GetTipSetByHeight(ctx, b, a.Height(), false)
+	if err != nil {
+		return false, err
+	}
+
+	return target.Equals(a), nil
 }
 
 // GetCheckPoint get the check point from store or disk.
-func (store *Store) GetCheckPoint() types.TipSetKey {
+func (store *Store) GetCheckPoint() *types.TipSet {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+
 	return store.checkPoint
 }
 
@@ -1189,7 +1344,7 @@ func (store *Store) Blockstore() blockstoreutil.Blockstore { // nolint
 	return store.bsstore
 }
 
-// GetParentReceipt get the receipt of parent tipset at specify message slot
+// GetParentReceipt gets the receipt of parent tipset at specified message slot
 func (store *Store) GetParentReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
 	ctx := context.TODO()
 	// block headers use adt0, for now.
@@ -1301,8 +1456,8 @@ func (store *Store) LookupID(ctx context.Context, ts *types.TipSet, addr address
 	return st.LookupID(addr)
 }
 
-// ResolveToDeterministicAddress get key address of specify address.
-// if ths addr is bls/secpk address, return directly, other get the pubkey and generate address
+// ResolveToDeterministicAddress gets key address of specified address.
+// If this addr is bls/secpk address, return directly, otherwise get the pubkey and generate address
 func (store *Store) ResolveToDeterministicAddress(ctx context.Context, ts *types.TipSet, addr address.Address) (address.Address, error) {
 	st, err := store.StateView(ctx, ts)
 	if err != nil {
@@ -1645,7 +1800,7 @@ func (store *Store) exceedsForkLength(ctx context.Context, synced, external *typ
 		}
 
 		// Now check to see if we've walked back to the checkpoint.
-		if synced.Key().Equals(store.checkPoint) {
+		if synced.Key().Equals(store.checkPoint.Key()) {
 			return true, nil
 		}
 

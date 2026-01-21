@@ -31,6 +31,7 @@ import (
 	types2 "github.com/filecoin-project/venus/venus-shared/actors/types"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -45,9 +46,10 @@ var ErrUnsupported = errors.New("unsupported method")
 
 func newEthAPI(em *EthSubModule) (*ethAPI, error) {
 	a := &ethAPI{
-		em:    em,
-		chain: em.chainModule.API(),
-		mpool: em.mpoolModule.API(),
+		em:              em,
+		chain:           em.chainModule.API(),
+		mpool:           em.mpoolModule.API(),
+		EthEventHandler: em.ethEventAPI,
 	}
 
 	dbPath := filepath.Join(a.em.sqlitePath, "txhash.db")
@@ -75,14 +77,33 @@ func newEthAPI(em *EthSubModule) (*ethAPI, error) {
 		}
 	}
 
+	cfg := em.cfg.FevmConfig
+	if cfg.EthBlkCacheSize > 0 {
+		var err error
+		a.EthBlkCache, err = arc.NewARC[cid.Cid, *types.EthBlock](cfg.EthBlkCacheSize)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create block cache: %w", err)
+		}
+
+		a.EthBlkTxCache, err = arc.NewARC[cid.Cid, *types.EthBlock](cfg.EthBlkCacheSize)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create block transaction cache: %w", err)
+		}
+	}
+
 	return a, nil
 }
 
 type ethAPI struct {
-	em               *EthSubModule
-	chain            v1.IChain
-	mpool            v1.IMessagePool
-	ethTxHashManager *ethTxHashManager
+	em                   *EthSubModule
+	chain                v1.IChain
+	mpool                v1.IMessagePool
+	ethTxHashManager     *ethTxHashManager
+	EthEventHandler      *ethEventAPI
+	MaxFilterHeightRange abi.ChainEpoch
+
+	EthBlkCache   *arc.ARCCache[cid.Cid, *types.EthBlock] // caches blocks by their CID but blocks only have the transaction hashes
+	EthBlkTxCache *arc.ARCCache[cid.Cid, *types.EthBlock] // caches blocks along with full transaction payload by their CID
 }
 
 func (a *ethAPI) start(ctx context.Context) error {
@@ -179,14 +200,57 @@ func (a *ethAPI) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash 
 func (a *ethAPI) EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error) {
 	ts, err := a.em.chainModule.ChainReader.GetTipSetByCid(ctx, blkHash.ToCid())
 	if err != nil {
-		return types.EthBlock{}, fmt.Errorf("error loading tipset %s: %w", ts, err)
+		return types.EthBlock{}, fmt.Errorf("failed to get tipset by cid: %w", err)
 	}
-	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
+	return a.getBlockByTipset(ctx, ts, fullTxInfo, "EthGetBlockByHash:"+blkHash.String())
+}
+
+func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (types.EthBlock, error) {
+	ts, err := getTipsetByBlockNumber(ctx, a.em.chainModule.ChainReader, blkParam, true)
+	if err != nil {
+		return types.EthBlock{}, err
+	}
+	return a.getBlockByTipset(ctx, ts, fullTxInfo, "EthGetBlockByNumber:"+blkParam)
+}
+
+func (a *ethAPI) getBlockByTipset(ctx context.Context, ts *types.TipSet, fullTxInfo bool, req string) (types.EthBlock, error) {
+	cache := a.EthBlkCache
+	if fullTxInfo {
+		cache = a.EthBlkTxCache
+	}
+
+	// Attempt to retrieve the Ethereum block from cache
+	cid, err := ts.Key().Cid()
+	if err != nil {
+		return types.EthBlock{}, fmt.Errorf("failed to get tipset key cid: %w", err)
+	}
+	if cache != nil {
+		if ethBlock, found := cache.Get(cid); found {
+			if ethBlock != nil {
+				return *ethBlock, nil
+			}
+			// Log and remove the nil entry from cache
+			log.Errorw("nil value in eth block cache", "cid", cid, "requested as", req)
+			cache.Remove(cid)
+		}
+	}
+
+	// Generate an Ethereum block from the Filecoin tipset
+	blk, err := newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
+	if err != nil {
+		return types.EthBlock{}, fmt.Errorf("failed to create Ethereum block from Filecoin tipset: %w", err)
+	}
+
+	// Add the newly created block to the cache and return
+	if cache != nil {
+		cache.Add(cid, &blk)
+	}
+	return blk, nil
 }
 
 func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool) (tipset *types.TipSet, err error) {
 	if blkParam == "earliest" {
-		return nil, fmt.Errorf("block param \"earliest\" is not supported")
+		return nil, errors.New("block param \"earliest\" is not supported")
 	}
 
 	head, err := a.chain.ChainHead(ctx)
@@ -199,7 +263,7 @@ func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool
 	case "latest":
 		parent, err := a.chain.ChainGetTipSet(ctx, head.Parents())
 		if err != nil {
-			return nil, fmt.Errorf("cannot get parent tipset")
+			return nil, errors.New("cannot get parent tipset")
 		}
 		return parent, nil
 	default:
@@ -209,7 +273,7 @@ func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool
 			return nil, fmt.Errorf("cannot parse block number: %v", err)
 		}
 		if abi.ChainEpoch(num) > head.Height()-1 {
-			return nil, fmt.Errorf("requested a future epoch (beyond 'latest')")
+			return nil, errors.New("requested a future epoch (beyond 'latest')")
 		}
 		ts, err := a.chain.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(num), head.Key())
 		if err != nil {
@@ -220,14 +284,6 @@ func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string, strict bool
 		}
 		return ts, nil
 	}
-}
-
-func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (types.EthBlock, error) {
-	ts, err := a.parseBlkParam(ctx, blkParam, true)
-	if err != nil {
-		return types.EthBlock{}, err
-	}
-	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
 }
 
 func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error) {
@@ -343,20 +399,40 @@ func (a *ethAPI) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*
 func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkParam types.EthBlockNumberOrHash) (types.EthUint64, error) {
 	addr, err := sender.ToFilecoinAddress()
 	if err != nil {
-		return types.EthUint64(0), err
+		return types.EthUint64(0), fmt.Errorf("invalid address: %w", err)
+
 	}
+	// Handle "pending" block parameter separately
+	if blkParam.PredefinedBlock != nil && *blkParam.PredefinedBlock == "pending" {
+		nonce, err := a.mpool.MpoolGetNonce(ctx, addr)
+		if err != nil {
+			return types.EthUint64(0), fmt.Errorf("failed to get nonce from mpool: %w", err)
+		}
+		return types.EthUint64(nonce), nil
+	}
+
+	// For all other cases, get the tipset based on the block parameter
 	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.em.chainModule.ChainReader, blkParam)
 	if err != nil {
 		return types.EthUint64(0), fmt.Errorf("failed to process block param: %v, %w", blkParam, err)
 	}
 
-	// First, handle the case where the "sender" is an EVM actor.
-	if actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, addr, ts); err != nil {
+	stateCid, _, err := a.em.chainModule.Stmgr.StateView(ctx, ts)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get the actor state at the specified tipset
+	actor, err := a.em.chainModule.Stmgr.GetActorRaw(ctx, addr, stateCid)
+	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return 0, nil
 		}
-		return 0, fmt.Errorf("failed to lookup contract %s: %w", sender, err)
-	} else if builtinactors.IsEvmActor(actor.Code) {
+		return 0, fmt.Errorf("failed to lookup actor %s: %w", sender, err)
+	}
+
+	// Handle EVM actor case
+	if builtinactors.IsEvmActor(actor.Code) {
 		evmState, err := builtinevm.Load(a.em.chainModule.ChainReader.Store(ctx), actor)
 		if err != nil {
 			return 0, fmt.Errorf("failed to load evm state: %w", err)
@@ -370,11 +446,7 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 		return types.EthUint64(nonce), err
 	}
 
-	nonce, err := a.em.mpoolModule.MPool.GetNonce(ctx, addr, ts.Key())
-	if err != nil {
-		return types.EthUint64(0), err
-	}
-	return types.EthUint64(nonce), nil
+	return types.EthUint64(actor.Nonce), nil
 }
 
 func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error) {
@@ -393,7 +465,14 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 	}
 
 	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
-	if err != nil || msgLookup == nil {
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
+	}
+	if msgLookup == nil {
+		// This is the best we can do. We may just not have indexed this transaction, or we may have a
+		// limit applied and not searched far back enough, but we don't have a way to go. Because
+		// Ethereum tooling expects an empty response for transaction-not-found, we don't have a way of
+		// differentiating between "can't find" and "doesn't exist".
 		return nil, nil
 	}
 
@@ -402,15 +481,20 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 		return nil, nil
 	}
 
-	var events []types.Event
-	if rct := msgLookup.Receipt; rct.EventsRoot != nil {
-		events, err = a.chain.ChainGetEvents(ctx, *rct.EventsRoot)
-		if err != nil {
-			return nil, nil
-		}
+	ts, err := a.em.chainModule.ChainReader.GetTipSet(ctx, msgLookup.TipSet)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", msgLookup.TipSet, err)
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, events, a.chain, a.em.chainModule.ChainReader)
+	// The tx is located in the parent tipset
+	parentTS, err := a.em.chainModule.ChainReader.GetTipSet(ctx, ts.Parents())
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", ts.Parents(), err)
+	}
+
+	baseFee := parentTS.Blocks()[0].ParentBaseFee
+
+	receipt, err := newEthTxReceipt(ctx, tx, baseFee, msgLookup.Receipt, a.EthEventHandler)
 	if err != nil {
 		return nil, nil
 	}
@@ -420,6 +504,71 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 
 func (a *ethAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error) {
 	return types.EthTx{}, ErrUnsupported
+}
+
+func (a *ethAPI) EthGetBlockReceipts(ctx context.Context, blockParam types.EthBlockNumberOrHash) ([]*types.EthTxReceipt, error) {
+	return a.EthGetBlockReceiptsLimited(ctx, blockParam, constants.LookbackNoLimit)
+}
+
+func (a *ethAPI) EthGetBlockReceiptsLimited(ctx context.Context, blockParam types.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*types.EthTxReceipt, error) {
+	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.em.chainModule.ChainReader, blockParam)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tipset: %w", err)
+	}
+
+	head, err := a.chain.ChainHead(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get head: %v", err)
+	}
+	if limit > constants.LookbackNoLimit && ts.Height() < head.Height() {
+		return nil, fmt.Errorf("tipset %s is older than the allowed lookback limit", ts.Key())
+	}
+
+	tsCid, err := ts.Key().Cid()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tipset key cid: %w", err)
+	}
+
+	blkHash, err := types.EthHashFromCid(tsCid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse eth hash from cid: %w", err)
+	}
+
+	// Execute the tipset to get the receipts, messages, and events
+	_, msgs, receipts, err := executeTipset(ctx, ts, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute tipset: %w", err)
+	}
+
+	// Load the state tree
+	state, err := a.em.chainModule.ChainReader.GetTipSetState(ctx, ts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get state view: %w", err)
+	}
+
+	baseFee := ts.Blocks()[0].ParentBaseFee
+
+	ethReceipts := make([]*types.EthTxReceipt, 0, len(msgs))
+	for i, msg := range msgs {
+		msg := msg
+
+		tx, err := newEthTx(ctx, state, ts.Height(), tsCid, msg.Cid(), i, a.ethTxHashManager.messageStore)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create EthTx: %w", err)
+		}
+
+		receipt, err := newEthTxReceipt(ctx, tx, baseFee, receipts[i], a.EthEventHandler)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Eth receipt: %w", err)
+		}
+
+		// Set the correct Ethereum block hash
+		receipt.BlockHash = blkHash
+
+		ethReceipts = append(ethReceipts, &receipt)
+	}
+
+	return ethReceipts, nil
 }
 
 func (a *ethAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error) {
@@ -440,10 +589,15 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 
 	// StateManager.Call will panic if there is no parent
 	if ts.Height() == 0 {
-		return nil, fmt.Errorf("block param must not specify genesis block")
+		return nil, errors.New("block param must not specify genesis block")
 	}
 
-	actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, to, ts)
+	stateCid, _, err := a.em.chainModule.Stmgr.StateView(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	actor, err := a.em.chainModule.Stmgr.GetActorRaw(ctx, to, stateCid)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return nil, nil
@@ -471,7 +625,7 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 	// Try calling until we find a height with no migration.
 	var res *types.InvocResult
 	for {
-		res, err = a.em.chainModule.Stmgr.Call(ctx, msg, ts)
+		res, err = a.em.chainModule.Stmgr.CallOnState(ctx, stateCid, msg, ts)
 		if err != fork.ErrExpensiveFork {
 			break
 		}
@@ -486,7 +640,7 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkPa
 	}
 
 	if res.MsgRct == nil {
-		return nil, fmt.Errorf("no message receipt")
+		return nil, errors.New("no message receipt")
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
@@ -519,7 +673,7 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 
 	l := len(position)
 	if l > 32 {
-		return nil, fmt.Errorf("supplied storage key is too long")
+		return nil, errors.New("supplied storage key is too long")
 	}
 
 	// pad with zero bytes if smaller than 32 bytes
@@ -530,13 +684,12 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 		return nil, fmt.Errorf("cannot get Filecoin address: %w", err)
 	}
 
-	// use the system actor as the caller
-	from, err := address.NewIDAddress(0)
+	stateCid, _, err := a.em.chainModule.Stmgr.StateView(ctx, ts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
+		return nil, err
 	}
 
-	actor, err := a.em.chainModule.Stmgr.GetActorAt(ctx, to, ts)
+	actor, err := a.em.chainModule.Stmgr.GetActorRaw(ctx, to, stateCid)
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return types.EthBytes(make([]byte, 32)), nil
@@ -556,7 +709,7 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 	}
 
 	msg := &types.Message{
-		From:       from,
+		From:       builtinactors.SystemActorAddr,
 		To:         to,
 		Value:      big.Zero(),
 		Method:     builtin.MethodsEVM.GetStorageAt,
@@ -569,7 +722,7 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 	// Try calling until we find a height with no migration.
 	var res *types.InvocResult
 	for {
-		res, err = a.em.chainModule.Stmgr.Call(ctx, msg, ts)
+		res, err = a.em.chainModule.Stmgr.CallOnState(ctx, stateCid, msg, ts)
 		if err != fork.ErrExpensiveFork {
 			break
 		}
@@ -584,7 +737,7 @@ func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, 
 	}
 
 	if res.MsgRct == nil {
-		return nil, fmt.Errorf("no message receipt")
+		return nil, errors.New("no message receipt")
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
@@ -676,7 +829,7 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.
 		return types.EthFeeHistory{}, fmt.Errorf("decoding params: %w", err)
 	}
 	if params.BlkCount > 1024 {
-		return types.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
+		return types.EthFeeHistory{}, errors.New("block count should be smaller than 1024")
 	}
 	rewardPercentiles := make([]float64, 0)
 	if params.RewardPercentiles != nil {
@@ -870,7 +1023,7 @@ func (a *ethAPI) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (types
 		return types.EthUint64(0), fmt.Errorf("decoding params: %w", err)
 	}
 
-	msg, err := ethCallToFilecoinMessage(ctx, params.Tx)
+	msg, err := params.Tx.ToFilecoinMessage()
 	if err != nil {
 		return types.EthUint64(0), err
 	}
@@ -1036,7 +1189,7 @@ func ethGasSearch(
 }
 
 func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam types.EthBlockNumberOrHash) (types.EthBytes, error) {
-	msg, err := ethCallToFilecoinMessage(ctx, tx)
+	msg, err := tx.ToFilecoinMessage()
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}
@@ -1134,7 +1287,7 @@ func (a *ethAPI) EthTraceBlock(ctx context.Context, blkNum string) ([]*types.Eth
 
 func (a *ethAPI) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*types.EthTraceReplayBlockTransaction, error) {
 	if len(traceTypes) != 1 || traceTypes[0] != "trace" {
-		return nil, fmt.Errorf("only 'trace' is supported")
+		return nil, errors.New("only 'trace' is supported")
 	}
 
 	ts, err := getTipsetByBlockNumber(ctx, a.em.chainModule.ChainReader, blkNum, false)
@@ -1213,12 +1366,12 @@ func (a *ethAPI) EthTraceTransaction(ctx context.Context, txHash string) ([]*typ
 	}
 
 	if tx == nil {
-		return nil, fmt.Errorf("transaction not found")
+		return nil, errors.New("transaction not found")
 	}
 
 	// tx.BlockNumber is nil when the transaction is still in the mpool/pending
 	if tx.BlockNumber == nil {
-		return nil, fmt.Errorf("no trace for pending transactions")
+		return nil, errors.New("no trace for pending transactions")
 	}
 
 	blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(*tx.BlockNumber), 10))
@@ -1242,6 +1395,174 @@ func (a *ethAPI) EthTraceTransaction(ctx context.Context, txHash string) ([]*typ
 	}
 
 	return txTraces, nil
+}
+
+func (a *ethAPI) EthTraceFilter(ctx context.Context, filter types.EthTraceFilterCriteria) ([]*types.EthTraceFilterResult, error) {
+	// Define EthBlockNumberFromString as a private function within EthTraceFilter
+	getEthBlockNumberFromString := func(ctx context.Context, block *string) (types.EthUint64, error) {
+		head := a.em.chainModule.ChainReader.GetHead()
+
+		blockValue := "latest"
+		if block != nil {
+			blockValue = *block
+		}
+
+		switch blockValue {
+		case "earliest":
+			return 0, errors.New("block param \"earliest\" is not supported")
+		case "pending":
+			return types.EthUint64(head.Height()), nil
+		case "latest":
+			parent, err := a.em.chainModule.ChainReader.GetTipSet(ctx, head.Parents())
+			if err != nil {
+				return 0, errors.New("cannot get parent tipset")
+			}
+			return types.EthUint64(parent.Height()), nil
+		case "safe":
+			latestHeight := head.Height() - 1
+			safeHeight := latestHeight - types.SafeEpochDelay
+			return types.EthUint64(safeHeight), nil
+		default:
+			blockNum, err := types.EthUint64FromHex(blockValue)
+			if err != nil {
+				return 0, fmt.Errorf("cannot parse fromBlock: %w", err)
+			}
+			return blockNum, err
+		}
+	}
+
+	fromBlock, err := getEthBlockNumberFromString(ctx, filter.FromBlock)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse fromBlock: %w", err)
+	}
+
+	toBlock, err := getEthBlockNumberFromString(ctx, filter.ToBlock)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse toBlock: %w", err)
+	}
+
+	var results []*types.EthTraceFilterResult
+
+	if filter.Count != nil {
+		// If filter.Count is specified and it is 0, return an empty result set immediately.
+		if *filter.Count == 0 {
+			return []*types.EthTraceFilterResult{}, nil
+		}
+
+		// If filter.Count is specified and is greater than the EthTraceFilterMaxResults config return error
+		if uint64(*filter.Count) > a.em.cfg.FevmConfig.EthTraceFilterMaxResults {
+			return nil, fmt.Errorf("invalid response count, requested %d, maximum supported is %d", *filter.Count, a.em.cfg.FevmConfig.EthTraceFilterMaxResults)
+		}
+	}
+
+	traceCounter := types.EthUint64(0)
+	for blkNum := fromBlock; blkNum <= toBlock; blkNum++ {
+		blockTraces, err := a.EthTraceBlock(ctx, strconv.FormatUint(uint64(blkNum), 10))
+		if err != nil {
+			if errors.Is(err, &types.ErrNullRound{}) {
+				continue
+			}
+			return nil, fmt.Errorf("cannot get trace for block %d: %w", blkNum, err)
+		}
+
+		for _, _blockTrace := range blockTraces {
+			// Create a copy of blockTrace to avoid pointer quirks
+			blockTrace := *_blockTrace
+			match, err := matchFilterCriteria(&blockTrace, filter.FromAddress, filter.ToAddress)
+			if err != nil {
+				return nil, fmt.Errorf("cannot match filter for block %d: %w", blkNum, err)
+			}
+			if !match {
+				continue
+			}
+			traceCounter++
+			if filter.After != nil && traceCounter <= *filter.After {
+				continue
+			}
+
+			results = append(results, &types.EthTraceFilterResult{
+				EthTrace:            blockTrace.EthTrace,
+				BlockHash:           blockTrace.BlockHash,
+				BlockNumber:         blockTrace.BlockNumber,
+				TransactionHash:     blockTrace.TransactionHash,
+				TransactionPosition: blockTrace.TransactionPosition,
+			})
+
+			// If Count is specified, limit the results
+			if filter.Count != nil && types.EthUint64(len(results)) >= *filter.Count {
+				return results, nil
+			} else if filter.Count == nil && uint64(len(results)) > a.em.cfg.FevmConfig.EthTraceFilterMaxResults {
+				return nil, fmt.Errorf("too many results, maximum supported is %d, try paginating requests with After and Count", a.em.cfg.FevmConfig.EthTraceFilterMaxResults)
+			}
+		}
+	}
+
+	return results, nil
+}
+
+// matchFilterCriteria checks if a trace matches the filter criteria.
+func matchFilterCriteria(trace *types.EthTraceBlock, fromDecodedAddresses []types.EthAddress, toDecodedAddresses []types.EthAddress) (bool, error) {
+	var traceTo types.EthAddress
+	var traceFrom types.EthAddress
+
+	switch trace.Type {
+	case "call":
+		action, ok := trace.Action.(*types.EthCallTraceAction)
+		if !ok {
+			return false, errors.New("invalid call trace action")
+		}
+		traceTo = action.To
+		traceFrom = action.From
+	case "create":
+		result, okResult := trace.Result.(*types.EthCreateTraceResult)
+		if !okResult {
+			return false, errors.New("invalid create trace result")
+		}
+
+		action, okAction := trace.Action.(*types.EthCreateTraceAction)
+		if !okAction {
+			return false, errors.New("invalid create trace action")
+		}
+
+		if result.Address == nil {
+			return false, errors.New("address is nil in create trace result")
+		}
+
+		traceTo = *result.Address
+		traceFrom = action.From
+	default:
+		return false, fmt.Errorf("invalid trace type: %s", trace.Type)
+	}
+
+	// Match FromAddress
+	if len(fromDecodedAddresses) > 0 {
+		fromMatch := false
+		for _, ethAddr := range fromDecodedAddresses {
+			if traceFrom == ethAddr {
+				fromMatch = true
+				break
+			}
+		}
+		if !fromMatch {
+			return false, nil
+		}
+	}
+
+	// Match ToAddress
+	if len(toDecodedAddresses) > 0 {
+		toMatch := false
+		for _, ethAddr := range toDecodedAddresses {
+			if traceTo == ethAddr {
+				toMatch = true
+				break
+			}
+		}
+		if !toMatch {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 func calculateRewardsAndGasUsed(rewardPercentiles []float64, txGasRewards gasRewardSorter) ([]types.EthBigInt, int64) {

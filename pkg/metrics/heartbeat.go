@@ -116,7 +116,7 @@ func (hbs *HeartbeatService) SetStream(s net.Stream) {
 
 // Start starts the heartbeat service by, starting the connection loop. The connection
 // loop will attempt to connected to the aggregator service, once a successful
-// connection is made with the aggregator service hearbeats will be sent to it.
+// connection is made with the aggregator service heartbeats will be sent to it.
 // If the connection is broken the heartbeat service will attempt to reconnect via
 // the connection loop. Start will not return until context `ctx` is 'Done'.
 func (hbs *HeartbeatService) Start(ctx context.Context) {

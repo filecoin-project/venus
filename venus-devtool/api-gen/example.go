@@ -37,6 +37,7 @@ import (
 
 	"github.com/filecoin-project/go-f3/certs"
 	"github.com/filecoin-project/go-f3/gpbft"
+	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/api/chain"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -292,9 +293,9 @@ func init() {
 	addExample(filterid)
 	addExample(&filterid)
 
-	subid := types.EthSubscriptionID(ethhash)
-	addExample(subid)
-	addExample(&subid)
+	subID := types.EthSubscriptionID(ethhash)
+	addExample(subID)
+	addExample(&subID)
 
 	pstring := func(s string) *string { return &s }
 	addExample(&types.EthFilterSpec{
@@ -331,6 +332,75 @@ func init() {
 	addExample(gateway.HostNode)
 	addExample(&certs.FinalityCertificate{})
 	addExample(gpbft.ActorID(1000))
+
+	addExample(&manifest.Manifest{})
+	addExample(gpbft.NetworkName("filecoin"))
+	addExample(gpbft.INITIAL_PHASE)
+
+	after := types.EthUint64(0)
+	count := types.EthUint64(100)
+
+	ethTraceFilterCriteria := types.EthTraceFilterCriteria{
+		FromBlock:   pstring("latest"),
+		ToBlock:     pstring("latest"),
+		FromAddress: types.EthAddressList{ethaddr},
+		ToAddress:   types.EthAddressList{ethaddr},
+		After:       &after,
+		Count:       &count,
+	}
+	addExample(&ethTraceFilterCriteria)
+	addExample(ethTraceFilterCriteria)
+
+	f3Lease := types.F3ParticipationLease{
+		Network:      "filecoin",
+		Issuer:       pid.String(),
+		MinerID:      1234,
+		FromInstance: 10,
+		ValidityTerm: 15,
+	}
+	addExample(f3Lease)
+	addExample(&f3Lease)
+	ecchain := &gpbft.ECChain{
+		TipSets: []*gpbft.TipSet{
+			{
+				Epoch:      0,
+				Key:        tsk.Bytes(),
+				PowerTable: c,
+			},
+		},
+	}
+	f3Cert := certs.FinalityCertificate{
+		GPBFTInstance: 0,
+		ECChain:       ecchain,
+		SupplementalData: gpbft.SupplementalData{
+			PowerTable: c,
+		},
+		Signers:   bitfield.NewFromSet([]uint64{2, 3, 5, 7}),
+		Signature: []byte("UnDadaSeA"),
+		PowerTableDelta: []certs.PowerTableDelta{
+			{
+				ParticipantID: 0,
+				PowerDelta:    gpbft.StoragePower{},
+				SigningKey:    []byte("BaRrelEYe"),
+			},
+		},
+	}
+	addExample(f3Cert)
+	addExample(&f3Cert)
+	addExample(gpbft.InstanceProgress{
+		Instant: gpbft.Instant{
+			ID:    1413,
+			Round: 1,
+			Phase: gpbft.COMMIT_PHASE,
+		},
+		Input: ecchain,
+	})
+	addExample(types.IpldOpGet)
+	addExample(&types.TraceIpld{
+		Op:   types.IpldOpGet,
+		Cid:  c,
+		Size: 123,
+	})
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {
@@ -373,7 +443,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 		return struct{}{}
 	}
 
-	_, _ = fmt.Fprintf(os.Stderr, "Warnning: No example value for type: %s (method '%s')\n", t, method)
+	_, _ = fmt.Fprintf(os.Stderr, "Warning: No example value for type: %s (method '%s')\n", t, method)
 	return nil
 }
 

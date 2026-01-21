@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
+	"path/filepath"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/statemanger"
+	"github.com/filecoin-project/venus/pkg/wallet"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log"
@@ -30,8 +31,10 @@ type F3 struct {
 	inner *f3.F3
 	ec    *ecWrapper
 
-	signer    gpbft.Signer
-	newLeases chan leaseRequest
+	signer gpbft.Signer
+	leaser *leaser
+
+	stopFunc func()
 }
 
 func init() {
@@ -49,57 +52,93 @@ func init() {
 }
 
 type F3Params struct {
-	ManifestServerID string
-	ManifestProvider manifest.ManifestProvider
-	PubSub           *pubsub.PubSub
-	Host             host.Host
-	ChainStore       *chain.Store
-	StateManager     *statemanger.Stmgr
-	Datastore        datastore.Batching
-	Wallet           v1api.IWallet
+	PubSub       *pubsub.PubSub
+	Host         host.Host
+	ChainStore   *chain.Store
+	StateManager *statemanger.Stmgr
+	Datastore    datastore.Batching
+	WalletSign   wallet.WalletSignFunc
+	SyncerAPI    v1api.ISyncer
+	Config       *Config
+	RepoPath     string
+
+	Net v1api.INetwork
 }
 
 var log = logging.Logger("f3")
 
 func New(mctx context.Context, params F3Params) (*F3, error) {
+	if params.Config.StaticManifest == nil {
+		return nil, fmt.Errorf("configuration invalid, nil StaticManifest in the Config")
+	}
 	ds := namespace.Wrap(params.Datastore, datastore.NewKey("/f3"))
 	ec := &ecWrapper{
 		ChainStore:   params.ChainStore,
 		StateManager: params.StateManager,
+		SyncerAPI:    params.SyncerAPI,
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
-	module, err := f3.New(mctx, params.ManifestProvider, ds,
-		params.Host, params.PubSub, verif, ec)
+	f3FsPath := filepath.Join(params.RepoPath, "f3")
+	module, err := f3.New(mctx, *params.Config.StaticManifest, ds,
+		params.Host, params.PubSub, verif, ec, f3FsPath)
 
 	if err != nil {
 		return nil, fmt.Errorf("creating F3: %w", err)
 	}
 
+	nodeID, err := params.Net.ID(mctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting node ID: %w", err)
+	}
+
+	// maxLeasableInstances is the maximum number of leased F3 instances this node
+	// would give out.
+	const maxLeasableInstances = 5
+	status := func() (manifest.Manifest, gpbft.InstanceProgress) {
+		return module.Manifest(), module.Progress()
+	}
+
 	fff := &F3{
-		inner:     module,
-		ec:        ec,
-		signer:    &signer{params.Wallet},
-		newLeases: make(chan leaseRequest, 4), // some buffer to avoid
+		inner:  module,
+		ec:     ec,
+		signer: &signer{sign: params.WalletSign},
+		leaser: newParticipationLeaser(nodeID, status, maxLeasableInstances),
 	}
 
 	go func() {
 		err := fff.inner.Start(mctx)
 		if err != nil {
-			log.Errorf("running f3: %+v", err)
+			log.Fatalf("running f3: %+v", err)
 			return
 		}
-		go fff.runSigningLoop(mctx)
 	}()
+
+	// Start signing F3 messages.
+	lCtx, cancel := context.WithCancel(mctx)
+	doneCh := make(chan struct{})
+
+	go func() {
+		defer close(doneCh)
+		fff.runSigningLoop(lCtx)
+	}()
+
+	fff.stopFunc = func() {
+		cancel()
+		<-doneCh
+	}
 
 	return fff, nil
 }
 
-type leaseRequest struct {
-	minerID       uint64
-	newExpiration time.Time
-	oldExpiration time.Time
-	resultCh      chan<- bool
+func (fff *F3) Stop(ctx context.Context) error {
+	if err := fff.inner.Stop(ctx); err != nil {
+		return err
+	}
+
+	fff.stopFunc()
+
+	return nil
 }
 
 func (fff *F3) runSigningLoop(ctx context.Context) {
@@ -107,7 +146,7 @@ func (fff *F3) runSigningLoop(ctx context.Context) {
 		signatureBuilder, err := mb.PrepareSigningInputs(gpbft.ActorID(minerID))
 		if errors.Is(err, gpbft.ErrNoPower) {
 			// we don't have any power in F3, continue
-			log.Debug("no power to participate in F3: %+v", err)
+			log.Debugf("no power to participate in F3: %+v", err)
 			return nil
 		}
 		if err != nil {
@@ -125,44 +164,41 @@ func (fff *F3) runSigningLoop(ctx context.Context) {
 		return nil
 	}
 
-	leaseMngr := new(leaseManager)
 	msgCh := fff.inner.MessagesToSign()
 
-loop:
+	var mb *gpbft.MessageBuilder
+	alreadyParticipated := make(map[uint64]struct{})
 	for ctx.Err() == nil {
 		select {
 		case <-ctx.Done():
 			return
-		case l := <-fff.newLeases:
-			// resultCh has only one user and is buffered
-			l.resultCh <- leaseMngr.UpsertDefensive(l.minerID, l.newExpiration, l.oldExpiration)
-			close(l.resultCh)
-		case mb, ok := <-msgCh:
-			if !ok {
-				continue loop
+		case <-fff.leaser.notifyParticipation:
+			if mb == nil {
+				continue
 			}
+		case mb = <-msgCh: // never closed
+			clear(alreadyParticipated)
+		}
 
-			for _, minerID := range leaseMngr.Active() {
-				err := participateOnce(ctx, mb, minerID)
-				if err != nil {
-					log.Errorf("while participating for miner f0%d: %+v", minerID, err)
-				}
+		participants := fff.leaser.getParticipantsByInstance(mb.NetworkName, mb.Payload.Instance)
+		for _, id := range participants {
+			if _, ok := alreadyParticipated[id]; ok {
+				continue
+			} else if err := participateOnce(ctx, mb, id); err != nil {
+				log.Errorf("while participating for miner f0%d: %+v", id, err)
+			} else {
+				alreadyParticipated[id] = struct{}{}
 			}
 		}
 	}
 }
 
-// Participate notifies participation loop about a new lease
-// Returns true if lease was accepted
-func (fff *F3) Participate(ctx context.Context, minerID uint64, newLeaseExpiration, oldLeaseExpiration time.Time) bool {
-	resultCh := make(chan bool, 1) //buffer the channel to for sure avoid blocking
-	request := leaseRequest{minerID: minerID, newExpiration: newLeaseExpiration, resultCh: resultCh}
-	select {
-	case fff.newLeases <- request:
-		return <-resultCh
-	case <-ctx.Done():
-		return false
-	}
+func (fff *F3) GetOrRenewParticipationTicket(_ context.Context, minerID uint64, previous types.F3ParticipationTicket, instances uint64) (types.F3ParticipationTicket, error) {
+	return fff.leaser.getOrRenewParticipationTicket(minerID, previous, instances)
+}
+
+func (fff *F3) Participate(_ context.Context, ticket types.F3ParticipationTicket) (types.F3ParticipationLease, error) {
+	return fff.leaser.participate(ticket)
 }
 
 func (fff *F3) GetCert(ctx context.Context, instance uint64) (*certs.FinalityCertificate, error) {
@@ -173,10 +209,50 @@ func (fff *F3) GetLatestCert(ctx context.Context) (*certs.FinalityCertificate, e
 	return fff.inner.GetLatestCert(ctx)
 }
 
+func (fff *F3) GetManifest(ctx context.Context) (*manifest.Manifest, error) {
+	m := fff.inner.Manifest()
+	if m.InitialPowerTable.Defined() {
+		return &m, nil
+	}
+	cert0, err := fff.inner.GetCert(ctx, 0)
+	if err != nil {
+		return &m, nil // return manifest without power table
+	}
+
+	m.InitialPowerTable = cert0.ECChain.Base().PowerTable
+	return &m, nil
+}
+
 func (fff *F3) GetPowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
-	return fff.ec.getPowerTableLotusTSK(ctx, tsk)
+	return fff.ec.getPowerTableTSK(ctx, tsk)
 }
 
 func (fff *F3) GetF3PowerTable(ctx context.Context, tsk types.TipSetKey) (gpbft.PowerEntries, error) {
 	return fff.inner.GetPowerTable(ctx, tsk.Bytes())
+}
+
+// GetPowerTableByInstance returns the power table (committee) used to validate the specified instance.
+func (fff *F3) GetPowerTableByInstance(ctx context.Context, instance uint64) (gpbft.PowerEntries, error) {
+	return fff.inner.GetPowerTableByInstance(ctx, instance)
+}
+
+func (fff *F3) IsRunning() bool {
+	return fff.inner.IsRunning()
+}
+
+func (fff *F3) Progress() gpbft.InstanceProgress {
+	return fff.inner.Progress()
+}
+
+func (fff *F3) ListParticipants() []types.F3Participant {
+	leases := fff.leaser.getValidLeases()
+	participants := make([]types.F3Participant, len(leases))
+	for i, lease := range leases {
+		participants[i] = types.F3Participant{
+			MinerID:      lease.MinerID,
+			FromInstance: lease.FromInstance,
+			ValidityTerm: lease.ValidityTerm,
+		}
+	}
+	return participants
 }

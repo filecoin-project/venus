@@ -7,29 +7,22 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
+	"sync"
 
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/events/filter/sqlite"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var pragmas = []string{
-	"PRAGMA synchronous = normal",
-	"PRAGMA temp_store = memory",
-	"PRAGMA mmap_size = 30000000000",
-	"PRAGMA page_size = 32768",
-	"PRAGMA auto_vacuum = NONE",
-	"PRAGMA automatic_index = OFF",
-	"PRAGMA journal_mode = WAL",
-	"PRAGMA wal_autocheckpoint = 256", // checkpoint @ 256 pages
-	"PRAGMA journal_size_limit = 0",   // always reset journal and wal files
-}
+const DefaultDBFilename = "events.db"
+
+// Any changes to this schema should be matched for the `lotus-shed indexes backfill-events` command
 
 var ddls = []string{
 	`CREATE TABLE IF NOT EXISTS event (
@@ -44,7 +37,8 @@ var ddls = []string{
 		reverted INTEGER NOT NULL
 	)`,
 
-	`CREATE INDEX IF NOT EXISTS height_tipset_key ON event (height,tipset_key)`,
+	createIndexEventTipsetKeyCid,
+	createIndexEventHeight,
 
 	`CREATE TABLE IF NOT EXISTS event_entry (
 		event_id INTEGER,
@@ -55,292 +49,162 @@ var ddls = []string{
 		value BLOB NOT NULL
 	)`,
 
-	// metadata containing version of schema
-	`CREATE TABLE IF NOT EXISTS _meta (
-    	version UINT64 NOT NULL UNIQUE
-	)`,
+	createTableEventsSeen,
 
-	// version 1.
-	`INSERT OR IGNORE INTO _meta (version) VALUES (1)`,
-	`INSERT OR IGNORE INTO _meta (version) VALUES (2)`,
+	createIndexEventEntryEventID,
+	createIndexEventsSeenHeight,
+	createIndexEventsSeenTipsetKeyCid,
 }
 
-// const schemaVersion = 1
 var (
 	log = logging.Logger("filter")
 )
 
 const (
-	schemaVersion = 2
+	createTableEventsSeen = `CREATE TABLE IF NOT EXISTS events_seen (
+		id INTEGER PRIMARY KEY,
+		height INTEGER NOT NULL,
+		tipset_key_cid BLOB NOT NULL,
+		reverted INTEGER NOT NULL,
+	    UNIQUE(height, tipset_key_cid)
+	)`
 
-	eventExists          = `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
-	insertEvent          = `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
-	insertEntry          = `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`
-	revertEventsInTipset = `UPDATE event SET reverted=true WHERE height=? AND tipset_key=?`
-	restoreEvent         = `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`
+	// When modifying indexes in this file, it is critical to test the query plan (EXPLAIN QUERY PLAN)
+	// of all the variations of queries built by prefillFilter to ensure that the query first hits
+	// an index that narrows down results to an epoch or a reasonable range of epochs. Specifically,
+	// event_tipset_key_cid or event_height should be the first index. Then further narrowing can take
+	// place within the small subset of results.
+	// Unfortunately SQLite has some quirks in index selection that mean that certain query types will
+	// bypass these indexes if alternatives are available. This has been observed specifically on
+	// queries with height ranges: `height>=X AND height<=Y`.
+	//
+	// e.g. we want to see that `event_height` is the first index used in this query:
+	//
+	// EXPLAIN QUERY PLAN
+	// SELECT
+	// 	event.height, event.tipset_key_cid, event_entry.indexed, event_entry.codec, event_entry.key, event_entry.value
+	// FROM event
+	// JOIN
+	// 	event_entry ON event.id=event_entry.event_id,
+	// 	event_entry ee2 ON event.id=ee2.event_id
+	// WHERE event.height>=? AND event.height<=? AND event.reverted=? AND event.emitter_addr=? AND ee2.indexed=1 AND ee2.key=?
+	// ORDER BY event.height DESC, event_entry._rowid_ ASC
+	//
+	// ->
+	//
+	// QUERY PLAN
+	// |--SEARCH event USING INDEX event_height (height>? AND height<?)
+	// |--SEARCH ee2 USING INDEX event_entry_event_id (event_id=?)
+	// |--SEARCH event_entry USING INDEX event_entry_event_id (event_id=?)
+	// `--USE TEMP B-TREE FOR RIGHT PART OF ORDER BY
+
+	createIndexEventTipsetKeyCid = `CREATE INDEX IF NOT EXISTS event_tipset_key_cid ON event (tipset_key_cid);`
+	createIndexEventHeight       = `CREATE INDEX IF NOT EXISTS event_height ON event (height);`
+
+	createIndexEventEntryEventID = `CREATE INDEX IF NOT EXISTS event_entry_event_id ON event_entry(event_id);`
+
+	createIndexEventsSeenHeight       = `CREATE INDEX IF NOT EXISTS events_seen_height ON events_seen (height);`
+	createIndexEventsSeenTipsetKeyCid = `CREATE INDEX IF NOT EXISTS events_seen_tipset_key_cid ON events_seen (tipset_key_cid);`
 )
+
+// preparedStatementMapping returns a map of fields of the preparedStatements struct to the SQL
+// query that should be prepared for that field. This is used to prepare all the statements in
+// the preparedStatements struct but it's also used by testing code to access the raw query strings
+// to ensure that the correct indexes are being used by SELECT queries.
+func preparedStatementMapping(ps *preparedStatements) map[**sql.Stmt]string {
+	return map[**sql.Stmt]string{
+		&ps.insertEvent:          `INSERT OR IGNORE INTO event(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
+		&ps.insertEntry:          `INSERT OR IGNORE INTO event_entry(event_id, indexed, flags, key, codec, value) VALUES(?, ?, ?, ?, ?, ?)`,
+		&ps.revertEventsInTipset: `UPDATE event SET reverted=true WHERE height=? AND tipset_key=?`,
+		&ps.restoreEvent:         `UPDATE event SET reverted=false WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`,
+		&ps.revertEventSeen:      `UPDATE events_seen SET reverted=true WHERE height=? AND tipset_key_cid=?`,
+		&ps.restoreEventSeen:     `UPDATE events_seen SET reverted=false WHERE height=? AND tipset_key_cid=?`,
+		&ps.upsertEventsSeen:     `INSERT INTO events_seen(height, tipset_key_cid, reverted) VALUES(?, ?, false) ON CONFLICT(height, tipset_key_cid) DO UPDATE SET reverted=false`,
+		&ps.eventExists:          `SELECT MAX(id) FROM event WHERE height=? AND tipset_key=? AND tipset_key_cid=? AND emitter_addr=? AND event_index=? AND message_cid=? AND message_index=?`, // QUERY PLAN: SEARCH event USING INDEX event_height (height=?)
+		&ps.isTipsetProcessed:    `SELECT COUNT(*) > 0 FROM events_seen WHERE tipset_key_cid=?`,                                                                                               // QUERY PLAN: SEARCH events_seen USING COVERING INDEX events_seen_tipset_key_cid (tipset_key_cid=?)
+		&ps.getMaxHeightInIndex:  `SELECT MAX(height) FROM events_seen`,                                                                                                                       // QUERY PLAN: SEARCH events_seen USING COVERING INDEX events_seen_height
+		&ps.isHeightProcessed:    `SELECT COUNT(*) > 0 FROM events_seen WHERE height=?`,                                                                                                       // QUERY PLAN: SEARCH events_seen USING COVERING INDEX events_seen_height (height=?)
+
+	}
+}
+
+type preparedStatements struct {
+	insertEvent          *sql.Stmt
+	insertEntry          *sql.Stmt
+	revertEventsInTipset *sql.Stmt
+	restoreEvent         *sql.Stmt
+	upsertEventsSeen     *sql.Stmt
+	revertEventSeen      *sql.Stmt
+	restoreEventSeen     *sql.Stmt
+	eventExists          *sql.Stmt
+	isTipsetProcessed    *sql.Stmt
+	getMaxHeightInIndex  *sql.Stmt
+	isHeightProcessed    *sql.Stmt
+}
 
 type EventIndex struct {
 	db *sql.DB
 
-	stmtEventExists          *sql.Stmt
-	stmtInsertEvent          *sql.Stmt
-	stmtInsertEntry          *sql.Stmt
-	stmtRevertEventsInTipset *sql.Stmt
-	stmtRestoreEvent         *sql.Stmt
+	stmt *preparedStatements
+
+	mu           sync.Mutex
+	subIDCounter uint64
+	updateSubs   map[uint64]*updateSub
 }
 
-func (ei *EventIndex) initStatements() (err error) {
-	ei.stmtEventExists, err = ei.db.Prepare(eventExists)
-	if err != nil {
-		return fmt.Errorf("prepare stmtEventExists: %w", err)
-	}
-
-	ei.stmtInsertEvent, err = ei.db.Prepare(insertEvent)
-	if err != nil {
-		return fmt.Errorf("prepare stmtInsertEvent: %w", err)
-	}
-
-	ei.stmtInsertEntry, err = ei.db.Prepare(insertEntry)
-	if err != nil {
-		return fmt.Errorf("prepare stmtInsertEntry: %w", err)
-	}
-
-	ei.stmtRevertEventsInTipset, err = ei.db.Prepare(revertEventsInTipset)
-	if err != nil {
-		return fmt.Errorf("prepare stmtRevertEventsInTipset: %w", err)
-	}
-
-	ei.stmtRestoreEvent, err = ei.db.Prepare(restoreEvent)
-	if err != nil {
-		return fmt.Errorf("prepare stmtRestoreEvent: %w", err)
-	}
-
-	return nil
+type updateSub struct {
+	ctx    context.Context
+	ch     chan EventIndexUpdated
+	cancel context.CancelFunc
 }
 
-func (ei *EventIndex) migrateToVersion2(ctx context.Context, chainStore *chain.Store) error {
-	now := time.Now()
-
-	tx, err := ei.db.Begin()
-	if err != nil {
-		return fmt.Errorf("begin transaction: %w", err)
-	}
-	// rollback the transaction (a no-op if the transaction was already committed)
-	defer tx.Rollback() //nolint:errcheck
-
-	// create some temporary indices to help speed up the migration
-	_, err = tx.Exec("CREATE INDEX IF NOT EXISTS tmp_height_tipset_key_cid ON event (height,tipset_key_cid)")
-	if err != nil {
-		return fmt.Errorf("create index tmp_height_tipset_key_cid: %w", err)
-	}
-	_, err = tx.Exec("CREATE INDEX IF NOT EXISTS tmp_tipset_key_cid ON event (tipset_key_cid)")
-	if err != nil {
-		return fmt.Errorf("create index tmp_tipset_key_cid: %w", err)
-	}
-
-	stmtDeleteOffChainEvent, err := tx.Prepare("DELETE FROM event WHERE tipset_key_cid!=? and height=?")
-	if err != nil {
-		return fmt.Errorf("prepare stmtDeleteOffChainEvent: %w", err)
-	}
-
-	stmtSelectEvent, err := tx.Prepare("SELECT id FROM event WHERE tipset_key_cid=? ORDER BY message_index ASC, event_index ASC, id DESC LIMIT 1")
-	if err != nil {
-		return fmt.Errorf("prepare stmtSelectEvent: %w", err)
-	}
-
-	stmtDeleteEvent, err := tx.Prepare("DELETE FROM event WHERE tipset_key_cid=? AND id<?")
-	if err != nil {
-		return fmt.Errorf("prepare stmtDeleteEvent: %w", err)
-	}
-
-	// get the lowest height tipset
-	var minHeight sql.NullInt64
-	err = ei.db.QueryRow("SELECT MIN(height) FROM event").Scan(&minHeight)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil
-		}
-
-		return fmt.Errorf("query min height: %w", err)
-	}
-	log.Infof("Migrating events from head to %d", minHeight.Int64)
-
-	currTS := chainStore.GetHead()
-
-	// minHeight > 0 说明 event 表里有数据，需要迁移数据
-	if minHeight.Int64 > 0 {
-		for int64(currTS.Height()) >= minHeight.Int64 {
-			if currTS.Height()%1000 == 0 {
-				log.Infof("Migrating height %d (remaining %d)", currTS.Height(), int64(currTS.Height())-minHeight.Int64)
-			}
-
-			tsKey := currTS.Parents()
-			currTS, err = chainStore.GetTipSet(ctx, tsKey)
-			if err != nil {
-				return fmt.Errorf("get tipset from key: %w", err)
-			}
-			log.Debugf("Migrating height %d", currTS.Height())
-
-			tsKeyCid, err := currTS.Key().Cid()
-			if err != nil {
-				return fmt.Errorf("tipset key cid: %w", err)
-			}
-
-			// delete all events that are not in the canonical chain
-			_, err = stmtDeleteOffChainEvent.Exec(tsKeyCid.Bytes(), currTS.Height())
-			if err != nil {
-				return fmt.Errorf("delete off chain event: %w", err)
-			}
-
-			// find the first eventID from the last time the tipset was applied
-			var eventID sql.NullInt64
-			err = stmtSelectEvent.QueryRow(tsKeyCid.Bytes()).Scan(&eventID)
-			if err != nil {
-				if err == sql.ErrNoRows {
-					continue
-				}
-				return fmt.Errorf("select event: %w", err)
-			}
-
-			// this tipset might not have any events which is ok
-			if !eventID.Valid {
-				continue
-			}
-			log.Debugf("Deleting all events with id < %d at height %d", eventID.Int64, currTS.Height())
-
-			res, err := stmtDeleteEvent.Exec(tsKeyCid.Bytes(), eventID.Int64)
-			if err != nil {
-				return fmt.Errorf("delete event: %w", err)
-			}
-
-			nrRowsAffected, err := res.RowsAffected()
-			if err != nil {
-				return fmt.Errorf("rows affected: %w", err)
-			}
-			log.Debugf("deleted %d events from tipset %s", nrRowsAffected, tsKeyCid.String())
-		}
-	}
-
-	// delete all entries that have an event_id that doesn't exist (since we don't have a foreign
-	// key constraint that gives us cascading deletes)
-	res, err := tx.Exec("DELETE FROM event_entry WHERE event_id NOT IN (SELECT id FROM event)")
-	if err != nil {
-		return fmt.Errorf("delete event_entry: %w", err)
-	}
-
-	nrRowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("rows affected: %w", err)
-	}
-	log.Infof("cleaned up %d entries that had deleted events", nrRowsAffected)
-
-	// drop the temporary indices after the migration
-	_, err = tx.Exec("DROP INDEX IF EXISTS tmp_tipset_key_cid")
-	if err != nil {
-		return fmt.Errorf("create index tmp_tipset_key_cid: %w", err)
-	}
-	_, err = tx.Exec("DROP INDEX IF EXISTS tmp_height_tipset_key_cid")
-	if err != nil {
-		return fmt.Errorf("drop index tmp_height_tipset_key_cid: %w", err)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("commit transaction: %w", err)
-	}
-
-	// during the migration, we have likely increased the WAL size a lot, so lets do some
-	// simple DB administration to free up space (VACUUM followed by truncating the WAL file)
-	// as this would be a good time to do it when no other writes are happening
-	log.Infof("Performing DB vacuum and wal checkpointing to free up space after the migration")
-	_, err = ei.db.Exec("VACUUM")
-	if err != nil {
-		log.Warnf("error vacuuming database: %s", err)
-	}
-	_, err = ei.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
-	if err != nil {
-		log.Warnf("error checkpointing wal: %s", err)
-	}
-
-	log.Infof("Successfully migrated events to version 2 in %s", time.Since(now))
-
-	return nil
-}
+type EventIndexUpdated struct{}
 
 func NewEventIndex(ctx context.Context, path string, chainStore *chain.Store) (*EventIndex, error) {
-	db, err := sql.Open("sqlite3", path+"?mode=rwc")
+	db, _, err := sqlite.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("open sqlite3 database: %w", err)
+		return nil, fmt.Errorf("failed to setup event index db: %w", err)
 	}
 
-	for _, pragma := range pragmas {
-		if _, err := db.Exec(pragma); err != nil {
-			_ = db.Close()
-			return nil, fmt.Errorf("exec pragma %q: %w", pragma, err)
-		}
-	}
-
-	eventIndex := EventIndex{db: db}
-
-	q, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='_meta';")
-	if q != nil {
-		defer func() { _ = q.Close() }()
-	}
-	if err == sql.ErrNoRows || !q.Next() {
-		// empty database, create the schema
-		for _, ddl := range ddls {
-			if _, err := db.Exec(ddl); err != nil {
-				_ = db.Close()
-				return nil, fmt.Errorf("exec ddl %q: %w", ddl, err)
-			}
-		}
-	} else if err != nil {
+	err = sqlite.InitDb(ctx, "event index", db, ddls, []sqlite.MigrationFunc{
+		migrationVersion2(db, chainStore),
+		migrationVersion3,
+		migrationVersion4,
+		migrationVersion5,
+		migrationVersion6,
+		migrationVersion7,
+	})
+	if err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("looking for _meta table: %w", err)
-	} else {
-		// check the schema version to see if we need to upgrade the database schema
-		var version int
-		err := db.QueryRow("SELECT max(version) FROM _meta").Scan(&version)
-		if err != nil {
-			_ = db.Close()
-			return nil, fmt.Errorf("invalid database version: no version found")
-		}
-
-		if version == 1 {
-			log.Infof("upgrading event index from version 1 to version 2")
-
-			err = eventIndex.migrateToVersion2(ctx, chainStore)
-			if err != nil {
-				_ = db.Close()
-				return nil, fmt.Errorf("could not migrate sql data to version 2: %w", err)
-			}
-
-			// to upgrade to version 2 we only need to create an index on the event table
-			// which means we can just recreate the schema (it will not have any effect on existing data)
-			for _, ddl := range ddls {
-				if _, err := db.Exec(ddl); err != nil {
-					_ = db.Close()
-					return nil, fmt.Errorf("could not upgrade index to version 2, exec ddl %q: %w", ddl, err)
-				}
-			}
-
-			version = 2
-		}
-
-		if version != schemaVersion {
-			_ = db.Close()
-			return nil, fmt.Errorf("invalid database version: got %d, expected %d", version, schemaVersion)
-		}
+		return nil, fmt.Errorf("failed to setup event index db: %w", err)
 	}
 
-	err = eventIndex.initStatements()
-	if err != nil {
+	eventIndex := EventIndex{
+		db:   db,
+		stmt: &preparedStatements{},
+	}
+
+	if err = eventIndex.initStatements(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("error preparing eventIndex database statements: %w", err)
 	}
 
+	eventIndex.updateSubs = make(map[uint64]*updateSub)
+
 	return &eventIndex, nil
+}
+
+func (ei *EventIndex) initStatements() error {
+	stmtMapping := preparedStatementMapping(ei.stmt)
+	for stmtPointer, query := range stmtMapping {
+		var err error
+		*stmtPointer, err = ei.db.Prepare(query)
+		if err != nil {
+			return fmt.Errorf("prepare statement [%s]: %w", query, err)
+		}
+	}
+
+	return nil
 }
 
 func (ei *EventIndex) Close() error {
@@ -350,24 +214,107 @@ func (ei *EventIndex) Close() error {
 	return ei.db.Close()
 }
 
+func (ei *EventIndex) SubscribeUpdates() (chan EventIndexUpdated, func()) {
+	subCtx, subCancel := context.WithCancel(context.Background())
+	ch := make(chan EventIndexUpdated)
+
+	tSub := &updateSub{
+		ctx:    subCtx,
+		cancel: subCancel,
+		ch:     ch,
+	}
+
+	ei.mu.Lock()
+	subID := ei.subIDCounter
+	ei.subIDCounter++
+	ei.updateSubs[subID] = tSub
+	ei.mu.Unlock()
+
+	unSubscribeF := func() {
+		ei.mu.Lock()
+		tSub, ok := ei.updateSubs[subID]
+		if !ok {
+			ei.mu.Unlock()
+			return
+		}
+		delete(ei.updateSubs, subID)
+		ei.mu.Unlock()
+
+		// cancel the subscription
+		tSub.cancel()
+	}
+
+	return tSub.ch, unSubscribeF
+}
+
+func (ei *EventIndex) GetMaxHeightInIndex(ctx context.Context) (uint64, error) {
+	row := ei.stmt.getMaxHeightInIndex.QueryRowContext(ctx)
+	var maxHeight uint64
+	err := row.Scan(&maxHeight)
+	return maxHeight, err
+}
+
+func (ei *EventIndex) IsHeightPast(ctx context.Context, height uint64) (bool, error) {
+	maxHeight, err := ei.GetMaxHeightInIndex(ctx)
+	if err != nil {
+		return false, err
+	}
+	return height <= maxHeight, nil
+}
+
+func (ei *EventIndex) IsTipsetProcessed(ctx context.Context, tipsetKeyCid []byte) (bool, error) {
+	row := ei.stmt.isTipsetProcessed.QueryRowContext(ctx, tipsetKeyCid)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool, resolver func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)) error {
 	tx, err := ei.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 	// rollback the transaction (a no-op if the transaction was already committed)
-	defer tx.Rollback() //nolint:errcheck
+	defer func() { _ = tx.Rollback() }()
+
+	tsKeyCid, err := te.msgTS.Key().Cid()
+	if err != nil {
+		return fmt.Errorf("tipset key cid: %w", err)
+	}
 
 	// lets handle the revert case first, since its simpler and we can simply mark all events in this tipset as reverted and return
 	if revert {
-		_, err = tx.Stmt(ei.stmtRevertEventsInTipset).Exec(te.msgTS.Height(), te.msgTS.Key().Bytes())
+		_, err = tx.Stmt(ei.stmt.revertEventsInTipset).Exec(te.msgTS.Height(), te.msgTS.Key().Bytes())
 		if err != nil {
 			return fmt.Errorf("revert event: %w", err)
+		}
+
+		_, err = tx.Stmt(ei.stmt.revertEventSeen).Exec(te.msgTS.Height(), tsKeyCid.Bytes())
+		if err != nil {
+			return fmt.Errorf("revert event seen: %w", err)
 		}
 
 		err = tx.Commit()
 		if err != nil {
 			return fmt.Errorf("commit transaction: %w", err)
+		}
+
+		ei.mu.Lock()
+		tSubs := make([]*updateSub, 0, len(ei.updateSubs))
+		for _, tSub := range ei.updateSubs {
+			tSubs = append(tSubs, tSub)
+		}
+		ei.mu.Unlock()
+
+		for _, tSub := range tSubs {
+			tSub := tSub
+			select {
+			case tSub.ch <- EventIndexUpdated{}:
+			case <-tSub.ctx.Done():
+				// subscription was cancelled, ignore
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}
 
 		return nil
@@ -381,10 +328,11 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		return fmt.Errorf("load executed messages: %w", err)
 	}
 
+	eventCount := 0
 	// iterate over all executed messages in this tipset and insert them into the database if they
 	// don't exist, otherwise mark them as not reverted
 	for msgIdx, em := range ems {
-		for evIdx, ev := range em.Events() {
+		for _, ev := range em.Events() {
 			addr, found := addressLookups[ev.Emitter]
 			if !found {
 				var ok bool
@@ -396,19 +344,14 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				addressLookups[ev.Emitter] = addr
 			}
 
-			tsKeyCid, err := te.msgTS.Key().Cid()
-			if err != nil {
-				return fmt.Errorf("tipset key cid: %w", err)
-			}
-
 			// check if this event already exists in the database
 			var entryID sql.NullInt64
-			err = tx.Stmt(ei.stmtEventExists).QueryRow(
+			err = tx.Stmt(ei.stmt.eventExists).QueryRow(
 				te.msgTS.Height(),          // height
 				te.msgTS.Key().Bytes(),     // tipset_key
 				tsKeyCid.Bytes(),           // tipset_key_cid
 				addr.Bytes(),               // emitter_addr
-				evIdx,                      // event_index
+				eventCount,                 // event_index
 				em.Message().Cid().Bytes(), // message_cid
 				msgIdx,                     // message_index
 			).Scan(&entryID)
@@ -418,12 +361,12 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 
 			if !entryID.Valid {
 				// event does not exist, lets insert it
-				res, err := tx.Stmt(ei.stmtInsertEvent).Exec(
+				res, err := tx.Stmt(ei.stmt.insertEvent).Exec(
 					te.msgTS.Height(),          // height
 					te.msgTS.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
 					addr.Bytes(),               // emitter_addr
-					evIdx,                      // event_index
+					eventCount,                 // event_index
 					em.Message().Cid().Bytes(), // message_cid
 					msgIdx,                     // message_index
 					false,                      // reverted
@@ -439,7 +382,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 
 				// insert all the entries for this event
 				for _, entry := range ev.Entries {
-					_, err = tx.Stmt(ei.stmtInsertEntry).Exec(
+					_, err = tx.Stmt(ei.stmt.insertEntry).Exec(
 						entryID.Int64,               // event_id
 						isIndexedValue(entry.Flags), // indexed
 						[]byte{entry.Flags},         // flags
@@ -453,12 +396,12 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				}
 			} else {
 				// event already exists, lets mark it as not reverted
-				res, err := tx.Stmt(ei.stmtRestoreEvent).Exec(
+				res, err := tx.Stmt(ei.stmt.restoreEvent).Exec(
 					te.msgTS.Height(),          // height
 					te.msgTS.Key().Bytes(),     // tipset_key
 					tsKeyCid.Bytes(),           // tipset_key_cid
 					addr.Bytes(),               // emitter_addr
-					evIdx,                      // event_index
+					eventCount,                 // event_index
 					em.Message().Cid().Bytes(), // message_cid
 					msgIdx,                     // message_index
 				)
@@ -476,7 +419,18 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 					log.Warnf("restored %d events but expected only one to exist", rowsAffected)
 				}
 			}
+			eventCount++
 		}
+	}
+
+	// this statement will mark the tipset as processed and will insert a new row if it doesn't exist
+	// or update the reverted field to false if it does
+	_, err = tx.Stmt(ei.stmt.upsertEventsSeen).Exec(
+		te.msgTS.Height(),
+		tsKeyCid.Bytes(),
+	)
+	if err != nil {
+		return fmt.Errorf("exec upsert events seen: %w", err)
 	}
 
 	err = tx.Commit()
@@ -484,85 +438,32 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		return fmt.Errorf("commit transaction: %w", err)
 	}
 
+	ei.mu.Lock()
+	tSubs := make([]*updateSub, 0, len(ei.updateSubs))
+	for _, tSub := range ei.updateSubs {
+		tSubs = append(tSubs, tSub)
+	}
+	ei.mu.Unlock()
+
+	for _, tSub := range tSubs {
+		tSub := tSub
+		select {
+		case tSub.ch <- EventIndexUpdated{}:
+		case <-tSub.ctx.Done():
+			// subscription was cancelled, ignore
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
 	return nil
 }
 
 // prefillFilter fills a filter's collection of events from the historic index
 func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, excludeReverted bool) error {
-	clauses := []string{}
-	values := []any{}
-	joins := []string{}
+	values, query := makePrefillFilterQuery(f, excludeReverted)
 
-	if f.tipsetCid != cid.Undef {
-		clauses = append(clauses, "event.tipset_key_cid=?")
-		values = append(values, f.tipsetCid.Bytes())
-	} else {
-		if f.minHeight >= 0 {
-			clauses = append(clauses, "event.height>=?")
-			values = append(values, f.minHeight)
-		}
-		if f.maxHeight >= 0 {
-			clauses = append(clauses, "event.height<=?")
-			values = append(values, f.maxHeight)
-		}
-	}
-
-	if len(f.addresses) > 0 {
-		subclauses := []string{}
-		for _, addr := range f.addresses {
-			subclauses = append(subclauses, "emitter_addr=?")
-			values = append(values, addr.Bytes())
-		}
-		clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
-	}
-
-	if len(f.keysWithCodec) > 0 {
-		join := 0
-		for key, vals := range f.keysWithCodec {
-			if len(vals) > 0 {
-				join++
-				joinAlias := fmt.Sprintf("ee%d", join)
-				joins = append(joins, fmt.Sprintf("event_entry %s on event.id=%[1]s.event_id", joinAlias))
-				clauses = append(clauses, fmt.Sprintf("%s.indexed=1 AND %[1]s.key=?", joinAlias))
-				values = append(values, key)
-				subclauses := []string{}
-				for _, val := range vals {
-					subclauses = append(subclauses, fmt.Sprintf("(%s.value=? AND %[1]s.codec=?)", joinAlias))
-					values = append(values, val.Value, val.Codec)
-				}
-				clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
-			}
-		}
-	}
-
-	s := `SELECT
-			event.id,
-			event.height,
-			event.tipset_key,
-			event.tipset_key_cid,
-			event.emitter_addr,
-			event.event_index,
-			event.message_cid,
-			event.message_index,
-			event.reverted,
-			event_entry.flags,
-			event_entry.key,
-			event_entry.codec,
-			event_entry.value
-		FROM event JOIN event_entry ON event.id=event_entry.event_id`
-
-	if len(joins) > 0 {
-		s = s + ", " + strings.Join(joins, ", ")
-	}
-
-	if len(clauses) > 0 {
-		s = s + " WHERE " + strings.Join(clauses, " AND ")
-	}
-
-	// retain insertion order of event_entry rows with the implicit _rowid_ column
-	s += " ORDER BY event.height DESC, event_entry._rowid_ ASC"
-
-	stmt, err := ei.db.Prepare(s)
+	stmt, err := ei.db.Prepare(query)
 	if err != nil {
 		return fmt.Errorf("prepare prefill query: %w", err)
 	}
@@ -664,7 +565,6 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			Codec: row.codec,
 			Value: row.value,
 		})
-
 	}
 
 	if ce != nil {
@@ -681,4 +581,90 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 	f.setCollectedEvents(ces)
 
 	return nil
+}
+
+func makePrefillFilterQuery(f *eventFilter, excludeReverted bool) ([]any, string) {
+	clauses := []string{}
+	values := []any{}
+	joins := []string{}
+
+	if f.tipsetCid != cid.Undef {
+		clauses = append(clauses, "event.tipset_key_cid=?")
+		values = append(values, f.tipsetCid.Bytes())
+	} else {
+		if f.minHeight >= 0 && f.minHeight == f.maxHeight {
+			clauses = append(clauses, "event.height=?")
+			values = append(values, f.minHeight)
+		} else {
+			if f.maxHeight >= 0 && f.minHeight >= 0 {
+				clauses = append(clauses, "event.height BETWEEN ? AND ?")
+				values = append(values, f.minHeight, f.maxHeight)
+			} else if f.minHeight >= 0 {
+				clauses = append(clauses, "event.height >= ?")
+				values = append(values, f.minHeight)
+			} else if f.maxHeight >= 0 {
+				clauses = append(clauses, "event.height <= ?")
+				values = append(values, f.maxHeight)
+			}
+		}
+	}
+
+	if excludeReverted {
+		clauses = append(clauses, "event.reverted=?")
+		values = append(values, false)
+	}
+
+	if len(f.addresses) > 0 {
+		for _, addr := range f.addresses {
+			values = append(values, addr.Bytes())
+		}
+		clauses = append(clauses, "event.emitter_addr IN ("+strings.Repeat("?,", len(f.addresses)-1)+"?)")
+	}
+
+	if len(f.keysWithCodec) > 0 {
+		join := 0
+		for key, vals := range f.keysWithCodec {
+			if len(vals) > 0 {
+				join++
+				joinAlias := fmt.Sprintf("ee%d", join)
+				joins = append(joins, fmt.Sprintf("event_entry %s ON event.id=%[1]s.event_id", joinAlias))
+				clauses = append(clauses, fmt.Sprintf("%s.indexed=1 AND %[1]s.key=?", joinAlias))
+				values = append(values, key)
+				subclauses := make([]string, 0, len(vals))
+				for _, val := range vals {
+					subclauses = append(subclauses, fmt.Sprintf("(%s.value=? AND %[1]s.codec=?)", joinAlias))
+					values = append(values, val.Value, val.Codec)
+				}
+				clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
+			}
+		}
+	}
+
+	s := `SELECT
+			event.id,
+			event.height,
+			event.tipset_key,
+			event.tipset_key_cid,
+			event.emitter_addr,
+			event.event_index,
+			event.message_cid,
+			event.message_index,
+			event.reverted,
+			event_entry.flags,
+			event_entry.key,
+			event_entry.codec,
+			event_entry.value
+		FROM event JOIN event_entry ON event.id=event_entry.event_id`
+
+	if len(joins) > 0 {
+		s = s + ", " + strings.Join(joins, ", ")
+	}
+
+	if len(clauses) > 0 {
+		s = s + " WHERE " + strings.Join(clauses, " AND ")
+	}
+
+	// retain insertion order of event_entry rows with the implicit _rowid_ column
+	s += " ORDER BY event.height DESC, event_entry._rowid_ ASC"
+	return values, s
 }

@@ -29,14 +29,15 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v15/miner"
 	smoothingtypes "github.com/filecoin-project/go-state-types/builtin/v8/util/smoothing"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 )
 
 var InitActorAddr = builtin.InitActorAddr
 var SystemActorAddr = builtin.SystemActorAddr
 var BurntFundsActorAddr = builtin.BurntFundsActorAddr
 var CronActorAddr = builtin.CronActorAddr
+var DatacapActorAddr = builtin.DatacapActorAddr
 var EthereumAddressManagerActorAddr = builtin.EthereumAddressManagerActorAddr
 var SaftAddress = makeAddress("t0122")
 var ReserveAddress = makeAddress("t090")
@@ -49,6 +50,7 @@ var (
 const (
 	EpochDurationSeconds = builtin.EpochDurationSeconds
 	EpochsInDay          = builtin.EpochsInDay
+	EpochsInYear         = builtin.EpochsInYear
 	SecondsInDay         = builtin.SecondsInDay
 )
 
@@ -64,8 +66,8 @@ type ExtendedSectorInfo = proof.ExtendedSectorInfo
 type PoStProof = proof.PoStProof
 type FilterEstimate = smoothingtypes.FilterEstimate
 
-func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
-	return minertypes.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
+func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, verifiedWeight abi.DealWeight) abi.StoragePower {
+	return minertypes.QAPowerForWeight(size, duration, verifiedWeight)
 }
 
 func ActorNameByCode(c cid.Cid) string {

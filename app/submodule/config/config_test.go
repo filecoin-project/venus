@@ -32,8 +32,8 @@ func TestConfigGet(t *testing.T) {
 		repo := repo2.NewInMemoryRepo()
 		cfgAPI := NewConfigModule(repo)
 
-		_, err := cfgAPI.Get("nonexistantkey")
-		assert.EqualError(t, err, "key: nonexistantkey invalid for config")
+		_, err := cfgAPI.Get("nonexistentkey")
+		assert.EqualError(t, err, "key: nonexistentkey invalid for config")
 
 		_, err = cfgAPI.Get("bootstrap.nope")
 		assert.EqualError(t, err, "key: bootstrap.nope invalid for config")

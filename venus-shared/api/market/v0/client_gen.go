@@ -33,7 +33,7 @@ func NewIMarketRPC(ctx context.Context, addr string, requestHeader http.Header, 
 	return &res, closer, err
 }
 
-// DialIMarketRPC is a more convinient way of building client, as it resolves any format (url, multiaddr) of addr string.
+// DialIMarketRPC is a more convenient way of building client, as it resolves any format (url, multiaddr) of addr string.
 func DialIMarketRPC(ctx context.Context, addr string, token string, requestHeader http.Header, opts ...jsonrpc.Option) (IMarket, jsonrpc.ClientCloser, error) {
 	ainfo := api.NewAPIInfo(addr, token)
 	endpoint, err := ainfo.DialArgs(api.VerString(MajorVersion))

@@ -78,9 +78,9 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 type State interface {
 	cbor.Marshaler
 
-    Code() cid.Cid
-    ActorKey() string
-    ActorVersion() actorstypes.Version
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
 
 	BalancesChanged(State) (bool, error)
 	EscrowTable() (BalanceTable, error)
@@ -90,12 +90,14 @@ type State interface {
 	States() (DealStates, error)
 	ProposalsChanged(State) (bool, error)
 	Proposals() (DealProposals, error)
+	PendingProposals() (PendingProposals, error)
 	VerifyDealsForActivation(
 		minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
-	) (weight, verifiedWeight abi.DealWeight, err error)
+	) (verifiedWeight abi.DealWeight, err error)
 	NextID() (abi.DealID, error)
 	GetState() interface{}
 	GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error)
+	ProviderSectors() (ProviderSectors, error)
 }
 
 type BalanceTable interface {
@@ -119,6 +121,9 @@ type DealProposals interface {
 	decode(*cbg.Deferred) (*markettypes.DealProposal, error)
 }
 
+type PendingProposals interface {
+    Has(proposalCid cid.Cid) (bool, error)
+}
 
 type PublishStorageDealsReturn interface {
     DealIDs() ([]abi.DealID, error)
@@ -153,8 +158,29 @@ type DealState interface {
 	Equals(other DealState) bool
 }
 
+type ProviderSectors interface {
+	Get(actorId abi.ActorID) (SectorDealIDs, bool, error)
+}
+
+type SectorDealIDs interface {
+	ForEach(cb func(abi.SectorNumber, []abi.DealID) error) error
+	Get(sectorNumber abi.SectorNumber) ([]abi.DealID, bool, error)
+}
+
 func DealStatesEqual(a, b DealState) bool {
-	return DealStatesEqual(a, b)
+	if a.SectorNumber() != b.SectorNumber() {
+		return false
+	}
+	if a.SectorStartEpoch() != b.SectorStartEpoch() {
+		return false
+	}
+	if a.LastUpdatedEpoch() != b.LastUpdatedEpoch() {
+		return false
+	}
+	if a.SlashEpoch() != b.SlashEpoch() {
+		return false
+	}
+	return true
 }
 
 type DealStateChanges struct {
@@ -205,16 +231,7 @@ func (e *emptyDealState) SlashEpoch() abi.ChainEpoch {
 }
 
 func (e *emptyDealState) Equals(other DealState) bool {
-	if e.SectorStartEpoch() != other.SectorStartEpoch() {
-		return false
-	}
-	if e.LastUpdatedEpoch() != other.LastUpdatedEpoch() {
-		return false
-	}
-	if e.SlashEpoch() != other.SlashEpoch() {
-		return false
-	}
-	return true
+	return DealStatesEqual(e, other)
 }
 
 func EmptyDealState() DealState {

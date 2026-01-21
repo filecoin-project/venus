@@ -25,10 +25,10 @@ import (
 /*
 type Protocol interface {
 	StateTransformer
-	// Call compute message result of specify message
+	// Call computes message result of specified message
 	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*vm.Ret, error)
 
-	// CallWithGas compute message result of specify message base on messages in mpool
+	// CallWithGas computes message result of specified message based on messages in mpool
 	CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error)
 }
 */

@@ -228,28 +228,17 @@ func (s *Stmgr) TipsetState(ctx context.Context, ts *types.TipSet) (*tree.State,
 
 // deprecated: this implementation needs more considerations
 func (s *Stmgr) Rollback(ctx context.Context, pts, cts *types.TipSet) error {
-	log.Infof("rollback chain head from(%d) to a valid tipset", pts.Height())
-redo:
+	log.Infof("rollback chain head from(%d)", pts.Height())
 	s.stLk.Lock()
+	defer s.stLk.Unlock()
+
 	if err := s.cs.DeleteTipSetMetadata(ctx, pts); err != nil {
-		s.stLk.Unlock()
 		return err
 	}
 	if err := s.cs.SetHead(ctx, pts); err != nil {
-		s.stLk.Unlock()
 		return err
 	}
-	s.stLk.Unlock()
 
-	if root, _, err := s.RunStateTransition(ctx, pts, nil, false); err != nil {
-		return err
-	} else if !root.Equals(cts.At(0).ParentStateRoot) {
-		cts = pts
-		if pts, err = s.cs.GetTipSet(ctx, cts.Parents()); err != nil {
-			return err
-		}
-		goto redo
-	}
 	return nil
 }
 
@@ -257,7 +246,7 @@ func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.
 	if nil != s.stopFlag(false) {
 		return cid.Undef, cid.Undef, fmt.Errorf("state manager is stopping")
 	}
-	ctx, span := trace.StartSpan(ctx, "Exected.RunStateTransition")
+	ctx, span := trace.StartSpan(ctx, "Executed.RunStateTransition")
 	defer span.End()
 
 	key := ts.Key()
@@ -346,9 +335,30 @@ func (s *Stmgr) GetActorAt(ctx context.Context, addr address.Address, ts *types.
 	return actor, nil
 }
 
+func (s *Stmgr) GetActorRaw(ctx context.Context, addr address.Address, stateCid cid.Cid) (*types.Actor, error) {
+	if addr.Empty() {
+		return nil, types.ErrActorNotFound
+	}
+
+	state, err := tree.LoadState(ctx, s.cs.Store(ctx), stateCid)
+	if err != nil {
+		return nil, err
+	}
+
+	actor, find, err := state.GetActor(ctx, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	if !find {
+		return nil, types.ErrActorNotFound
+	}
+	return actor, nil
+}
+
 // deprecated: in future use.
 func (s *Stmgr) RunStateTransitionV2(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
-	ctx, span := trace.StartSpan(ctx, "Exected.RunStateTransition")
+	ctx, span := trace.StartSpan(ctx, "Executed.RunStateTransition")
 	defer span.End()
 
 	var state stateComputeResult

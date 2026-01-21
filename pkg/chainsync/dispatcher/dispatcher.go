@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sync"
-	atmoic2 "sync/atomic"
+	atomic2 "sync/atomic"
 	"time"
 
 	"github.com/filecoin-project/pubsub"
@@ -33,6 +33,7 @@ type dispatchSyncer interface {
 	Head() *types2.TipSet
 	HandleNewTipSet(context.Context, *types.Target) error
 	ValidateMsgMeta(ctx context.Context, fblk *types2.FullBlock) error
+	SyncCheckpoint(ctx context.Context, tsk types2.TipSetKey) error
 }
 
 // NewDispatcher creates a new syncing dispatcher with default queue sizes.
@@ -281,7 +282,7 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 			if syncTarget, popped := d.selectTarget(lastTarget, ch); popped {
 				lastTarget = syncTarget
 				if d.conCurrent.Get() < d.maxCount {
-					atmoic2.StoreInt64(&unsolvedNotify, 0)
+					atomic2.StoreInt64(&unsolvedNotify, 0)
 					syncTarget.State = types.StateInSyncing
 					ctx, cancel := context.WithCancel(ctx)
 					d.cancelControler.PushBack(cancel)
@@ -297,16 +298,16 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 
 						// new 'target' notify may ignored, because of 'conCurrent' reaching 'maxCount',
 						// that means there is a new 'target' waiting for solving.
-						if atmoic2.LoadInt64(&unsolvedNotify) > 0 {
+						if atomic2.LoadInt64(&unsolvedNotify) > 0 {
 							ch <- struct{}{}
 						}
 					}()
 				} else {
-					atmoic2.StoreInt64(&unsolvedNotify, 1)
+					atomic2.StoreInt64(&unsolvedNotify, 1)
 				}
 			}
 		case <-ctx.Done():
-			atmoic2.StoreInt64(&unsolvedNotify, 0)
+			atomic2.StoreInt64(&unsolvedNotify, 0)
 			d.workTracker.UnsubNewTarget(chKey)
 			ch = nil
 			log.Infof("context.done in dispatcher.syncworker.")
@@ -334,4 +335,8 @@ func (d *Dispatcher) processCtrl(ctrlMsg interface{}) {
 		// We don't know this type, log and ignore
 		log.Info("dispatcher control can not handle type %T", typedMsg)
 	}
+}
+
+func (d *Dispatcher) SyncCheckpoint(ctx context.Context, tsk types2.TipSetKey) error {
+	return d.syncer.SyncCheckpoint(ctx, tsk)
 }

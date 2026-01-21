@@ -176,6 +176,22 @@ var SupportedMsgTypes = map[types.MsgType]*Types{
 			return in, nil
 		},
 	},
+	types.MTF3: {
+		Type: reflect.TypeOf([]byte{}),
+		SignBytes: func(in interface{}) ([]byte, error) {
+			msg, isOk := in.([]byte)
+			if !isOk {
+				return nil, fmt.Errorf("MTF3 must be []byte")
+			}
+			return msg, nil
+		},
+		ParseObj: func(in []byte, meta types.MsgMeta) (interface{}, error) {
+			if meta.Type == types.MTF3 {
+				return in, nil
+			}
+			return nil, fmt.Errorf("un-expected MsgType:%s", meta.Type)
+		},
+	},
 }
 
 // GetSignBytesAndObj Matches the type and returns the data that needs to be signed
@@ -208,7 +224,7 @@ func GetSignBytesAndObj(toSign []byte, meta types.MsgMeta) (interface{}, []byte,
 func CborDecodeInto(r []byte, v interface{}) error {
 	unmarshaler, isOk := v.(cbor.Unmarshaler)
 	if !isOk {
-		return fmt.Errorf("not an 'unmarhsaler'")
+		return fmt.Errorf("not an 'unmarshaler'")
 	}
 	if err := unmarshaler.UnmarshalCBOR(bytes.NewReader(r)); err != nil {
 		return fmt.Errorf("cbor unmarshal:%w", err)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"text/tabwriter"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -169,11 +170,24 @@ var provingDeadlinesCmd = &cmds.Command{
 			return fmt.Errorf("getting deadlines: %w", err)
 		}
 
+		params, err := api.StateGetNetworkParams(ctx)
+		if err != nil {
+			return err
+		}
+
+		genesis, err := api.ChainGetGenesis(ctx)
+		if err != nil {
+			return err
+		}
+
+		// Genesis block (height 0) always exists, safe to access without nil check
+		periodStartTime := genesis.Blocks()[0].Timestamp + uint64(di.PeriodStart)*params.BlockDelaySecs
+
 		buf := new(bytes.Buffer)
 		writer := NewSilentWriter(buf)
 		writer.Printf("Miner: %s\n", maddr)
-		tw := tabwriter.NewWriter(buf, 2, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors (faults)\tproven partitions")
+		tw := tabwriter.NewWriter(buf, 0, 0, 2, ' ', 0)
+		_, _ = fmt.Fprintln(tw, "Deadline\tPartitions\tSectors (Faults)\tProven\tTimestamp")
 
 		all, _ := req.Options["all"].(bool)
 		for dlIdx, deadline := range deadlines {
@@ -221,11 +235,14 @@ var provingDeadlinesCmd = &cmds.Command{
 				faults += fc
 			}
 
-			var cur string
+			timestamp := time.Unix(int64(periodStartTime)+int64(dlIdx)*30*60, 0).Local().Format("2006-01-02 15:04:05")
+			cur := ""
 			if di.Index == uint64(dlIdx) {
-				cur += "\t(current)"
+				cur = " (current)"
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, partitionCount, sectors, faults, provenPartitions, cur)
+
+			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d\t%s%s\n",
+				dlIdx, partitionCount, sectors, faults, provenPartitions, timestamp, cur)
 		}
 		if err := tw.Flush(); err != nil {
 			return err

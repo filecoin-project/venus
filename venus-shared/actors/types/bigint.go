@@ -1,7 +1,6 @@
 package types
 
 import (
-	"fmt"
 	"math/big"
 
 	big2 "github.com/filecoin-project/go-state-types/big"
@@ -21,39 +20,40 @@ func BigFromBytes(b []byte) BigInt {
 }
 
 func BigFromString(s string) (BigInt, error) {
-	v, ok := big.NewInt(0).SetString(s, 10)
-	if !ok {
-		return BigInt{}, fmt.Errorf("failed to parse string as a big int")
-	}
-
-	return BigInt{Int: v}, nil
+	return big2.FromString(s)
 }
 
 func BigMul(a, b BigInt) BigInt {
-	return BigInt{Int: big.NewInt(0).Mul(a.Int, b.Int)}
+	return big2.Mul(a, b)
 }
 
 func BigDiv(a, b BigInt) BigInt {
-	return BigInt{Int: big.NewInt(0).Div(a.Int, b.Int)}
+	return big2.Div(a, b)
 }
 
 func BigDivFloat(num, den BigInt) float64 {
+	if den.NilOrZero() {
+		panic("divide by zero")
+	}
+	if num.NilOrZero() {
+		return 0
+	}
 	res, _ := new(big.Rat).SetFrac(num.Int, den.Int).Float64()
 	return res
 }
 
 func BigMod(a, b BigInt) BigInt {
-	return BigInt{Int: big.NewInt(0).Mod(a.Int, b.Int)}
+	return big2.Mod(a, b)
 }
 
 func BigAdd(a, b BigInt) BigInt {
-	return BigInt{Int: big.NewInt(0).Add(a.Int, b.Int)}
+	return big2.Add(a, b)
 }
 
 func BigSub(a, b BigInt) BigInt {
-	return BigInt{Int: big.NewInt(0).Sub(a.Int, b.Int)}
+	return big2.Sub(a, b)
 }
 
 func BigCmp(a, b BigInt) int {
-	return a.Int.Cmp(b.Int)
+	return big2.Cmp(a, b)
 }

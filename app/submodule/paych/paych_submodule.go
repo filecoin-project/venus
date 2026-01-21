@@ -16,7 +16,7 @@ type PaychSubmodule struct { //nolint
 	pmgr *paychmgr.Manager
 }
 
-// PaychSubmodule enhances the `Node` with paych capabilities.
+// NewPaychSubmodule enhances the `Node` with paych capabilities.
 func NewPaychSubmodule(ctx context.Context, ds datastore.Batching, params *paychmgr.ManagerParams) (*PaychSubmodule, error) {
 	mgr, err := paychmgr.NewManager(ctx, ds, params)
 	return &PaychSubmodule{mgr}, err

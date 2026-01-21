@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -515,6 +516,10 @@ func (d *deadline12) DisputableProofCount() (uint64, error) {
 
 }
 
+func (d *deadline12) DailyFee() (abi.TokenAmount, error) {
+	return big.Zero(), nil
+}
+
 func (p *partition12) AllSectors() (bitfield.BitField, error) {
 	return p.Partition.Sectors, nil
 }
@@ -536,20 +541,19 @@ func fromV12SectorOnChainInfo(v12 miner12.SectorOnChainInfo) SectorOnChainInfo {
 		SectorNumber:          v12.SectorNumber,
 		SealProof:             v12.SealProof,
 		SealedCID:             v12.SealedCID,
-		DealIDs:               v12.DealIDs,
+		DeprecatedDealIDs:     v12.DealIDs,
 		Activation:            v12.Activation,
 		Expiration:            v12.Expiration,
 		DealWeight:            v12.DealWeight,
 		VerifiedDealWeight:    v12.VerifiedDealWeight,
 		InitialPledge:         v12.InitialPledge,
-		ExpectedDayReward:     v12.ExpectedDayReward,
-		ExpectedStoragePledge: v12.ExpectedStoragePledge,
-
-		SectorKeyCID: v12.SectorKeyCID,
-
-		PowerBaseEpoch:    v12.PowerBaseEpoch,
-		ReplacedDayReward: v12.ReplacedDayReward,
-		Flags:             SectorOnChainInfoFlags(v12.Flags),
+		ExpectedDayReward:     &v12.ExpectedDayReward,
+		ExpectedStoragePledge: &v12.ExpectedStoragePledge,
+		SectorKeyCID:          v12.SectorKeyCID,
+		PowerBaseEpoch:        v12.PowerBaseEpoch,
+		ReplacedDayReward:     &v12.ReplacedDayReward,
+		Flags:                 SectorOnChainInfoFlags(v12.Flags),
+		DailyFee:              big.Zero(),
 	}
 	return info
 }

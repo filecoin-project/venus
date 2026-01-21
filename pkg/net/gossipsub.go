@@ -2,7 +2,6 @@ package net
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"time"
 
@@ -12,11 +11,11 @@ import (
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	blake2b "github.com/minio/blake2b-simd"
+	blake2b "golang.org/x/crypto/blake2b"
 
-	"github.com/filecoin-project/go-f3/gpbft"
 	"github.com/filecoin-project/go-f3/manifest"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/vf3"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -42,12 +41,6 @@ const (
 	GraylistScoreThreshold           = -2500
 	AcceptPXScoreThreshold           = 1000
 	OpportunisticGraftScoreThreshold = 3.5
-
-	// Determines the max. number of configuration changes
-	// that are allowed for the dynamic manifest.
-	// If the manifest changes more than this number, the F3
-	// message topic will be filtered
-	MaxDynamicManifestChangesAllowed = 1000
 )
 
 func NewGossipSub(ctx context.Context,
@@ -57,7 +50,7 @@ func NewGossipSub(ctx context.Context,
 	drandSchedule map[abi.ChainEpoch]config.DrandEnum,
 	bootNodes []peer.AddrInfo,
 	bs bool,
-	f3enabled bool,
+	f3Config *vf3.Config,
 ) (*pubsub.PubSub, error) {
 	bootstrappers := make(map[peer.ID]struct{})
 	for _, info := range bootNodes {
@@ -66,7 +59,6 @@ func NewGossipSub(ctx context.Context,
 
 	blockTopic := types.BlockTopic(networkName)
 	msgTopic := types.MessageTopic(networkName)
-	indexerIngestTopic := types.IndexerIngestTopic(networkName)
 
 	topicParams := map[string]*pubsub.TopicScoreParams{
 		blockTopic: {
@@ -151,22 +143,6 @@ func NewGossipSub(ctx context.Context,
 		msgTopic:   1,
 	}
 
-	ingestTopicParams := &pubsub.TopicScoreParams{
-		// expected ~0.5 confirmed deals / min. sampled
-		TopicWeight: 0.1,
-
-		TimeInMeshWeight:  0.00027, // ~1/3600
-		TimeInMeshQuantum: time.Second,
-		TimeInMeshCap:     1,
-
-		FirstMessageDeliveriesWeight: 0.5,
-		FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-		FirstMessageDeliveriesCap:    100, // allowing for burstiness
-
-		InvalidMessageDeliveriesWeight: -1000,
-		InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
-	}
-
 	drandTopicParams := &pubsub.TopicScoreParams{
 		// expected 2 beaconsn/min
 		TopicWeight: 0.5, // 5x block topic; max cap is 62.5
@@ -214,9 +190,6 @@ func NewGossipSub(ctx context.Context,
 		drandTopics = append(drandTopics, topic)
 	}
 
-	// Index ingestion whitelist
-	topicParams[indexerIngestTopic] = ingestTopicParams
-
 	isBootstrapNode := bs
 
 	// IP colocation whitelist
@@ -226,6 +199,15 @@ func NewGossipSub(ctx context.Context,
 		// Gossipsubv1.1 configuration
 		pubsub.WithFloodPublish(true),
 		pubsub.WithMessageIdFn(hashMsgId),
+		// Bump the validation queue to accommodate the increase in gossipsub message
+		// exchange rate as a result of f3. The size of 256 should offer enough headroom
+		// for slower F3 validation while avoiding: 1) avoid excessive memory usage, 2)
+		// dropped consensus related messages and 3) cascading effect among other topics
+		// since this config isn't topic-specific.
+		//
+		// Note that the worst case memory footprint is 256 MiB based on the default
+		// message size of 1 MiB, which isn't overridden in Lotus.
+		pubsub.WithValidateQueueSize(256),
 		pubsub.WithPeerScore(
 			&pubsub.PeerScoreParams{
 				AppSpecificScore: func(p peer.ID) float64 {
@@ -317,33 +299,17 @@ func NewGossipSub(ctx context.Context,
 	allowTopics := []string{
 		blockTopic,
 		msgTopic,
-		indexerIngestTopic,
 	}
 	allowTopics = append(allowTopics, drandTopics...)
-	if f3enabled {
-		f3TopicName := manifest.PubSubTopicFromNetworkName(gpbft.NetworkName(networkName))
-		allowTopics = append(allowTopics, f3TopicName)
 
-		// allow dynamic manifest topic and the new topic names after a reconfiguration.
-		// Note: This is pretty ugly, but I tried to use a regex subscription filter
-		// as the commented code below, but unfortunately it overwrites previous filters. A simple fix would
-		// be to allow combining several topic filters, but for now this works.
-		//
-		// 	pattern := fmt.Sprintf(`^\/f3\/%s\/0\.0\.1\/?[0-9]*$`, in.Nn)
-		// 	rx, err := regexp.Compile(pattern)
-		// 	if err != nil {
-		// 		return nil, xerrors.Errorf("failed to compile manifest topic regex: %w", err)
-		// 	}
-		// 	options = append(options,
-		// 		pubsub.WithSubscriptionFilter(
-		// 			pubsub.WrapLimitSubscriptionFilter(
-		// 				pubsub.NewRegexpSubscriptionFilter(rx),
-		// 				100)))
-		allowTopics = append(allowTopics, manifest.ManifestPubSubTopicName)
-		for i := 0; i < MaxDynamicManifestChangesAllowed; i++ {
-			allowTopics = append(allowTopics, f3TopicName+"/"+fmt.Sprintf("%d", i))
+	if f3Config != nil {
+		if f3Config.StaticManifest != nil {
+			gpbftTopic := manifest.PubSubTopicFromNetworkName(f3Config.BaseNetworkName)
+			chainexTopic := manifest.ChainExchangeTopicFromNetworkName(f3Config.BaseNetworkName)
+			allowTopics = append(allowTopics, gpbftTopic, chainexTopic)
 		}
 	}
+
 	options = append(options,
 		pubsub.WithSubscriptionFilter(
 			pubsub.WrapLimitSubscriptionFilter(
@@ -357,7 +323,7 @@ func parseDrandBootstrap(df config.DrandConf) ([]peer.AddrInfo, error) {
 	// TODO: retry resolving, don't fail if at least one resolve succeeds
 	addrs, err := ParseAddresses(context.TODO(), df.Relays)
 	if err != nil {
-		gossipsubLog.Errorf("reoslving drand relays addresses: %+v", err)
+		gossipsubLog.Errorf("resolving drand relays addresses: %+v", err)
 		return nil, nil
 	}
 

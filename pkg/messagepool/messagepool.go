@@ -20,8 +20,8 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/minio/blake2b-simd"
 	"github.com/raulk/clock"
+	"golang.org/x/crypto/blake2b"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"

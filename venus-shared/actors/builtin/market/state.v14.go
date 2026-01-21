@@ -109,6 +109,14 @@ func (s *state14) Proposals() (DealProposals, error) {
 	return &dealProposals14{proposalArray}, nil
 }
 
+func (s *state14) PendingProposals() (PendingProposals, error) {
+	proposalCidSet, err := adt14.AsSet(s.store, s.State.PendingProposals, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+	return &pendingProposals14{proposalCidSet}, nil
+}
+
 func (s *state14) EscrowTable() (BalanceTable, error) {
 	bt, err := adt14.AsBalanceTable(s.store, s.State.EscrowTable)
 	if err != nil {
@@ -127,9 +135,9 @@ func (s *state14) LockedTable() (BalanceTable, error) {
 
 func (s *state14) VerifyDealsForActivation(
 	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
-) (weight, verifiedWeight abi.DealWeight, err error) {
-	w, vw, _, err := market14.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
-	return w, vw, err
+) (verifiedWeight abi.DealWeight, err error) {
+	_, vw, _, err := market14.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
+	return vw, err
 }
 
 func (s *state14) NextID() (abi.DealID, error) {
@@ -287,6 +295,14 @@ func (s *dealProposals14) array() adt.Array {
 	return s.Array
 }
 
+type pendingProposals14 struct {
+	*adt14.Set
+}
+
+func (s *pendingProposals14) Has(proposalCid cid.Cid) (bool, error) {
+	return s.Set.Has(abi.CidKey(proposalCid))
+}
+
 func fromV14DealProposal(v14 market14.DealProposal) (DealProposal, error) {
 
 	label, err := fromV14Label(v14.Label)
@@ -410,4 +426,60 @@ func (s *state14) Code() cid.Cid {
 	}
 
 	return code
+}
+
+func (s *state14) ProviderSectors() (ProviderSectors, error) {
+
+	proverSectors, err := adt14.AsMap(s.store, s.State.ProviderSectors, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+	return &providerSectors14{proverSectors, s.store}, nil
+
+}
+
+type providerSectors14 struct {
+	*adt14.Map
+	adt14.Store
+}
+
+type sectorDealIDs14 struct {
+	*adt14.Map
+}
+
+func (s *providerSectors14) Get(actorId abi.ActorID) (SectorDealIDs, bool, error) {
+	var sectorDealIdsCID cbg.CborCid
+	if ok, err := s.Map.Get(abi.UIntKey(uint64(actorId)), &sectorDealIdsCID); err != nil {
+		return nil, false, fmt.Errorf("failed to load sector deal ids for actor %d: %w", actorId, err)
+	} else if !ok {
+		return nil, false, nil
+	}
+	sectorDealIds, err := adt14.AsMap(s.Store, cid.Cid(sectorDealIdsCID), builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to load sector deal ids for actor %d: %w", actorId, err)
+	}
+	return &sectorDealIDs14{sectorDealIds}, true, nil
+}
+
+func (s *sectorDealIDs14) ForEach(cb func(abi.SectorNumber, []abi.DealID) error) error {
+	var dealIds abi.DealIDList
+	return s.Map.ForEach(&dealIds, func(key string) error {
+		uk, err := abi.ParseUIntKey(key)
+		if err != nil {
+			return fmt.Errorf("failed to parse sector number from key %s: %w", key, err)
+		}
+		return cb(abi.SectorNumber(uk), dealIds)
+	})
+}
+
+func (s *sectorDealIDs14) Get(sectorNumber abi.SectorNumber) ([]abi.DealID, bool, error) {
+	var dealIds abi.DealIDList
+	found, err := s.Map.Get(abi.UIntKey(uint64(sectorNumber)), &dealIds)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to load sector deal ids for sector %d: %w", sectorNumber, err)
+	}
+	if !found {
+		return nil, false, nil
+	}
+	return dealIds, true, nil
 }

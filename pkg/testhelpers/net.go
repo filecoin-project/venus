@@ -19,7 +19,7 @@ func RandPeerID() (peer.ID, error) {
 	buf := make([]byte, 16)
 	if n, err := rand.Read(buf); n != 16 || err != nil {
 		if n != 16 && err == nil {
-			err = errors.New("couldnt read 16 random bytes")
+			err = errors.New("couldn't read 16 random bytes")
 		}
 		panic(err)
 	}

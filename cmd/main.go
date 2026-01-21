@@ -79,6 +79,8 @@ const (
 	AuthServiceURL   = "auth-url"
 	AuthServiceToken = "auth-token"
 
+	WalletGateway = "wallet-gateway"
+
 	BootstrapPeers = "bootstrap-peers"
 
 	Profile = "profile"
@@ -132,12 +134,16 @@ Cid COMMANDS
 Evm COMMANDS
   evm                    - Commands related to the Filecoin EVM runtime
 
+F3 COMMANDS
+  f3                     - Commands related to the Filecoin F3
+
 TOOL COMMANDS
   inspect                - Show info about the venus node
   log                    - Interact with the daemon event log output
   version                - Show venus version information
   seed                   - Seal sectors for genesis miner
   fetch                  - Fetch proving parameters
+  rpc                    - Interact with the jsonrpc api
 `,
 	},
 	Options: []cmds.Option{
@@ -163,6 +169,7 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 	"version": versionCmd,
 	"seed":    seedCmd,
 	"cid":     cidCmd,
+	"rpc":     rpcCmd,
 }
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
@@ -182,6 +189,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"paych":   paychCmd,
 	"info":    infoCmd,
 	"evm":     evmCmd,
+	"f3":      f3Cmd,
 }
 
 func init() {

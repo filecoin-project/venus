@@ -34,7 +34,7 @@ var TestAddresses []address.Address
 // testKeys is a list of filenames, which contain the private keys of the pregenerated addresses.
 var testKeys []string
 
-// TestMiners is a list of pregenerated miner acccounts. They are owned by the matching TestAddress.
+// TestMiners is a list of pregenerated miner accounts. They are owned by the matching TestAddress.
 var TestMiners []address.Address
 
 // TestGenGenConfig is the gengen config used to make the default test genesis block.

@@ -249,6 +249,12 @@ func (node *Node) Stop(ctx context.Context) {
 			log.Warnf("error shutdown jaeger-tracing: %w", err)
 		}
 	}
+
+	node.Wallet().WalletGateway.Close()
+
+	if err := node.f3.Stop(ctx); err != nil {
+		log.Warnf("error closing f3: %w", err)
+	}
 }
 
 // RunRPCAndWait start rpc server and listen to signal to exit
@@ -320,7 +326,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 
 	terminate := make(chan error, 1)
 
-	// todo: design an genterfull
+	// todo: design a graceful
 	memguard.CatchSignal(func(signal os.Signal) {
 		log.Infof("received signal(%s), venus will shutdown...", signal.String())
 		log.Infof("shutting down server...")

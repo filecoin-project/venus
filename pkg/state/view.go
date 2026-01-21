@@ -472,7 +472,7 @@ func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, 
 	return p.RawBytePower, p.QualityAdjPower, nil
 }
 
-// MinerNominalPowerMeetsConsensusMinimum return whether miner meet consensus minmum power
+// MinerNominalPowerMeetsConsensusMinimum return whether miner meet consensus minimum power
 func (v *View) MinerNominalPowerMeetsConsensusMinimum(ctx context.Context, addr addr.Address) (bool, error) {
 	st, err := v.LoadPowerActor(ctx)
 	if err != nil {

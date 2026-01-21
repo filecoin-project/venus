@@ -8,8 +8,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
+	must "github.com/filecoin-project/venus/venus-shared/utils"
 	fcbor "github.com/fxamacker/cbor/v2"
-	"github.com/minio/blake2b-simd"
+	"golang.org/x/crypto/blake2b"
 )
 
 type DrawRandomParams struct {
@@ -21,7 +22,7 @@ type DrawRandomParams struct {
 
 // return store.DrawRandomness(dr.Rbase, dr.Pers, dr.Round, dr.Entropy)
 func (dr *DrawRandomParams) SignBytes() ([]byte, error) {
-	h := blake2b.New256()
+	h := must.One(blake2b.New256(nil))
 	if err := binary.Write(h, binary.BigEndian, int64(dr.Pers)); err != nil {
 		return nil, fmt.Errorf("deriving randomness: %w", err)
 	}

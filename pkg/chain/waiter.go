@@ -332,7 +332,7 @@ func (w *Waiter) receiptByIndex(ctx context.Context, ts *types.TipSet, targetCid
 
 	receiptIndex := 0
 	for _, blkInfo := range blockMsgs {
-		// todo aggrate bls and secp msg to one msg
+		// todo: aggregate bls and secp msg to one msg
 		for _, msg := range append(blkInfo.BlsMessages, blkInfo.SecpkMessages...) {
 			if msg.Cid().Equals(targetCid) {
 				if receiptIndex >= len(receipts) {

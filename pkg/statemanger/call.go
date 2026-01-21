@@ -38,6 +38,10 @@ const (
 // tipset's parent. In the presence of null blocks, the height at which the message is invoked may
 // be less than the specified tipset.
 func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.InvocResult, error) {
+	return s.CallOnState(ctx, cid.Undef, msg, ts)
+}
+
+func (s *Stmgr) CallOnState(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*types.InvocResult, error) {
 	// Copy the message as we modify it below.
 	msgCopy := *msg
 	msg = &msgCopy
@@ -55,7 +59,7 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 		msg.Value = types.NewInt(0)
 	}
 
-	return s.callInternal(ctx, msg, nil, ts, cid.Undef, s.GetNetworkVersion, false, execSameSenderMessages)
+	return s.callInternal(ctx, msg, nil, ts, stateCid, s.GetNetworkVersion, false, execSameSenderMessages)
 }
 
 // ApplyOnStateWithGas applies the given message on top of the given state root with gas tracing enabled

@@ -23,7 +23,7 @@ const veryLargeRle = 1 << 20
 // in a sector are unsealed, and which are not (holes)
 
 // unsealed sector files internally have this structure
-// [unpadded (raw) data][rle+][4B LE length fo the rle+ field]
+// [unpadded (raw) data][rle+][4B LE length of the rle+ field]
 
 type partialFile struct {
 	maxPiece abi.PaddedPieceSize
@@ -60,7 +60,7 @@ func writeTrailer(maxPieceSize int64, w *os.File, r rlepluslazy.RunIterator) err
 func createPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFile, error) {
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o644) // nolint
 	if err != nil {
-		return nil, fmt.Errorf("openning partial file '%s': %w", path, err)
+		return nil, fmt.Errorf("opening partial file '%s': %w", path, err)
 	}
 
 	err = func() error {
@@ -95,7 +95,7 @@ func createPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialF
 func openPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFile, error) {
 	f, err := os.OpenFile(path, os.O_RDWR, 0o644) // nolint
 	if err != nil {
-		return nil, fmt.Errorf("openning partial file '%s': %w", path, err)
+		return nil, fmt.Errorf("opening partial file '%s': %w", path, err)
 	}
 
 	var rle rlepluslazy.RLE

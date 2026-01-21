@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -60,6 +61,7 @@ const (
 
 func TestGenGenLoading(t *testing.T) {
 	tf.IntegrationTest(t)
+	address.CurrentNetwork = address.Testnet
 
 	fi, err := os.CreateTemp("", "gengentest")
 	assert.NoError(t, err)

@@ -56,6 +56,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [StateGetRandomnessDigestFromTickets](#stategetrandomnessdigestfromtickets)
   * [StateGetRandomnessFromBeacon](#stategetrandomnessfrombeacon)
   * [StateGetRandomnessFromTickets](#stategetrandomnessfromtickets)
+  * [StateMarketProposalPending](#statemarketproposalpending)
   * [StateNetworkName](#statenetworkname)
   * [StateNetworkVersion](#statenetworkversion)
   * [StateReplay](#statereplay)
@@ -80,6 +81,8 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [EthGetBalance](#ethgetbalance)
   * [EthGetBlockByHash](#ethgetblockbyhash)
   * [EthGetBlockByNumber](#ethgetblockbynumber)
+  * [EthGetBlockReceipts](#ethgetblockreceipts)
+  * [EthGetBlockReceiptsLimited](#ethgetblockreceiptslimited)
   * [EthGetBlockTransactionCountByHash](#ethgetblocktransactioncountbyhash)
   * [EthGetBlockTransactionCountByNumber](#ethgetblocktransactioncountbynumber)
   * [EthGetCode](#ethgetcode)
@@ -98,6 +101,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [EthSendRawTransaction](#ethsendrawtransaction)
   * [EthSyncing](#ethsyncing)
   * [EthTraceBlock](#ethtraceblock)
+  * [EthTraceFilter](#ethtracefilter)
   * [EthTraceReplayBlockTransactions](#ethtracereplayblocktransactions)
   * [EthTraceTransaction](#ethtracetransaction)
   * [FilecoinAddressToEthAddress](#filecoinaddresstoethaddress)
@@ -119,6 +123,12 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [F3GetECPowerTable](#f3getecpowertable)
   * [F3GetF3PowerTable](#f3getf3powertable)
   * [F3GetLatestCertificate](#f3getlatestcertificate)
+  * [F3GetManifest](#f3getmanifest)
+  * [F3GetOrRenewParticipationTicket](#f3getorrenewparticipationticket)
+  * [F3GetPowerTableByInstance](#f3getpowertablebyinstance)
+  * [F3GetProgress](#f3getprogress)
+  * [F3IsRunning](#f3isrunning)
+  * [F3ListParticipants](#f3listparticipants)
   * [F3Participate](#f3participate)
 * [Market](#market)
   * [StateMarketParticipants](#statemarketparticipants)
@@ -175,10 +185,12 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [StateMinerActiveSectors](#statemineractivesectors)
   * [StateMinerAllocated](#stateminerallocated)
   * [StateMinerAvailableBalance](#statemineravailablebalance)
+  * [StateMinerCreationDeposit](#stateminercreationdeposit)
   * [StateMinerDeadlines](#stateminerdeadlines)
   * [StateMinerFaults](#stateminerfaults)
   * [StateMinerInfo](#stateminerinfo)
   * [StateMinerInitialPledgeCollateral](#stateminerinitialpledgecollateral)
+  * [StateMinerInitialPledgeForSector](#stateminerinitialpledgeforsector)
   * [StateMinerPartitions](#stateminerpartitions)
   * [StateMinerPower](#stateminerpower)
   * [StateMinerPreCommitDepositForPower](#stateminerprecommitdepositforpower)
@@ -243,6 +255,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
   * [ChainTipSetWeight](#chaintipsetweight)
   * [Concurrent](#concurrent)
   * [SetConcurrent](#setconcurrent)
+  * [SyncCheckpoint](#synccheckpoint)
   * [SyncIncomingBlocks](#syncincomingblocks)
   * [SyncState](#syncstate)
   * [SyncSubmitBlock](#syncsubmitblock)
@@ -1404,7 +1417,7 @@ Perms: read
 Inputs:
 ```json
 [
-  23
+  27
 ]
 ```
 
@@ -1419,7 +1432,7 @@ Perms: read
 Inputs:
 ```json
 [
-  23
+  27
 ]
 ```
 
@@ -1584,7 +1597,31 @@ Response:
             "tt": 60000000000
           }
         ],
-        "Subcalls": null
+        "Subcalls": null,
+        "Logs": [
+          "string value"
+        ],
+        "IpldOps": [
+          {
+            "Op": "Get",
+            "Cid": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 42
+          }
+        ]
+      }
+    ],
+    "Logs": [
+      "string value"
+    ],
+    "IpldOps": [
+      {
+        "Op": "Get",
+        "Cid": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Size": 42
       }
     ]
   },
@@ -1787,7 +1824,31 @@ Response:
                 "tt": 60000000000
               }
             ],
-            "Subcalls": null
+            "Subcalls": null,
+            "Logs": [
+              "string value"
+            ],
+            "IpldOps": [
+              {
+                "Op": "Get",
+                "Cid": {
+                  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+                },
+                "Size": 42
+              }
+            ]
+          }
+        ],
+        "Logs": [
+          "string value"
+        ],
+        "IpldOps": [
+          {
+            "Op": "Get",
+            "Cid": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 42
           }
         ]
       },
@@ -1799,9 +1860,10 @@ Response:
 ```
 
 ### StateGetBeaconEntry
-StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
-the entry has not yet been produced, the call will block until the entry
-becomes available
+StateGetBeaconEntry returns the beacon entry for the given filecoin epoch
+by using the recorded entries on the chain. If the entry for the requested
+epoch has not yet been produced, the call will block until the entry
+becomes available.
 
 
 Perms: read
@@ -1867,7 +1929,11 @@ Response:
     "UpgradeWatermelonHeight": 10101,
     "UpgradeDragonHeight": 10101,
     "UpgradePhoenixHeight": 10101,
-    "UpgradeWaffleHeight": 10101
+    "UpgradeWaffleHeight": 10101,
+    "UpgradeTuktukHeight": 10101,
+    "UpgradeTeepHeight": 10101,
+    "UpgradeTockHeight": 10101,
+    "UpgradeGoldenWeekHeight": 10101
   },
   "Eip155ChainID": 123
 }
@@ -1967,6 +2033,31 @@ Inputs:
 
 Response: `"Bw=="`
 
+### StateMarketProposalPending
+StateMarketProposalPending returns whether a given proposal CID is marked as pending in the market actor
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `true`
+
 ### StateNetworkName
 
 
@@ -1995,7 +2086,7 @@ Inputs:
 ]
 ```
 
-Response: `23`
+Response: `27`
 
 ### StateReplay
 
@@ -2139,7 +2230,31 @@ Response:
             "tt": 60000000000
           }
         ],
-        "Subcalls": null
+        "Subcalls": null,
+        "Logs": [
+          "string value"
+        ],
+        "IpldOps": [
+          {
+            "Op": "Get",
+            "Cid": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "Size": 42
+          }
+        ]
+      }
+    ],
+    "Logs": [
+      "string value"
+    ],
+    "IpldOps": [
+      {
+        "Op": "Get",
+        "Cid": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "Size": 42
       }
     ]
   },
@@ -2635,6 +2750,113 @@ Response:
 }
 ```
 
+### EthGetBlockReceipts
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "blockNumber": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "requireCanonical": true
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "transactionIndex": "0x5",
+    "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "blockNumber": "0x5",
+    "from": "0x0707070707070707070707070707070707070707",
+    "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "root": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "status": "0x5",
+    "contractAddress": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "cumulativeGasUsed": "0x5",
+    "gasUsed": "0x5",
+    "effectiveGasPrice": "0x0",
+    "logsBloom": "0x07",
+    "logs": [
+      {
+        "address": "0x0707070707070707070707070707070707070707",
+        "data": "0x07",
+        "topics": [
+          "0x0707070707070707070707070707070707070707070707070707070707070707"
+        ],
+        "removed": true,
+        "logIndex": "0x5",
+        "transactionIndex": "0x5",
+        "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+        "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+        "blockNumber": "0x5"
+      }
+    ],
+    "type": "0x5"
+  }
+]
+```
+
+### EthGetBlockReceiptsLimited
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "blockNumber": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "requireCanonical": true
+  },
+  10101
+]
+```
+
+Response:
+```json
+[
+  {
+    "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "transactionIndex": "0x5",
+    "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "blockNumber": "0x5",
+    "from": "0x0707070707070707070707070707070707070707",
+    "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "root": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "status": "0x5",
+    "contractAddress": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+    "cumulativeGasUsed": "0x5",
+    "gasUsed": "0x5",
+    "effectiveGasPrice": "0x0",
+    "logsBloom": "0x07",
+    "logs": [
+      {
+        "address": "0x0707070707070707070707070707070707070707",
+        "data": "0x07",
+        "topics": [
+          "0x0707070707070707070707070707070707070707070707070707070707070707"
+        ],
+        "removed": true,
+        "logIndex": "0x5",
+        "transactionIndex": "0x5",
+        "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+        "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+        "blockNumber": "0x5"
+      }
+    ],
+    "type": "0x5"
+  }
+]
+```
+
 ### EthGetBlockTransactionCountByHash
 EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
 
@@ -3086,6 +3308,50 @@ Response:
 ]
 ```
 
+### EthTraceFilter
+Implements OpenEthereum-compatible API method trace_filter
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "fromBlock": "latest",
+    "toBlock": "latest",
+    "fromAddress": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ],
+    "toAddress": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ],
+    "after": "0x0",
+    "count": "0x64"
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "type": "string value",
+    "error": "string value",
+    "subtraces": 123,
+    "traceAddress": [
+      123
+    ],
+    "action": {},
+    "result": {},
+    "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "blockNumber": 9,
+    "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "transactionPosition": 123
+  }
+]
+```
+
 ### EthTraceReplayBlockTransactions
 Replays all transactions in a block returning the requested traces for each transaction
 
@@ -3383,49 +3649,45 @@ Response:
 ```json
 {
   "GPBFTInstance": 0,
-  "ECChain": null,
+  "ECChain": [
+    {
+      "Key": [
+        {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        {
+          "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+        }
+      ],
+      "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      "Epoch": 0,
+      "PowerTable": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ],
   "SupplementalData": {
-    "Commitments": [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "PowerTable": null
+    "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "PowerTable": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "Signers": [
-    0
+    2,
+    2,
+    1,
+    1,
+    1,
+    1
   ],
-  "Signature": null,
-  "PowerTableDelta": null
+  "Signature": "VW5EYWRhU2VB",
+  "PowerTableDelta": [
+    {
+      "ParticipantID": 0,
+      "PowerDelta": "0",
+      "SigningKey": "QmFScmVsRVll"
+    }
+  ]
 }
 ```
 
@@ -3503,53 +3765,119 @@ Response:
 ```json
 {
   "GPBFTInstance": 0,
-  "ECChain": null,
+  "ECChain": [
+    {
+      "Key": [
+        {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        {
+          "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+        }
+      ],
+      "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      "Epoch": 0,
+      "PowerTable": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ],
   "SupplementalData": {
-    "Commitments": [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "PowerTable": null
+    "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "PowerTable": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "Signers": [
-    0
+    2,
+    2,
+    1,
+    1,
+    1,
+    1
   ],
-  "Signature": null,
-  "PowerTableDelta": null
+  "Signature": "VW5EYWRhU2VB",
+  "PowerTableDelta": [
+    {
+      "ParticipantID": 0,
+      "PowerDelta": "0",
+      "SigningKey": "QmFScmVsRVll"
+    }
+  ]
 }
 ```
 
-### F3Participate
+### F3GetManifest
+F3GetManifest returns the current manifest being used for F3
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "ProtocolVersion": 0,
+  "InitialInstance": 0,
+  "BootstrapEpoch": 0,
+  "NetworkName": "",
+  "InitialPowerTable": null,
+  "CommitteeLookback": 0,
+  "CatchUpAlignment": 0,
+  "Gpbft": {
+    "Delta": 0,
+    "DeltaBackOffExponent": 0,
+    "QualityDeltaMultiplier": 0,
+    "MaxLookaheadRounds": 0,
+    "ChainProposedLength": 0,
+    "RebroadcastBackoffBase": 0,
+    "RebroadcastBackoffExponent": 0,
+    "RebroadcastBackoffSpread": 0,
+    "RebroadcastBackoffMax": 0
+  },
+  "EC": {
+    "Period": 0,
+    "Finality": 0,
+    "DelayMultiplier": 0,
+    "BaseDecisionBackoffTable": null,
+    "HeadLookback": 0,
+    "Finalize": false
+  },
+  "CertificateExchange": {
+    "ClientRequestTimeout": 0,
+    "ServerRequestTimeout": 0,
+    "MinimumPollInterval": 0,
+    "MaximumPollInterval": 0
+  },
+  "PubSub": {
+    "CompressionEnabled": false,
+    "ChainCompressionEnabled": false,
+    "GMessageSubscriptionBufferSize": 0,
+    "ValidatedMessageBufferSize": 0
+  },
+  "ChainExchange": {
+    "SubscriptionBufferSize": 0,
+    "MaxChainLength": 0,
+    "MaxInstanceLookahead": 0,
+    "MaxDiscoveredChainsPerInstance": 0,
+    "MaxWantedChainsPerInstance": 0,
+    "RebroadcastInterval": 0,
+    "MaxTimestampAge": 0
+  },
+  "PartialMessageManager": {
+    "PendingDiscoveredChainsBufferSize": 0,
+    "PendingPartialMessagesBufferSize": 0,
+    "PendingChainBroadcastsBufferSize": 0,
+    "PendingInstanceRemovalBufferSize": 0,
+    "CompletedMessagesBufferSize": 0,
+    "MaxBufferedMessagesPerInstance": 0,
+    "MaxCachedValidatedMessagesPerInstance": 0
+  }
+}
+```
+
+### F3GetOrRenewParticipationTicket
 *********************************** ALL F3 APIs below are not stable & subject to change ***********************************
 
 
@@ -3559,12 +3887,142 @@ Inputs:
 ```json
 [
   "f01234",
-  "0001-01-01T00:00:00Z",
-  "0001-01-01T00:00:00Z"
+  "Bw==",
+  42
 ]
 ```
 
+Response: `"Bw=="`
+
+### F3GetPowerTableByInstance
+F3GetPowerTableByInstance returns the power table (committee) used to validate the specified instance.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  42
+]
+```
+
+Response:
+```json
+[
+  {
+    "ID": 1000,
+    "Power": "0",
+    "PubKey": "Bw=="
+  }
+]
+```
+
+### F3GetProgress
+F3GetProgress returns the progress of the current F3 instance in terms of instance ID, round and phase.
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "ID": 1413,
+  "Round": 1,
+  "Phase": 4,
+  "Input": [
+    {
+      "Key": [
+        {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        {
+          "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+        }
+      ],
+      "Commitments": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      "Epoch": 0,
+      "PowerTable": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ]
+}
+```
+
+### F3IsRunning
+F3IsRunning returns true if the F3 instance is running, false if it's not running but
+it's enabled, and an error when disabled entirely.
+
+
+Perms: read
+
+Inputs: `[]`
+
 Response: `true`
+
+### F3ListParticipants
+F3ListParticipants returns the list of miners that are currently participating in F3 via this node.
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  {
+    "MinerID": 42,
+    "FromInstance": 42,
+    "ValidityTerm": 42
+  }
+]
+```
+
+### F3Participate
+F3Participate enrolls a storage provider in the F3 consensus process using a
+provided participation ticket. This ticket grants a temporary lease that enables
+the provider to sign transactions as part of the F3 consensus.
+
+The function verifies the ticket's validity and checks if the ticket's issuer
+aligns with the current node. If there is an issuer mismatch
+(ErrF3ParticipationIssuerMismatch), the provider should retry with the same
+ticket, assuming the issue is due to transient network problems or operational
+deployment conditions. If the ticket is invalid
+(ErrF3ParticipationTicketInvalid) or has expired
+(ErrF3ParticipationTicketExpired), the provider must obtain a new ticket by
+calling F3GetOrRenewParticipationTicket.
+
+The start instance associated to the given ticket cannot be less than the
+start instance of any existing lease held by the miner. Otherwise,
+ErrF3ParticipationTicketStartBeforeExisting is returned. In this case, the
+miner should acquire a new ticket before attempting to participate again.
+
+For details on obtaining or renewing a ticket, see F3GetOrRenewParticipationTicket.
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "Bw=="
+]
+```
+
+Response:
+```json
+{
+  "Network": "filecoin",
+  "Issuer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "MinerID": 1234,
+  "FromInstance": 10,
+  "ValidityTerm": 15
+}
+```
 
 ## Market
 
@@ -5276,9 +5734,6 @@ Response:
     "SealedCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "DealIDs": [
-      5432
-    ],
     "Activation": 10101,
     "Expiration": 10101,
     "DealWeight": "0",
@@ -5291,7 +5746,8 @@ Response:
     "SectorKeyCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "Flags": 0
+    "Flags": 0,
+    "DailyFee": "0"
   }
 ]
 ```
@@ -5347,6 +5803,32 @@ Inputs:
 
 Response: `"0"`
 
+### StateMinerCreationDeposit
+StateMinerCreationDeposit calculates the deposit required for creating a new miner
+according to FIP-0077 specification. This deposit is based on the network's current
+economic parameters including circulating supply, network power, and pledge collateral.
+
+See: node/impl/full/state.go StateMinerCreationDeposit implementation.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"0"`
+
 ### StateMinerDeadlines
 
 
@@ -5375,7 +5857,8 @@ Response:
       5,
       1
     ],
-    "DisputableProofCount": 42
+    "DisputableProofCount": 42,
+    "DailyFee": "0"
   }
 ]
 ```
@@ -5464,6 +5947,14 @@ Response:
 ```
 
 ### StateMinerInitialPledgeCollateral
+StateMinerInitialPledgeCollateral attempts to calculate the initial pledge collateral based on a SectorPreCommitInfo.
+This method uses the DealIDs field in SectorPreCommitInfo to determine the amount of verified
+deal space in the sector in order to perform a QAP calculation. Since network version 22 and
+the introduction of DDO, the DealIDs field can no longer be used to reliably determine verified
+deal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead
+and pass in the verified deal space directly.
+
+Deprecated: Use StateMinerInitialPledgeForSector instead.
 
 
 Perms: read
@@ -5487,6 +5978,34 @@ Inputs:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
   },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"0"`
+
+### StateMinerInitialPledgeForSector
+StateMinerInitialPledgeForSector returns the initial pledge collateral for a given sector
+duration, size, and combined size of any verified pieces within the sector. This calculation
+depends on current network conditions (total power, total pledge and current rewards) at the
+given tipset.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101,
+  34359738368,
+  42,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -5794,9 +6313,6 @@ Response:
     "SealedCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "DealIDs": [
-      5432
-    ],
     "Activation": 10101,
     "Expiration": 10101,
     "DealWeight": "0",
@@ -5809,7 +6325,8 @@ Response:
     "SectorKeyCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "Flags": 0
+    "Flags": 0,
+    "DailyFee": "0"
   }
 ]
 ```
@@ -5925,9 +6442,6 @@ Response:
   "SealedCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "DealIDs": [
-    5432
-  ],
   "Activation": 10101,
   "Expiration": 10101,
   "DealWeight": "0",
@@ -5940,7 +6454,8 @@ Response:
   "SectorKeyCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "Flags": 0
+  "Flags": 0,
+  "DailyFee": "0"
 }
 ```
 
@@ -7391,6 +7906,28 @@ Inputs:
 ```json
 [
   9
+]
+```
+
+Response: `{}`
+
+### SyncCheckpoint
+SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
 ]
 ```
 

@@ -18,7 +18,7 @@ type Filter interface {
 	ClearSubChannel()
 }
 
-type FilterStore interface { // nolint
+type FilterStore interface {
 	Add(context.Context, Filter) error
 	Get(context.Context, types.FilterID) (Filter, error)
 	Remove(context.Context, types.FilterID) error

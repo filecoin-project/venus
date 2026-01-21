@@ -60,7 +60,9 @@ func main() {
 				types.ActorTrace{},
 				types.MessageTrace{},
 				types.ReturnTrace{},
+				types.TraceIpld{},
 				types.ExecutionTrace{},
+				types.F3ParticipationLease{},
 			},
 		},
 		{
@@ -136,5 +138,9 @@ func main() {
 		if err := gen.WriteTupleEncodersToFile(filepath.Join(target.dir, "cbor_gen.go"), pkg, target.types...); err != nil {
 			log.Fatalf("gen for %s: %s", target.dir, err)
 		}
+	}
+
+	if err := gen.WriteMapEncodersToFile(filepath.Join("../pkg/chain", "cbor_snapshot_gen.go"), "chain", chain.SnapshotMetadata{}); err != nil {
+		log.Fatalf("gen for %s: %s", "../pkg/chain", err)
 	}
 }

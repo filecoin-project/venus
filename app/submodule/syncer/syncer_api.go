@@ -214,3 +214,7 @@ func (sa *syncerAPI) SyncState(ctx context.Context) (*types.SyncState, error) {
 func (sa *syncerAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
 	return sa.syncer.ChainSyncManager.BlockProposer().IncomingBlocks(ctx)
 }
+
+func (sa *syncerAPI) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {
+	return sa.syncer.SyncProvider.SyncCheckpoint(ctx, tsk)
+}

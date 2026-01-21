@@ -152,7 +152,7 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 
 	if methodNum != builtin.MethodSend {
 		extra += "i"
-		// running actors is cheaper becase we hand over to actors
+		// running actors is cheaper because we hand over to actors
 		ret += pl.sendInvokeMethod
 	}
 	return NewGasCharge("OnMethodInvocation", ret, 0).WithExtra(extra)
@@ -207,7 +207,7 @@ func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealPr
 
 // OnVerifySeal
 func (pl *pricelistV0) OnVerifySeal(info proof7.SealVerifyInfo) GasCharge {
-	// TODO: this needs more cost tunning, check with @lotus
+	// TODO: this needs more cost tuning, check with @lotus
 	// this is not used
 	return NewGasCharge("OnVerifySeal", pl.verifySealBase, 0)
 }

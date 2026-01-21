@@ -322,7 +322,7 @@ var evmInvokeCmd = &cmds.Command{
 	},
 	Options: []cmds.Option{
 		cmds.StringOption("from", "optionally specify the account to use for sending the exec message"),
-		cmds.Int64Option("value", "optionally specify the value to be sent with the invokation message"),
+		cmds.Int64Option("value", "optionally specify the value to be sent with the invocation message"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := req.Context

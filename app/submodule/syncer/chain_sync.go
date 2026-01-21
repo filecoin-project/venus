@@ -1,6 +1,7 @@
 package syncer
 
 import (
+	"context"
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/chainsync"
@@ -29,6 +30,10 @@ func NewChainSyncProvider(chainSyncer chainSync) *ChainSyncProvider {
 // help prevent DOS.
 func (chs *ChainSyncProvider) HandleNewTipSet(ci *types.ChainInfo) error {
 	return chs.sync.BlockProposer().SendOwnBlock(ci)
+}
+
+func (chs *ChainSyncProvider) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {
+	return chs.sync.BlockProposer().SyncCheckpoint(ctx, tsk)
 }
 
 const (

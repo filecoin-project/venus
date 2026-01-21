@@ -252,7 +252,6 @@ type (
 	AllocationRequest              = verifreg.AllocationRequest
 	AllocationRequests             = verifreg.AllocationRequests
 	AllocationsResponse            = verifreg.AllocationsResponse
-	VerifregBatchReturn            = verifreg.BatchReturn
 	Claim                          = verifreg.Claim
 	ClaimAllocationsParams         = verifreg.ClaimAllocationsParams
 	ClaimAllocationsReturn         = verifreg.ClaimAllocationsReturn
@@ -262,7 +261,6 @@ type (
 	DataCap                        = verifreg.DataCap
 	ExtendClaimTermsParams         = verifreg.ExtendClaimTermsParams
 	ExtendClaimTermsReturn         = verifreg.ExtendClaimTermsReturn
-	VerifregFailCode               = verifreg.FailCode
 	GetClaimsParams                = verifreg.GetClaimsParams
 	GetClaimsReturn                = verifreg.GetClaimsReturn
 	ReceiverType                   = verifreg.ReceiverType
