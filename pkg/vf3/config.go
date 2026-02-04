@@ -13,10 +13,6 @@ import (
 )
 
 type Config struct {
-	// BaseNetworkName is the base from which dynamic network names are defined and is usually
-	// the name of the network defined by the static manifest. This must be set correctly or,
-	// e.g., pubsub topic filters won't work correctly.
-	BaseNetworkName gpbft.NetworkName
 	// StaticManifest this instance's default manifest absent any dynamic manifests. Also see
 	// PrioritizeStaticManifest.
 	StaticManifest *manifest.Manifest
@@ -60,17 +56,8 @@ func NewManifest(
 
 // NewConfig creates a new F3 config based on the node's build parameters and the passed network
 // name.
-func NewConfig(nn string, netCfg *config.NetworkParamsConfig) *Config {
-	// Use "filecoin" as the network name on mainnet, otherwise use the network name. Yes,
-	// mainnet is called testnetnet in state.
-	if nn == "testnetnet" {
-		nn = "filecoin"
+func NewConfig(netCfg *config.NetworkParamsConfig) *Config {
+	return &Config{
+		StaticManifest: networks.F3Manifest(netCfg.NetworkType, int(netCfg.BlockDelay)),
 	}
-
-	c := &Config{
-		BaseNetworkName: gpbft.NetworkName(nn),
-		StaticManifest:  networks.F3Manifest(netCfg.NetworkType, int(netCfg.BlockDelay)),
-	}
-
-	return c
 }
