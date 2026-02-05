@@ -32,7 +32,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-f3/certstore"
-	"github.com/filecoin-project/go-f3/manifest"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -1056,7 +1055,7 @@ func (store *Store) Import(ctx context.Context, network string, f3Ds datastore.D
 				if err != nil {
 					return nil, nil, fmt.Errorf("failed to get network config: %w, network: %s", err, network)
 				}
-				var f3Manifest *manifest.Manifest = networks.F3Manifest(cfg.Network.NetworkType, int(cfg.Network.BlockDelay))
+				f3Manifest := networks.F3Manifest(cfg.Network.NetworkType, int(cfg.Network.BlockDelay))
 				if f3Manifest == nil {
 					log.Warnf("Snapshot contains F3 data but F3 manifest is not available in this build. Skipping F3 data import.")
 					// Skip F3 import but continue with chain import
