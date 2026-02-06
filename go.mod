@@ -106,7 +106,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.34.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.47.0
-	golang.org/x/net v0.48.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.40.0
@@ -166,6 +165,7 @@ require (
 	go.dedis.ch/kyber/v4 v4.0.0-pre2.0.20240924132404-4de33740016e // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.uber.org/mock v0.5.2 // indirect
+	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/telemetry v0.0.0-20251203150158-8fff8a5912fc // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250212204824-5a70512c5d8b // indirect

@@ -2,12 +2,12 @@
 package clock_test
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
-	"golang.org/x/net/context"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/assert"
