@@ -34,8 +34,8 @@ const maxExchangeMessageSize = (15 * 8) << 20
 type client struct {
 	// Connection manager used to contact the server.
 	// FIXME: We should have a reduced interface here, initialized
-	//  just with our protocol ID, we shouldn't be able to open *any*
-	//  connection.
+	// just with our protocol ID, we shouldn't be able to open *any*
+	// connection.
 	host host.Host
 
 	peerTracker *bsPeerTracker
@@ -108,7 +108,7 @@ func (c *client) doRequest(
 	// Try the request for each peer in the list,
 	// return on the first successful response.
 	// FIXME: Doing this serially isn't great, but fetching in parallel
-	//  may not be a good idea either. Think about this more.
+	// may not be a good idea either. Think about this more.
 	globalTime := time.Now()
 	// Global time used to track what is the expected time we will need to get
 	// a response if a client fails us.
@@ -431,7 +431,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 		return nil, err
 	}
 	_ = stream.SetWriteDeadline(time.Time{}) // clear deadline // FIXME: Needs
-	//  its own API (https://github.com/libp2p/go-libp2p/core/issues/162).
+	// its own API (https://github.com/libp2p/go-libp2p/core/issues/162).
 	if err := stream.CloseWrite(); err != nil {
 		log.Warnw("CloseWrite err", "error", err)
 	}
@@ -449,7 +449,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 	}
 
 	// FIXME: Move all this together at the top using a defer as done elsewhere.
-	//  Maybe we need to declare `res` in the signature.
+	// Maybe we need to declare `res` in the signature.
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.Int64Attribute("resp_status", int64(res.Status)),
@@ -460,7 +460,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 
 	c.peerTracker.logSuccess(peer, time.Since(connectionStart), uint64(len(res.Chain)))
 	// FIXME: We should really log a success only after we validate the response.
-	//  It might be a bit hard to do.
+	// It might be a bit hard to do.
 	return &res, nil
 }
 

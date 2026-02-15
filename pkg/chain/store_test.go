@@ -361,7 +361,7 @@ func TestLoadAndReboot(t *testing.T) {
 		assert.NoError(t, rebootChain.Blockstore().DeleteBlock(ctx, link3.Blocks()[0].Cid()))
 		newStore := chain.NewStore(ds, bs, genTS.At(0).Cid(), chainselector.Weight)
 		// error occurs while getting tipset identified by parent's cid block,
-		//  because block[0] has been deleted.
+		// because block[0] has been deleted.
 		// stm: @CHAIN_STORE_LOAD_003
 		assert.Error(t, newStore.Load(ctx))
 	}
