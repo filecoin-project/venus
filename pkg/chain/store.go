@@ -1766,8 +1766,8 @@ func breakWeightTie(ts1, ts2 *types.TipSet) bool {
 func (store *Store) exceedsForkLength(ctx context.Context, synced, external *types.TipSet) (bool, error) {
 	if synced == nil || external == nil {
 		// FIXME: If `cs.heaviest` is nil we should just bypass the entire
-		//  `MaybeTakeHeavierTipSet` logic (instead of each of the called
-		//  functions having to handle the nil case on their own).
+		// `MaybeTakeHeavierTipSet` logic (instead of each of the called
+		// functions having to handle the nil case on their own).
 		return false, nil
 	}
 
