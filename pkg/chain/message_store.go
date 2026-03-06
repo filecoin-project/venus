@@ -473,7 +473,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 	return blockMsg, nil
 }
 
-// MessagesForTipset return of message ( bls message + secp message) of tipset
+// MessagesForTipset returns messages (BLS + secp) for a tipset.
 func (ms *MessageStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
 	bmsgs, err := ms.LoadTipSetMessage(context.TODO(), ts)
 	if err != nil {

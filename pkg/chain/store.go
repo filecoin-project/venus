@@ -1338,7 +1338,7 @@ func (store *Store) PutMessage(ctx context.Context, m storable) (cid.Cid, error)
 	return PutMessage(ctx, store.bsstore, m)
 }
 
-// Blockstore return local blockstore
+// Blockstore returns local blockstore.
 // todo remove this method, and code that need blockstore should get from blockstore submodule
 func (store *Store) Blockstore() blockstoreutil.Blockstore { // nolint
 	return store.bsstore
@@ -1467,7 +1467,7 @@ func (store *Store) ResolveToDeterministicAddress(ctx context.Context, ts *types
 	return st.ResolveToDeterministicAddress(ctx, addr)
 }
 
-// StateView return state view at ts epoch
+// StateView returns state view at ts epoch.
 func (store *Store) StateView(ctx context.Context, ts *types.TipSet) (*state.View, error) {
 	if ts == nil {
 		ts = store.head
@@ -1480,7 +1480,7 @@ func (store *Store) StateView(ctx context.Context, ts *types.TipSet) (*state.Vie
 	return state.NewView(store.stateAndBlockSource, root), nil
 }
 
-// AccountView return account view at ts state
+// AccountView returns account view at ts state.
 func (store *Store) AccountView(ctx context.Context, ts *types.TipSet) (state.AccountView, error) {
 	if ts == nil {
 		ts = store.head
