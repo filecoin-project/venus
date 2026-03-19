@@ -15,7 +15,7 @@ import (
 
 var _ v1api.IMessagePool = &MessagePoolAPI{}
 
-// MessagePoolAPI messsage pool api implement
+// MessagePoolAPI message pool api implement
 type MessagePoolAPI struct {
 	pushLocks *messagepool.MpoolLocker
 

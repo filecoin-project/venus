@@ -530,8 +530,8 @@ func MakeBlock(obj cbor2.Marshaler) (blocks.Block, error) {
 
 // todo move to a more suitable position
 func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch, upgrade *config.ForkUpgradeConfig) abi.TokenAmount {
-	// deta := gasLimitUsed/noOfBlocks - constants.BlockGasTarget
-	// change := baseFee * deta / BlockGasTarget
+	// delta := gasLimitUsed/noOfBlocks - constants.BlockGasTarget
+	// change := baseFee * delta / BlockGasTarget
 	// nextBaseFee = baseFee + change
 	// nextBaseFee = max(nextBaseFee, constants.MinimumBaseFee)
 

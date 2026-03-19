@@ -404,9 +404,9 @@ Get pending messages.
 		if local {
 			filter = map[address.Address]struct{}{}
 
-			addrss := env.(*node.Env).WalletAPI.WalletAddresses(req.Context)
+			addressList := env.(*node.Env).WalletAPI.WalletAddresses(req.Context)
 
-			for _, a := range addrss {
+			for _, a := range addressList {
 				filter[a] = struct{}{}
 			}
 		}
@@ -554,8 +554,8 @@ Get pending messages.
 		if local {
 			filter = map[address.Address]struct{}{}
 
-			addrss := env.(*node.Env).WalletAPI.WalletAddresses(req.Context)
-			for _, a := range addrss {
+			addressList := env.(*node.Env).WalletAPI.WalletAddresses(req.Context)
+			for _, a := range addressList {
 				filter[a] = struct{}{}
 			}
 		}
@@ -696,9 +696,9 @@ Check gas performance of messages in mempool
 		if !all {
 			filter = map[address.Address]struct{}{}
 
-			addrss := env.(*node.Env).WalletAPI.WalletAddresses(req.Context)
+			addressList := env.(*node.Env).WalletAPI.WalletAddresses(req.Context)
 
-			for _, a := range addrss {
+			for _, a := range addressList {
 				filter[a] = struct{}{}
 			}
 
