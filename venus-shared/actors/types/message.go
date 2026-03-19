@@ -225,6 +225,11 @@ func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) 
 // specified premium.
 func (m *Message) EffectiveGasPremium(baseFee abi.TokenAmount) abi.TokenAmount {
 	available := big.Sub(m.GasFeeCap, baseFee)
+	// It's possible that storage providers may include messages with gasFeeCap less than the baseFee
+	// In such cases, their reward should be viewed as zero
+	if big.Cmp(available, big.Zero()) < 0 {
+		available = big.Zero()
+	}
 	if big.Cmp(m.GasPremium, available) <= 0 {
 		return m.GasPremium
 	}
