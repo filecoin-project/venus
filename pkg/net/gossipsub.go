@@ -302,10 +302,10 @@ func NewGossipSub(ctx context.Context,
 	}
 	allowTopics = append(allowTopics, drandTopics...)
 
-	if f3Config != nil {
+	if f3Config != nil && f3Config.StaticManifest != nil {
 		if f3Config.StaticManifest != nil {
-			gpbftTopic := manifest.PubSubTopicFromNetworkName(f3Config.BaseNetworkName)
-			chainexTopic := manifest.ChainExchangeTopicFromNetworkName(f3Config.BaseNetworkName)
+			gpbftTopic := manifest.PubSubTopicFromNetworkName(f3Config.StaticManifest.NetworkName)
+			chainexTopic := manifest.ChainExchangeTopicFromNetworkName(f3Config.StaticManifest.NetworkName)
 			allowTopics = append(allowTopics, gpbftTopic, chainexTopic)
 		}
 	}

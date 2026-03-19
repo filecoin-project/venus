@@ -2,6 +2,7 @@ package market
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -509,7 +510,7 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 			if !withdrawalAmt.IsZero() {
 				msg += fmt.Sprintf(" - queued withdrawals (%s)", types.FIL(withdrawalAmt))
 			}
-			err := fmt.Errorf("%s", msg)
+			err := errors.New(msg)
 			a.debugf("%s", err)
 			req.Complete(cid.Undef, err)
 			continue

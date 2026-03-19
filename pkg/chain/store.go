@@ -39,6 +39,7 @@ import (
 	"github.com/filecoin-project/pubsub"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
+	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -1050,9 +1051,19 @@ func (store *Store) Import(ctx context.Context, network string, f3Ds datastore.D
 				prefix := F3DatastorePrefix(network)
 				f3DsWrapper := namespace.Wrap(f3Ds, prefix)
 
-				log.Info("Importing F3Data to datastore")
-				if err := certstore.ImportSnapshotToDatastore(ctx, f3r, f3DsWrapper); err != nil {
-					return nil, nil, fmt.Errorf("failed to import f3Data to datastore: %w", err)
+				cfg, err := networks.GetNetworkConfigFromName(network)
+				if err != nil {
+					return nil, nil, fmt.Errorf("failed to get network config: %w, network: %s", err, network)
+				}
+				f3Manifest := networks.F3Manifest(cfg.Network.NetworkType, int(cfg.Network.BlockDelay))
+				if f3Manifest == nil {
+					log.Warnf("Snapshot contains F3 data but F3 manifest is not available in this build. Skipping F3 data import.")
+					// Skip F3 import but continue with chain import
+				} else {
+					log.Info("Importing F3Data to datastore")
+					if err := certstore.ImportSnapshotToDatastore(ctx, f3r, f3DsWrapper, f3Manifest); err != nil {
+						return nil, nil, fmt.Errorf("failed to import f3Data to datastore: %w", err)
+					}
 				}
 			}
 

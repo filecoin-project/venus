@@ -145,7 +145,7 @@ func NewNetworkSubmodule(ctx context.Context,
 
 	var f3Cfg *vf3.Config
 	if cfg.NetworkParams.F3Enabled {
-		f3Cfg = vf3.NewConfig(networkName, cfg.NetworkParams)
+		f3Cfg = vf3.NewConfig(cfg.NetworkParams)
 	}
 
 	// peer manager
