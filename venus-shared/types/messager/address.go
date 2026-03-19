@@ -15,7 +15,7 @@ const (
 	AddressStateAlive
 	AddressStateRemoving
 	AddressStateRemoved
-	AddressStateForbbiden // forbbiden to received message
+	AddressStateForbbiden // forbidden to receive messages
 )
 
 func (as AddressState) String() string {
