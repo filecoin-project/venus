@@ -107,7 +107,7 @@ type SwarmConfig struct {
 	PublicRelayAddress string `json:"public_relay_address,omitempty"`
 
 	ProtectedPeers []string `json:"protectedPeers"`
-	//ConnMgrLow is the number of connections that the basic connection manager
+	// ConnMgrLow is the number of connections that the basic connection manager
 	// will trim down to.
 	ConnMgrLow uint `json:"connMgrLow"`
 
@@ -353,6 +353,7 @@ type ForkUpgradeConfig struct {
 	UpgradeTockHeight                    abi.ChainEpoch `json:"upgradeTockHeight"`
 	UpgradeTockFixHeight                 abi.ChainEpoch `json:"upgradeTockFixHeight"`
 	UpgradeGoldenWeekHeight              abi.ChainEpoch `json:"upgradeGoldenWeekHeight"`
+	UpgradeXxHeight                      abi.ChainEpoch `json:"upgradeXxHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -400,6 +401,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeTockHeight:                    4867320 + 90*builtin.EpochsInDay,
 	UpgradeTockFixHeight:                 -29,
 	UpgradeGoldenWeekHeight:              5348280,
+	UpgradeXxHeight:                      999999999,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
@@ -484,7 +486,7 @@ type EventConfig struct {
 }
 
 type FevmConfig struct {
-	//EnableEthRPC enables eth_rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
+	// EnableEthRPC enables eth_rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
 	EnableEthRPC bool `json:"enableEthRPC"`
 	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
 	// Set to 0 to keep all mappings
