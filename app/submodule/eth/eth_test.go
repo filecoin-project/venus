@@ -194,12 +194,12 @@ func TestReward(t *testing.T) {
 		{maxFeePerGas: big.NewInt(600), maxPriorityFeePerGas: big.NewInt(500), answer: big.NewInt(500)},
 		{maxFeePerGas: big.NewInt(600), maxPriorityFeePerGas: big.NewInt(600), answer: big.NewInt(500)},
 		{maxFeePerGas: big.NewInt(600), maxPriorityFeePerGas: big.NewInt(1000), answer: big.NewInt(500)},
-		{maxFeePerGas: big.NewInt(50), maxPriorityFeePerGas: big.NewInt(200), answer: big.NewInt(-50)},
+		{maxFeePerGas: big.NewInt(50), maxPriorityFeePerGas: big.NewInt(200), answer: big.Zero()},
 	}
 	for _, tc := range testcases {
 		msg := &types.Message{GasFeeCap: tc.maxFeePerGas, GasPremium: tc.maxPriorityFeePerGas}
 		reward := msg.EffectiveGasPremium(baseFee)
-		require.Equal(t, 0, reward.Int.Cmp(tc.answer.Int), reward, tc.answer)
+		require.True(t, big.Cmp(reward, tc.answer) == 0, "reward: %v, answer: %v", reward, tc.answer)
 	}
 }
 
