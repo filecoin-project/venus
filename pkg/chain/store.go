@@ -1046,11 +1046,6 @@ func (store *Store) Import(ctx context.Context, network string, f3Ds datastore.D
 					return nil, nil, fmt.Errorf("F3Data CID mismatch")
 				}
 
-				f3r := bufio.NewReader(f3Reader)
-
-				prefix := F3DatastorePrefix(network)
-				f3DsWrapper := namespace.Wrap(f3Ds, prefix)
-
 				cfg, err := networks.GetNetworkConfigFromName(network)
 				if err != nil {
 					return nil, nil, fmt.Errorf("failed to get network config: %w, network: %s", err, network)
@@ -1060,6 +1055,10 @@ func (store *Store) Import(ctx context.Context, network string, f3Ds datastore.D
 					log.Warnf("Snapshot contains F3 data but F3 manifest is not available in this build. Skipping F3 data import.")
 					// Skip F3 import but continue with chain import
 				} else {
+					f3r := bufio.NewReader(f3Reader)
+					prefix := F3DatastorePrefix(string(f3Manifest.NetworkName))
+					f3DsWrapper := namespace.Wrap(f3Ds, prefix)
+
 					log.Info("Importing F3Data to datastore")
 					if err := certstore.ImportSnapshotToDatastore(ctx, f3r, f3DsWrapper, f3Manifest); err != nil {
 						return nil, nil, fmt.Errorf("failed to import f3Data to datastore: %w", err)
@@ -1128,7 +1127,7 @@ func (store *Store) Import(ctx context.Context, network string, f3Ds datastore.D
 		return nil, nil, fmt.Errorf("expected genesis block to have height 0 (genesis), got %d: %s", tailBlock.Height, tailBlock.Cid())
 	}
 
-	root, err := store.GetTipSet(ctx, types.NewTipSetKey(br.Roots...))
+	root, err := store.GetTipSet(ctx, types.NewTipSetKey(roots...))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
