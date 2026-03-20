@@ -676,53 +676,59 @@ func WeightedQuickSelect(premiums []abi.TokenAmount, limits []int64, index int64
 }
 
 func weightedQuickSelect(premiums []abi.TokenAmount, limits []int64, index int64, randImpl RandInt) abi.TokenAmount {
-	if len(premiums) == 0 {
-		return big.Zero()
-	}
-	if len(premiums) == 1 {
-		if limits[0] <= index {
+	for {
+		if len(premiums) == 0 {
 			return big.Zero()
 		}
-		return premiums[0]
-	}
-
-	pivot := premiums[randImpl.Intn(len(premiums))]
-
-	var less []abi.TokenAmount
-	var lessWeights []int64
-	var lessW int64
-	var eqW int64
-	var more []abi.TokenAmount
-	var moreWeights []int64
-	var moreW int64
-
-	for i, premium := range premiums {
-		cmp := big.Cmp(premium, pivot)
-		if cmp < 0 {
-			less = append(less, premium)
-			lessWeights = append(lessWeights, limits[i])
-			lessW += limits[i]
-		} else if cmp == 0 {
-			eqW += limits[i]
-		} else {
-			more = append(more, premium)
-			moreWeights = append(moreWeights, limits[i])
-			moreW += limits[i]
+		if len(premiums) == 1 {
+			if limits[0] <= index {
+				return big.Zero()
+			}
+			return premiums[0]
 		}
-	}
 
-	if index < moreW {
-		return weightedQuickSelect(more, moreWeights, index, randImpl)
+		pivot := premiums[randImpl.Intn(len(premiums))]
+
+		var less []abi.TokenAmount
+		var lessWeights []int64
+		var lessW int64
+		var eqW int64
+		var more []abi.TokenAmount
+		var moreWeights []int64
+		var moreW int64
+
+		for i, premium := range premiums {
+			cmp := big.Cmp(premium, pivot)
+			if cmp < 0 {
+				less = append(less, premium)
+				lessWeights = append(lessWeights, limits[i])
+				lessW += limits[i]
+			} else if cmp == 0 {
+				eqW += limits[i]
+			} else {
+				more = append(more, premium)
+				moreWeights = append(moreWeights, limits[i])
+				moreW += limits[i]
+			}
+		}
+
+		if index < moreW {
+			premiums = more
+			limits = moreWeights
+			continue
+		}
+		index -= moreW
+		if index < eqW {
+			return pivot
+		}
+		index -= eqW
+		if index < lessW {
+			premiums = less
+			limits = lessWeights
+			continue
+		}
+		return big.Zero()
 	}
-	index -= moreW
-	if index < eqW {
-		return pivot
-	}
-	index -= eqW
-	if index < lessW {
-		return weightedQuickSelect(less, lessWeights, index, randImpl)
-	}
-	return big.Zero()
 }
 
 func GetReceiptRoot(receipts []types.MessageReceipt) (cid.Cid, error) {
