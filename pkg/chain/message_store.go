@@ -666,14 +666,13 @@ func nextBaseFeeFromPremium(baseFee, premiumP abi.TokenAmount) abi.TokenAmount {
 	)
 }
 
-var selectRand = rand.New(rand.NewSource(time.Now().UnixNano()))
-
 type RandInt interface {
 	Intn(n int) int
 }
 
 func WeightedQuickSelect(premiums []abi.TokenAmount, limits []int64, index int64) abi.TokenAmount {
-	return weightedQuickSelect(premiums, limits, index, selectRand)
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return weightedQuickSelect(premiums, limits, index, rng)
 }
 
 func weightedQuickSelect(premiums []abi.TokenAmount, limits []int64, index int64, randImpl RandInt) abi.TokenAmount {
