@@ -243,7 +243,7 @@ func (w *Wallet) WalletSign(ctx context.Context, addr address.Address, msg []byt
 	return ki.SignBytes(ctx, msg, addr)
 }
 
-// DSBacked return the first wallet backend
+// DSBacked returns the first wallet backend.
 // todo support multi wallet backend
 func (w *Wallet) DSBacked() (*DSBackend, error) {
 	backends := w.Backends(DSBackendType)
@@ -283,7 +283,7 @@ func (w *Wallet) SetPassword(ctx context.Context, password []byte) error {
 	return backend.SetPassword(ctx, password)
 }
 
-// HasPassword return whether the password has been set in the wallet
+// HasPassword returns whether the password has been set in the wallet.
 func (w *Wallet) HasPassword(ctx context.Context) bool {
 	backend, err := w.DSBacked()
 	if err != nil {
@@ -293,7 +293,7 @@ func (w *Wallet) HasPassword(ctx context.Context) bool {
 	return backend.HasPassword()
 }
 
-// WalletState return wallet state(lock/unlock)
+// WalletState returns wallet state (lock/unlock).
 func (w *Wallet) WalletState(ctx context.Context) int {
 	backend, err := w.DSBacked()
 	if err != nil {
