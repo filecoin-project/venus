@@ -9,7 +9,7 @@ import (
 
 	"github.com/dchest/blake2b"
 	"github.com/ipfs/boxo/bitswap"
-	bsnet "github.com/ipfs/boxo/bitswap/network"
+	bsnet "github.com/ipfs/boxo/bitswap/network/bsnet"
 	bserv "github.com/ipfs/boxo/blockservice"
 	exchange "github.com/ipfs/boxo/exchange"
 	blocks "github.com/ipfs/go-block-format"
@@ -190,9 +190,9 @@ func NewNetworkSubmodule(ctx context.Context,
 	}
 
 	// set up bitswap
-	nwork := bsnet.NewFromIpfsHost(peerHost, router, bsnet.Prefix("/chain"))
-	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
-	bswap := bitswap.New(ctx, nwork, config.Repo().Datastore(), bitswapOptions...)
+	nwork := bsnet.NewFromIpfsHost(peerHost, bsnet.Prefix("/chain"))
+	bitswapOptions := []bitswap.Option{bitswap.WithServerEnabled(false)}
+	bswap := bitswap.New(ctx, nwork, router, config.Repo().Datastore(), bitswapOptions...)
 
 	// set up graphsync
 	graphsyncNetwork := gsnet.NewFromLibp2pHost(peerHost)
@@ -399,7 +399,7 @@ func makeDHT(ctx context.Context, h types.RawHost, config networkConfig, network
 		dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
 		dht.QueryFilter(dht.PublicQueryFilter),
 		dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
-		dht.DisableProviders(), //do not add dht bootstrap.make the peer-mgr unable to work
+		dht.DisableProviders(), // do not add dht bootstrap.make the peer-mgr unable to work
 		dht.DisableValues(),
 	}
 	r, err := dht.New(
