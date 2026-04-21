@@ -67,10 +67,11 @@ func ForceNet() *NetworkConf {
 				UpgradeWaffleHeight:                  -27,
 				UpgradeTuktukHeight:                  -28,
 				UpgradeTuktukPowerRampDurationEpochs: 20,
-				UpgradeTeepHeight:                    -30,
-				UpgradeTockHeight:                    -31,
-				UpgradeTockFixHeight:                 -29,
-				UpgradeGoldenWeekHeight:              20,
+				UpgradeTeepHeight:                    -29,
+				UpgradeTockHeight:                    -30,
+				UpgradeTockFixHeight:                 -103, // This fix upgrade only ran on calibrationnet
+				UpgradeGoldenWeekHeight:              -31,
+				UpgradeFireHorseHeight:               200, // Placeholder height for FireHorse, to be updated when FireHorse upgrade details are finalized
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
