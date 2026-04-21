@@ -34,13 +34,13 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	builtin17 "github.com/filecoin-project/go-state-types/builtin"
-	powertypes17 "github.com/filecoin-project/go-state-types/builtin/v17/power"
+	builtin18 "github.com/filecoin-project/go-state-types/builtin"
+	powertypes18 "github.com/filecoin-project/go-state-types/builtin/v18/power"
 )
 
 var (
-	Address = builtin17.StoragePowerActorAddr
-	Methods = builtin17.MethodsPower
+	Address = builtin18.StoragePowerActorAddr
+	Methods = builtin18.MethodsPower
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -80,6 +80,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version17:
 			return load17(store, act.Head)
+
+		case actorstypes.Version18:
+			return load18(store, act.Head)
 
 		}
 	}
@@ -166,6 +169,9 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 	case actorstypes.Version17:
 		return make17(store)
 
+	case actorstypes.Version18:
+		return make18(store)
+
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)
 }
@@ -206,7 +212,7 @@ type State interface {
 	// before returning the actor.
 	ForEachClaim(cb func(miner address.Address, claim Claim) error, onlyEligible bool) error
 	ClaimsChanged(State) (bool, error)
-	CollectEligibleClaims(cacheInOut *builtin17.MapReduceCache) ([]builtin17.OwnedClaim, error)
+	CollectEligibleClaims(cacheInOut *builtin18.MapReduceCache) ([]builtin18.OwnedClaim, error)
 
 	// Testing or genesis setup only
 	SetTotalQualityAdjPower(abi.StoragePower) error
@@ -253,10 +259,11 @@ func AllCodes() []cid.Cid {
 		(&state15{}).Code(),
 		(&state16{}).Code(),
 		(&state17{}).Code(),
+		(&state18{}).Code(),
 	}
 }
 
 type (
-	MinerPowerParams = powertypes17.MinerPowerParams
-	MinerPowerReturn = powertypes17.MinerPowerReturn
+	MinerPowerParams = powertypes18.MinerPowerParams
+	MinerPowerReturn = powertypes18.MinerPowerReturn
 )
