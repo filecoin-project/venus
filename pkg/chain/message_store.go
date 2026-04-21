@@ -572,7 +572,7 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet, up
 	if upgrade.UpgradeBreezeHeight >= 0 && baseHeight > upgrade.UpgradeBreezeHeight && baseHeight < upgrade.UpgradeBreezeHeight+upgrade.BreezeGasTampingDuration {
 		return abi.NewTokenAmount(100), nil
 	}
-	if baseHeight < upgrade.UpgradeXxHeight {
+	if baseHeight < upgrade.UpgradeFireHorseHeight {
 		return ms.ComputeNextBaseFeeFromUtilization(ctx, ts, upgrade)
 	}
 	return ms.ComputeNextBaseFeeFromPremiums(ctx, ts)
