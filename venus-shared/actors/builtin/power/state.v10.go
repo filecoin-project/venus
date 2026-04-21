@@ -22,7 +22,7 @@ import (
 	power10 "github.com/filecoin-project/go-state-types/builtin/v10/power"
 	adt10 "github.com/filecoin-project/go-state-types/builtin/v10/util/adt"
 
-	builtin17 "github.com/filecoin-project/go-state-types/builtin"
+	builtin18 "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var _ State = (*state10)(nil)
@@ -131,11 +131,11 @@ func (s *state10) ListAllMiners() ([]address.Address, error) {
 	return miners, nil
 }
 
-func (s *state10) CollectEligibleClaims(cacheInOut *builtin17.MapReduceCache) ([]builtin17.OwnedClaim, error) {
+func (s *state10) CollectEligibleClaims(cacheInOut *builtin18.MapReduceCache) ([]builtin18.OwnedClaim, error) {
 
-	var res []builtin17.OwnedClaim
+	var res []builtin18.OwnedClaim
 	err := s.ForEachClaim(func(miner address.Address, claim Claim) error {
-		res = append(res, builtin17.OwnedClaim{
+		res = append(res, builtin18.OwnedClaim{
 			Address:         miner,
 			RawBytePower:    claim.RawBytePower,
 			QualityAdjPower: claim.QualityAdjPower,

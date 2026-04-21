@@ -30,10 +30,10 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	builtin17 "github.com/filecoin-project/go-state-types/builtin"
+	builtin18 "github.com/filecoin-project/go-state-types/builtin"
 )
 
-var Methods = builtin17.MethodsAccount
+var Methods = builtin18.MethodsAccount
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
@@ -72,6 +72,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version17:
 			return load17(store, act.Head)
+
+		case actorstypes.Version18:
+			return load18(store, act.Head)
 
 		}
 	}
@@ -158,6 +161,9 @@ func MakeState(store adt.Store, av actorstypes.Version, addr address.Address) (S
 	case actorstypes.Version17:
 		return make17(store, addr)
 
+	case actorstypes.Version18:
+		return make18(store, addr)
+
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)
 }
@@ -192,5 +198,6 @@ func AllCodes() []cid.Cid {
 		(&state15{}).Code(),
 		(&state16{}).Code(),
 		(&state17{}).Code(),
+		(&state18{}).Code(),
 	}
 }

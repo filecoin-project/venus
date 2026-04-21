@@ -66,10 +66,11 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeWaffleHeight:                  -27,
 				UpgradeTuktukHeight:                  -28,
 				UpgradeTuktukPowerRampDurationEpochs: builtin.EpochsInYear,
-				UpgradeTeepHeight:                    50, // Changed to positive for NV27 Butterfly to avoid VestingFunds issue
-				UpgradeTockFixHeight:                 -29,
-				UpgradeTockHeight:                    100, // Changed to positive for NV27 Butterfly to avoid VestingFunds issue
-				UpgradeGoldenWeekHeight:              200,
+				UpgradeTeepHeight:                    -29,  // Changed to positive for NV27 Butterfly to avoid VestingFunds issue
+				UpgradeTockFixHeight:                 -103, // This fix upgrade only ran on calibrationnet
+				UpgradeTockHeight:                    -30,  // Changed to positive for NV27 Butterfly to avoid VestingFunds issue
+				UpgradeGoldenWeekHeight:              -31,
+				UpgradeFireHorseHeight:               999999999999999,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
