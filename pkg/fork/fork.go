@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -43,6 +44,7 @@ import (
 	nv24 "github.com/filecoin-project/go-state-types/builtin/v15/migration"
 	nv25 "github.com/filecoin-project/go-state-types/builtin/v16/migration"
 	nv27 "github.com/filecoin-project/go-state-types/builtin/v17/migration"
+	nv28 "github.com/filecoin-project/go-state-types/builtin/v18/migration"
 	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/go-state-types/migration"
 	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
@@ -372,7 +374,8 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      5,
 			}},
 			Expensive: true,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeHyggeHeight,
 			Network:   network.Version18,
 			Migration: cf.UpgradeActorsV10,
@@ -383,7 +386,8 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      5,
 			}},
 			Expensive: true,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeLightningHeight,
 			Network:   network.Version19,
 			Migration: cf.UpgradeActorsV11,
@@ -394,11 +398,13 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      10,
 			}},
 			Expensive: true,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeThunderHeight,
 			Network:   network.Version20,
 			Migration: nil,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeWatermelonHeight,
 			Network:   network.Version21,
 			Migration: cf.UpgradeActorsV12,
@@ -409,7 +415,8 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      10,
 			}},
 			Expensive: true,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeWatermelonFixHeight,
 			Network:   network.Version21,
 			Migration: cf.buildUpgradeActorsV12MinerFix(calibnetv12BuggyMinerCID1, calibnetv12BuggyManifestCID2),
@@ -476,16 +483,30 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			Height:    upgradeHeight.UpgradeTockHeight,
 			Network:   network.Version26,
 			Migration: nil,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeTockFixHeight,
 			Network:   network.Version26,
 			Migration: cf.UpgradeActorsV16Fix,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeGoldenWeekHeight,
 			Network:   network.Version27,
 			Migration: cf.UpgradeActorsV17,
 			PreMigrations: []PreMigration{{
 				PreMigration:    cf.PreUpgradeActorsV17,
+				StartWithin:     120,
+				DontStartWithin: 15,
+				StopWithin:      10,
+			}},
+			Expensive: true,
+		},
+		{
+			Height:    upgradeHeight.UpgradeFireHorseHeight,
+			Network:   network.Version28,
+			Migration: cf.UpgradeActorsV18,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV18,
 				StartWithin:     120,
 				DontStartWithin: 15,
 				StopWithin:      10,
@@ -1287,7 +1308,6 @@ func resetGenesisMsigs0(ctx context.Context, sm *ChainFork, store adt0.Store, tr
 		}
 		return nil
 	})
-
 	if err != nil {
 		return fmt.Errorf("iterating over genesis actors: %v", err)
 	}
@@ -2655,7 +2675,8 @@ func (c *ChainFork) PreUpgradeActorsV11(ctx context.Context, cache MigrationCach
 }
 
 func (c *ChainFork) UpgradeActorsV11(ctx context.Context, cache MigrationCache,
-	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+) (cid.Cid, error) {
 	// Use all the CPUs except 2.
 	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
@@ -3994,7 +4015,8 @@ func (c *ChainFork) PreUpgradeActorsV17(ctx context.Context,
 }
 
 func (c *ChainFork) UpgradeActorsV17(ctx context.Context, cache MigrationCache,
-	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+) (cid.Cid, error) {
 	// Use all the CPUs except 2.
 	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
@@ -4077,6 +4099,121 @@ func (c *ChainFork) upgradeActorsV17Common(
 
 	if err := writeStore.Shutdown(ctx); err != nil {
 		return cid.Undef, fmt.Errorf("writeStore shutdown failed: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) PreUpgradeActorsV18(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := MigrationMaxWorkerCount
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	nv := c.GetNetworkVersion(ctx, epoch)
+	lbts, lbRoot, err := c.cr.GetLookbackTipSetForRound(ctx, ts, epoch, nv)
+	if err != nil {
+		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	logPeriod, err := getMigrationProgressLogPeriod()
+	if err != nil {
+		return xerrors.Errorf("error getting progress log period: %w", err)
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: logPeriod,
+	}
+
+	_, err = c.upgradeActorsV18Common(ctx, cache, lbRoot, epoch, lbts, config)
+	return err
+}
+
+func (c *ChainFork) UpgradeActorsV18(ctx context.Context, cache MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+) (cid.Cid, error) {
+	// Use all the CPUs except 2.
+	workerCount := MigrationMaxWorkerCount - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	logPeriod, err := getMigrationProgressLogPeriod()
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error getting progress log period: %w", err)
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: logPeriod,
+	}
+	newRoot, err := c.upgradeActorsV18Common(ctx, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("migrating actors v18 state: %w", err)
+	}
+	return newRoot, nil
+}
+
+func (c *ChainFork) upgradeActorsV18Common(
+	ctx context.Context, cache MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+	config migration.Config,
+) (cid.Cid, error) {
+	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB/4)
+	adtStore := adt.WrapStore(ctx, cbor.NewCborStore(writeStore))
+	// ensure that the manifest is loaded in the blockstore
+	if err := actors.LoadBundles(ctx, writeStore, actorstypes.Version18); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot vmstate.StateRoot
+	if err := adtStore.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != vmstate.StateTreeVersion5 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 5 for actors v18 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version18)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("no manifest CID for v18 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv28.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
+		migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors v18: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := adtStore.Put(ctx, &vmstate.StateRoot{
+		Version: vmstate.StateTreeVersion5,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore flush failed: %w", err)
+	}
+
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore shutdown failed: %w", err)
 	}
 
 	return newRoot, nil
