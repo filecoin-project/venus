@@ -111,6 +111,13 @@ test:test-venus-shared
 lint: $(BUILD_DEPS)
 	golangci-lint run
 
+check: build lint compatible-all gen-all
+	@if [ -n "$$(git status --porcelain)" ]; then \
+		echo "Error: Working directory is not clean after running generation tools!"; \
+		git status --porcelain; \
+		exit 1; \
+	fi
+
 deps: $(BUILD_DEPS)
 
 dist-clean:
