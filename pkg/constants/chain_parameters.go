@@ -23,8 +23,12 @@ var ExpectedLeadersPerEpoch = builtin0.ExpectedLeadersPerEpoch
 
 // BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block.
 const (
-	BlockGasLimit          = 10_000_000_000
-	BlockGasTarget         = BlockGasLimit / 2
+	BlockGasLimit       = 10_000_000_000
+	BlockGasTargetIndex = BlockGasLimit*80/100 - 1
+
+	// todo: consider remove this after fip-0115 is activated
+	BlockGasTarget = BlockGasLimit / 2
+
 	BaseFeeMaxChangeDenom  = 8 // 12.5%
 	InitialBaseFee         = 100e6
 	MinimumBaseFee         = 100

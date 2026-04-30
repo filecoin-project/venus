@@ -12,6 +12,22 @@ commands:
             sudo apt install python-is-python3 ocl-icd-opencl-dev libhwloc-dev
             echo '-->>>' branch:$(git symbolic-ref --short HEAD), commit:$(git describe --always --match=NeVeRmAtCh --dirty) '\<<<--'
             make deps
+  install_rust:
+    description: |
+      Install Rust toolchain via rustup. Required as a fallback when the
+      filecoin-ffi prebuilt release download fails (e.g. due to GitHub API
+      rate limiting).
+    steps:
+      - run: |
+            if ! command -v cargo &> /dev/null; then
+              echo '[setup_environment] installing Rust toolchain...'
+              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+              . "$HOME/.cargo/env"
+              echo '[setup_environment] Rust toolchain installed successfully'
+            else
+              echo '[setup_environment] Rust toolchain already available'
+            fi
+          name: Install Rust toolchain (fallback for filecoin-ffi source build)
   test:
     description: |
       Run tests with gotestsum.
@@ -73,12 +89,18 @@ executors:
   golang:
     docker:
       - image: cimg/go:1.24.8
+    environment:
+      # Provide a GitHub token to avoid API rate limiting when downloading
+      # filecoin-ffi prebuilt releases. Set this in the CircleCI project settings
+      # or context.
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"
 
 jobs:
   test_all:
     executor: golang
     steps:
       - setup_environment
+      - install_rust
       - test: 
           display-name: unit_test_chain
           suite: "unit_test_chain"

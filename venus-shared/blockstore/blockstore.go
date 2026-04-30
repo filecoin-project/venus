@@ -52,6 +52,7 @@ type Blockstore interface {
 	blockstore.Viewer
 	BatchDeleter
 	Flusher
+	HashOnRead(enabled bool)
 }
 
 // Alias so other packages don't have to import go-ipfs-blockstore
@@ -95,6 +96,12 @@ func (a *adaptedBlockstore) View(ctx context.Context, cid cid.Cid, callback func
 		return err
 	}
 	return callback(blk.RawData())
+}
+
+func (a *adaptedBlockstore) HashOnRead(enabled bool) {
+	if hor, ok := a.Blockstore.(interface{ HashOnRead(bool) }); ok {
+		hor.HashOnRead(enabled)
+	}
 }
 
 func (a *adaptedBlockstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {

@@ -23,7 +23,7 @@ func TestPrintGroupInfo(t *testing.T) {
 	chainInfo := config.DrandConfigs[config.DrandDevnet].ChainInfoJSON
 	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(chainInfo)))
 	assert.NoError(t, err)
-	c, err := hclient.NewWithInfo(&logger{&log.SugaredLogger}, server, drandChain, nil)
+	c, err := hclient.NewWithInfo(&logger{&log.SugaredLogger, ""}, server, drandChain, nil)
 	assert.NoError(t, err)
 	chain, err := c.FetchChainInfo(context.Background(), nil)
 	assert.NoError(t, err)

@@ -60,18 +60,27 @@ type DrandHTTPClient interface {
 
 type logger struct {
 	*zap.SugaredLogger
+	name string
 }
 
 func (l *logger) With(args ...interface{}) dlog.Logger {
-	return &logger{l.SugaredLogger.With(args...)}
+	return &logger{l.SugaredLogger.With(args...), l.name}
 }
 
 func (l *logger) Named(s string) dlog.Logger {
-	return &logger{l.SugaredLogger.Named(s)}
+	newName := s
+	if l.name != "" {
+		newName = l.name + "." + s
+	}
+	return &logger{l.SugaredLogger.Named(s), newName}
+}
+
+func (l *logger) Name() string {
+	return l.name
 }
 
 func (l *logger) AddCallerSkip(skip int) dlog.Logger {
-	return &logger{l.SugaredLogger.With(zap.AddCallerSkip(skip))}
+	return &logger{l.SugaredLogger.With(zap.AddCallerSkip(skip)), l.name}
 }
 
 // NewDrandBeacon creates new beacon client from config, genesis block time and block delay
@@ -83,7 +92,7 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 
 	var clients []drand.Client
 	for _, url := range config.Servers {
-		hc, err := hclient.NewWithInfo(&logger{&log.SugaredLogger}, url, drandChain, nil)
+		hc, err := hclient.NewWithInfo(&logger{&log.SugaredLogger, "drand"}, url, drandChain, nil)
 		if err != nil {
 			return nil, fmt.Errorf("could not create http drand client: %w", err)
 		}
@@ -94,7 +103,7 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 	opts := []dclient.Option{
 		dclient.WithChainInfo(drandChain),
 		dclient.WithCacheSize(1024),
-		dclient.WithLogger(&logger{&log.SugaredLogger}),
+		dclient.WithLogger(&logger{&log.SugaredLogger, "drand"}),
 	}
 
 	if len(clients) == 0 {

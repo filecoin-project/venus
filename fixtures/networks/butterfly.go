@@ -14,8 +14,8 @@ func ButterflySnapNet() *NetworkConf {
 	nc := &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWKxHctsqQ41MZ64GYqz5r4DUF3Hkj9SMVEcHXdRqvWCAx",
-				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWN69aMyMuf9VrsRir5gd3xkT5q5p9NGYLFSXBTn1xkVSN",
+				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWPhvJbMgjBH7Zzph2GjLYETkKmHkE78kafaFcq6e26M2q",
+				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWH2MfV7XPbVjpW93Y7nqfPmLpgHegJ5rXN9vq6PXmHvWw",
 			},
 			Period: "30s",
 		},
@@ -66,10 +66,11 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeWaffleHeight:                  -27,
 				UpgradeTuktukHeight:                  -28,
 				UpgradeTuktukPowerRampDurationEpochs: builtin.EpochsInYear,
-				UpgradeTeepHeight:                    50, // Changed to positive for NV27 Butterfly to avoid VestingFunds issue
-				UpgradeTockFixHeight:                 -29,
-				UpgradeTockHeight:                    100, // Changed to positive for NV27 Butterfly to avoid VestingFunds issue
-				UpgradeGoldenWeekHeight:              200,
+				UpgradeTeepHeight:                    -29,  // Changed to positive for NV27 Butterfly to avoid VestingFunds issue
+				UpgradeTockFixHeight:                 -103, // This fix upgrade only ran on calibrationnet
+				UpgradeTockHeight:                    -30,  // Changed to positive for NV27 Butterfly to avoid VestingFunds issue
+				UpgradeGoldenWeekHeight:              -31,
+				UpgradeFireHorseHeight:               960,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,

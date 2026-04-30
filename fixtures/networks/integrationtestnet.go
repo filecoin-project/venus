@@ -60,8 +60,9 @@ func IntegrationNet() *NetworkConf {
 				UpgradeWaffleHeight:               4154640,
 				UpgradeTuktukHeight:               4461240,
 				UpgradeTeepHeight:                 4867320,
-				UpgradeTockFixHeight:              -29,
+				UpgradeTockFixHeight:              -103, // This fix upgrade only ran on calibrationnet
 				UpgradeGoldenWeekHeight:           5348280,
+				UpgradeFireHorseHeight:            999999999999999, // Placeholder height for FireHorse, to be updated when FireHorse upgrade details are finalized
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:          address.Testnet,
