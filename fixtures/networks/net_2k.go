@@ -65,7 +65,7 @@ func Net2k() *NetworkConf {
 				UpgradeTockHeight:                    -30,
 				UpgradeTockFixHeight:                 -103,
 				UpgradeGoldenWeekHeight:              -31,
-				UpgradeFireHorseHeight:               200, // Placeholder height for FireHorse, to be updated when FireHorse upgrade details are finalized
+				UpgradeFireHorseHeight:               200,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,
