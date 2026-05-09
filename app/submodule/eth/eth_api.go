@@ -966,6 +966,18 @@ func (a *ethAPI) EthGasPrice(ctx context.Context) (types.EthBigInt, error) {
 	return types.EthBigInt(gasPrice), nil
 }
 
+func (a *ethAPI) EthBaseFee(ctx context.Context) (types.EthBigInt, error) {
+	ts, err := a.chain.ChainHead(ctx)
+	if err != nil {
+		return types.EthBigInt(big.Zero()), err
+	}
+	nextBaseFee, err := a.em.chainModule.MessageStore.ComputeBaseFee(ctx, ts, a.em.cfg.NetworkParams.ForkUpgradeParam)
+	if err != nil {
+		return types.EthBigInt(big.Zero()), fmt.Errorf("computing next base fee: %w", err)
+	}
+	return types.EthBigInt(nextBaseFee), nil
+}
+
 func (a *ethAPI) EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error) {
 	txArgs, err := types.ParseEthTransaction(rawTx)
 	if err != nil {

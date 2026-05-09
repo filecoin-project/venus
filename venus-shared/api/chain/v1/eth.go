@@ -54,6 +54,7 @@ type IETH interface {
 	NetListening(ctx context.Context) (bool, error)                                                                                                      //perm:read
 	EthProtocolVersion(ctx context.Context) (types.EthUint64, error)                                                                                     //perm:read
 	EthGasPrice(ctx context.Context) (types.EthBigInt, error)                                                                                            //perm:read
+	EthBaseFee(ctx context.Context) (types.EthBigInt, error)                                                                                             //perm:read
 	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (types.EthFeeHistory, error)                                                                 //perm:read
 
 	EthMaxPriorityFeePerGas(ctx context.Context) (types.EthBigInt, error)                                       //perm:read

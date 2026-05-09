@@ -72,6 +72,7 @@ curl http://<ip>:<port>/rpc/v1 -X POST -H "Content-Type: application/json"  -H "
 * [ETH](#eth)
   * [EthAccounts](#ethaccounts)
   * [EthAddressToFilecoinAddress](#ethaddresstofilecoinaddress)
+  * [EthBaseFee](#ethbasefee)
   * [EthBlockNumber](#ethblocknumber)
   * [EthCall](#ethcall)
   * [EthChainId](#ethchainid)
@@ -2549,6 +2550,15 @@ Inputs:
 ```
 
 Response: `"f01234"`
+
+### EthBaseFee
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"0x0"`
 
 ### EthBlockNumber
 EthBlockNumber returns the height of the latest (heaviest) TipSet
