@@ -2,18 +2,29 @@ package eth
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"fmt"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	chainmod "github.com/filecoin-project/venus/app/submodule/chain"
+	pkgchain "github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool"
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+	"github.com/filecoin-project/venus/venus-shared/api/chain/v1/mock"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -291,4 +302,42 @@ func TestDecodePayload(t *testing.T) {
 	// random codec should fail
 	_, err = decodePayload(w.Bytes(), 42)
 	require.Error(t, err)
+}
+
+func TestEthBaseFee(t *testing.T) {
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Place the tipset in the Breeze tamping window so ComputeBaseFee returns
+	// a flat 100 without needing stored block messages.
+	forkParams := &config.ForkUpgradeConfig{
+		UpgradeBreezeHeight:      0,
+		BreezeGasTampingDuration: 200,
+	}
+	ts := testhelpers.RequireTipsetWithHeight(t, 50)
+
+	mockNode := mock.NewMockFullNode(ctrl)
+	mockNode.EXPECT().ChainHead(gomock.Any()).Return(ts, nil)
+
+	bs := blockstoreutil.Adapt(blockstore.NewBlockstore(datastore.NewMapDatastore()))
+	ms := pkgchain.NewMessageStore(bs, forkParams)
+
+	a := &ethAPI{
+		chain: mockNode,
+		em: &EthSubModule{
+			cfg: &config.Config{
+				NetworkParams: &config.NetworkParamsConfig{
+					ForkUpgradeParam: forkParams,
+				},
+			},
+			chainModule: &chainmod.ChainSubmodule{
+				MessageStore: ms,
+			},
+		},
+	}
+
+	result, err := a.EthBaseFee(ctx)
+	require.NoError(t, err)
+	require.Equal(t, types.EthBigInt(big.NewInt(constants.MinimumBaseFee)), result)
 }
