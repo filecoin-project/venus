@@ -107,6 +107,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ Concurrent
 	- CreateBackup
 	- Discover
+	+ EthBaseFee
 	> EthGetBlockTransactionCountByNumber {[func(context.Context, types.EthUint64) (types.EthUint64, error) <> func(context.Context, string) (ethtypes.EthUint64, error)] base=func in type: #1 input; nested={[types.EthUint64 <> string] base=type kinds: uint64 != string; nested=nil}}
 	> EthGetTransactionByBlockHashAndIndex {[func(context.Context, types.EthHash, types.EthUint64) (types.EthTx, error) <> func(context.Context, ethtypes.EthHash, ethtypes.EthUint64) (*ethtypes.EthTx, error)] base=func out type: #0 input; nested={[types.EthTx <> *ethtypes.EthTx] base=type kinds: struct != ptr; nested=nil}}
 	> EthGetTransactionByBlockNumberAndIndex {[func(context.Context, types.EthUint64, types.EthUint64) (types.EthTx, error) <> func(context.Context, string, ethtypes.EthUint64) (*ethtypes.EthTx, error)] base=func in type: #1 input; nested={[types.EthUint64 <> string] base=type kinds: uint64 != string; nested=nil}}
