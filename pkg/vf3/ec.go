@@ -32,6 +32,10 @@ type ecWrapper struct {
 	SyncerAPI    v1api.ISyncer
 
 	mapReduceCache builtin.MapReduceCache
+
+	// powerTableSem 限制 GetPowerTable 的并发数为 1，防止 PowerStore 追赶落后高度时
+	// 并发加载大量矿工状态导致内存溢出（OOM）。
+	powerTableSem chan struct{}
 }
 
 type f3TipSet struct {
@@ -117,6 +121,16 @@ func (ec *ecWrapper) GetPowerTable(ctx context.Context, tskF3 gpbft.TipSetKey) (
 	if err != nil {
 		return nil, err
 	}
+
+	// 获取信号量，将并发数限制为 1，防止 PowerStore 追赶模式下
+	// 同时加载多份矿工状态导致 OOM。
+	select {
+	case ec.powerTableSem <- struct{}{}:
+		defer func() { <-ec.powerTableSem }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
 	return ec.getPowerTableTSK(ctx, tsk)
 }
 
