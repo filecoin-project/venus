@@ -133,6 +133,10 @@ func (e *ethAPIDummy) EthGasPrice(ctx context.Context) (types.EthBigInt, error) 
 	return types.EthBigIntZero, ErrModuleDisabled
 }
 
+func (e *ethAPIDummy) EthBaseFee(ctx context.Context) (types.EthBigInt, error) {
+	return types.EthBigIntZero, ErrModuleDisabled
+}
+
 func (e *ethAPIDummy) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (types.EthUint64, error) {
 	return 0, ErrModuleDisabled
 }

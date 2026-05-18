@@ -494,7 +494,7 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 
 	baseFee := parentTS.Blocks()[0].ParentBaseFee
 
-	receipt, err := newEthTxReceipt(ctx, tx, baseFee, msgLookup.Receipt, a.EthEventHandler)
+	receipt, err := newEthTxReceipt(ctx, tx, c, baseFee, msgLookup.Receipt, a.EthEventHandler)
 	if err != nil {
 		return nil, nil
 	}
@@ -557,7 +557,7 @@ func (a *ethAPI) EthGetBlockReceiptsLimited(ctx context.Context, blockParam type
 			return nil, fmt.Errorf("failed to create EthTx: %w", err)
 		}
 
-		receipt, err := newEthTxReceipt(ctx, tx, baseFee, receipts[i], a.EthEventHandler)
+		receipt, err := newEthTxReceipt(ctx, tx, msg.Cid(), baseFee, receipts[i], a.EthEventHandler)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Eth receipt: %w", err)
 		}
@@ -964,6 +964,18 @@ func (a *ethAPI) EthGasPrice(ctx context.Context) (types.EthBigInt, error) {
 
 	gasPrice := big.Add(baseFee, big.Int(premium))
 	return types.EthBigInt(gasPrice), nil
+}
+
+func (a *ethAPI) EthBaseFee(ctx context.Context) (types.EthBigInt, error) {
+	ts, err := a.chain.ChainHead(ctx)
+	if err != nil {
+		return types.EthBigInt(big.Zero()), err
+	}
+	nextBaseFee, err := a.em.chainModule.MessageStore.ComputeBaseFee(ctx, ts, a.em.cfg.NetworkParams.ForkUpgradeParam)
+	if err != nil {
+		return types.EthBigInt(big.Zero()), fmt.Errorf("computing next base fee: %w", err)
+	}
+	return types.EthBigInt(nextBaseFee), nil
 }
 
 func (a *ethAPI) EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error) {

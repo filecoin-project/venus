@@ -634,6 +634,7 @@ func newEthTx(ctx context.Context,
 
 func newEthTxReceipt(ctx context.Context,
 	tx types.EthTx,
+	msgCid cid.Cid,
 	baseFee big.Int,
 	msgReceipt types.MessageReceipt,
 	ev *ethEventAPI,
@@ -708,7 +709,7 @@ func newEthTxReceipt(ctx context.Context,
 	}
 
 	if rct := msgReceipt; rct.EventsRoot != nil {
-		logs, err := ev.getEthLogsForBlockAndTransaction(ctx, &blockHash, tx.Hash)
+		logs, err := ev.getEthLogsForBlockAndTransaction(ctx, &blockHash, msgCid)
 		if err != nil {
 			return types.EthTxReceipt{}, fmt.Errorf("failed to get eth logs for block and transaction: %w", err)
 		}
