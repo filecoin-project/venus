@@ -73,16 +73,16 @@ func New(mctx context.Context, params F3Params) (*F3, error) {
 	}
 	ds := namespace.Wrap(params.Datastore, datastore.NewKey("/f3"))
 	ec := &ecWrapper{
-		ChainStore:   params.ChainStore,
-		StateManager: params.StateManager,
-		SyncerAPI:    params.SyncerAPI,
+		ChainStore:    params.ChainStore,
+		StateManager:  params.StateManager,
+		SyncerAPI:     params.SyncerAPI,
+		powerTableSem: make(chan struct{}, 1),
 	}
 	verif := blssig.VerifierWithKeyOnG1()
 
 	f3FsPath := filepath.Join(params.RepoPath, "f3")
 	module, err := f3.New(mctx, *params.Config.StaticManifest, ds,
 		params.Host, params.PubSub, verif, ec, f3FsPath)
-
 	if err != nil {
 		return nil, fmt.Errorf("creating F3: %w", err)
 	}
