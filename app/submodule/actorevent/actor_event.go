@@ -29,6 +29,7 @@ type EventFilterManager interface {
 		ctx context.Context,
 		minHeight, maxHeight abi.ChainEpoch,
 		tipsetCid cid.Cid,
+		msgCid cid.Cid,
 		addresses []address.Address,
 		keysWithCodec map[string][]types.ActorEventBlock,
 		excludeReverted bool,
@@ -95,7 +96,7 @@ func (a *ActorEventHandler) GetActorEventsRaw(ctx context.Context, evtFilter *ty
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tipset cid: %w", err)
 	}
-	f, err := a.eventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, tipSetCid, evtFilter.Addresses, evtFilter.Fields, false)
+	f, err := a.eventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, tipSetCid, cid.Undef, evtFilter.Addresses, evtFilter.Fields, false)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +206,7 @@ func (a *ActorEventHandler) SubscribeActorEventsRaw(ctx context.Context, evtFilt
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tipset cid: %w", err)
 	}
-	fm, err := a.eventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, tipSetCid, evtFilter.Addresses, evtFilter.Fields, false)
+	fm, err := a.eventFilterManager.Install(ctx, params.MinHeight, params.MaxHeight, tipSetCid, cid.Undef, evtFilter.Addresses, evtFilter.Fields, false)
 	if err != nil {
 		return nil, err
 	}

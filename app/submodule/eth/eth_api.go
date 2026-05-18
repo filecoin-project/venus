@@ -494,7 +494,7 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 
 	baseFee := parentTS.Blocks()[0].ParentBaseFee
 
-	receipt, err := newEthTxReceipt(ctx, tx, baseFee, msgLookup.Receipt, a.EthEventHandler)
+	receipt, err := newEthTxReceipt(ctx, tx, c, baseFee, msgLookup.Receipt, a.EthEventHandler)
 	if err != nil {
 		return nil, nil
 	}
@@ -557,7 +557,7 @@ func (a *ethAPI) EthGetBlockReceiptsLimited(ctx context.Context, blockParam type
 			return nil, fmt.Errorf("failed to create EthTx: %w", err)
 		}
 
-		receipt, err := newEthTxReceipt(ctx, tx, baseFee, receipts[i], a.EthEventHandler)
+		receipt, err := newEthTxReceipt(ctx, tx, msg.Cid(), baseFee, receipts[i], a.EthEventHandler)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Eth receipt: %w", err)
 		}
