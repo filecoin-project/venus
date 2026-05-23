@@ -32,7 +32,7 @@ type MinedBlock struct {
 	Cid   string `gorm:"column:cid;type:varchar(256);NOT NULL"`
 }
 
-// NewMysqlSlashFilter create a new slash filter base on  mysql database
+// NewMysqlSlashFilter create a new slash filter based on mysql database
 func NewMysqlSlashFilter(cfg config.MySQLConfig) (ISlashFilter, error) {
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
 	if err != nil {

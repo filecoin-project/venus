@@ -146,7 +146,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	}, nil
 }
 
-// MinerCreateBlock create block base on template
+// MinerCreateBlock create block based on template
 func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *types.BlockTemplate) (*types.BlockMsg, error) {
 	fblk, err := miningAPI.minerCreateBlock(ctx, bt)
 	if err != nil {
