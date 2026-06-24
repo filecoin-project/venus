@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
@@ -28,6 +29,8 @@ func isIndexedValue(b uint8) bool {
 	return b&(types.EventFlagIndexedKey|types.EventFlagIndexedValue) > 0
 }
 
+var ErrMaxResultsReached = errors.New("event filter max results reached")
+
 type AddressResolver func(context.Context, abi.ActorID, *types.TipSet) (address.Address, bool)
 
 type EventFilter interface {
@@ -42,6 +45,7 @@ type eventFilter struct {
 	minHeight abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
 	maxHeight abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
 	tipsetCid cid.Cid
+	msgCid    cid.Cid           // restrict to events emitted by a single message
 	addresses []address.Address // list of actor addresses that are extpected to emit the event
 
 	keysWithCodec map[string][]types.ActorEventBlock // map of key names to a list of alternate values that may match
@@ -378,7 +382,7 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 	return nil
 }
 
-func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight abi.ChainEpoch, tipsetCid cid.Cid, addresses []address.Address,
+func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight abi.ChainEpoch, tipsetCid, msgCid cid.Cid, addresses []address.Address,
 	keysWithCodec map[string][]types.ActorEventBlock, excludeReverted bool) (EventFilter, error) {
 	m.mu.Lock()
 	if m.currentHeight == 0 {
@@ -402,6 +406,7 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 		minHeight:     minHeight,
 		maxHeight:     maxHeight,
 		tipsetCid:     tipsetCid,
+		msgCid:        msgCid,
 		addresses:     addresses,
 		keysWithCodec: keysWithCodec,
 		maxResults:    m.MaxFilterResults,

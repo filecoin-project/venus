@@ -26,10 +26,8 @@ import (
 	"github.com/zyedidia/generic/queue"
 )
 
-var (
-	// wait for 3 epochs
-	eventReadTimeout = 90 * time.Second
-)
+// wait for 3 epochs
+var eventReadTimeout = 90 * time.Second
 
 var _ v1.IETHEvent = (*ethEventAPI)(nil)
 
@@ -152,29 +150,18 @@ func (e *ethEventAPI) Close(ctx context.Context) error {
 	return nil
 }
 
-// TODO: For now, we're fetching logs from the index for the entire block and then filtering them by the transaction hash
-// This allows us to use the current schema of the event Index DB that has been optimised to use the "tipset_key_cid" index
-// However, this can be replaced to filter logs in the event Index DB by the "msgCid" if we pass it down to the query generator
-func (e *ethEventAPI) getEthLogsForBlockAndTransaction(ctx context.Context, blockHash *types.EthHash, txHash types.EthHash) ([]types.EthLog, error) {
-	ces, err := e.ethGetEventsForFilter(ctx, &types.EthFilterSpec{BlockHash: blockHash})
+// getEthLogsForBlockAndTransaction returns logs for a single message in a tipset; the
+// caller supplies the message CID directly so the indexer query is narrowed at the SQL level.
+func (e *ethEventAPI) getEthLogsForBlockAndTransaction(ctx context.Context, blockHash *types.EthHash, msgCid cid.Cid) ([]types.EthLog, error) {
+	ces, err := e.ethGetEventsForFilter(ctx, &types.EthFilterSpec{BlockHash: blockHash}, msgCid)
 	if err != nil {
 		return nil, err
 	}
-	logs, err := ethFilterLogsFromEvents(ctx, ces, e.em.chainModule.MessageStore)
-	if err != nil {
-		return nil, err
-	}
-	var out []types.EthLog
-	for _, log := range logs {
-		if log.TransactionHash == txHash {
-			out = append(out, log)
-		}
-	}
-	return out, nil
+	return ethFilterLogsFromEvents(ctx, ces, e.em.chainModule.MessageStore)
 }
 
 func (e *ethEventAPI) EthGetLogs(ctx context.Context, filterSpec *types.EthFilterSpec) (*types.EthFilterResult, error) {
-	ces, err := e.ethGetEventsForFilter(ctx, filterSpec)
+	ces, err := e.ethGetEventsForFilter(ctx, filterSpec, cid.Undef)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +169,7 @@ func (e *ethEventAPI) EthGetLogs(ctx context.Context, filterSpec *types.EthFilte
 	return ethFilterResultFromEvents(ctx, ces, e.em.chainModule.MessageStore)
 }
 
-func (e *ethEventAPI) ethGetEventsForFilter(ctx context.Context, filterSpec *types.EthFilterSpec) ([]*filter.CollectedEvent, error) {
+func (e *ethEventAPI) ethGetEventsForFilter(ctx context.Context, filterSpec *types.EthFilterSpec, msgCid cid.Cid) ([]*filter.CollectedEvent, error) {
 	if e.EventFilterManager == nil {
 		return nil, api.ErrNotSupported
 	}
@@ -244,7 +231,7 @@ func (e *ethEventAPI) ethGetEventsForFilter(ctx context.Context, filterSpec *typ
 	}
 
 	// Create a temporary filter
-	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, pf.addresses, pf.keys, false)
+	f, err := e.EventFilterManager.Install(ctx, pf.minHeight, pf.maxHeight, pf.tipsetCid, msgCid, pf.addresses, pf.keys, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to install event filter: %w", err)
 	}
@@ -436,7 +423,7 @@ func (e *ethEventAPI) installEthFilterSpec(ctx context.Context, filterSpec *type
 		return nil, err
 	}
 
-	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keysToKeysWithCodec(keys), true)
+	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, cid.Undef, addresses, keysToKeysWithCodec(keys), true)
 }
 
 func keysToKeysWithCodec(keys map[string][][]byte) map[string][]types.ActorEventBlock {
@@ -625,7 +612,7 @@ func (e *ethEventAPI) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ty
 			}
 		}
 
-		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, addresses, keysToKeysWithCodec(keys), true)
+		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, cid.Undef, addresses, keysToKeysWithCodec(keys), true)
 		if err != nil {
 			// clean up any previous filters added and stop the sub
 			_, _ = e.EthUnsubscribe(ctx, sub.id)
@@ -690,6 +677,7 @@ type parsedFilter struct {
 	minHeight abi.ChainEpoch
 	maxHeight abi.ChainEpoch
 	tipsetCid cid.Cid
+	msgCid    cid.Cid
 	addresses []address.Address
 	keys      map[string][]types.ActorEventBlock
 }
@@ -736,6 +724,7 @@ func (e *ethEventAPI) parseEthFilterSpec(filterSpec *types.EthFilterSpec) (*pars
 		minHeight: minHeight,
 		maxHeight: maxHeight,
 		tipsetCid: tipsetCid,
+		msgCid:    cid.Undef,
 		addresses: addresses,
 		keys:      keysToKeysWithCodec(keys),
 	}, nil

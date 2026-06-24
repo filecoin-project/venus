@@ -466,7 +466,14 @@ type EventConfig struct {
 	// MaxFilters specifies the maximum number of filters that may exist at any one time.
 	MaxFilters int `json:"maxFilters"`
 
-	// MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
+	// MaxFilterResults caps the events returned by event filter queries used by the actor
+	// events API and the Ethereum event and receipt APIs. Set to 0 for no limit.
+	// The cap is a hard limit only when a query's events come from more than one tipset.
+	// A range whose events all live in a single tipset may exceed MaxFilterResults; queries
+	// scoped to a single tipset (tipsetCid set, eth_getLogs with a blockHash,
+	// eth_getBlockReceipts) bypass it entirely. eth_getTransactionReceipt narrows to a
+	// single message at the index level and is also unaffected. The cap exists to bound
+	// the cost of multi-tipset range queries.
 	MaxFilterResults int `json:"maxFilterResults"`
 
 	// MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying

@@ -482,6 +482,9 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 	var currentID int64 = -1
 	var ce *CollectedEvent
 
+	var lastHeight abi.ChainEpoch = -1
+	var tipsetsSeen int
+
 	for q.Next() {
 		select {
 		case <-ctx.Done():
@@ -527,12 +530,19 @@ func (ei *EventIndex) prefillFilter(ctx context.Context, f *eventFilter, exclude
 			if ce != nil {
 				ces = append(ces, ce)
 				ce = nil
-				// Unfortunately we can't easily incorporate the max results limit into the query due to the
-				// unpredictable number of rows caused by joins
-				// Break here to stop collecting rows
-				if f.maxResults > 0 && len(ces) >= f.maxResults {
-					break
-				}
+			}
+
+			rowHeight := abi.ChainEpoch(row.height)
+			if rowHeight != lastHeight {
+				tipsetsSeen++
+				lastHeight = rowHeight
+			}
+
+			// MaxResults applies as a hard cap only once events span more than one tipset;
+			// a single contributing tipset may exceed the cap. Single-tipset and
+			// single-message queries naturally bypass this because tipsetsSeen stays at 1.
+			if f.maxResults > 0 && tipsetsSeen > 1 && len(ces) >= f.maxResults {
+				return ErrMaxResultsReached
 			}
 
 			currentID = row.id
@@ -607,6 +617,11 @@ func makePrefillFilterQuery(f *eventFilter, excludeReverted bool) ([]any, string
 				values = append(values, f.maxHeight)
 			}
 		}
+	}
+
+	if f.msgCid != cid.Undef {
+		clauses = append(clauses, "event.message_cid=?")
+		values = append(values, f.msgCid.Bytes())
 	}
 
 	if excludeReverted {
