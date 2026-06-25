@@ -68,8 +68,14 @@ var (
 )
 
 var (
-	MaxActorPendingMessages          = 1000
-	MaxUntrustedActorPendingMessages = 10
+	MaxActorPendingMessages = 1000
+	// MaxUntrustedActorPendingMessages is the maximum number of pending messages
+	// per actor for untrusted (non-local) messages. Raised from 10 to 100 because
+	// the previous limit was too tight — users could easily hit
+	// ErrTooManyPendingMessages when basefee spikes or block production is delayed.
+	// 100 is still well below the trusted path limit of 1000, and untrusted messages
+	// keep maxNonceGap = 0, so spam/DoS protection is not compromised.
+	MaxUntrustedActorPendingMessages = 100
 )
 
 var MaxNonceGap = uint64(4)
