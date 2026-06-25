@@ -420,23 +420,26 @@ func TestEthTraceFilter_BlockRangeExceeded(t *testing.T) {
 	})
 
 	t.Run("range check handles zero max range (disabled)", func(t *testing.T) {
-		fromBlock := types.EthUint64(0)
-		toBlock := types.EthUint64(100)
-		maxBlockRange := uint64(0)
+		var fromBlock types.EthUint64 = 0
+		var toBlock types.EthUint64 = 100
+		const maxBlockRange uint64 = 0
 
 		// When maxBlockRange is 0, the check should be disabled
 		// (maxBlockRange > 0 is false, so the condition short-circuits)
+		_ = fromBlock
+		_ = toBlock
 		checkEnabled := maxBlockRange > 0
 		require.False(t, checkEnabled)
 	})
 
 	t.Run("range check handles equal from and to blocks", func(t *testing.T) {
-		fromBlock := types.EthUint64(50)
-		toBlock := types.EthUint64(50)
-		maxBlockRange := uint64(10)
+		var fromBlock types.EthUint64 = 50
+		var toBlock types.EthUint64 = 50
+		const maxBlockRange uint64 = 10
 
 		// When from == to (single block), the check should not trigger
 		// (toBlock > fromBlock is false)
+		_ = maxBlockRange
 		require.Equal(t, fromBlock, toBlock)
 	})
 }
