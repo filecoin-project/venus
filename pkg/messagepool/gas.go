@@ -96,7 +96,7 @@ func (mp *MessagePool) GasEstimateFeeCap(
 	return out, nil
 }
 
-// finds 55th percntile instead of median to put negative pressure on gas price
+// finds ~52.5th percentile instead of median to put negative pressure on gas price
 func medianGasPremium(prices []GasMeta, blocks int) abi.TokenAmount {
 	sort.Slice(prices, func(i, j int) bool {
 		// sort desc by price
@@ -132,6 +132,9 @@ func (mp *MessagePool) GasEstimateGasPremium(
 ) (big.Int, error) {
 	if nblocksincl == 0 {
 		nblocksincl = 1
+	}
+	if nblocksincl > 128 {
+		nblocksincl = 128
 	}
 
 	var prices []GasMeta
