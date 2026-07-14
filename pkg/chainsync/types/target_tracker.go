@@ -60,7 +60,7 @@ func (target *Target) HasChild(t *Target) bool {
 	return target.Head.Key().ContainsAll(t.Head.Key())
 }
 
-// Key return identity of target . key=weight+height+parent
+// Key returns the identity of a target. key=weight+height+parent.
 func (target *Target) Key() string {
 	weightIn := target.Head.ParentWeight()
 	return weightIn.String() +
@@ -395,7 +395,7 @@ func (tq *TargetTracker) Remove(t *Target) {
 	tq.history.PushBack(t)
 }
 
-// History return sync history
+// History returns sync history.
 func (tq *TargetTracker) History() []*Target {
 	tq.lk.Lock()
 	defer tq.lk.Unlock()
