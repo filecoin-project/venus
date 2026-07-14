@@ -502,6 +502,10 @@ type FevmConfig struct {
 	// EthTraceFilterMaxResults sets the maximum results returned per request by trace_filter
 	EthTraceFilterMaxResults uint64 `json:"ethTraceFilterMaxResults"`
 
+	// EthTraceFilterMaxBlockRange sets the maximum block range allowed for EthTraceFilter
+	// requests. Trace replays are significantly more expensive than log lookups.
+	EthTraceFilterMaxBlockRange uint64 `json:"ethTraceFilterMaxBlockRange"`
+
 	// EthBlkCacheSize specifies the size of the cache used for caching Ethereum blocks.
 	// This cache enhances the performance of the eth_getBlockByHash RPC call by minimizing the need to access chain state for
 	// recently requested blocks that are already cached.
@@ -529,6 +533,7 @@ func newFevmConfig() *FevmConfig {
 		EnableEthRPC:                 false,
 		EthTxHashMappingLifetimeDays: 0,
 		EthTraceFilterMaxResults:     500,
+		EthTraceFilterMaxBlockRange:  100,
 		EthBlkCacheSize:              500,
 		Event: EventConfig{
 			DisableRealTimeFilterAPI: false,

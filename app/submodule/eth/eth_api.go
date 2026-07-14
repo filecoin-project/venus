@@ -1453,6 +1453,11 @@ func (a *ethAPI) EthTraceFilter(ctx context.Context, filter types.EthTraceFilter
 		return nil, fmt.Errorf("cannot parse toBlock: %w", err)
 	}
 
+	// Validate block range before processing
+	if maxBlockRange := a.em.cfg.FevmConfig.EthTraceFilterMaxBlockRange; maxBlockRange > 0 && toBlock > fromBlock && uint64(toBlock-fromBlock) > maxBlockRange {
+		return nil, types.NewErrBlockRangeExceeded(maxBlockRange, uint64(toBlock-fromBlock))
+	}
+
 	var results []*types.EthTraceFilterResult
 
 	if filter.Count != nil {

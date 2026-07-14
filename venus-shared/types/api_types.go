@@ -575,6 +575,7 @@ var (
 	_ error = (*errF3NotReady)(nil)
 	_ error = (*ErrExecutionReverted)(nil)
 	_ error = (*ErrNullRound)(nil)
+	_ error = (*ErrBlockRangeExceeded)(nil)
 )
 
 // ErrOutOfGas signals that a call failed due to insufficient gas.
@@ -654,5 +655,27 @@ func (e *ErrNullRound) Error() string {
 // and will ignore the contents (specifically there is no matching on Epoch).
 func (e *ErrNullRound) Is(target error) bool {
 	_, ok := target.(*ErrNullRound)
+	return ok
+}
+
+// ErrBlockRangeExceeded signals that a request's block range exceeds the configured
+// maximum. Returned with the standard Ethereum JSON-RPC -32005 "limit exceeded" code.
+type ErrBlockRangeExceeded struct {
+	Message string
+}
+
+func NewErrBlockRangeExceeded(maxBlockRange, given uint64) *ErrBlockRangeExceeded {
+	return &ErrBlockRangeExceeded{
+		Message: fmt.Sprintf("block range exceeds maximum of %d (got %d)", maxBlockRange, given),
+	}
+}
+
+func (e *ErrBlockRangeExceeded) Error() string {
+	return e.Message
+}
+
+// Is performs a non-strict type check so errors.Is works regardless of field values.
+func (e *ErrBlockRangeExceeded) Is(target error) bool {
+	_, ok := target.(*ErrBlockRangeExceeded)
 	return ok
 }

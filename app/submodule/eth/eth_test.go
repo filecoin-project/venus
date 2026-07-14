@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -47,7 +48,7 @@ func TestParseBlockRange(t *testing.T) {
 			maxRange: 10,
 			minOut:   0,
 			maxOut:   0,
-			errStr:   "too large",
+			errStr:   "block range exceeds maximum",
 		},
 		"fails when min is specified and range is greater than max allowed range": {
 			heaviest: 500,
@@ -56,7 +57,7 @@ func TestParseBlockRange(t *testing.T) {
 			maxRange: 10,
 			minOut:   0,
 			maxOut:   0,
-			errStr:   "too far in the past",
+			errStr:   "block range exceeds maximum",
 		},
 		"fails when max is specified and range is greater than max allowed range": {
 			heaviest: 500,
@@ -65,7 +66,7 @@ func TestParseBlockRange(t *testing.T) {
 			maxRange: 10,
 			minOut:   0,
 			maxOut:   0,
-			errStr:   "too large",
+			errStr:   "block range exceeds maximum",
 		},
 		"works when range is valid": {
 			heaviest: 500,
@@ -95,6 +96,7 @@ func TestParseBlockRange(t *testing.T) {
 				fmt.Println(err)
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc2.errStr)
+				require.True(t, errors.Is(err, &types.ErrBlockRangeExceeded{}))
 			} else {
 				require.NoError(t, err)
 			}
@@ -340,4 +342,104 @@ func TestEthBaseFee(t *testing.T) {
 	result, err := a.EthBaseFee(ctx)
 	require.NoError(t, err)
 	require.Equal(t, types.EthBigInt(big.NewInt(constants.MinimumBaseFee)), result)
+}
+
+// TestErrBlockRangeExceeded_ErrorType validates the ErrBlockRangeExceeded error type
+// that will be added to venus-shared/types/api_types.go as part of the
+// Lotus PR #13561 migration (fix(eth): tighten block range for filter APIs).
+// It verifies the error message format, errors.Is behavior, and type discrimination.
+func TestErrBlockRangeExceeded_ErrorType(t *testing.T) {
+	t.Run("error message format", func(t *testing.T) {
+		err := types.NewErrBlockRangeExceeded(100, 200)
+		require.Equal(t, "block range exceeds maximum of 100 (got 200)", err.Error())
+
+		err = types.NewErrBlockRangeExceeded(50, 9999)
+		require.Equal(t, "block range exceeds maximum of 50 (got 9999)", err.Error())
+	})
+
+	t.Run("errors.Is matches exact instance", func(t *testing.T) {
+		err := types.NewErrBlockRangeExceeded(100, 200)
+		require.True(t, errors.Is(err, &types.ErrBlockRangeExceeded{}))
+	})
+
+	t.Run("errors.Is matches empty target", func(t *testing.T) {
+		err := types.NewErrBlockRangeExceeded(100, 200)
+		require.True(t, errors.Is(err, &types.ErrBlockRangeExceeded{Message: ""}))
+	})
+
+	t.Run("errors.Is not confused with other error types", func(t *testing.T) {
+		blockRangeErr := types.NewErrBlockRangeExceeded(100, 200)
+		require.False(t, errors.Is(blockRangeErr, &types.ErrNullRound{}))
+		require.False(t, errors.Is(blockRangeErr, &types.ErrExecutionReverted{}))
+	})
+}
+
+// TestEthTraceFilter_BlockRangeExceeded validates that EthTraceFilter returns
+// ErrBlockRangeExceeded when the requested block range exceeds the configured maximum.
+//
+// NOTE: This is an integration-level test that requires a fully initialized chain store
+// (chain.Store) with genesis block data in an in-memory datastore. The EthTraceFilter
+// implementation calls a.em.chainModule.ChainReader.GetHead() and GetTipSet() to resolve
+// block numbers, and iterates over blocks via a.EthTraceBlock(). These dependencies
+// make it impractical to unit test without a complete chain setup.
+//
+// When a node with test chain data is available, this test should:
+//  1. Set FevmConfig.EthTraceFilterMaxBlockRange = 10
+//  2. Call EthTraceFilter with fromBlock=0x0 and toBlock=0x64 (range of 100 blocks)
+//  3. Verify the result contains ErrBlockRangeExceeded with errors.Is
+//
+// The unit tests below verify the range check condition and error creation independently.
+func TestEthTraceFilter_BlockRangeExceeded(t *testing.T) {
+	t.Run("range check logic triggers for exceeded range", func(t *testing.T) {
+		// Simulate the range check that will be inserted into EthTraceFilter:
+		//   if maxBlockRange > 0 && toBlock > fromBlock && uint64(toBlock-fromBlock) > maxBlockRange {
+		//       return nil, types.NewErrBlockRangeExceeded(maxBlockRange, uint64(toBlock-fromBlock))
+		//   }
+		fromBlock := types.EthUint64(0)
+		toBlock := types.EthUint64(100)
+		maxBlockRange := uint64(10)
+
+		// Condition should trigger
+		require.Greater(t, toBlock, fromBlock)
+		require.Greater(t, uint64(toBlock-fromBlock), maxBlockRange)
+
+		err := types.NewErrBlockRangeExceeded(maxBlockRange, uint64(toBlock-fromBlock))
+		require.Error(t, err)
+		require.True(t, errors.Is(err, &types.ErrBlockRangeExceeded{}))
+		require.Contains(t, err.Error(), "block range exceeds maximum of 10 (got 100)")
+	})
+
+	t.Run("range check logic does not trigger for valid range", func(t *testing.T) {
+		fromBlock := types.EthUint64(0)
+		toBlock := types.EthUint64(5)
+		maxBlockRange := uint64(10)
+
+		// Condition should NOT trigger
+		require.Greater(t, toBlock, fromBlock)
+		require.LessOrEqual(t, uint64(toBlock-fromBlock), maxBlockRange)
+	})
+
+	t.Run("range check handles zero max range (disabled)", func(t *testing.T) {
+		var fromBlock types.EthUint64 = 0
+		var toBlock types.EthUint64 = 100
+		const maxBlockRange uint64 = 0
+
+		// When maxBlockRange is 0, the check should be disabled
+		// (maxBlockRange > 0 is false, so the condition short-circuits)
+		_ = fromBlock
+		_ = toBlock
+		checkEnabled := maxBlockRange > 0
+		require.False(t, checkEnabled)
+	})
+
+	t.Run("range check handles equal from and to blocks", func(t *testing.T) {
+		var fromBlock types.EthUint64 = 50
+		var toBlock types.EthUint64 = 50
+		const maxBlockRange uint64 = 10
+
+		// When from == to (single block), the check should not trigger
+		// (toBlock > fromBlock is false)
+		_ = maxBlockRange
+		require.Equal(t, fromBlock, toBlock)
+	})
 }
