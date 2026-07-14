@@ -469,7 +469,7 @@ loop:
 	}
 
 	if base.IsChildOf(knownParent) {
-		// common case: receiving a block thats potentially part of the same tipset as our best block
+		// common case: receiving a block that's potentially part of the same tipset as our best block
 		chain.Reverse(chainTipsets)
 		return chainTipsets, nil
 	}

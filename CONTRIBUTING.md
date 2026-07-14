@@ -67,7 +67,7 @@ Check out the [venus code overview](CODEWALK.md) for a brief tour of the code.
 ### Design Before Code
 - Write down design intent before writing code, and subject it to constructive feedback.
 - For a major change, draft a [Design Doc](https://github.com/filecoin-project/designdocs) outlining the context, goals, and your proposed solution.
-- For less a significant change, outline the proposed change in a GitHub issue. If there's already an issue requesting the change, a comment there suffices.
+- For a less significant change, outline the proposed change in a GitHub issue. If there's already an issue requesting the change, a comment there suffices.
 - Smaller changes, like simple, uncontroversial improvements, don't require an issue. A PR description outlining the motivation and approach is enough. Incremental steps towards a larger outcome don't require individual issues; reference the motivating issue and note each PR achieves.
 
 ### Pull Requests and Reviews
