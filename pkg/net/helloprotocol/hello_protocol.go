@@ -155,6 +155,7 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 		return
 	}
 	_ = s.SetReadDeadline(time.Time{})
+	ctx := context.Background()
 	latencyMsg := &LatencyMessage{TArrival: time.Now().UnixNano()}
 
 	// process the hello message
@@ -245,7 +246,12 @@ func (h *HelloProtocolHandler) receiveHello(s net.Stream) (*HelloMessage, error)
 	return &hello, err
 }
 
-func (h *HelloProtocolHandler) receiveLatency(_ context.Context, s net.Stream) (*LatencyMessage, error) {
+func (h *HelloProtocolHandler) receiveLatency(ctx context.Context, s net.Stream) (*LatencyMessage, error) {
+	if dl, ok := ctx.Deadline(); ok {
+		_ = s.SetReadDeadline(dl)
+		defer s.SetReadDeadline(time.Time{})
+	}
+
 	var latency LatencyMessage
 	err := latency.UnmarshalCBOR(s)
 	if err != nil {
