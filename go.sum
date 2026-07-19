@@ -2761,8 +2761,6 @@ github.com/libp2p/go-libp2p-peerstore v0.2.2/go.mod h1:NQxhNjWxf1d4w6PihR8btWIRj
 github.com/libp2p/go-libp2p-peerstore v0.2.6/go.mod h1:ss/TWTgHZTMpsU/oKVVPQCGuDHItOpf2W8RxAi50P2s=
 github.com/libp2p/go-libp2p-peerstore v0.2.7/go.mod h1:ss/TWTgHZTMpsU/oKVVPQCGuDHItOpf2W8RxAi50P2s=
 github.com/libp2p/go-libp2p-pnet v0.2.0/go.mod h1:Qqvq6JH/oMZGwqs3N1Fqhv8NVhrdYcO0BW4wssv21LA=
-github.com/libp2p/go-libp2p-pubsub v0.15.0 h1:cG7Cng2BT82WttmPFMi50gDNV+58K626m/wR00vGL1o=
-github.com/libp2p/go-libp2p-pubsub v0.15.0/go.mod h1:lr4oE8bFgQaifRcoc2uWhWWiK6tPdOEKpUuR408GFN4=
 github.com/libp2p/go-libp2p-pubsub v0.17.0 h1:SNdvB6V0eYMXLRR95n+4vpxJKbFsbHhgjPdDiTpGoo0=
 github.com/libp2p/go-libp2p-pubsub v0.17.0/go.mod h1:F0oKCGLFJNy9b0TyRi04b+LchEzq0t2eZyJuxwAIyDE=
 github.com/libp2p/go-libp2p-quic-transport v0.10.0/go.mod h1:RfJbZ8IqXIhxBRm5hqUEJqjiiY8xmEuq3HUDS993MkA=
@@ -2912,9 +2910,8 @@ github.com/magiconair/properties v1.8.6/go.mod h1:y3VJvCyxH9uVvJTWEGAELF3aiYNyPK
 github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mailru/easyjson v0.0.0-20190312143242-1de009706dbe/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mailru/easyjson v0.7.7/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
-github.com/marcopolo/simnet v0.0.4 h1:50Kx4hS9kFGSRIbrt9xUS3NJX33EyPqHVmpXvaKLqrY=
-github.com/marcopolo/simnet v0.0.4/go.mod h1:tfQF1u2DmaB6WHODMtQaLtClEf3a296CKQLq5gAsIS0=
 github.com/marcopolo/simnet v0.0.7 h1:DpH8BMGsF9+1w13L8rvCaAhb6nYJdY+dIXncDrssvUs=
+github.com/marcopolo/simnet v0.0.7/go.mod h1:tfQF1u2DmaB6WHODMtQaLtClEf3a296CKQLq5gAsIS0=
 github.com/marten-seemann/qpack v0.2.1/go.mod h1:F7Gl5L1jIgN1D11ucXefiuJS9UMVP2opoCp2jDKb7wc=
 github.com/marten-seemann/qtls v0.10.0/go.mod h1:UvMd1oaYDACI99/oZUYLzMCkBXQVT0aGm99sJhbT8hs=
 github.com/marten-seemann/qtls-go1-15 v0.1.1/go.mod h1:GyFwywLKkRt+6mfU99csTEY1joMZz5vmB1WNZH3P81I=
