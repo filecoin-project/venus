@@ -249,7 +249,7 @@ func (h *HelloProtocolHandler) receiveHello(s net.Stream) (*HelloMessage, error)
 func (h *HelloProtocolHandler) receiveLatency(ctx context.Context, s net.Stream) (*LatencyMessage, error) {
 	if dl, ok := ctx.Deadline(); ok {
 		_ = s.SetReadDeadline(dl)
-		defer s.SetReadDeadline(time.Time{})
+		defer func() { _ = s.SetReadDeadline(time.Time{}) }()
 	}
 
 	var latency LatencyMessage
@@ -263,7 +263,7 @@ func (h *HelloProtocolHandler) receiveLatency(ctx context.Context, s net.Stream)
 // responding to latency
 func sendLatency(msg *LatencyMessage, s net.Stream) error {
 	_ = s.SetWriteDeadline(time.Now().Add(helloTimeout))
-	defer s.SetWriteDeadline(time.Time{})
+	defer func() { _ = s.SetWriteDeadline(time.Time{}) }()
 
 	buf := new(bytes.Buffer)
 	if err := msg.MarshalCBOR(buf); err != nil {
