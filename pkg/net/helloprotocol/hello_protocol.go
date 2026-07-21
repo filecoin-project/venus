@@ -139,12 +139,14 @@ func (h *HelloProtocolHandler) Register(ctx context.Context, peerDiscoveredCallb
 }
 
 func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
-	ctx, cancel := context.WithTimeout(context.Background(), h.helloTimeOut)
-	defer cancel()
+	// Set read deadline to prevent a malicious peer from keeping the handler
+	// goroutine blocked by only sending partial CBOR data.
+	_ = s.SetReadDeadline(time.Now().Add(h.helloTimeOut))
 
-	hello, err := h.receiveHello(ctx, s)
+	hello, err := h.receiveHello(s)
 	if err != nil {
-		helloMsgErrCt.Tick(ctx)
+		_ = s.SetReadDeadline(time.Time{})
+		helloMsgErrCt.Tick(context.Background())
 		log.Debugf("failed to receive hello message:%s", err)
 		// can't process a hello received in error, but leave this connection
 		// open because we connections are innocent until proven guilty
@@ -152,6 +154,8 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 		_ = s.Conn().Close()
 		return
 	}
+	_ = s.SetReadDeadline(time.Time{})
+	ctx := context.Background()
 	latencyMsg := &LatencyMessage{TArrival: time.Now().UnixNano()}
 
 	// process the hello message
@@ -236,13 +240,18 @@ func (h *HelloProtocolHandler) loadLocalFullTipset(ctx context.Context, tsk type
 // ErrBadGenesis is the error returned when a mismatch in genesis blocks happens.
 var ErrBadGenesis = fmt.Errorf("bad genesis block")
 
-func (h *HelloProtocolHandler) receiveHello(_ context.Context, s net.Stream) (*HelloMessage, error) {
+func (h *HelloProtocolHandler) receiveHello(s net.Stream) (*HelloMessage, error) {
 	var hello HelloMessage
 	err := hello.UnmarshalCBOR(s)
 	return &hello, err
 }
 
-func (h *HelloProtocolHandler) receiveLatency(_ context.Context, s net.Stream) (*LatencyMessage, error) {
+func (h *HelloProtocolHandler) receiveLatency(ctx context.Context, s net.Stream) (*LatencyMessage, error) {
+	if dl, ok := ctx.Deadline(); ok {
+		_ = s.SetReadDeadline(dl)
+		defer func() { _ = s.SetReadDeadline(time.Time{}) }()
+	}
+
 	var latency LatencyMessage
 	err := latency.UnmarshalCBOR(s)
 	if err != nil {
@@ -253,6 +262,9 @@ func (h *HelloProtocolHandler) receiveLatency(_ context.Context, s net.Stream) (
 
 // responding to latency
 func sendLatency(msg *LatencyMessage, s net.Stream) error {
+	_ = s.SetWriteDeadline(time.Now().Add(helloTimeout))
+	defer func() { _ = s.SetWriteDeadline(time.Time{}) }()
+
 	buf := new(bytes.Buffer)
 	if err := msg.MarshalCBOR(buf); err != nil {
 		return err
