@@ -156,21 +156,25 @@ func writeAPIInfo(astMeta *util.ASTMeta, rpcMeta util.RPCMeta, groups []MethodGr
 	if methNs == "" {
 		methNs = "Filecoin"
 	}
+
+	apiNs := rpcMeta.ApiNamespace
+
 	tmpl, err := template.New("curl").Parse(`# Sample code of curl
 
 {{ .StartBash }}
 # <Inputs> corresponding to the value of Inputs Tag of each API
-curl http://<ip>:<port>/rpc/v{{ .APIVersion }} -X POST -H "Content-Type: application/json"  -H "Authorization: Bearer <token>"  -d '{"method": "{{ .Namespace }}.<method>", "params": <Inputs>, "id": 0}'
+curl http://<ip>:<port>/rpc/v{{ .APIVersion }} -X POST -H "Content-Type: application/json" -H "X-VENUS-API-NAMESPACE: {{ .APINamespace }}" -H "Authorization: Bearer <token>"  -d '{"method": "{{ .Namespace }}.<method>", "params": <Inputs>, "id": 0}'
 {{ .EndBash }}
 `)
 	if err != nil {
 		return fmt.Errorf("parse template: %w", err)
 	}
 	err = tmpl.Execute(buf, map[string]interface{}{
-		"APIVersion": rpcMeta.Version,
-		"Namespace":  methNs,
-		"StartBash":  "```bash",
-		"EndBash":    "```",
+		"APIVersion":   rpcMeta.Version,
+		"Namespace":    methNs,
+		"APINamespace": apiNs,
+		"StartBash":    "```bash",
+		"EndBash":      "```",
 	})
 	if err != nil {
 		return fmt.Errorf("exec curl template: %w", err)
