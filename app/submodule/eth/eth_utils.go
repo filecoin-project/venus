@@ -147,6 +147,28 @@ func getTipsetByEthBlockNumberOrHash(ctx context.Context, store *chain.Store, bl
 	return nil, errors.New("invalid block param")
 }
 
+// getTipsetByEthBlockNumberOrHashStrict is like getTipsetByEthBlockNumberOrHash but rejects
+// explicit numeric null epochs with ErrNullRound. This is used by concrete block/execution
+// APIs (e.g., eth_getBlockReceipts) where resolving a null epoch to the previous non-null
+// tipset would be misleading. State-at-epoch APIs (eth_call, eth_estimateGas, balance, etc.)
+// should continue to use the non-strict version.
+func getTipsetByEthBlockNumberOrHashStrict(ctx context.Context, store *chain.Store, blkParam types.EthBlockNumberOrHash) (*types.TipSet, error) {
+	// Only apply strict checking for numeric block numbers. Predefined blocks
+	// ("latest", "pending") and block-hash lookups are inherently concrete.
+	if blkParam.BlockNumber != nil {
+		height := abi.ChainEpoch(*blkParam.BlockNumber)
+		ts, err := getTipsetByEthBlockNumberOrHash(ctx, store, blkParam)
+		if err != nil {
+			return nil, err
+		}
+		if ts.Height() != height {
+			return nil, ErrNullRound
+		}
+		return ts, nil
+	}
+	return getTipsetByEthBlockNumberOrHash(ctx, store, blkParam)
+}
+
 func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, ms *chain.MessageStore, stmgr *statemanger.Stmgr) (types.EthBlock, error) {
 	parentKeyCid, err := ts.Parents().Cid()
 	if err != nil {
@@ -461,6 +483,9 @@ func newEthTxFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, s
 }
 
 func parseEthTopics(topics types.EthTopicSpec) (map[string][][]byte, error) {
+	if len(topics) > 4 {
+		return nil, fmt.Errorf("log filter cannot have more than 4 topics, got %d", len(topics))
+	}
 	keys := map[string][][]byte{}
 	for idx, vals := range topics {
 		if len(vals) == 0 {

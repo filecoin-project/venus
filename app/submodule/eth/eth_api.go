@@ -306,8 +306,8 @@ func (a *ethAPI) EthGetTransactionByHashLimited(ctx context.Context, txHash *typ
 		c = txHash.ToCid()
 	}
 
-	// first, try to get the cid from mined transactions
-	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
+	// first, try to get the cid from mined transactions (allowReplaced=false so replaced tx hashes return nil)
+	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, false)
 	if err == nil && msgLookup != nil {
 		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.em.chainModule.ChainReader)
 		if err == nil {
@@ -464,15 +464,15 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 		c = txHash.ToCid()
 	}
 
-	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
+	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
 	}
 	if msgLookup == nil {
-		// This is the best we can do. We may just not have indexed this transaction, or we may have a
-		// limit applied and not searched far back enough, but we don't have a way to go. Because
-		// Ethereum tooling expects an empty response for transaction-not-found, we don't have a way of
-		// differentiating between "can't find" and "doesn't exist".
+		// This is the best we can do. We may just not have indexed this transaction, we may have a
+		// limit applied and not searched far back enough, or the transaction was replaced.
+		// Ethereum tooling expects an empty response for transaction-not-found, so all three cases
+		// are handled the same way.
 		return nil, nil
 	}
 
@@ -503,7 +503,44 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 }
 
 func (a *ethAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error) {
-	return types.EthTx{}, ErrUnsupported
+	// Build a block number-or-hash param from the hash to reuse the strict resolver
+	blockParam := types.EthBlockNumberOrHash{
+		BlockHash:        &blkHash,
+		RequireCanonical: true,
+	}
+	ts, err := getTipsetByEthBlockNumberOrHashStrict(ctx, a.em.chainModule.ChainReader, blockParam)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to get tipset: %w", err)
+	}
+
+	msgs, err := a.em.chainModule.MessageStore.MessagesForTipset(ts)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to load messages for tipset: %w", err)
+	}
+
+	if int(txIndex) >= len(msgs) {
+		return types.EthTx{}, fmt.Errorf("transaction index %d out of range (tipset has %d messages)", txIndex, len(msgs))
+	}
+
+	msg := msgs[txIndex]
+
+	// Load post-state for correct address resolution
+	state, err := a.em.chainModule.ChainReader.GetTipSetState(ctx, ts)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to get tipset state: %w", err)
+	}
+
+	tsCid, err := ts.Key().Cid()
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to get tipset key cid: %w", err)
+	}
+
+	tx, err := newEthTx(ctx, state, ts.Height(), tsCid, msg.Cid(), int(txIndex), a.em.chainModule.MessageStore)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to create EthTx: %w", err)
+	}
+
+	return tx, nil
 }
 
 func (a *ethAPI) EthGetBlockReceipts(ctx context.Context, blockParam types.EthBlockNumberOrHash) ([]*types.EthTxReceipt, error) {
@@ -511,7 +548,7 @@ func (a *ethAPI) EthGetBlockReceipts(ctx context.Context, blockParam types.EthBl
 }
 
 func (a *ethAPI) EthGetBlockReceiptsLimited(ctx context.Context, blockParam types.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*types.EthTxReceipt, error) {
-	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.em.chainModule.ChainReader, blockParam)
+	ts, err := getTipsetByEthBlockNumberOrHashStrict(ctx, a.em.chainModule.ChainReader, blockParam)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tipset: %w", err)
 	}
@@ -572,7 +609,42 @@ func (a *ethAPI) EthGetBlockReceiptsLimited(ctx context.Context, blockParam type
 }
 
 func (a *ethAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error) {
-	return types.EthTx{}, ErrUnsupported
+	blockParam := types.EthBlockNumberOrHash{
+		BlockNumber: (*types.EthUint64)(&blkNum),
+	}
+	ts, err := getTipsetByEthBlockNumberOrHashStrict(ctx, a.em.chainModule.ChainReader, blockParam)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to get tipset: %w", err)
+	}
+
+	msgs, err := a.em.chainModule.MessageStore.MessagesForTipset(ts)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to load messages for tipset: %w", err)
+	}
+
+	if int(txIndex) >= len(msgs) {
+		return types.EthTx{}, fmt.Errorf("transaction index %d out of range (tipset has %d messages)", txIndex, len(msgs))
+	}
+
+	msg := msgs[txIndex]
+
+	// Load post-state for correct address resolution
+	state, err := a.em.chainModule.ChainReader.GetTipSetState(ctx, ts)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to get tipset state: %w", err)
+	}
+
+	tsCid, err := ts.Key().Cid()
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to get tipset key cid: %w", err)
+	}
+
+	tx, err := newEthTx(ctx, state, ts.Height(), tsCid, msg.Cid(), int(txIndex), a.em.chainModule.MessageStore)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to create EthTx: %w", err)
+	}
+
+	return tx, nil
 }
 
 // EthGetCode returns string value of the compiled bytecode
