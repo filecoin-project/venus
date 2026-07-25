@@ -61,7 +61,7 @@ A few relevant aspects to note:
    If our addresses change (such as when connect to a relay), we update our connected peers through the `IdentifyPush` protocol.
 
 The combination of points 2 & 3 is how our addresses "make it" into the DHT.
-Whenever a peer searches for us, they will conduct an iterative search until they hit one of our neighbors, who will supply our up-to-date addresses to the requestor, thus ending the search.
+Whenever a peer searches for us, they will conduct an iterative search until they hit one of our neighbors, who will supply our up-to-date addresses to the requester, thus ending the search.
 
 ## NAT topology determination
 
