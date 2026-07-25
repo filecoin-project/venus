@@ -89,6 +89,28 @@ func getTipsetByBlockNumber(ctx context.Context, store *chain.Store, blkParam st
 	}
 }
 
+// getTipsetByEthBlockNumberOrHashStrict is a strict variant that rejects null rounds.
+// When a block number is explicitly given and the requested epoch has no blocks,
+// it returns ErrNullRound instead of silently returning the next non-null tipset.
+func getTipsetByEthBlockNumberOrHashStrict(ctx context.Context, store *chain.Store, blkParam types.EthBlockNumberOrHash) (*types.TipSet, error) {
+	ts, err := getTipsetByEthBlockNumberOrHash(ctx, store, blkParam)
+	if err != nil {
+		return nil, err
+	}
+
+	// When a block number is explicitly given, verify the returned tipset's
+	// height matches the requested height. If they differ, the requested epoch
+	// was a null round.
+	if blkParam.BlockNumber != nil {
+		requested := abi.ChainEpoch(*blkParam.BlockNumber)
+		if ts.Height() != requested {
+			return nil, ErrNullRound
+		}
+	}
+
+	return ts, nil
+}
+
 func getTipsetByEthBlockNumberOrHash(ctx context.Context, store *chain.Store, blkParam types.EthBlockNumberOrHash) (*types.TipSet, error) {
 	head := store.GetHead()
 
