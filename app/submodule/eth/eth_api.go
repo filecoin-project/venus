@@ -511,7 +511,7 @@ func (a *ethAPI) EthGetBlockReceipts(ctx context.Context, blockParam types.EthBl
 }
 
 func (a *ethAPI) EthGetBlockReceiptsLimited(ctx context.Context, blockParam types.EthBlockNumberOrHash, limit abi.ChainEpoch) ([]*types.EthTxReceipt, error) {
-	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.em.chainModule.ChainReader, blockParam)
+	ts, err := getTipsetByEthBlockNumberOrHashStrict(ctx, a.em.chainModule.ChainReader, blockParam)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tipset: %w", err)
 	}
