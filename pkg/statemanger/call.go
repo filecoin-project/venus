@@ -59,12 +59,19 @@ func (s *Stmgr) CallOnState(ctx context.Context, stateCid cid.Cid, msg *types.Me
 		msg.Value = types.NewInt(0)
 	}
 
-	return s.callInternal(ctx, msg, nil, ts, stateCid, s.GetNetworkVersion, false, execSameSenderMessages)
+	return s.callInternal(ctx, msg, nil, ts, stateCid, s.GetNetworkVersion, false, execSameSenderMessages, false)
 }
 
 // ApplyOnStateWithGas applies the given message on top of the given state root with gas tracing enabled
 func (s *Stmgr) ApplyOnStateWithGas(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*types.InvocResult, error) {
-	return s.callInternal(ctx, msg, nil, ts, stateCid, s.GetNetworkVersion, true, execNoMessages)
+	return s.callInternal(ctx, msg, nil, ts, stateCid, s.GetNetworkVersion, true, execNoMessages, false)
+}
+
+// ApplyOnStateWithGasSkipSenderValidation behaves like ApplyOnStateWithGas but skips sender validation.
+// - If the sender does not exist, an ephemeral placeholder actor is created.
+// - If the sender is a non-account actor (e.g., EVM contract), the message is executed via ApplyImplicitMessage.
+func (s *Stmgr) ApplyOnStateWithGasSkipSenderValidation(ctx context.Context, stateCid cid.Cid, msg *types.Message, ts *types.TipSet) (*types.InvocResult, error) {
+	return s.callInternal(ctx, msg, nil, ts, stateCid, s.GetNetworkVersion, true, execNoMessages, true)
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
@@ -75,7 +82,20 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 	} else {
 		strategy = execSameSenderMessages
 	}
-	return s.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, s.GetNetworkVersion, true, strategy)
+	return s.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, s.GetNetworkVersion, true, strategy, false)
+}
+
+// CallWithGasSkipSenderValidation behaves like CallWithGas but skips sender validation.
+// - If the sender does not exist, an ephemeral placeholder actor is created.
+// - If the sender is a non-account actor (e.g., EVM contract), the message is executed via ApplyImplicitMessage.
+func (s *Stmgr) CallWithGasSkipSenderValidation(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, applyTSMessages bool) (*types.InvocResult, error) {
+	var strategy execMessageStrategy
+	if applyTSMessages {
+		strategy = execAllMessages
+	} else {
+		strategy = execSameSenderMessages
+	}
+	return s.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, s.GetNetworkVersion, true, strategy, true)
 }
 
 // CallAtStateAndVersion allows you to specify a message to execute on the given stateCid and network version.
@@ -87,7 +107,7 @@ func (s *Stmgr) CallAtStateAndVersion(ctx context.Context, msg *types.Message, s
 		return v
 	}
 
-	return s.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, execSameSenderMessages)
+	return s.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, execSameSenderMessages, false)
 }
 
 //   - If no tipset is specified, the first tipset without an expensive migration or one in its parent is used.
@@ -101,6 +121,7 @@ func (s *Stmgr) callInternal(ctx context.Context,
 	nvGetter chain.NetworkVersionGetter,
 	checkGas bool,
 	strategy execMessageStrategy,
+	skipSenderValidation bool,
 ) (*types.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.callInternal")
 	defer span.End()
@@ -234,7 +255,36 @@ func (s *Stmgr) callInternal(ctx context.Context,
 
 	fromActor, found, err := st.GetActor(ctx, msg.From)
 	if err != nil || !found {
-		return nil, fmt.Errorf("call raw get actor: %s", err)
+		if !skipSenderValidation {
+			return nil, fmt.Errorf("call raw get actor: %s", err)
+		}
+
+		// skipSenderValidation=true 且 sender 不存在:
+		// 通过 ApplyImplicitMessage 创建 ephemeral placeholder actor
+		placeholderMsg := &types.Message{
+			From:       msg.From,
+			To:         msg.From,
+			Value:      types.NewInt(0),
+			Nonce:      0,
+			GasLimit:   constants.BlockGasLimit,
+			GasFeeCap:  types.NewInt(0),
+			GasPremium: types.NewInt(0),
+			Method:     0,
+		}
+		if _, err = vmi.ApplyImplicitMessage(ctx, placeholderMsg); err != nil {
+			return nil, fmt.Errorf("failed to create ephemeral sender actor: %w", err)
+		}
+		if stateCid, err = vmi.Flush(ctx); err != nil {
+			return nil, fmt.Errorf("flushing vm after creating ephemeral sender: %w", err)
+		}
+		st, err = tree.LoadState(ctx, cbor.NewCborStore(buffStore), stateCid)
+		if err != nil {
+			return nil, fmt.Errorf("loading state after creating ephemeral sender: %v", err)
+		}
+		fromActor, found, err = st.GetActor(ctx, msg.From)
+		if err != nil || !found {
+			return nil, fmt.Errorf("failed to get ephemeral sender actor: %s", err)
+		}
 	}
 
 	msg.Nonce = fromActor.Nonce
@@ -253,7 +303,7 @@ func (s *Stmgr) callInternal(ctx context.Context,
 
 	var ret *vm.Ret
 	var gasInfo types.MsgGasCost
-	if checkGas {
+	if checkGas && !skipSenderValidation {
 		fromKey, err := s.ResolveToDeterministicAddress(ctx, msg.From, ts)
 		if err != nil {
 			return nil, fmt.Errorf("could not resolve key: %w", err)
