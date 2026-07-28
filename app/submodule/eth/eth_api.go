@@ -503,7 +503,36 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 }
 
 func (a *ethAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error) {
-	return types.EthTx{}, ErrUnsupported
+	ts, err := a.em.chainModule.ChainReader.GetTipSetByCid(ctx, blkHash.ToCid())
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("cannot get tipset by hash: %w", err)
+	}
+
+	_, msgs, _, err := executeTipset(ctx, ts, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to execute tipset: %w", err)
+	}
+
+	if int(txIndex) >= len(msgs) {
+		return types.EthTx{}, nil
+	}
+
+	tsCid, err := ts.Key().Cid()
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to get tipset key cid: %w", err)
+	}
+
+	state, err := a.em.chainModule.ChainReader.GetTipSetState(ctx, ts)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to get state view: %w", err)
+	}
+
+	tx, err := newEthTx(ctx, state, ts.Height(), tsCid, msgs[txIndex].Cid(), int(txIndex), a.em.chainModule.MessageStore)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to create EthTx: %w", err)
+	}
+
+	return tx, nil
 }
 
 func (a *ethAPI) EthGetBlockReceipts(ctx context.Context, blockParam types.EthBlockNumberOrHash) ([]*types.EthTxReceipt, error) {
@@ -572,7 +601,38 @@ func (a *ethAPI) EthGetBlockReceiptsLimited(ctx context.Context, blockParam type
 }
 
 func (a *ethAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error) {
-	return types.EthTx{}, ErrUnsupported
+	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.em.chainModule.ChainReader, types.EthBlockNumberOrHash{
+		BlockNumber: &blkNum,
+	})
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("cannot get tipset by block number: %w", err)
+	}
+
+	_, msgs, _, err := executeTipset(ctx, ts, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to execute tipset: %w", err)
+	}
+
+	if int(txIndex) >= len(msgs) {
+		return types.EthTx{}, nil
+	}
+
+	tsCid, err := ts.Key().Cid()
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to get tipset key cid: %w", err)
+	}
+
+	state, err := a.em.chainModule.ChainReader.GetTipSetState(ctx, ts)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to get state view: %w", err)
+	}
+
+	tx, err := newEthTx(ctx, state, ts.Height(), tsCid, msgs[txIndex].Cid(), int(txIndex), a.em.chainModule.MessageStore)
+	if err != nil {
+		return types.EthTx{}, fmt.Errorf("failed to create EthTx: %w", err)
+	}
+
+	return tx, nil
 }
 
 // EthGetCode returns string value of the compiled bytecode
