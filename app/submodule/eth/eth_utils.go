@@ -461,6 +461,9 @@ func newEthTxFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, s
 }
 
 func parseEthTopics(topics types.EthTopicSpec) (map[string][][]byte, error) {
+	if len(topics) > 4 {
+		return nil, fmt.Errorf("invalid filter topic count: expected at most 4 topics, got %d", len(topics))
+	}
 	keys := map[string][][]byte{}
 	for idx, vals := range topics {
 		if len(vals) == 0 {
