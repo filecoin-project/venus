@@ -307,7 +307,7 @@ func (a *ethAPI) EthGetTransactionByHashLimited(ctx context.Context, txHash *typ
 	}
 
 	// first, try to get the cid from mined transactions
-	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
+	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, false)
 	if err == nil && msgLookup != nil {
 		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.em.chainModule.ChainReader)
 		if err == nil {
@@ -464,7 +464,7 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 		c = txHash.ToCid()
 	}
 
-	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
+	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
 	}
