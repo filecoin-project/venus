@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -307,7 +308,7 @@ func (a *ethAPI) EthGetTransactionByHashLimited(ctx context.Context, txHash *typ
 	}
 
 	// first, try to get the cid from mined transactions
-	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, false)
+	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
 	if err == nil && msgLookup != nil {
 		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.em.chainModule.ChainReader)
 		if err == nil {
@@ -464,7 +465,7 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 		c = txHash.ToCid()
 	}
 
-	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, false)
+	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup Eth Txn %s as %s: %w", txHash, c, err)
 	}
@@ -503,36 +504,7 @@ func (a *ethAPI) EthGetTransactionReceiptLimited(ctx context.Context, txHash typ
 }
 
 func (a *ethAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error) {
-	ts, err := a.em.chainModule.ChainReader.GetTipSetByCid(ctx, blkHash.ToCid())
-	if err != nil {
-		return types.EthTx{}, fmt.Errorf("cannot get tipset by hash: %w", err)
-	}
-
-	_, msgs, _, err := executeTipset(ctx, ts, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
-	if err != nil {
-		return types.EthTx{}, fmt.Errorf("failed to execute tipset: %w", err)
-	}
-
-	if int(txIndex) >= len(msgs) {
-		return types.EthTx{}, nil
-	}
-
-	tsCid, err := ts.Key().Cid()
-	if err != nil {
-		return types.EthTx{}, fmt.Errorf("failed to get tipset key cid: %w", err)
-	}
-
-	state, err := a.em.chainModule.ChainReader.GetTipSetState(ctx, ts)
-	if err != nil {
-		return types.EthTx{}, fmt.Errorf("failed to get state view: %w", err)
-	}
-
-	tx, err := newEthTx(ctx, state, ts.Height(), tsCid, msgs[txIndex].Cid(), int(txIndex), a.em.chainModule.MessageStore)
-	if err != nil {
-		return types.EthTx{}, fmt.Errorf("failed to create EthTx: %w", err)
-	}
-
-	return tx, nil
+	return types.EthTx{}, ErrUnsupported
 }
 
 func (a *ethAPI) EthGetBlockReceipts(ctx context.Context, blockParam types.EthBlockNumberOrHash) ([]*types.EthTxReceipt, error) {
@@ -601,38 +573,7 @@ func (a *ethAPI) EthGetBlockReceiptsLimited(ctx context.Context, blockParam type
 }
 
 func (a *ethAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error) {
-	ts, err := getTipsetByEthBlockNumberOrHash(ctx, a.em.chainModule.ChainReader, types.EthBlockNumberOrHash{
-		BlockNumber: &blkNum,
-	})
-	if err != nil {
-		return types.EthTx{}, fmt.Errorf("cannot get tipset by block number: %w", err)
-	}
-
-	_, msgs, _, err := executeTipset(ctx, ts, a.em.chainModule.MessageStore, a.em.chainModule.Stmgr)
-	if err != nil {
-		return types.EthTx{}, fmt.Errorf("failed to execute tipset: %w", err)
-	}
-
-	if int(txIndex) >= len(msgs) {
-		return types.EthTx{}, nil
-	}
-
-	tsCid, err := ts.Key().Cid()
-	if err != nil {
-		return types.EthTx{}, fmt.Errorf("failed to get tipset key cid: %w", err)
-	}
-
-	state, err := a.em.chainModule.ChainReader.GetTipSetState(ctx, ts)
-	if err != nil {
-		return types.EthTx{}, fmt.Errorf("failed to get state view: %w", err)
-	}
-
-	tx, err := newEthTx(ctx, state, ts.Height(), tsCid, msgs[txIndex].Cid(), int(txIndex), a.em.chainModule.MessageStore)
-	if err != nil {
-		return types.EthTx{}, fmt.Errorf("failed to create EthTx: %w", err)
-	}
-
-	return tx, nil
+	return types.EthTx{}, ErrUnsupported
 }
 
 // EthGetCode returns string value of the compiled bytecode
@@ -1117,6 +1058,15 @@ func (a *ethAPI) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (types
 	}
 	gassedMsg, err := a.mpool.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
 	if err != nil {
+		// 如果是 sender 验证错误（sender 不存在或不是 account actor），
+		// 尝试跳过 sender 验证进行 gas 估算
+		if isSenderValidationError(err) {
+			msg.GasLimit = constants.BlockGasLimit
+			if gasUsed, err2 := a.estimateGasSkipSender(ctx, msg, ts); err2 == nil {
+				return types.EthUint64(gasUsed), nil
+			}
+		}
+
 		// On failure, GasEstimateMessageGas doesn't actually return the invocation result,
 		// it just returns an error. That means we can't get the revert reason.
 		//
@@ -1130,7 +1080,7 @@ func (a *ethAPI) EthEstimateGas(ctx context.Context, p jsonrpc.RawParams) (types
 		return types.EthUint64(0), fmt.Errorf("failed to estimate gas: %w", err)
 	}
 
-	expectedGas, err := ethGasSearch(ctx, a.em.chainModule.Stmgr, a.em.mpoolModule.MPool, gassedMsg, ts)
+	expectedGas, err := ethGasSearch(ctx, a.em.chainModule.Stmgr, a.em.mpoolModule.MPool, gassedMsg, ts, false)
 	if err != nil {
 		return 0, fmt.Errorf("gas search failed: %w", err)
 	}
@@ -1148,6 +1098,7 @@ func gasSearch(
 	msgIn *types.Message,
 	priorMsgs []types.ChainMsg,
 	ts *types.TipSet,
+	skipSenderValidation bool,
 ) (int64, error) {
 	msg := *msgIn
 
@@ -1162,7 +1113,13 @@ func gasSearch(
 	canSucceed := func(limit int64) (bool, error) {
 		msg.GasLimit = limit
 
-		res, err := smgr.CallWithGas(ctx, &msg, priorMsgs, ts, applyTSMessages)
+		var res *types.InvocResult
+		var err error
+		if skipSenderValidation {
+			res, err = smgr.CallWithGasSkipSenderValidation(ctx, &msg, priorMsgs, ts, applyTSMessages)
+		} else {
+			res, err = smgr.CallWithGas(ctx, &msg, priorMsgs, ts, applyTSMessages)
+		}
 		if err != nil {
 			return false, fmt.Errorf("CallWithGas failed: %w", err)
 		}
@@ -1235,6 +1192,7 @@ func ethGasSearch(
 	mpool *messagepool.MessagePool,
 	msgIn *types.Message,
 	ts *types.TipSet,
+	skipSenderValidation bool,
 ) (int64, error) {
 	msg := *msgIn
 	currTS := ts
@@ -1248,7 +1206,7 @@ func ethGasSearch(
 		return msg.GasLimit, nil
 	}
 	if traceContainsExitCode(res.ExecutionTrace, exitcode.SysErrOutOfGas) {
-		ret, err := gasSearch(ctx, stmgr, &msg, priorMsgs, ts)
+		ret, err := gasSearch(ctx, stmgr, &msg, priorMsgs, ts, skipSenderValidation)
 		if err != nil {
 			return -1, fmt.Errorf("gas estimation search failed: %w", err)
 		}
@@ -1272,9 +1230,21 @@ func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam types.E
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
+		// 如果错误是 sender 验证失败（sender 不存在或不是 account actor），
+		// 尝试跳过 sender 验证执行
+		if isSenderValidationError(err) {
+			st, err2 := a.em.chainModule.ChainReader.GetTipSetStateRoot(ctx, ts)
+			if err2 == nil {
+				if result, err2 := a.em.chainModule.Stmgr.ApplyOnStateWithGasSkipSenderValidation(ctx, st, msg, ts); err2 == nil {
+					invokeResult = result
+					goto handleEthCallResult
+				}
+			}
+		}
 		return nil, err
 	}
 
+handleEthCallResult:
 	if msg.To == builtin.EthereumAddressManagerActorAddr {
 		// As far as I can tell, the Eth API always returns empty on contract deployment
 		return types.EthBytes{}, nil
@@ -1513,11 +1483,6 @@ func (a *ethAPI) EthTraceFilter(ctx context.Context, filter types.EthTraceFilter
 		return nil, fmt.Errorf("cannot parse toBlock: %w", err)
 	}
 
-	// Validate block range before processing
-	if maxBlockRange := a.em.cfg.FevmConfig.EthTraceFilterMaxBlockRange; maxBlockRange > 0 && toBlock > fromBlock && uint64(toBlock-fromBlock) > maxBlockRange {
-		return nil, types.NewErrBlockRangeExceeded(maxBlockRange, uint64(toBlock-fromBlock))
-	}
-
 	var results []*types.EthTraceFilterResult
 
 	if filter.Count != nil {
@@ -1706,6 +1671,50 @@ func (g gasRewardSorter) Swap(i, j int) {
 }
 func (g gasRewardSorter) Less(i, j int) bool {
 	return g[i].premium.Int.Cmp(g[j].premium.Int) == -1
+}
+
+// isSenderValidationError 判断错误是否源于 sender 验证失败。
+//
+// 在以下场景返回 true：
+//   - sender 不存在于 state tree 中（callInternal 返回 "call raw get actor: ..."）
+//   - sender 不是 account actor（FVM 内部返回 "sender actor can't call messages, ..."）
+func isSenderValidationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "call raw get actor") ||
+		strings.Contains(msg, "sender actor can't call messages")
+}
+
+// estimateGasSkipSender 在 sender 验证失败时进行 gas 估算。
+// 使用 ApplyOnStateWithGasSkipSenderValidation 执行消息，返回估算的 gas 值。
+func (a *ethAPI) estimateGasSkipSender(ctx context.Context, msg *types.Message, ts *types.TipSet) (int64, error) {
+	st, err := a.em.chainModule.ChainReader.GetTipSetStateRoot(ctx, ts)
+	if err != nil {
+		return 0, fmt.Errorf("cannot get tipset state: %w", err)
+	}
+
+	res, err := a.em.chainModule.Stmgr.ApplyOnStateWithGasSkipSenderValidation(ctx, st, msg, ts)
+	if err != nil {
+		return 0, fmt.Errorf("skip-sender gas estimation failed: %w", err)
+	}
+
+	if res.MsgRct == nil {
+		return 0, fmt.Errorf("skip-sender gas estimation: no message receipt")
+	}
+
+	if res.MsgRct.ExitCode.IsError() {
+		reason := parseEthRevert(res.MsgRct.Return)
+		return 0, fmt.Errorf("message execution failed: exit %s, revert reason: %s, vm error: %s", res.MsgRct.ExitCode, reason, res.Error)
+	}
+
+	// 使用执行的 gas 用量乘以 overestimation 系数
+	gasEstimate := int64(float64(res.MsgRct.GasUsed) * 1.1)
+	if gasEstimate < constants.BlockGasLimit/100 {
+		gasEstimate = constants.BlockGasLimit / 100
+	}
+	return gasEstimate, nil
 }
 
 var _ v1.IETH = &ethAPI{}
