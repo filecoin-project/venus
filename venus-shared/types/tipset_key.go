@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -128,12 +129,7 @@ func (tsk TipSetKey) ContainsAll(other TipSetKey) bool {
 // Has checks whether the set contains `id`.
 func (tsk TipSetKey) Has(id cid.Cid) bool {
 	// Find index of the first CID not less than id.
-	for _, cid := range tsk.Cids() {
-		if cid == id {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(tsk.Cids(), id)
 }
 
 // Equals checks whether the set contains exactly the same CIDs as another.
