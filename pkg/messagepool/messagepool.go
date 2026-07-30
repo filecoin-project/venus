@@ -488,7 +488,7 @@ func New(ctx context.Context,
 }
 
 func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (address.Address, error) {
-	//if addr is not an ID addr, then it is already resolved to a key
+	// if addr is not an ID addr, then it is already resolved to a key
 	if addr.Protocol() != address.ID {
 		return addr, nil
 	}
