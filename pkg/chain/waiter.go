@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/vm"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	bstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-cid"
@@ -36,6 +37,19 @@ type waiterChainReader interface {
 type IStmgr interface {
 	GetActorAt(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
 	RunStateTransition(context.Context, *types.TipSet, vm.ExecCallBack, bool) (root cid.Cid, receipts cid.Cid, err error)
+}
+
+// MaxMessageConfidence bounds message waits to one chain-finality period.
+const MaxMessageConfidence = uint64(policy.ChainFinality)
+
+var (
+	ErrConfidenceTooHigh = errors.New("message confidence exceeds maximum")
+)
+
+// confidenceReached checks if the current chain epoch has advanced far enough
+// past the candidate epoch to satisfy the requested confidence level.
+func confidenceReached(current, candidate abi.ChainEpoch, confidence uint64) bool {
+	return candidate >= 0 && current >= candidate && uint64(current-candidate) >= confidence
 }
 
 // Waiter waits for a message to appear on chain.
@@ -94,6 +108,10 @@ func (w *Waiter) WaitPredicate(ctx context.Context, msg types.ChainMsg, confiden
 
 // Wait uses WaitPredicate to invoke the callback when a message with the given cid appears on chain.
 func (w *Waiter) Wait(ctx context.Context, msg types.ChainMsg, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.ChainMessage, error) {
+	if confidence > MaxMessageConfidence {
+		return nil, fmt.Errorf("%w: %d > %d", ErrConfidenceTooHigh, confidence, MaxMessageConfidence)
+	}
+
 	mid := msg.VMMessage().Cid()
 	log.Infof("Calling Waiter.Wait CID: %s", mid.String())
 
@@ -189,28 +207,38 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*types.HeadChan
 	if err != nil {
 		return nil, false, err
 	}
-	if found {
-		return chainMsg, found, nil
-	}
 
 	var backRcp *types.ChainMessage
-	backSearchWait := make(chan struct{})
-	go func() {
-		r, foundMsg, err := w.findMessage(ctx, currentHead, msg, lookbackLimit, allowReplaced)
-		if err != nil {
-			log.Warnf("failed to look back through chain for message: %w", err)
-			return
-		}
-		if foundMsg {
-			backRcp = r
-			close(backSearchWait)
-		}
-	}()
-
+	var backSearchWait chan struct{}
 	var candidateTS *types.TipSet
 	var candidateRcp *types.ChainMessage
-	heightOfHead := currentHead.Height()
+
+	if found {
+		if confidence == 0 {
+			return chainMsg, found, nil
+		}
+		// message found in current head but confidence > 0, wait for confidence interval
+		candidateTS = currentHead
+		candidateRcp = chainMsg
+	}
+
 	reverts := map[string]bool{}
+	if !found {
+		backSearchWait = make(chan struct{})
+		go func() {
+			r, foundMsg, err := w.findMessage(ctx, currentHead, msg, lookbackLimit, allowReplaced)
+			if err != nil {
+				log.Warnf("failed to look back through chain for message: %w", err)
+				return
+			}
+			if foundMsg {
+				backRcp = r
+				close(backSearchWait)
+			}
+		}()
+	}
+
+	heightOfHead := currentHead.Height()
 
 	for {
 		select {
@@ -229,7 +257,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*types.HeadChan
 						reverts[val.Val.Key().String()] = true
 					}
 				case types.HCApply:
-					if candidateTS != nil && val.Val.Height() >= candidateTS.Height()+abi.ChainEpoch(confidence) {
+					if candidateTS != nil && confidenceReached(val.Val.Height(), candidateTS.Height(), confidence) {
 						return candidateRcp, true, nil
 					}
 
@@ -251,7 +279,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*types.HeadChan
 			// check if we found the message in the chain and that is hasn't been reverted since we started searching
 			if backRcp != nil && !reverts[backRcp.TS.Key().String()] {
 				// if head is at or past confidence interval, return immediately
-				if heightOfHead >= backRcp.TS.Height()+abi.ChainEpoch(confidence) {
+				if confidenceReached(heightOfHead, backRcp.TS.Height(), confidence) {
 					return backRcp, true, nil
 				}
 
