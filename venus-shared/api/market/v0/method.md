@@ -2,7 +2,7 @@
 
 ```bash
 # <Inputs> corresponding to the value of Inputs Tag of each API
-curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "Authorization: Bearer <token>"  -d '{"method": "VENUS_MARKET.<method>", "params": <Inputs>, "id": 0}'
+curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json" -H "X-VENUS-API-NAMESPACE: v1.IMarket" -H "Authorization: Bearer <token>"  -d '{"method": "VENUS_MARKET.<method>", "params": <Inputs>, "id": 0}'
 ```
 # Groups
 
