@@ -392,9 +392,7 @@ func (r *publishStorageDealsReturn8) DealIDs() ([]abi.DealID, error) {
 }
 
 func (s *state8) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
-
 	return verifregtypes.NoAllocationID, fmt.Errorf("unsupported before actors v9")
-
 }
 
 func (s *state8) ActorKey() string {

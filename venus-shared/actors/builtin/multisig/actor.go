@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
 
-	msig18 "github.com/filecoin-project/go-state-types/builtin/v18/multisig"
+	msig19 "github.com/filecoin-project/go-state-types/builtin/v19/multisig"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -76,6 +76,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version18:
 			return load18(store, act.Head)
+
+		case actorstypes.Version19:
+			return load19(store, act.Head)
 
 		}
 	}
@@ -165,6 +168,9 @@ func MakeState(store adt.Store, av actorstypes.Version, signers []address.Addres
 	case actorstypes.Version18:
 		return make18(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
+	case actorstypes.Version19:
+		return make19(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)
 }
@@ -191,7 +197,7 @@ type State interface {
 	GetState() interface{}
 }
 
-type Transaction = msig18.Transaction
+type Transaction = msig19.Transaction
 
 var Methods = builtintypes.MethodsMultisig
 
@@ -251,6 +257,9 @@ func Message(version actorstypes.Version, from address.Address) MessageBuilder {
 
 	case actorstypes.Version18:
 		return message18{message0{from}}
+
+	case actorstypes.Version19:
+		return message19{message0{from}}
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))
 	}
@@ -274,10 +283,10 @@ type MessageBuilder interface {
 }
 
 // this type is the same between v0 and v2
-type ProposalHashData = msig18.ProposalHashData
-type ProposeReturn = msig18.ProposeReturn
-type ProposeParams = msig18.ProposeParams
-type ApproveReturn = msig18.ApproveReturn
+type ProposalHashData = msig19.ProposalHashData
+type ProposeReturn = msig19.ProposeReturn
+type ProposeParams = msig19.ProposeParams
+type ApproveReturn = msig19.ApproveReturn
 
 func AllCodes() []cid.Cid {
 	return []cid.Cid{
@@ -299,5 +308,6 @@ func AllCodes() []cid.Cid {
 		(&state16{}).Code(),
 		(&state17{}).Code(),
 		(&state18{}).Code(),
+		(&state19{}).Code(),
 	}
 }
