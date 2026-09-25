@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/format"
 	"log"
 	"os"
 	"path/filepath"
@@ -52,7 +53,7 @@ func processFile(path string, info os.FileInfo, err error) error {
 
 	lines := strings.Split(string(fileBytes), "\n")
 
-	outLines, templateLines, err := processLines(lines)
+	outLines, templateLines, insertAt, err := processLines(lines)
 	if err != nil {
 		log.Printf("Error processing file %s: %v", path, err)
 		return nil
@@ -80,11 +81,20 @@ func processFile(path string, info os.FileInfo, err error) error {
 			return fmt.Errorf("executing template: %v", err)
 		}
 
-		outLines = append(outLines, strings.Split(b.String(), "\n")...)
+		rendered := strings.Split(b.String(), "\n")
+		out := make([]string, 0, len(outLines)+len(rendered))
+		out = append(out, outLines[:insertAt]...)
+		out = append(out, rendered...)
+		out = append(out, outLines[insertAt:]...)
+		outLines = out
 	}
 
-	if len(outLines) != len(lines) {
-		err = os.WriteFile(path, []byte(strings.Join(outLines, "\n")), 0)
+	out, err := format.Source([]byte(strings.Join(outLines, "\n")))
+	if err != nil {
+		return fmt.Errorf("formatting %s: %v", path, err)
+	}
+	if !bytes.Equal(out, fileBytes) {
+		err = os.WriteFile(path, out, 0)
 		if err != nil {
 			return fmt.Errorf("writing file: %v", err)
 		}
@@ -92,9 +102,10 @@ func processFile(path string, info os.FileInfo, err error) error {
 	return nil
 }
 
-func processLines(lines []string) ([]string, []string, error) {
+func processLines(lines []string) ([]string, []string, int, error) {
 	outLines := make([]string, 0, len(lines))
 	templateLines := make([]string, 0)
+	insertAt := 0
 	state := stateGlobal
 
 	for _, line := range lines {
@@ -108,6 +119,7 @@ func processLines(lines []string) ([]string, []string, error) {
 			outLines = append(outLines, line)
 			if strings.TrimSpace(line) == `/* inline-gen start */` {
 				state = stateGen
+				insertAt = len(outLines)
 				continue
 			}
 			templateLines = append(templateLines, line)
@@ -120,8 +132,8 @@ func processLines(lines []string) ([]string, []string, error) {
 		}
 	}
 	if state != stateGlobal {
-		return nil, nil, fmt.Errorf("unexpected end of file while in state %d", state)
+		return nil, nil, 0, fmt.Errorf("unexpected end of file while in state %d", state)
 	}
 
-	return outLines, templateLines, nil
+	return outLines, templateLines, insertAt, nil
 }
