@@ -87,8 +87,8 @@ func GetNetworkConfigFromName(networkName string) (*NetworkConf, error) {
 }
 
 // mustParseFilOrEthAddress parses a Filecoin (f...) or Ethereum (0x...) address
-// literal, panicking on invalid input. It mirrors lotus's MustParseFilOrEthAddress
-// so governance addresses can be written the way they appear on explorers.
+// literal, panicking on invalid input. Both spellings are accepted so governance
+// addresses can be written the way they appear on explorers.
 func mustParseFilOrEthAddress(addr string) address.Address {
 	if !strings.HasPrefix(addr, "0x") {
 		a, err := address.NewFromString(addr)
