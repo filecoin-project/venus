@@ -6,6 +6,7 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 )
 
@@ -63,6 +64,8 @@ func assertBuiltinCodesResolve(t *testing.T, av actorstypes.Version, origin stri
 // missing from the loader leaves its actors unresolvable for the loader's consumers
 // (legacy vm dispatcher, StateReadState RPC).
 func TestDefaultActrosResolvesEveryReachableActorVersion(t *testing.T) {
+	tf.UnitTest(t)
+
 	reachable := reachableActorVersions(t)
 	if len(reachable) == 0 {
 		t.Fatal("go-state-types resolves no network version to an actors version")
