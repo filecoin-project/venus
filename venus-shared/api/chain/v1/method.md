@@ -1418,7 +1418,7 @@ Perms: read
 Inputs:
 ```json
 [
-  27
+  29
 ]
 ```
 
@@ -1433,7 +1433,7 @@ Perms: read
 Inputs:
 ```json
 [
-  27
+  29
 ]
 ```
 
@@ -2089,7 +2089,7 @@ Inputs:
 ]
 ```
 
-Response: `27`
+Response: `29`
 
 ### StateReplay
 
@@ -5322,7 +5322,7 @@ Response:
 
 ### StateGetAllocationForPendingDeal
 StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
-pending allocation is not found.
+pending allocation is not found. It returns an unsupported error for tipsets at network version 29 or later.
 
 
 Perms: read
@@ -5359,6 +5359,7 @@ Response:
 
 ### StateGetAllocationIdForPendingDeal
 StateGetAllocationIdForPendingDeal is like StateGetAllocationForPendingDeal except it returns the allocation ID
+It returns an unsupported error for tipsets at network version 29 or later.
 
 
 Perms: read
@@ -5965,6 +5966,9 @@ deal space in the sector in order to perform a QAP calculation. Since network ve
 the introduction of DDO, the DealIDs field can no longer be used to reliably determine verified
 deal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead
 and pass in the verified deal space directly.
+From network version 29 (FIP-0118) every sector receives maximum quality-adjusted power
+regardless of its deal content, so a SectorPreCommitInfo no longer describes a pledge at all
+and this method returns an error. Use StateMinerInitialPledgeForSector.
 
 Deprecated: Use StateMinerInitialPledgeForSector instead.
 
