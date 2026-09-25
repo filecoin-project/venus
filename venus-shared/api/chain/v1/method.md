@@ -1935,7 +1935,8 @@ Response:
     "UpgradeTeepHeight": 10101,
     "UpgradeTockHeight": 10101,
     "UpgradeGoldenWeekHeight": 10101,
-    "UpgradeFireHorseHeight": 10101
+    "UpgradeFireHorseHeight": 10101,
+    "UpgradeSolsticeHeight": 10101
   },
   "Eip155ChainID": 123
 }

@@ -765,6 +765,7 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 			UpgradeTockHeight:        cfg.NetworkParams.ForkUpgradeParam.UpgradeTockHeight,
 			UpgradeGoldenWeekHeight:  cfg.NetworkParams.ForkUpgradeParam.UpgradeGoldenWeekHeight,
 			UpgradeFireHorseHeight:   cfg.NetworkParams.ForkUpgradeParam.UpgradeFireHorseHeight,
+			UpgradeSolsticeHeight:    cfg.NetworkParams.ForkUpgradeParam.UpgradeSolsticeHeight,
 		},
 		Eip155ChainID: cfg.NetworkParams.Eip155ChainID,
 	}

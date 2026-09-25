@@ -77,6 +77,24 @@ func Calibration() *NetworkConf {
 				UpgradeTockFixHeight:                 2558014, // 2025-04-07T23:00:00Z
 				UpgradeGoldenWeekHeight:              3007294, // 2025-09-10T23:00:00Z
 				UpgradeFireHorseHeight:               3694534, // 2026-05-07T14:00:00Z
+				UpgradeSolsticeHeight:                4109133, // 2026-09-28T12:59:30Z
+			},
+			SolsticeRewardBootstrapParams: config.SolsticeRewardBootstrapParams{
+				SWATimelockEpochs:                 builtin2.EpochsInHour * 6,
+				ConsensusWeightRampDurationEpochs: builtin.EpochsInDay * 9, // nine quarters of one day
+				ConsensusWeight: config.SolsticeRewardWeightParams{
+					VStart: 95 * config.SolsticeRewardWeightPercent,
+					Floor:  50 * config.SolsticeRewardWeightPercent,
+					Cap:    95 * config.SolsticeRewardWeightPercent,
+				},
+				ServiceWeight: config.SolsticeRewardWeightParams{
+					VStart: 5 * config.SolsticeRewardWeightPercent,
+					Floor:  5 * config.SolsticeRewardWeightPercent,
+					Cap:    10 * config.SolsticeRewardWeightPercent,
+				},
+				SWAActor:            mustParseFilOrEthAddress("0x66C11A9F6dfEC3c1557958cF9f575a023EB01421"),
+				SRAActor:            mustParseFilOrEthAddress("0x0339f205314C8210AF7Cb075d1A96D012e7896a9"),
+				InitialOrchestrator: mustParseFilOrEthAddress("0x97A90f5696be5E3C8d3752C92Adac287c2b4484e"),
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,

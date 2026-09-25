@@ -4,6 +4,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -70,7 +71,25 @@ func InteropNet() *NetworkConf {
 				UpgradeTockHeight:                    -30,
 				UpgradeTockFixHeight:                 -103,
 				UpgradeGoldenWeekHeight:              -31,
-				UpgradeFireHorseHeight:               50,
+				UpgradeFireHorseHeight:               -32,
+				UpgradeSolsticeHeight:                50,
+			},
+			SolsticeRewardBootstrapParams: config.SolsticeRewardBootstrapParams{
+				SWATimelockEpochs:                 builtin2.EpochsInHour,
+				ConsensusWeightRampDurationEpochs: builtin.EpochsInDay * 9, // nine quarters of one day
+				ConsensusWeight: config.SolsticeRewardWeightParams{
+					VStart: 95 * config.SolsticeRewardWeightPercent,
+					Floor:  50 * config.SolsticeRewardWeightPercent,
+					Cap:    95 * config.SolsticeRewardWeightPercent,
+				},
+				ServiceWeight: config.SolsticeRewardWeightParams{
+					VStart: 5 * config.SolsticeRewardWeightPercent,
+					Floor:  5 * config.SolsticeRewardWeightPercent,
+					Cap:    10 * config.SolsticeRewardWeightPercent,
+				},
+				SWAActor:            builtin.SystemActorAddr,
+				SRAActor:            builtin.SystemActorAddr,
+				InitialOrchestrator: builtin.SystemActorAddr,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,

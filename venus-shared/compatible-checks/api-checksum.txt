@@ -144,7 +144,7 @@ v0api.FullNode:
 	StateMarketDeals:	In=2,	Out=2,	CheckSum=46b5eef922e8252939bf00e1e80ae89e
 	StateMarketParticipants:	In=2,	Out=2,	CheckSum=acc9019d0b6e389743c6f992350f407c
 	StateMarketStorageDeal:	In=3,	Out=2,	CheckSum=94af302d39beba9f0ce7648f4118b6aa
-	StateMinerActiveSectors:	In=3,	Out=2,	CheckSum=1c4ade4a87647477f2d18bbf32ec4da8
+	StateMinerActiveSectors:	In=3,	Out=2,	CheckSum=2b32f65f568d9c0b476887d911ef3219
 	StateMinerAvailableBalance:	In=3,	Out=2,	CheckSum=a05010da3c73edfba49c3b5d28a216cd
 	StateMinerDeadlines:	In=3,	Out=2,	CheckSum=5b128c75ba4953740906520cca96b962
 	StateMinerFaults:	In=3,	Out=2,	CheckSum=9d26d848f93597964f751b43edd3d476
@@ -157,7 +157,7 @@ v0api.FullNode:
 	StateMinerRecoveries:	In=3,	Out=2,	CheckSum=9d26d848f93597964f751b43edd3d476
 	StateMinerSectorAllocated:	In=4,	Out=2,	CheckSum=2accd56a9e9196fa1ca85a1d60e19fc2
 	StateMinerSectorCount:	In=3,	Out=2,	CheckSum=573483cbcf3ccdd38063b9ce16453dc2
-	StateMinerSectors:	In=4,	Out=2,	CheckSum=073f1b77b1d9031f2ffbf4131e62ee03
+	StateMinerSectors:	In=4,	Out=2,	CheckSum=79d95c143bf992eeb9d727a0a4c9c4ba
 	StateNetworkName:	In=1,	Out=2,	CheckSum=afb82130640a26dcd9d7010f31c69572
 	StateNetworkVersion:	In=2,	Out=2,	CheckSum=47de92e3b59793ade53abd96c347bace
 	StateReadState:	In=3,	Out=2,	CheckSum=f53f39943eea93d5f3dd64f1389e4c64
@@ -165,7 +165,7 @@ v0api.FullNode:
 	StateSearchMsg:	In=2,	Out=2,	CheckSum=e4186ab56a9d2e3c99174110e3f697dc
 	StateSearchMsgLimited:	In=3,	Out=2,	CheckSum=8990ed018d033c44ebb38c0d077bc6d0
 	StateSectorExpiration:	In=4,	Out=2,	CheckSum=bb669c8b66b6f74c681b4345c9e4cc8f
-	StateSectorGetInfo:	In=4,	Out=2,	CheckSum=43a419e2d8c99f4801ab358e35c45510
+	StateSectorGetInfo:	In=4,	Out=2,	CheckSum=cc5cde7e92b71f273f3db3cbd94e2bf8
 	StateSectorPartition:	In=4,	Out=2,	CheckSum=e3743df55a360243a32ac64ce1282c53
 	StateSectorPreCommitInfo:	In=4,	Out=2,	CheckSum=f0961d63ab3679dafcf6563a83126d56
 	StateVMCirculatingSupplyInternal:	In=2,	Out=2,	CheckSum=05c2114e08be095cece55db19e214d2c
@@ -236,6 +236,7 @@ api.FullNode:
 	Discover:	In=1,	Out=2,	CheckSum=09640e20c6d71c3e96c7a56c8698acc9
 	EthAccounts:	In=1,	Out=2,	CheckSum=d2d1b2a1ffc7dc9b28e8c64c79147670
 	EthAddressToFilecoinAddress:	In=2,	Out=2,	CheckSum=d1ca5904502264aa05b428089d46d660
+	EthBaseFee:	In=1,	Out=2,	CheckSum=e2f5588dddfc36a9cdef0fad6f4db93e
 	EthBlockNumber:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
 	EthCall:	In=3,	Out=2,	CheckSum=4ad62b9ec4eb1da934580efa4878279a
 	EthChainId:	In=1,	Out=2,	CheckSum=442f3dc12ea5a22b7b8fea633069692a
@@ -422,7 +423,7 @@ api.FullNode:
 	StateMarketParticipants:	In=2,	Out=2,	CheckSum=acc9019d0b6e389743c6f992350f407c
 	StateMarketProposalPending:	In=3,	Out=2,	CheckSum=fbb29a0d0f9a5fe4d3149de39b8f07c0
 	StateMarketStorageDeal:	In=3,	Out=2,	CheckSum=94af302d39beba9f0ce7648f4118b6aa
-	StateMinerActiveSectors:	In=3,	Out=2,	CheckSum=1c4ade4a87647477f2d18bbf32ec4da8
+	StateMinerActiveSectors:	In=3,	Out=2,	CheckSum=2b32f65f568d9c0b476887d911ef3219
 	StateMinerAllocated:	In=3,	Out=2,	CheckSum=808e4357d56c3d08769a9d7a249ea7c0
 	StateMinerAvailableBalance:	In=3,	Out=2,	CheckSum=a05010da3c73edfba49c3b5d28a216cd
 	StateMinerCreationDeposit:	In=2,	Out=2,	CheckSum=22ac180fa0c583b4036666bfc155fd63
@@ -438,14 +439,14 @@ api.FullNode:
 	StateMinerRecoveries:	In=3,	Out=2,	CheckSum=9d26d848f93597964f751b43edd3d476
 	StateMinerSectorAllocated:	In=4,	Out=2,	CheckSum=2accd56a9e9196fa1ca85a1d60e19fc2
 	StateMinerSectorCount:	In=3,	Out=2,	CheckSum=573483cbcf3ccdd38063b9ce16453dc2
-	StateMinerSectors:	In=4,	Out=2,	CheckSum=073f1b77b1d9031f2ffbf4131e62ee03
+	StateMinerSectors:	In=4,	Out=2,	CheckSum=79d95c143bf992eeb9d727a0a4c9c4ba
 	StateNetworkName:	In=1,	Out=2,	CheckSum=afb82130640a26dcd9d7010f31c69572
 	StateNetworkVersion:	In=2,	Out=2,	CheckSum=47de92e3b59793ade53abd96c347bace
 	StateReadState:	In=3,	Out=2,	CheckSum=f53f39943eea93d5f3dd64f1389e4c64
 	StateReplay:	In=3,	Out=2,	CheckSum=ec89143eb01290212c3ce0032f62c5fc
 	StateSearchMsg:	In=5,	Out=2,	CheckSum=05ad20588933ea6ffa941f47b826708a
 	StateSectorExpiration:	In=4,	Out=2,	CheckSum=bb669c8b66b6f74c681b4345c9e4cc8f
-	StateSectorGetInfo:	In=4,	Out=2,	CheckSum=43a419e2d8c99f4801ab358e35c45510
+	StateSectorGetInfo:	In=4,	Out=2,	CheckSum=cc5cde7e92b71f273f3db3cbd94e2bf8
 	StateSectorPartition:	In=4,	Out=2,	CheckSum=e3743df55a360243a32ac64ce1282c53
 	StateSectorPreCommitInfo:	In=4,	Out=2,	CheckSum=80eabb64c62e90a2cf0e497107b774ff
 	StateVMCirculatingSupplyInternal:	In=2,	Out=2,	CheckSum=05c2114e08be095cece55db19e214d2c

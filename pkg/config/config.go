@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	reward19 "github.com/filecoin-project/go-state-types/builtin/v19/reward"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -291,19 +292,20 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 
 // NetworkParamsConfig record netork parameters
 type NetworkParamsConfig struct {
-	DevNet                  bool                         `json:"-"`
-	NetworkType             types.NetworkType            `json:"networkType"`
-	AddressNetwork          address.Network              `json:"-"`
-	GenesisNetworkVersion   network.Version              `json:"-"`
-	ConsensusMinerMinPower  uint64                       `json:"-"` // uint64 goes up to 18 EiB
-	MinVerifiedDealSize     int64                        `json:"-"`
-	ReplaceProofTypes       []abi.RegisteredSealProof    `json:"-"`
-	BlockDelay              uint64                       `json:"-"`
-	DrandSchedule           map[abi.ChainEpoch]DrandEnum `json:"-"`
-	ForkUpgradeParam        *ForkUpgradeConfig           `json:"-"`
-	PreCommitChallengeDelay abi.ChainEpoch               `json:"-"`
-	PropagationDelaySecs    uint64                       `json:"-"`
-	AllowableClockDriftSecs uint64                       `json:"allowableClockDriftSecs"`
+	DevNet                        bool                          `json:"-"`
+	NetworkType                   types.NetworkType             `json:"networkType"`
+	AddressNetwork                address.Network               `json:"-"`
+	GenesisNetworkVersion         network.Version               `json:"-"`
+	ConsensusMinerMinPower        uint64                        `json:"-"` // uint64 goes up to 18 EiB
+	MinVerifiedDealSize           int64                         `json:"-"`
+	ReplaceProofTypes             []abi.RegisteredSealProof     `json:"-"`
+	BlockDelay                    uint64                        `json:"-"`
+	DrandSchedule                 map[abi.ChainEpoch]DrandEnum  `json:"-"`
+	ForkUpgradeParam              *ForkUpgradeConfig            `json:"-"`
+	SolsticeRewardBootstrapParams SolsticeRewardBootstrapParams `json:"-"`
+	PreCommitChallengeDelay       abi.ChainEpoch                `json:"-"`
+	PropagationDelaySecs          uint64                        `json:"-"`
+	AllowableClockDriftSecs       uint64                        `json:"allowableClockDriftSecs"`
 	// ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
 	// As per https://github.com/ethereum-lists/chains
 	Eip155ChainID int `json:"-"`
@@ -311,6 +313,42 @@ type NetworkParamsConfig struct {
 	ActorDebugging                bool     `json:"-"`
 	F3Enabled                     bool     `json:"f3Enabled"`
 	UpgradeTeepInitialFilReserved *big.Int `json:"upgradeTeepInitialFilReserved"`
+}
+
+// SolsticeRewardWeightParams describes a linear reward weight ramp for a single
+// FIP-0118 (Solstice) reward stream.
+type SolsticeRewardWeightParams struct {
+	VStart uint64
+	Floor  uint64
+	Cap    uint64
+}
+
+// SolsticeRewardBootstrapParams holds the FIP-0118 (Solstice) reward actor
+// bootstrap state installed by the nv29 migration. The governance addresses are
+// parsed literals; they are resolved to ID addresses from chain state at
+// migration time.
+type SolsticeRewardBootstrapParams struct {
+	SWATimelockEpochs                 abi.ChainEpoch
+	ConsensusWeightRampDurationEpochs abi.ChainEpoch
+	ConsensusWeight                   SolsticeRewardWeightParams
+	ServiceWeight                     SolsticeRewardWeightParams
+	SWAActor                          address.Address
+	SRAActor                          address.Address
+	InitialOrchestrator               address.Address
+}
+
+// SolsticeRewardWeightPercent is one percent of the reward weight denominator.
+const SolsticeRewardWeightPercent = reward19.Denom / 100
+
+// NeutralSolsticeRewardBootstrapParams is the consensus-only bootstrap installed
+// when the consensus weight ramp has zero duration.
+var NeutralSolsticeRewardBootstrapParams = SolsticeRewardBootstrapParams{
+	ConsensusWeight: SolsticeRewardWeightParams{
+		VStart: reward19.Denom,
+		Floor:  reward19.Denom,
+		Cap:    reward19.Denom,
+	},
+	SWAActor: builtin.SystemActorAddr,
 }
 
 // ForkUpgradeConfig record upgrade parameters
@@ -354,7 +392,12 @@ type ForkUpgradeConfig struct {
 	UpgradeTockFixHeight                 abi.ChainEpoch `json:"upgradeTockFixHeight"`
 	UpgradeGoldenWeekHeight              abi.ChainEpoch `json:"upgradeGoldenWeekHeight"`
 	UpgradeFireHorseHeight               abi.ChainEpoch `json:"upgradeFireHorseHeight"`
+	UpgradeSolsticeHeight                abi.ChainEpoch `json:"upgradeSolsticeHeight"`
 }
+
+// UpgradeHeightUnscheduled parks an upgrade beyond any epoch the chain will reach, marking it
+// as not yet scheduled. Networks use it until the upgrade has a real height.
+const UpgradeHeightUnscheduled = abi.ChainEpoch(999999999999999)
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
 	return epoch > upgradeEpoch-constants.Finality && epoch < upgradeEpoch+constants.Finality
@@ -401,7 +444,8 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeTockHeight:                    4867320 + 90*builtin.EpochsInDay,
 	UpgradeTockFixHeight:                 -29,
 	UpgradeGoldenWeekHeight:              5348280,
-	UpgradeFireHorseHeight:               999999999999999, // Placeholder height for FireHorse, to be updated when FireHorse upgrade details are finalized
+	UpgradeFireHorseHeight:               -32,                      // disabled: a second UpgradeHeightUnscheduled placeholder fails Validate's strictly-increasing height check
+	UpgradeSolsticeHeight:                UpgradeHeightUnscheduled, // Placeholder height for Solstice, to be updated when Solstice upgrade details are finalized
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
@@ -415,11 +459,12 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 			abi.RegisteredSealProof_StackedDrg32GiBV1,
 			abi.RegisteredSealProof_StackedDrg64GiBV1,
 		},
-		DrandSchedule:           map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
-		ForkUpgradeParam:        &defaultParams,
-		PropagationDelaySecs:    10,
-		AllowableClockDriftSecs: 1,
-		Eip155ChainID:           314,
+		DrandSchedule:                 map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
+		ForkUpgradeParam:              &defaultParams,
+		SolsticeRewardBootstrapParams: NeutralSolsticeRewardBootstrapParams,
+		PropagationDelaySecs:          10,
+		AllowableClockDriftSecs:       1,
+		Eip155ChainID:                 314,
 	}
 }
 
