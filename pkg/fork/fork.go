@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 	"sort"
@@ -45,6 +46,8 @@ import (
 	nv25 "github.com/filecoin-project/go-state-types/builtin/v16/migration"
 	nv27 "github.com/filecoin-project/go-state-types/builtin/v17/migration"
 	nv28 "github.com/filecoin-project/go-state-types/builtin/v18/migration"
+	nv29 "github.com/filecoin-project/go-state-types/builtin/v19/migration"
+	reward19 "github.com/filecoin-project/go-state-types/builtin/v19/reward"
 	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/go-state-types/migration"
 	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
@@ -513,6 +516,18 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			}},
 			Expensive: true,
 		},
+		{
+			Height:    upgradeHeight.UpgradeSolsticeHeight,
+			Network:   network.Version29,
+			Migration: cf.UpgradeActorsV19,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV19,
+				StartWithin:     120,
+				DontStartWithin: 15,
+				StopWithin:      10,
+			}},
+			Expensive: true,
+		},
 	}
 
 	for _, u := range updates {
@@ -668,8 +683,9 @@ type ChainFork struct {
 	expensiveUpgrades map[abi.ChainEpoch]struct{}
 
 	// upgrade param
-	networkType types.NetworkType
-	forkUpgrade *config.ForkUpgradeConfig
+	networkType             types.NetworkType
+	forkUpgrade             *config.ForkUpgradeConfig
+	solsticeRewardBootstrap config.SolsticeRewardBootstrapParams
 
 	metadataDs repo.Datastore
 }
@@ -682,12 +698,13 @@ func NewChainFork(ctx context.Context,
 	metadataDs dstore.Batching,
 ) (*ChainFork, error) {
 	fork := &ChainFork{
-		cr:          cr,
-		bs:          bs,
-		ipldstore:   ipldstore,
-		networkType: networkParams.NetworkType,
-		forkUpgrade: networkParams.ForkUpgradeParam,
-		metadataDs:  metadataDs,
+		cr:                      cr,
+		bs:                      bs,
+		ipldstore:               ipldstore,
+		networkType:             networkParams.NetworkType,
+		forkUpgrade:             networkParams.ForkUpgradeParam,
+		solsticeRewardBootstrap: networkParams.SolsticeRewardBootstrapParams,
+		metadataDs:              metadataDs,
 	}
 
 	// If we have upgrades, make sure they're in-order and make sense.
@@ -4217,6 +4234,262 @@ func (c *ChainFork) upgradeActorsV18Common(
 	}
 
 	return newRoot, nil
+}
+
+func (c *ChainFork) PreUpgradeActorsV19(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := MigrationMaxWorkerCount
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	nv := c.GetNetworkVersion(ctx, epoch)
+	lbts, lbRoot, err := c.cr.GetLookbackTipSetForRound(ctx, ts, epoch, nv)
+	if err != nil {
+		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	logPeriod, err := getMigrationProgressLogPeriod()
+	if err != nil {
+		return xerrors.Errorf("error getting progress log period: %w", err)
+	}
+
+	rewardParams, err := c.resolveSolsticeRewardBootstrapAt(ctx, lbRoot)
+	if err != nil {
+		return err
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: logPeriod,
+	}
+
+	_, err = c.upgradeActorsV19Common(ctx, cache, lbRoot, epoch, lbts, rewardParams, config)
+	return err
+}
+
+func (c *ChainFork) UpgradeActorsV19(ctx context.Context, cache MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+) (cid.Cid, error) {
+	// Use all the CPUs except 2.
+	workerCount := MigrationMaxWorkerCount - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	logPeriod, err := getMigrationProgressLogPeriod()
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error getting progress log period: %w", err)
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: logPeriod,
+	}
+
+	rewardParams, err := c.resolveSolsticeRewardBootstrapAt(ctx, root)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	newRoot, err := c.upgradeActorsV19Common(ctx, cache, root, epoch, ts, rewardParams, config)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("migrating actors v19 state: %w", err)
+	}
+	return newRoot, nil
+}
+
+func (c *ChainFork) upgradeActorsV19Common(
+	ctx context.Context, cache MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+	rewardParams config.SolsticeRewardBootstrapParams,
+	config migration.Config,
+) (cid.Cid, error) {
+	rewardConfig, err := solsticeRewardMigrationConfig(rewardParams)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB/4)
+	adtStore := adt.WrapStore(ctx, cbor.NewCborStore(writeStore))
+	// ensure that the manifest is loaded in the blockstore
+	if err := actors.LoadBundles(ctx, writeStore, actorstypes.Version19); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot vmstate.StateRoot
+	if err := adtStore.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != vmstate.StateTreeVersion5 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 5 for actors v19 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version19)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("no manifest CID for v19 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv29.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, rewardConfig, config,
+		migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors v19: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := adtStore.Put(ctx, &vmstate.StateRoot{
+		Version: vmstate.StateTreeVersion5,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore flush failed: %w", err)
+	}
+
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore shutdown failed: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+// resolveSolsticeRewardBootstrapAt loads the state tree at root and resolves the
+// FIP-0118 (Solstice) governance addresses carried by the fork config.
+func (c *ChainFork) resolveSolsticeRewardBootstrapAt(ctx context.Context, root cid.Cid) (config.SolsticeRewardBootstrapParams, error) {
+	stateTree, err := vmstate.LoadState(ctx, c.ipldstore, root)
+	if err != nil {
+		return config.SolsticeRewardBootstrapParams{}, xerrors.Errorf("loading state tree: %w", err)
+	}
+	return resolveSolsticeRewardBootstrap(stateTree, c.solsticeRewardBootstrap)
+}
+
+// resolveSolsticeRewardBootstrap resolves the SWA, SRA and orchestrator addresses to ID addresses.
+// A consensus-only bootstrap leaves the service addresses unset and is installed as-is.
+func resolveSolsticeRewardBootstrap(
+	stateTree *vmstate.State, params config.SolsticeRewardBootstrapParams,
+) (config.SolsticeRewardBootstrapParams, error) {
+	if params.SWAActor == address.Undef {
+		return config.SolsticeRewardBootstrapParams{}, xerrors.New("Solstice bootstrap SWAActor is unset")
+	}
+	// f099 is the burn sentinel f02 strips from share maps, so a migration installing it fails.
+	if params.InitialOrchestrator == builtin.BurntFundsActorAddr {
+		return config.SolsticeRewardBootstrapParams{}, xerrors.New("Solstice bootstrap InitialOrchestrator is the burn actor")
+	}
+	for _, field := range []struct {
+		name string
+		addr *address.Address
+	}{
+		{"SWAActor", &params.SWAActor},
+		{"SRAActor", &params.SRAActor},
+		{"InitialOrchestrator", &params.InitialOrchestrator},
+	} {
+		// A consensus-only bootstrap leaves the stream 2 addresses unset.
+		if *field.addr == address.Undef {
+			continue
+		}
+		id, err := stateTree.LookupID(*field.addr)
+		if err != nil {
+			return config.SolsticeRewardBootstrapParams{}, xerrors.Errorf(
+				"Solstice bootstrap %s %s is not on chain: %w", field.name, *field.addr, err)
+		}
+		*field.addr = id
+	}
+	return params, nil
+}
+
+// FIP-0118 stream identities: w1 is consensus, w2 the service stream.
+const (
+	solsticeConsensusStreamID reward19.StreamID = 1
+	solsticeServiceStreamID   reward19.StreamID = 2
+)
+
+// solsticeRewardMigrationConfig builds the reward migration config from the
+// resolved Solstice bootstrap parameters.
+func solsticeRewardMigrationConfig(params config.SolsticeRewardBootstrapParams) (nv29.RewardMigrationConfig, error) {
+	if params.ConsensusWeightRampDurationEpochs == 0 {
+		neutral := config.NeutralSolsticeRewardBootstrapParams
+		if params.ConsensusWeight != neutral.ConsensusWeight || params.ServiceWeight != neutral.ServiceWeight {
+			return nv29.RewardMigrationConfig{}, xerrors.New(
+				"zero-duration Solstice bootstrap must have constant DENOM consensus weight and zero service weight")
+		}
+		return nv29.RewardMigrationConfig{
+			SWATimelockEpochs: params.SWATimelockEpochs,
+			SWAActor:          params.SWAActor,
+			Streams: []nv29.RewardMigrationStream{{
+				ID: solsticeConsensusStreamID,
+				Weight: nv29.RewardMigrationWeight{
+					VStart: neutral.ConsensusWeight.VStart,
+					Floor:  neutral.ConsensusWeight.Floor,
+					Cap:    neutral.ConsensusWeight.Cap,
+				},
+			}},
+		}, nil
+	}
+	if params.ConsensusWeightRampDurationEpochs < 0 {
+		return nv29.RewardMigrationConfig{}, xerrors.Errorf(
+			"Solstice consensus weight ramp duration is negative: %d", params.ConsensusWeightRampDurationEpochs)
+	}
+	if params.ConsensusWeight.VStart <= params.ConsensusWeight.Floor {
+		return nv29.RewardMigrationConfig{}, xerrors.Errorf(
+			"Solstice consensus weight start %d must exceed its floor %d",
+			params.ConsensusWeight.VStart, params.ConsensusWeight.Floor)
+	}
+	// Round the per-epoch decrement up so the record reaches its configured
+	// floor within the ramp duration even when the total is not divisible.
+	rampTotal := params.ConsensusWeight.VStart - params.ConsensusWeight.Floor
+	rampEpochs := uint64(params.ConsensusWeightRampDurationEpochs)
+	slope := rampTotal / rampEpochs
+	if rampTotal%rampEpochs != 0 {
+		slope++
+	}
+	if slope == 0 || slope > math.MaxInt64 {
+		return nv29.RewardMigrationConfig{}, xerrors.Errorf(
+			"Solstice consensus weight ramp produces invalid slope %d", slope)
+	}
+
+	return nv29.RewardMigrationConfig{
+		SWATimelockEpochs: params.SWATimelockEpochs,
+		SWAActor:          params.SWAActor,
+		Streams: []nv29.RewardMigrationStream{
+			{
+				ID: solsticeConsensusStreamID,
+				Weight: nv29.RewardMigrationWeight{
+					VStart: params.ConsensusWeight.VStart,
+					Slope:  -int64(slope),
+					Floor:  params.ConsensusWeight.Floor,
+					Cap:    params.ConsensusWeight.Cap,
+				},
+			},
+			{
+				ID: solsticeServiceStreamID,
+				Weight: nv29.RewardMigrationWeight{
+					VStart: params.ServiceWeight.VStart,
+					Slope:  int64(slope),
+					Floor:  params.ServiceWeight.Floor,
+					Cap:    params.ServiceWeight.Cap,
+				},
+				Distribution: &reward19.DistributionInit{
+					Writer: params.SRAActor,
+					Shares: []reward19.RecipientShare{{Recipient: params.InitialOrchestrator, Share: reward19.Denom}},
+				},
+			},
+		},
+	}, nil
 }
 
 func (c *ChainFork) GetForkUpgrade() *config.ForkUpgradeConfig {
