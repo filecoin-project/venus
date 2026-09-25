@@ -2,7 +2,8 @@ package types
 
 import "fmt"
 
-// just compatible code lotus
+// SyncStateStage is the internal sync stage tracked by chainsync; the syncer API
+// maps it onto the API-facing types.SyncStateStage in convertSyncStateStage.
 type SyncStateStage int
 
 const (
