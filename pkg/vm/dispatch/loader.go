@@ -113,7 +113,7 @@ func (b *CodeLoaderBuilder) Build() CodeLoader {
 // An ActorPredicate returns an error if the given actor is not valid for the given runtime environment (e.g., chain height, version, etc.).
 type ActorPredicate func(vmr.Runtime, cid.Cid) error
 
-// ActorsVersionPredicate  get actor predicate base on actor version and network version
+// ActorsVersionPredicate get actor predicate based on actor version and network version
 func ActorsVersionPredicate(ver actorstypes.Version) ActorPredicate {
 	return func(rt vmr.Runtime, codeCid cid.Cid) error {
 		nver, err := actorstypes.VersionForNetwork(rt.NetworkVersion())

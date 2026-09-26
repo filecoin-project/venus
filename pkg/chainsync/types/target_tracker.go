@@ -212,7 +212,7 @@ func (tq *TargetTracker) Add(t *Target) bool {
 	// replace last idle task because of less weight
 	var replaceIndex int
 	var replaceTarget *Target
-	// try to replace a idea child target
+	// try to replace an ideal child target
 	for i := len(tq.q) - 1; i > -1; i-- {
 		if t.HasChild(tq.q[i]) && tq.q[i].State == StageIdle {
 			replaceTarget = tq.q[i]
@@ -298,7 +298,7 @@ func sortTarget(target TargetBuckets) {
 }
 
 // expand the tipset, traversing the local existing target,
-// If there is a incoming tipset non-existent block in the neighbor node, then merge the block.
+// If there is an incoming tipset non-existent block in the neighbor node, then merge the block.
 func (tq *TargetTracker) widen(t *Target) (*Target, bool) {
 	if len(tq.targetSet) == 0 {
 		return t, true
