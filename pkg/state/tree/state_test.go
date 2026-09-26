@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/testhelpers"
 	"github.com/ipfs/go-cid"
@@ -233,4 +234,33 @@ func TestStateTreeConsistency(t *testing.T) {
 	if root.String() != "bafy2bzaceamis23jp44ofm4fh6jwc4gkxlzhnvxrdw4zsn3v2fj6at6pf2m4y" {
 		t.Fatalf("state state Mismatch. Expected: bafy2bzaceamis23jp44ofm4fh6jwc4gkxlzhnvxrdw4zsn3v2fj6at6pf2m4y Actual: %s", root.String())
 	}
+}
+
+// TestVersionForNetwork covers the network -> state tree version mapping up to nv29,
+// mirroring lotus chain/state/statetree.go.
+func TestVersionForNetwork(t *testing.T) {
+	tf.UnitTest(t)
+
+	cases := map[network.Version]StateTreeVersion{
+		network.Version0:  StateTreeVersion0,
+		network.Version4:  StateTreeVersion1,
+		network.Version10: StateTreeVersion2,
+		network.Version12: StateTreeVersion3,
+		network.Version13: StateTreeVersion4,
+		network.Version17: StateTreeVersion4,
+		network.Version18: StateTreeVersion5,
+		network.Version24: StateTreeVersion5,
+		network.Version25: StateTreeVersion5,
+		network.Version26: StateTreeVersion5,
+		network.Version27: StateTreeVersion5,
+		network.Version28: StateTreeVersion5,
+		network.Version29: StateTreeVersion5,
+	}
+	for nv, want := range cases {
+		got, err := VersionForNetwork(nv)
+		require.NoErrorf(t, err, "network version %d", nv)
+		assert.Equalf(t, want, got, "network version %d", nv)
+	}
+
+	assert.Panics(t, func() { _, _ = VersionForNetwork(network.Version(30)) })
 }

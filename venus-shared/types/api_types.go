@@ -336,7 +336,8 @@ type SyncState struct {
 	VMApplied uint64
 }
 
-// just compatible code lotus
+// SyncStateStage is carried by the SyncState RPC response; its ordinals and String
+// labels mirror lotus api.SyncStateStage, so they must not be reordered.
 type SyncStateStage int
 
 const (
@@ -486,6 +487,7 @@ type ForkUpgradeParams struct {
 	UpgradeTockHeight        abi.ChainEpoch
 	UpgradeGoldenWeekHeight  abi.ChainEpoch
 	UpgradeFireHorseHeight   abi.ChainEpoch
+	UpgradeSolsticeHeight    abi.ChainEpoch
 }
 
 type NodeStatus struct {

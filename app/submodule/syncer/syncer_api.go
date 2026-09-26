@@ -161,7 +161,8 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 	return nil
 }
 
-// SyncState just compatible code lotus
+// SyncState implements ISyncer.SyncState, the venus counterpart of the lotus
+// FullNode.SyncState RPC.
 func (sa *syncerAPI) SyncState(ctx context.Context) (*types.SyncState, error) {
 	tracker := sa.syncer.ChainSyncManager.BlockProposer().SyncTracker()
 	tracker.History()

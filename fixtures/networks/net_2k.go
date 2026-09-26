@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -18,7 +19,7 @@ func Net2k() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet:                true,
 			NetworkType:           types.Network2k,
-			GenesisNetworkVersion: network.Version26,
+			GenesisNetworkVersion: network.Version28,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg2KiBV1,
 				abi.RegisteredSealProof_StackedDrg8MiBV1,
@@ -65,7 +66,25 @@ func Net2k() *NetworkConf {
 				UpgradeTockHeight:                    -30,
 				UpgradeTockFixHeight:                 -103,
 				UpgradeGoldenWeekHeight:              -31,
-				UpgradeFireHorseHeight:               200,
+				UpgradeFireHorseHeight:               -32,
+				UpgradeSolsticeHeight:                200,
+			},
+			SolsticeRewardBootstrapParams: config.SolsticeRewardBootstrapParams{
+				SWATimelockEpochs:                 50,
+				ConsensusWeightRampDurationEpochs: 900,
+				ConsensusWeight: config.SolsticeRewardWeightParams{
+					VStart: 95 * config.SolsticeRewardWeightPercent,
+					Floor:  50 * config.SolsticeRewardWeightPercent,
+					Cap:    95 * config.SolsticeRewardWeightPercent,
+				},
+				ServiceWeight: config.SolsticeRewardWeightParams{
+					VStart: 5 * config.SolsticeRewardWeightPercent,
+					Floor:  5 * config.SolsticeRewardWeightPercent,
+					Cap:    10 * config.SolsticeRewardWeightPercent,
+				},
+				SWAActor:            builtin.SystemActorAddr,
+				SRAActor:            builtin.SystemActorAddr,
+				InitialOrchestrator: builtin.SystemActorAddr,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandQuicknet},
 			AddressNetwork:          address.Testnet,

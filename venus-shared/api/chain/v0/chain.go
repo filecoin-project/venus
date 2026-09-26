@@ -146,7 +146,7 @@ type IMinerState interface {
 	StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*lminer.SectorOnChainInfo, error) //perm:read
 	StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error)                                        //perm:read
 	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
-	// pending allocation is not found.
+	// pending allocation is not found. It returns an unsupported error for tipsets at network version 29 or later.
 	StateGetAllocationForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.Allocation, error) //perm:read
 	// StateGetAllocation returns the allocation for a given address and allocation ID.
 	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationID types.AllocationId, tsk types.TipSetKey) (*types.Allocation, error) //perm:read
@@ -163,6 +163,9 @@ type IMinerState interface {
 	// the introduction of DDO, the DealIDs field can no longer be used to reliably determine verified
 	// deal space; therefore, this method is deprecated. Use StateMinerInitialPledgeForSector instead
 	// and pass in the verified deal space directly.
+	// From network version 29 (FIP-0118) every sector receives maximum quality-adjusted power
+	// regardless of its deal content, so a SectorPreCommitInfo no longer describes a pledge at all
+	// and this method returns an error. Use StateMinerInitialPledgeForSector.
 	//
 	// Deprecated: Use StateMinerInitialPledgeForSector instead.
 	StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci types.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error) //perm:read

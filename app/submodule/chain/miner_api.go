@@ -830,6 +830,13 @@ func (msa *minerStateAPI) StateMinerInitialPledgeCollateral(ctx context.Context,
 		return big.Int{}, fmt.Errorf("loading tipset %s: %v", tsk, err)
 	}
 
+	// From nv29 every sector holds maximum quality-adjusted power (FIP-0118), so a
+	// SectorPreCommitInfo no longer describes a pledge and the deprecated calculation
+	// is meaningless: reject and point callers at StateMinerInitialPledgeForSector.
+	if msa.Fork.GetNetworkVersion(ctx, ts.Height()) >= network.Version29 {
+		return big.Int{}, errors.New("StateMinerInitialPledgeCollateral is unsupported from network version 29 (FIP-0118): use StateMinerInitialPledgeForSector")
+	}
+
 	_, state, err := msa.Stmgr.ParentState(ctx, ts)
 	if err != nil {
 		return big.Int{}, fmt.Errorf("loading tipset(%s) parent state failed: %v", tsk, err)

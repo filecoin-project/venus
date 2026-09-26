@@ -78,8 +78,26 @@ func Mainnet() *NetworkConf {
 				UpgradeTuktukPowerRampDurationEpochs: builtin2.EpochsInYear,
 				UpgradeTeepHeight:                    4878840, // 2025-04-14T23:00:00Z
 				UpgradeTockFixHeight:                 -1,
-				UpgradeGoldenWeekHeight:              5348280, // 2025-09-24T23:00:00Z
-				UpgradeFireHorseHeight:               6052800, // 2026-05-27T:14:00:00Z
+				UpgradeGoldenWeekHeight:              5348280,                         // 2025-09-24T23:00:00Z
+				UpgradeFireHorseHeight:               6052800,                         // 2026-05-27T:14:00:00Z
+				UpgradeSolsticeHeight:                config.UpgradeHeightUnscheduled, // Placeholder height for Solstice, to be updated when Solstice upgrade details are finalized
+			},
+			SolsticeRewardBootstrapParams: config.SolsticeRewardBootstrapParams{
+				SWATimelockEpochs:                 builtin.EpochsInDay * 7,
+				ConsensusWeightRampDurationEpochs: 262974 * 9, // nine quarters of 262974 epochs
+				ConsensusWeight: config.SolsticeRewardWeightParams{
+					VStart: 95 * config.SolsticeRewardWeightPercent,
+					Floor:  50 * config.SolsticeRewardWeightPercent,
+					Cap:    95 * config.SolsticeRewardWeightPercent,
+				},
+				ServiceWeight: config.SolsticeRewardWeightParams{
+					VStart: 5 * config.SolsticeRewardWeightPercent,
+					Floor:  5 * config.SolsticeRewardWeightPercent,
+					Cap:    10 * config.SolsticeRewardWeightPercent,
+				},
+				SWAActor:            mustParseFilOrEthAddress("0x66C11A9F6dfEC3c1557958cF9f575a023EB01421"),
+				SRAActor:            mustParseFilOrEthAddress("0x0339f205314C8210AF7Cb075d1A96D012e7896a9"),
+				InitialOrchestrator: mustParseFilOrEthAddress("0x97A90f5696be5E3C8d3752C92Adac287c2b4484e"),
 			},
 			DrandSchedule:                 map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork:                address.Mainnet,

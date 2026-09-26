@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -83,4 +84,27 @@ func GetNetworkConfigFromName(networkName string) (*NetworkConf, error) {
 	}
 
 	return GetNetworkConfigFromType(networkType)
+}
+
+// mustParseFilOrEthAddress parses a Filecoin (f...) or Ethereum (0x...) address
+// literal, panicking on invalid input. Both spellings are accepted so governance
+// addresses can be written the way they appear on explorers.
+func mustParseFilOrEthAddress(addr string) address.Address {
+	if !strings.HasPrefix(addr, "0x") {
+		a, err := address.NewFromString(addr)
+		if err != nil {
+			panic(fmt.Sprintf("invalid Filecoin address %q: %s", addr, err))
+		}
+		return a
+	}
+
+	ethAddr, err := types.ParseEthAddress(addr)
+	if err != nil {
+		panic(fmt.Sprintf("invalid Ethereum address %q: %s", addr, err))
+	}
+	a, err := ethAddr.ToFilecoinAddress()
+	if err != nil {
+		panic(fmt.Sprintf("failed to convert Ethereum address %q to a Filecoin address: %s", addr, err))
+	}
+	return a
 }
