@@ -2,11 +2,12 @@ package cmd
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/net"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 const (
@@ -80,8 +82,8 @@ var swarmPeersCmd = &cmds.Command{
 			return err
 		}
 
-		sort.Slice(peers, func(i, j int) bool {
-			return strings.Compare(string(peers[i].ID), string(peers[j].ID)) > 0
+		slices.SortFunc(peers, func(a, b peer.AddrInfo) int {
+			return strings.Compare(string(b.ID), string(a.ID))
 		})
 
 		buf := &bytes.Buffer{}
@@ -395,9 +397,7 @@ var statsBandwidthCmd = &cmds.Command{
 				peers = append(peers, p)
 			}
 
-			sort.Slice(peers, func(i, j int) bool {
-				return peers[i] < peers[j]
-			})
+			slices.Sort(peers)
 
 			for _, p := range peers {
 				s := bw[p]
@@ -414,9 +414,7 @@ var statsBandwidthCmd = &cmds.Command{
 				protos = append(protos, p)
 			}
 
-			sort.Slice(protos, func(i, j int) bool {
-				return protos[i] < protos[j]
-			})
+			slices.Sort(protos)
 
 			for _, p := range protos {
 				s := bw[p]
@@ -658,8 +656,8 @@ var swarmScoresCmd = &cmds.Command{
 		extended, _ := req.Options["extended"].(bool)
 
 		if sorted {
-			sort.Slice(scores, func(i, j int) bool {
-				return scores[i].Score.Score > scores[j].Score.Score
+			slices.SortFunc(scores, func(a, b types.PubsubScore) int {
+				return cmp.Compare(b.Score.Score, a.Score.Score)
 			})
 		}
 
