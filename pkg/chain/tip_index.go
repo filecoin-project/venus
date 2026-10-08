@@ -16,7 +16,7 @@ var ErrNotFound = errors.New("Key not found in tipindex")
 
 // TipSetMetadata is the type stored at the leaves of the TipStateCache.  It contains
 // a tipset pointing to blocks, the root cid of the chain's state after
-// applying the messages in this tipset to it's parent state, and the cid of the receipts
+// applying the messages in this tipset to its parent state, and the cid of the receipts
 // for these messages.
 type TipSetMetadata struct {
 	// TipSetStateRoot is the root of aggregate state after applying tipset

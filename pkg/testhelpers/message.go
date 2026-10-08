@@ -189,7 +189,7 @@ func SignMsgs(ms MockSigner, msgs []*types.Message) ([]*types.SignedMessage, err
 	return smsgs, nil
 }
 
-// NewMsgsWithAddrs returns a slice of `n` messages who's `From` field's are pulled
+// NewMsgsWithAddrs returns a slice of `n` messages whose `From` field's are pulled
 // from `a`. This method should be used when the addresses returned are to be signed
 // at a later point.
 func NewMsgsWithAddrs(n int, a []address.Address) []*types.Message {
