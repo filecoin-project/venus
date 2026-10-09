@@ -66,9 +66,12 @@ jobs:
           test -z "$(git status --porcelain)"
 
       - name: Run coverage
+        env:
+          LOG_LEVEL: ${{ inputs.log_level }}
+          TEST_TIMEOUT: ${{ inputs.test_timeout }}
         run: |
-          export GOLOG_LOG_LEVEL=${{ inputs.log_level }}
-          go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./... -v --timeout ${{ inputs.test_timeout }}m
+          export GOLOG_LOG_LEVEL=$LOG_LEVEL
+          go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./... -v --timeout ${TEST_TIMEOUT}m
 
       # https://github.com/codecov/codecov-action/issues/557#issuecomment-1216749652
       - name: Upload
