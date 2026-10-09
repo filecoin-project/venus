@@ -35,7 +35,8 @@ var ChainAPIPairs = []struct {
 				IncludeAll: true,
 			},
 			RPCMeta: RPCMeta{
-				Version: 0,
+				Version:      0,
+				ApiNamespace: "v1.FullNode",
 			},
 		},
 	},
@@ -55,7 +56,8 @@ var ChainAPIPairs = []struct {
 				IncludeAll: true,
 			},
 			RPCMeta: RPCMeta{
-				Version: 1,
+				Version:      1,
+				ApiNamespace: "v1.FullNode",
 			},
 		},
 	},
@@ -67,6 +69,7 @@ type RPCMeta struct {
 	Version         uint32
 	Namespace       string
 	MethodNamespace string
+	ApiNamespace    string
 }
 
 type APIMeta struct {
