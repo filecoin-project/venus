@@ -184,8 +184,8 @@ github.com/filecoin-project/go-address v0.0.5/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+
 github.com/filecoin-project/go-address v1.2.0 h1:NHmWUE/J7Pi2JZX3gZt32XuY69o9StVZeJxdBodIwOE=
 github.com/filecoin-project/go-address v1.2.0/go.mod h1:kQEQ4qZ99a51X7DjT9HiMT4yR6UwLJ9kznlxsOIeDAg=
 github.com/filecoin-project/go-amt-ipld/v2 v2.1.0/go.mod h1:nfFPoGyX0CU9SkXX8EoCcSuHN1XcbN0c6KBh7yvP5fs=
-github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349 h1:pIuR0dnMD0i+as8wNnjjHyQrnhP5O5bmba/lmgQeRgU=
-github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349/go.mod h1:vgmwKBkx+ca5OIeEvstiQgzAZnb7R6QaqE1oEDSqa6g=
+github.com/filecoin-project/go-amt-ipld/v2 v2.2.0 h1:NINWxGZ6pG7Pr9nJU0pG9AUc5pWsNDGP56B6ny75TPY=
+github.com/filecoin-project/go-amt-ipld/v2 v2.2.0/go.mod h1:j4eX9ZZA4prMA1+Ysu137bU38qURY0ZMDH8Fw3Jvay0=
 github.com/filecoin-project/go-amt-ipld/v3 v3.0.0/go.mod h1:Qa95YNAbtoVCTSVtX38aAC1ptBnJfPma1R/zZsKmx4o=
 github.com/filecoin-project/go-amt-ipld/v3 v3.1.0 h1:ZNJ9tEG5bE72vBWYiuh5bkxJVM3ViHNOmQ7qew9n6RE=
 github.com/filecoin-project/go-amt-ipld/v3 v3.1.0/go.mod h1:UjM2QhDFrrjD5s1CdnkJkat4ga+LqZBZgTMniypABRo=
@@ -248,8 +248,8 @@ github.com/filecoin-project/go-statemachine v1.0.3/go.mod h1:jZdXXiHa61n4NmgWFG4
 github.com/filecoin-project/go-statestore v0.1.0/go.mod h1:LFc9hD+fRxPqiHiaqUEZOinUJB4WARkRfNl10O7kTnI=
 github.com/filecoin-project/go-statestore v0.2.0 h1:cRRO0aPLrxKQCZ2UOQbzFGn4WDNdofHZoGPjfNaAo5Q=
 github.com/filecoin-project/go-statestore v0.2.0/go.mod h1:8sjBYbS35HwPzct7iT4lIXjLlYyPor80aU7t7a/Kspo=
-github.com/filecoin-project/lotus v1.37.0-rc1 h1:BB6TD5VJuUCmSYQBa9QonW0atwb64lQ0J7BRQ5yS/Ww=
-github.com/filecoin-project/lotus v1.37.0-rc1/go.mod h1:q4N/QkQsgAaybti4uEySNPqTnOsEfTsor96uXVXbsyo=
+github.com/filecoin-project/lotus v1.37.0 h1:9zviGabT1hQuVXJpg6p39Au5hTn6nVMnSGaeorZmql4=
+github.com/filecoin-project/lotus v1.37.0/go.mod h1:nLjRFl5sgJjCYTtD4br69hgVyVsxEZPPGmaAE8soCEA=
 github.com/filecoin-project/pubsub v1.0.0 h1:ZTmT27U07e54qV1mMiQo4HDr0buo8I1LDHBYLXlsNXM=
 github.com/filecoin-project/pubsub v1.0.0/go.mod h1:GkpB33CcUtUNrLPhJgfdy4FDx4OMNR9k+46DHx/Lqrg=
 github.com/filecoin-project/specs-actors v0.9.13/go.mod h1:TS1AW/7LbG+615j4NsjMK1qlpAwaFsG9w0V2tg2gSao=

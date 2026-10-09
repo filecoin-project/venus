@@ -78,9 +78,9 @@ func Mainnet() *NetworkConf {
 				UpgradeTuktukPowerRampDurationEpochs: builtin2.EpochsInYear,
 				UpgradeTeepHeight:                    4878840, // 2025-04-14T23:00:00Z
 				UpgradeTockFixHeight:                 -1,
-				UpgradeGoldenWeekHeight:              5348280,                         // 2025-09-24T23:00:00Z
-				UpgradeFireHorseHeight:               6052800,                         // 2026-05-27T:14:00:00Z
-				UpgradeSolsticeHeight:                config.UpgradeHeightUnscheduled, // Placeholder height for Solstice, to be updated when Solstice upgrade details are finalized
+				UpgradeGoldenWeekHeight:              5348280, // 2025-09-24T23:00:00Z
+				UpgradeFireHorseHeight:               6052800, // 2026-05-27T:14:00:00Z
+				UpgradeSolsticeHeight:                6470279, // 2026-10-19T12:59:30Z
 			},
 			SolsticeRewardBootstrapParams: config.SolsticeRewardBootstrapParams{
 				SWATimelockEpochs:                 builtin.EpochsInDay * 7,
