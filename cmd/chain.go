@@ -211,7 +211,9 @@ var chainGetBlockCmd = &cmds.Command{
 		buf := new(bytes.Buffer)
 		writer := NewSilentWriter(buf)
 
-		if _, ok := req.Options["raw"].(bool); ok {
+		// Only take the raw branch when the option was explicitly set to true.
+		// `ok` alone is not enough: `--raw=false` still yields ok == true.
+		if raw, _ := req.Options["raw"].(bool); raw {
 			out, err := json.MarshalIndent(blk, "", "  ")
 			if err != nil {
 				return err
