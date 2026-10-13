@@ -68,7 +68,7 @@ func ComputeGasOverestimationBurn(gasUsed, gasLimit int64) (int64, int64) {
 	return gasLimit - gasUsed - gasToBurn.Int64(), gasToBurn.Int64()
 }
 
-// ComputeGasOutputs compute gas outputs base on message gas parameters and gasUsed after executed
+// ComputeGasOutputs compute gas outputs based on message gas parameters and gasUsed after executed
 func ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.TokenAmount, chargeNetworkFee bool) GasOutputs {
 	gasUsedBig := big.NewInt(gasUsed)
 	out := ZeroGasOutputs()
