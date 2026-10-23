@@ -86,7 +86,7 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 
 	// Note that block syntax is not validated. Any validly signed block will be accepted pursuant to the below conditions.
 	// Whether or not it could ever have been accepted in a chain is not checked/does not matter here.
-	// for that reason when checking block parent relationships, rather than instantiating a Tipset to do so
+	// For that reason when checking block parent relationships, rather than instantiating a Tipset to do so
 	// (which runs a syntactic check), we do it directly on the CIDs.
 
 	// (0) cheap preliminary checks
@@ -669,7 +669,7 @@ func (r *xRedirect) MarshalCBOR(w io.Writer) error {
 // WARNING: You will not affect your node's execution by misusing this feature, but you will confuse yourself thoroughly!
 // An envvar that allows the user to specify debug actors bundles to be used by the FVM
 // alongside regular execution. This is basically only to be used to print out specific logging information.
-// Message failures, unexpected terminations,gas costs, etc. should all be ignored.
+// Message failures, unexpected terminations, gas costs, etc. should all be ignored.
 var useFvmDebug = os.Getenv("VENUS_FVM_DEVELOPER_DEBUG") == "1"
 
 func NewVM(ctx context.Context, opts vm.VmOption) (vm.Interface, error) {
