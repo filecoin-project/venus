@@ -36,6 +36,8 @@ jobs:
 
       - name: vars
         id: vars
+        env:
+          BIN_NAME: ${{ inputs.bin_name }}
         run: |
           export commit=$(git rev-parse HEAD)
           export short=$(git rev-parse --short HEAD)
@@ -44,7 +46,7 @@ jobs:
           export branch=$github_tag
           export git_message=$(git rev-list --format=%s --max-count=1 HEAD | tail +2)
           export repo_name=${GITHUB_REPOSITORY##*/}
-          export artifact_name=${{inputs.bin_name}}_$(git rev-parse --short HEAD).tar.gz
+          export artifact_name=${BIN_NAME}_$(git rev-parse --short HEAD).tar.gz
           export pub_method=pushTest
           export job_url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           export oss_exists=0
@@ -82,9 +84,12 @@ jobs:
           echo "::set-output name=ftp_exists::$ftp_exists"
 
       - name: show environment
+        env:
+          BIN_NAME: ${{ inputs.bin_name }}
+          HAS_FFI: ${{ inputs.has_ffi }}
         run: |
-          echo bin_name = ${{inputs.bin_name}}
-          echo has_ffi = ${{inputs.has_ffi}}
+          echo bin_name = $BIN_NAME
+          echo has_ffi = $HAS_FFI
           echo event = ${{github.event_name}}
           echo github_repository: $GITHUB_REPOSITORY
           echo vars.commit = ${{steps.vars.outputs.commit}}
@@ -128,17 +133,23 @@ jobs:
           go clean --modcache && make
 
       - name: Tar Release
+        env:
+          BIN_NAME: ${{ inputs.bin_name }}
         run: |
-          tar -zcvf ./${{steps.vars.outputs.artifact_name}} ./${{inputs.bin_name}}
+          tar -zcvf ./${{steps.vars.outputs.artifact_name}} ./${BIN_NAME}
 
       - name: Rename bin file
         if: startsWith(github.ref, 'refs/tags/')
+        env:
+          BIN_NAME: ${{ inputs.bin_name }}
         run: |
-          cp ./${{steps.vars.outputs.artifact_name}} ./${{inputs.bin_name}}_${{steps.vars.outputs.tag}}_ubuntu.tar.gz
+          cp ./${{steps.vars.outputs.artifact_name}} ./${BIN_NAME}_${{steps.vars.outputs.tag}}_ubuntu.tar.gz
 
       - name: shasum
         if: startsWith(github.ref, 'refs/tags/')
-        run: shasum -a 256 ./${{inputs.bin_name}}_${{steps.vars.outputs.tag}}_ubuntu.tar.gz > ./${{inputs.bin_name}}_${{steps.vars.outputs.tag}}_ubuntu.sha256
+        env:
+          BIN_NAME: ${{ inputs.bin_name }}
+        run: shasum -a 256 ./${BIN_NAME}_${{steps.vars.outputs.tag}}_ubuntu.tar.gz > ./${BIN_NAME}_${{steps.vars.outputs.tag}}_ubuntu.sha256
         shell: bash
 
       - name: Release
@@ -185,12 +196,14 @@ jobs:
           echo '::set-output name=oss_signed_url::$(signed_url)'
 
       - name: push god-eye
+        env:
+          BIN_NAME: ${{ inputs.bin_name }}
         run: |
           export link=${{steps.vars.outputs.job_url}}
           if [[ "${{ steps.uploadftp.outcome }}" == "success" ]]; then
             export link=ftp://${{secrets.FTP_HOST}}/${{steps.vars.outputs.repo_name}}/${{steps.vars.outputs.artifact_name}}
           elif [[ "${{ steps.release.outcome }}" == "success" ]]; then
-            export link=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/${{steps.vars.outputs.github_tag}}/${{inputs.bin_name}}_${{steps.vars.outputs.tag}}_ubuntu.tar.gz
+            export link=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/${{steps.vars.outputs.github_tag}}/${BIN_NAME}_${{steps.vars.outputs.tag}}_ubuntu.tar.gz
           elif [[ "${{ steps.cposs.outcome }}" == "success" ]]; then
             export link=${{steps.cposs.outputs.oss_signed_url}}
           fi
@@ -217,19 +230,24 @@ jobs:
 
       - name: vars
         id: vars
+        env:
+          BIN_NAME: ${{ inputs.bin_name }}
         run: |
           export tag=${{github.ref_name}}
           export repo_name=${GITHUB_REPOSITORY##*/}
-          export artifact_name=${{inputs.bin_name}}_$(git rev-parse --short HEAD).tar.gz
+          export artifact_name=${BIN_NAME}_$(git rev-parse --short HEAD).tar.gz
 
           echo "::set-output name=repo_name::$repo_name"
           echo "::set-output name=tag::$tag"
           echo "::set-output name=artifact_name::$artifact_name"
 
       - name: show environment
+        env:
+          BIN_NAME: ${{ inputs.bin_name }}
+          HAS_FFI: ${{ inputs.has_ffi }}
         run: |
-          echo bin_name = ${{inputs.bin_name}}
-          echo has_ffi = ${{inputs.has_ffi}}
+          echo bin_name = $BIN_NAME
+          echo has_ffi = $HAS_FFI
           echo vars.repo_name = ${{steps.vars.outputs.repo_name}}
           echo vars.tag = ${{steps.vars.outputs.tag}}
           echo vars.artifact_name = ${{steps.vars.outputs.artifact_name}}
@@ -254,17 +272,23 @@ jobs:
           make
 
       - name: Tar Release
+        env:
+          BIN_NAME: ${{ inputs.bin_name }}
         run: |
-          tar -zcvf ./${{steps.vars.outputs.artifact_name}} ./${{inputs.bin_name}}
+          tar -zcvf ./${{steps.vars.outputs.artifact_name}} ./${BIN_NAME}
 
       - name: Rename bin file
         if: startsWith(github.ref, 'refs/tags/')
+        env:
+          BIN_NAME: ${{ inputs.bin_name }}
         run: |
-          cp ./${{steps.vars.outputs.artifact_name}} ./${{inputs.bin_name}}_${{steps.vars.outputs.tag}}_macos.tar.gz
+          cp ./${{steps.vars.outputs.artifact_name}} ./${BIN_NAME}_${{steps.vars.outputs.tag}}_macos.tar.gz
 
       - name: shasum
         if: startsWith(github.ref, 'refs/tags/')
-        run: shasum -a 256 ./${{inputs.bin_name}}_${{steps.vars.outputs.tag}}_macos.tar.gz > ./${{inputs.bin_name}}_${{steps.vars.outputs.tag}}_macos.sha256
+        env:
+          BIN_NAME: ${{ inputs.bin_name }}
+        run: shasum -a 256 ./${BIN_NAME}_${{steps.vars.outputs.tag}}_macos.tar.gz > ./${BIN_NAME}_${{steps.vars.outputs.tag}}_macos.sha256
         shell: bash
 
       - name: Release
