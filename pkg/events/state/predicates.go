@@ -40,7 +40,7 @@ func NewStatePredicates(api ChainAPI) *StatePredicates {
 	}
 }
 
-// DiffTipSetKeyFunc check if there's a change form oldState to newState, and returns
+// DiffTipSetKeyFunc check if there's a change from oldState to newState, and returns
 // - changed: was there a change
 // - user: user-defined data representing the state change
 // - err
